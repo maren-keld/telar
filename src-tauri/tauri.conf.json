@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Psicoterapia Lab",
+  "version": "0.1.0",
+  "identifier": "cl.psicoterapialab.desktop",
+  "build": {
+    "frontendDist": "../src",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "bash scripts/dev-server.sh",
+    "beforeBuildCommand": "bash scripts/stamp-frontend.sh"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Psicoterapia LAB",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost; media-src 'self' blob: data:; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "app",
+    "externalBin": ["binaries/analyze_session"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "infoPlist": "Info.plist"
+    }
+  },
+  "plugins": {}
+}

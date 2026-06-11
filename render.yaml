@@ -1,0 +1,20 @@
+# Render Blueprint — suscripciones Plan Profesional
+# Dashboard Render → New → Blueprint → conecta este repo
+services:
+  - type: web
+    name: psicoterapia-lab-api
+    runtime: python
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:APP --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: PLAN_AMOUNT_CLP
+        value: "15000"
+      - key: PYTHON_VERSION
+        value: "3.12.0"

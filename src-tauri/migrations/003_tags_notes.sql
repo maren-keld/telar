@@ -1,0 +1,3 @@
+ALTER TABLE treatments ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+
+ALTER TABLE clinical_notes ADD COLUMN color TEXT NOT NULL DEFAULT 'teal';

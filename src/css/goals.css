@@ -1,0 +1,310 @@
+.goals-page {
+  width: 100%;
+  max-width: 960px;
+}
+
+.goals-page__head {
+  margin-bottom: 28px;
+}
+
+.goals-page__title {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.goals-page__sub {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.goals-section {
+  margin-bottom: 36px;
+}
+
+.goals-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.goals-section__title {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.goals-section__head .goals-section__title {
+  margin-bottom: 0;
+}
+
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.goals-card__title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.goals-card__sub {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.goals-card__progress {
+  margin-bottom: 14px;
+}
+
+.goals-progress {
+  display: inline-block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.goals-progress--done {
+  color: var(--success);
+}
+
+.goals-progress--open {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.goals-progress-bar {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.goals-progress-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transition: width 0.2s ease;
+}
+
+.goals-progress--done + .goals-progress-bar span {
+  background: var(--success);
+}
+
+.goals-dual-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goals-dual-progress__label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.goals-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goals-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goals-field__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.goals-field input {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.goals-hint {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.goals-empty {
+  margin: 0;
+  padding: 8px 0;
+}
+
+.convenios-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.convenio-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.convenio-card__name {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.convenio-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.convenio-card__actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.convenio-card__notes {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.convenio-card__contacts {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.convenio-card__contacts li + li {
+  margin-top: 6px;
+}
+
+.convenio-card__empty-contacts {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.goals-modal {
+  max-width: 560px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.goals-modal .modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.goals-modal .modal__head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.goals-modal .modal__head .btn {
+  flex-shrink: 0;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.goals-modal .convenio-form {
+  padding: 16px 24px;
+  overflow-y: auto;
+  max-height: min(70vh, 520px);
+}
+
+.goals-modal .modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.convenio-form__contacts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 10px;
+}
+
+.convenio-form__contacts-head label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.convenio-contact {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-app);
+}
+
+.convenio-contact__grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.convenio-contact__grid textarea {
+  grid-column: 1 / -1;
+}
+
+.convenio-contact__grid input,
+.convenio-contact__grid textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.convenio-contact__remove {
+  flex-shrink: 0;
+  min-width: 36px;
+  padding: 0;
+}

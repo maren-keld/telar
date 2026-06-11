@@ -1,0 +1,299 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  height: 100vh;
+}
+
+.app-content {
+  flex: 1;
+  padding: 24px 32px 32px;
+  overflow: auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px 24px;
+  min-width: 0;
+}
+
+.grid-2 > .form-group {
+  min-width: 0;
+}
+
+.grid-2 input,
+.grid-2 select,
+.grid-2 textarea,
+.grid-2 .segmented {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.workspace-layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.workspace-sidebar {
+  flex: 0 0 260px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.workspace-sidebar__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  flex-shrink: 0;
+}
+
+.workspace-back {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.workspace-patient-name {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: left;
+  line-height: 1.4;
+}
+
+.workspace-sidebar__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+  min-height: 0;
+}
+
+.workspace-sidebar__footer {
+  flex-shrink: 0;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-add-session {
+  margin-top: 4px;
+}
+
+.session-block {
+  margin-bottom: 20px;
+}
+
+.session-block__title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding-left: 4px;
+}
+
+.session-block__modules {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.workspace-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+.workspace-center__scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.workspace-center__inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 32px 40px;
+  box-sizing: border-box;
+}
+
+.session-module-separator {
+  border: none;
+  height: 1px;
+  margin: 10px 0;
+  background: var(--border);
+  width: 100%;
+}
+
+.center-module-card {
+  position: relative;
+  margin: 10px 0;
+}
+
+.center-add-module {
+  margin: 10px 0;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.center-module-card--active .center-module-card__body > .card,
+.center-module-card--active .center-module-card__body > .nf-panel {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+.center-module-card {
+  position: relative;
+}
+
+.center-module-card__body {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.module-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-right: 44px;
+}
+
+.module-card-head__sub {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.module-card-head__badge {
+  flex-shrink: 0;
+  margin-top: 0;
+  align-self: flex-start;
+}
+
+.center-module-card__body > .card:not(.module-scroll),
+.center-module-card__body > .nf-panel {
+  min-height: 424px;
+}
+
+.center-module-card__body > .psych-module {
+  max-height: 600px;
+  min-height: 0;
+}
+
+.module-card-actions {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.module-delete-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-delete-btn:hover {
+  color: #c0392b;
+  background: #fff5f5;
+}
+
+.workspace-tools {
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  min-width: 0;
+  background: var(--bg-sidebar);
+  border-left: 1px solid var(--border);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.workspace-tools .space-tools {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Panel notas / IA: ver css/notes.css */
+
+.btn-block {
+  width: 100%;
+}
+
+.empty-hint {
+  color: var(--text-muted);
+}
