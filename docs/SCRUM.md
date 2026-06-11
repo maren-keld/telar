@@ -1,6 +1,6 @@
 # Psicoterapia Lab — Backlog
 
-**Stack:** Tauri 2 + Rust · HTML/CSS/JS · SQLite (SQLCipher) · Python sidecar · AGPL-3.0 · macOS Apple Sillicon es prioritario
+**Stack:** Tauri 2 + Rust · HTML/CSS/JS · SQLite (SQLCipher) · Python sidecar · AGPL-3.0 · **macOS y Windows** (Linux sin BLE NF)
 
 ---
 
@@ -9,7 +9,6 @@
 | ID | Tarea | Notas |
 |----|-------|-------|
 | DATA-1 | `readable_text` en todos los módulos | `src/js/readable-text.js`; ampliar cobertura |
-| DIST-1 | Desplegar API suscripciones en Render | `render.yaml` + `docs/SUSCRIPCIONES.md`; falta pegar URL en `subscription-config.js` |
 
 ---
 
@@ -21,7 +20,6 @@
 |----|-------|
 | CL-2 | Más módulos del mockup: diagnósticos, notas estructuradas |
 | CL-3 | Exportar reportes CSV y PDF NF ampliado | PDF programa hecho; exportación global CSV en Ajustes; falta NF detallado por sesión |
-| CL-4 | UI de respaldo: botón para exportar/copiar `psicoterapia.enc.db` |
 
 ### IA
 
@@ -40,7 +38,6 @@
 
 | ID | Tarea | Notas |
 |----|-------|-------|
-| DI-1 | Gatekeeper / firma macOS | No bloqueante para uso local actual |
 | DI-2 | Builds Windows (validar BLE) / Linux después | CI + `btleplug`; Linux NF en backlog |
 
 ---
@@ -71,6 +68,9 @@
 | UX-8 | Dark mode y UX módulos | Puntajes panel, badge Tratamiento, En uso selector, alinear acciones módulo, editar custom |
 | UX-9 | EFR alerta, agenda, PDF | Alerta EFR respeta «Nunca»; sin +Añadir en checklists; agenda sin categorías vacías; abrir PDF al exportar |
 | PRIV-1 | Exportar y borrar datos en Ajustes | CSV en Documentos; borrado total con confirmación + PIN; `db_wipe_all_data` |
+| CL-4 | Respaldar base de datos en Ajustes | `db_backup_encrypted` → Documentos/Psicoterapia Lab/respaldos |
+| DIST-1 | API suscripciones Render | `render.yaml`, `subscription-config.js`, `scripts/deploy-subscription-api.sh`, CSP |
+| DI-1 | Firma / notarización macOS | `scripts/sign-macos-app.sh`, `entitlements.plist`, `docs/DISTRIBUCION-MACOS.md` |
 
 ---
 
@@ -104,4 +104,6 @@
 | 2026-06-11 | Git inicializado; repo privado `felipeuppen/psicoterapialab` en GitHub; `.gitignore` reforzado (`.env`, sidecar, venv) |
 | 2026-06-11 | Automation #1 documentada: revisión SCRUM en PR (`docs/CURSOR-AUTOMATIONS.md`, borrador `.cursor/automations/scrum-pr-review.md`) |
 | 2026-06-11 | Storytelling externo: README orientado a colegas clínicos; guía técnica en `docs/DESARROLLO.md`; manual actualizado (export PDF/CSV) |
+| 2026-06-11 | Pitch 1 página (`docs/PITCH-1-PAGINA.md`); README rebalanceado macOS/Windows, repo = devs |
 | 2026-06-09 | PRIV-1: Ajustes → Privacidad y datos — exportar CSV (pacientes, sesiones, NF, perfil) y eliminar todos los datos con triple confirmación |
+| 2026-06-09 | CL-4 respaldo .enc.db; DIST-1 URL Render + deploy script + CSP; DI-1 sign-macos-app.sh y guía distribución |

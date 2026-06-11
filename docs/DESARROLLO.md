@@ -2,7 +2,7 @@
 
 Documentación técnica para quien compila, modifica o contribuye al código. Si buscas **uso clínico**, empieza por el [README](../README.md) y el [Manual clínico](Manual%20Psicoterapia%20LAB%202026.md).
 
-**Stack:** Tauri 2 (Rust) · HTML/CSS/JS · SQLite (SQLCipher) · sidecar Python (PyInstaller) · macOS Apple Silicon prioritario
+**Stack:** Tauri 2 (Rust) · HTML/CSS/JS · SQLite (SQLCipher) · sidecar Python (PyInstaller) · **macOS y Windows** (dev prioritario en Apple Silicon)
 
 ---
 
