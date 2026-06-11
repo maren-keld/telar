@@ -101,3 +101,4 @@
 | 2026-06-10 | UX-8 dark mode puntajes/agenda/selector; alinear botones módulo; editar módulos custom; migración 010 limpia pacientes de prueba |
 | 2026-06-10 | UX-9: EFR alerta oculta con «Nunca»; quitar +Añadir en Fortalezas/Defensas/Riesgos; agenda oculta categorías vacías; PDF se abre tras exportar |
 | 2026-06-11 | Git inicializado; repo privado `felipeuppen/psicoterapialab` en GitHub; `.gitignore` reforzado (`.env`, sidecar, venv) |
+| 2026-06-11 | Automation #1 documentada: revisión SCRUM en PR (`docs/CURSOR-AUTOMATIONS.md`, borrador `.cursor/automations/scrum-pr-review.md`) |
