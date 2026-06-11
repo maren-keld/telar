@@ -1,122 +1,111 @@
 # Psicoterapia Lab
 
-Aplicación de escritorio **open source** (AGPL-3.0) para gestión clínica local de salud mental. Stack: **Tauri 2** (Rust) + **HTML/CSS/JS** + **SQLite** + análisis **Python** local.
+**Tu consultorio en tu Mac.** Gestión clínica y neurofeedback integrados, con datos cifrados que **no salen de tu equipo**.
 
-Funciona **sin servidor**: la base de datos y el análisis de sesiones corren en tu Mac (Apple Silicon) o Windows. Linux en roadmap.
+Aplicación de escritorio para psicólogos y profesionales de salud mental que quieren programar tratamientos, registrar sesiones, aplicar instrumentos psicométricos y —si trabajas con EEG— hacer **neurofeedback con Muse 2** en el mismo flujo de trabajo.
 
-## Características
+No es un SaaS en la nube. No sube fichas de pacientes a servidores ajenos. Funciona **offline**; internet solo se usa si activas el Plan Profesional (suscripción).
 
-- **Agenda** de pacientes por estado (en tratamiento, completado, abandonado, archivado)
-- **Programa de tratamiento** con sesiones y módulos clínicos modulares
-- Módulos iniciales: **Registro inicial**, **Motivo de consulta**, **Neurofeedback**
-- **Notas clínicas** por tratamiento
-- **Reportes** simples y resultados de sesiones NF
-- **Neurofeedback**: BLE nativo (Rust/btleplug) en **macOS y Windows** con Muse 2; FFT en vivo alineada con post-análisis (`src/lib/nf-signal.js`); análisis con `python/analyze_session.py`
+---
 
-## Requisitos (macOS M4)
+## ¿Para quién es?
 
-1. [Rust](https://rustup.rs/) (`rustup default stable`)
-2. [Node.js](https://nodejs.org/) 18+ (para CLI de Tauri)
-3. Python 3.10+ con dependencias científicas:
+- Psicólogos/as en consulta privada o institucional que diseñan **programas de tratamiento** por sesiones y módulos.
+- Profesionales con enfoque **TCC**, psicodinámico complementario (EED) o **neurofeedback** con banda Muse 2.
+- Quienes priorizan **privacidad** y control de los datos clínicos en el dispositivo propio.
 
-```bash
-pip install -r python/requirements.txt
-```
+**Estado actual:** versión **0.1 — acceso anticipado**. Lista para uso clínico real por el equipo desarrollador y colegas beta; la instalación para no-desarrolladores se está simplificando (firma macOS, distribución).
 
-4. Xcode Command Line Tools (para compilar en macOS):
+---
 
-```bash
-xcode-select --install
-```
+## Qué puedes hacer hoy
 
-## Instalación y desarrollo
+| Área | Funciones |
+|------|-----------|
+| **Agenda** | Pacientes por estado (en tratamiento, completado, abandonado, archivado), objetivos y convenios con contactos |
+| **Tratamiento** | Sesiones (programada / completada / cancelada), módulos modulares, selector de módulos, biblioteca |
+| **Estudio de caso** | Notas estilo Kindle, anotaciones, highlights, panel lateral por tratamiento |
+| **Instrumentos** | DASS-21, EED, Rosenberg, QOLS, FER, escalas de ánimo y ansiedad (1–100), diagnóstico, redes de apoyo (genograma), cuestionarios personalizados |
+| **Neurofeedback** | Conexión BLE Muse 2, feedback en vivo (banda Beta), grabación, análisis post-sesión, audio de señales |
+| **Informes** | Exportar programa de tratamiento a PDF; exportar datos clínicos a CSV (Ajustes → Privacidad) |
+| **Seguridad** | Base cifrada (SQLCipher), PIN + Touch ID, bloqueo tras intentos fallidos, borrado total de datos con confirmación |
 
-```bash
-cd PsicoterapiaLAB
-# Rust (si falta): curl --proto '=https' -tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-cargo install tauri-cli --version "^2" --locked   # solo la primera vez
+---
 
-pip install -r python/requirements.txt
-./scripts/build-sidecar.sh   # analizador empaquetado (~80 MB)
+## Por qué es distinto
 
-./scripts/dev.sh
-```
+**1. Local-first de verdad**  
+Pacientes, sesiones, notas y EEG quedan en tu Mac (o PC). No hay “copia en nuestra nube” de la ficha clínica.
 
-### Desarrollo en Cursor (cambios casi en tiempo real)
+**2. Neurofeedback dentro del programa**  
+No es un software aparte pegado con Excel. El módulo NF vive en la sesión, al lado del DASS-21 o del motivo de consulta.
 
-**La app no se embebe dentro del editor de Cursor** (no es una extensión tipo “preview” de Figma). Es una app de escritorio Tauri: hace falta una **ventana aparte** con base de datos, Bluetooth, etc.
+**3. Seguridad pensada para salud mental**  
+Cifrado AES-256, PIN obligatorio, biometría opcional. Tú decides exportar o eliminar todo desde Ajustes.
 
-Para CSS/HTML/JS **no recompiles la `.app` cada vez**. Usa solo modo dev:
+**4. Open core**  
+Código abierto ([AGPL-3.0](LICENSE)). Funciones avanzadas (p. ej. suscripción Plan Profesional) en modelo open-core — ver [términos y privacidad](docs/T%C3%A9rminos%20y%20Condiciones%20_%20Pol%C3%ADticas%20Privacidad%20_%20Psicoterapia%20LAB.md).
 
-1. **⌘ + Shift + B** → tarea **Psicoterapia Lab: Dev**, o **F5** / Run and Debug → **Psicoterapia Lab (dev)**, o `./scripts/dev.sh`
-2. Se abre la ventana de **Psicoterapia Lab** (déjala abierta).
-3. Editas y **guardas** en `src/` → la ventana **se recarga sola** (~¼ s). Si no, **Cmd+R** en esa ventana.
-4. Cambios en **Rust** (`src-tauri/`): detén dev y vuelve a lanzar.
+---
 
-Vista previa **solo visual** (sin base de datos ni Tauri): con dev corriendo, panel **Simple Browser** en Cursor → `http://127.0.0.1:1420` (útil para maquetar CSS; la agenda/DB no funcionará ahí).
+## Neurofeedback (Muse 2)
 
-### Ejecutable (.app en Mac) — solo para probar el build final
+- **Dispositivo:** Muse 2 únicamente (no Muse S ni otros modelos).
+- **Plataformas:** macOS Apple Silicon (recomendado) y Windows (en validación).
+- **Flujo:** conectar banda → feedback en vivo → grabar sesión → análisis automático al terminar.
+- **Requisito:** permiso Bluetooth del sistema operativo.
 
-Tras cambios en `src/`, si quieres la `.app` empaquetada (no para el día a día del CSS):
+---
 
-```bash
-./scripts/build-app.sh
-./scripts/open-app.sh
-```
+## Requisitos
 
-Solo existe **una** copia en el proyecto: `dist/Psicoterapia Lab.app` (evita abrir la de `src-tauri/target/`, ya no se deja ahí).
+| | |
+|---|---|
+| **Sistema** | macOS con Apple Silicon (M1/M2/M3/M4) — prioritario. Windows en pruebas. Linux sin BLE por ahora. |
+| **Hardware NF** | Interaxon Muse 2 + Bluetooth |
+| **Internet** | No obligatorio para uso clínico. Solo para verificar suscripción Plan Profesional. |
+| **Instalación hoy** | Build desde código o `.app` generada localmente — ver [Guía de desarrollo](docs/DESARROLLO.md). Instalador firmado para colegas: en roadmap. |
 
-Opcional en Aplicaciones (un solo icono):
+---
 
-```bash
-./scripts/install-app.sh
-```
+## Plan Profesional
 
-El `.app` incluye el analizador Python empaquetado; **no necesitas pip** en la máquina donde solo ejecutas la app.
+Suscripción opcional (~**$15.000 CLP/mes** vía Mercado Pago) para funciones avanzadas del modelo open-core. El cobro **no** almacena datos clínicos: solo consulta si el email pagó. Detalle en [docs/SUSCRIPCIONES.md](docs/SUSCRIPCIONES.md).
 
-Esto abre la ventana nativa, sirve el frontend en `http://127.0.0.1:1420` y aplica migraciones SQLite automáticamente.
+---
 
-## Build de producción
+## Documentación
 
-```bash
-npm run build
-```
+| Documento | Para qué |
+|-----------|----------|
+| [Manual clínico 2026](docs/Manual%20Psicoterapia%20LAB%202026.md) | Uso de agenda, sesiones, módulos, NF |
+| [Términos y privacidad](docs/T%C3%A9rminos%20y%20Condiciones%20_%20Pol%C3%ADticas%20Privacidad%20_%20Psicoterapia%20LAB.md) | Responsabilidades, datos locales, exportación |
+| [Guía de desarrollo](docs/DESARROLLO.md) | Instalar, compilar, contribuir técnicamente |
 
-El `.app` / instalador queda en `src-tauri/target/release/bundle/`.
+---
 
-### Bluetooth (macOS y Windows)
+## Próximamente (roadmap público)
 
-Neurofeedback usa **BLE nativo** (`src-tauri/src/muse_ble.rs`) vía `btleplug`. Solo **Muse 2** está soportado (Muse S y otros modelos no). Concede permiso Bluetooth cuando el sistema lo solicite.
+- Respaldar base cifrada en un clic (`psicoterapia.enc.db`)
+- Exportes NF ampliados (CSV/PDF por sesión)
+- Asistente IA con contexto del tratamiento (sin PII innecesaria)
+- Instalador macOS firmado (Gatekeeper)
+- API de suscripciones en producción (Render)
 
-En macOS la app declara uso de Bluetooth en `src-tauri/Info.plist`.
+Backlog detallado: [docs/SCRUM.md](docs/SCRUM.md) (equipo interno).
 
-### Análisis Python
+---
 
-Tras grabar una sesión, Rust invoca:
+## ¿Colega interesado en probarlo?
 
-```bash
-python3 python/analyze_session.py   # stdin = datos @ separados
-```
+Estamos en **acceso anticipado**. Si eres psicólogo/a en Chile (idealmente con Muse 2 y Mac Apple Silicon), escríbenos o abre un issue en este repo describiendo tu consultorio y sistema operativo.
 
-Variables opcionales:
+Para compilar tú mismo/a: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
-- `PSICOTERAPIA_PYTHON` — ruta al binario Python
-- `PSICOTERAPIA_ANALYZE_SCRIPT` — ruta al script de análisis
+---
 
-## Estructura del proyecto
+## Stack (referencia técnica breve)
 
-```
-src/                 # UI (agenda, ficha, módulos)
-src/lib/             # Muse.js, nf-session, nf-signal (filtros + bandas EEG)
-src-tauri/           # Rust, SQLite, comando analyze_*
-python/              # analyze_session.py (scipy/pandas)
-```
+Tauri 2 · Rust · HTML/CSS/JS · SQLite (SQLCipher) · Python local para análisis NF · AGPL-3.0
 
-## Datos
-
-SQLite: `psicoterapia.db` en el directorio de datos de la app (Tauri SQL plugin).
-
-## Licencia
-
-GNU Affero General Public License v3.0 — ver [LICENSE](LICENSE).
+Repositorio: [github.com/felipeuppen/psicoterapialab](https://github.com/felipeuppen/psicoterapialab)

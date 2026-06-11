@@ -1,7 +1,7 @@
 {
   "name": "psicoterapia-lab",
   "version": "0.1.0",
-  "description": "Gestión local de pacientes de neurofeedback — Psicoterapia Lab",
+  "description": "Consultorio clínico local con neurofeedback Muse 2 — Psicoterapia Lab",
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {

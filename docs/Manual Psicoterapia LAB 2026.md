@@ -58,9 +58,11 @@ Espacio de trabajo, donde Psicólogo/a y/o paciente pueden **ingresar** y/o **co
 
 Los módulos pueden ser trabajados durante la sesión con o sin el/la paciente. Toda la información se almacena localmente en el dispositivo del profesional, sin conexión a servidores externos.
 
-**Compartir módulos** *(función en desarrollo)*
+**Exportar e informes**
 
-La exportación de módulos a PDF y la generación de informes por tratamiento se encuentran en desarrollo (CL-3). Esta funcionalidad estará disponible en próximas versiones.
+Puedes exportar el **programa de tratamiento a PDF** desde el workspace del paciente. También está disponible la **exportación de datos a CSV** en Ajustes → Privacidad y datos (pacientes, sesiones, neurofeedback, perfil).
+
+La exportación ampliada de informes NF por sesión (CSV/PDF detallado) está en roadmap (CL-3).
 
 **Consideraciones teóricas**
 

@@ -20,7 +20,7 @@
 | ID | Tarea |
 |----|-------|
 | CL-2 | Más módulos del mockup: diagnósticos, notas estructuradas |
-| CL-3 | Exportar reportes CSV y PDF NF ampliado | PDF básico de programa de tratamiento hecho; falta CSV y NF detallado |
+| CL-3 | Exportar reportes CSV y PDF NF ampliado | PDF programa hecho; exportación global CSV en Ajustes; falta NF detallado por sesión |
 | CL-4 | UI de respaldo: botón para exportar/copiar `psicoterapia.enc.db` |
 
 ### IA
@@ -70,6 +70,7 @@
 | GOALS-1 | Pantalla Objetivos y convenios | Metas en tarjetas, CRUD convenios con contactos, tratamiento ↔ convenio, migración 009 |
 | UX-8 | Dark mode y UX módulos | Puntajes panel, badge Tratamiento, En uso selector, alinear acciones módulo, editar custom |
 | UX-9 | EFR alerta, agenda, PDF | Alerta EFR respeta «Nunca»; sin +Añadir en checklists; agenda sin categorías vacías; abrir PDF al exportar |
+| PRIV-1 | Exportar y borrar datos en Ajustes | CSV en Documentos; borrado total con confirmación + PIN; `db_wipe_all_data` |
 
 ---
 
@@ -102,3 +103,5 @@
 | 2026-06-10 | UX-9: EFR alerta oculta con «Nunca»; quitar +Añadir en Fortalezas/Defensas/Riesgos; agenda oculta categorías vacías; PDF se abre tras exportar |
 | 2026-06-11 | Git inicializado; repo privado `felipeuppen/psicoterapialab` en GitHub; `.gitignore` reforzado (`.env`, sidecar, venv) |
 | 2026-06-11 | Automation #1 documentada: revisión SCRUM en PR (`docs/CURSOR-AUTOMATIONS.md`, borrador `.cursor/automations/scrum-pr-review.md`) |
+| 2026-06-11 | Storytelling externo: README orientado a colegas clínicos; guía técnica en `docs/DESARROLLO.md`; manual actualizado (export PDF/CSV) |
+| 2026-06-09 | PRIV-1: Ajustes → Privacidad y datos — exportar CSV (pacientes, sesiones, NF, perfil) y eliminar todos los datos con triple confirmación |
