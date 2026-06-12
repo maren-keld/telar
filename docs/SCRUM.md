@@ -38,7 +38,7 @@
 
 | ID | Tarea | Notas |
 |----|-------|-------|
-| DI-2 | Builds Windows (validar BLE) / Linux después | CI + `btleplug`; Linux NF en backlog |
+| DI-2 | Validar BLE Muse en Windows real | CI genera `.exe`; falta prueba hardware |
 
 ---
 
@@ -71,6 +71,7 @@
 | CL-4 | Respaldar base de datos en Ajustes | `db_backup_encrypted` → Documentos/Psicoterapia Lab/respaldos |
 | DIST-1 | API suscripciones Render | `render.yaml`, `subscription-config.js`, `scripts/deploy-subscription-api.sh`, CSP |
 | DI-1 | Firma / notarización macOS | `scripts/sign-macos-app.sh`, `entitlements.plist`, `docs/DISTRIBUCION-MACOS.md` |
+| DI-3 | GitHub Releases + auto-actualización | `publish-github-release.sh`, `.github/workflows/release.yml`, `tauri-plugin-updater`, UI unlock/ajustes |
 | MARK-1 | Landing 1 página (marketing Chile) | `landing/` HTML estático, `docs/LANDING.md`, deploy Vercel/GitHub Pages |
 
 ---
@@ -110,3 +111,5 @@
 | 2026-06-12 | MARK-1: landing `landing/` (hero, funciones, planes, requisitos, instalación Mac, CTA demo); guía deploy Vercel + GitHub en `docs/LANDING.md` |
 | 2026-06-09 | PRIV-1: Ajustes → Privacidad y datos — exportar CSV (pacientes, sesiones, NF, perfil) y eliminar todos los datos con triple confirmación |
 | 2026-06-09 | CL-4 respaldo .enc.db; DIST-1 URL Render + deploy script + CSP; DI-1 sign-macos-app.sh y guía distribución |
+| 2026-06-12 | DI-3: GitHub Releases (`Psicoterapia-Lab-macos.zip`, `Psicoterapia-Lab-windows.exe`), workflow CI, Tauri updater con toast + banner desbloqueo + Ajustes |
+| 2026-06-12 | `.cursor/` fuera del repo público (`.gitignore`; archivos siguen en local para Cursor) |
