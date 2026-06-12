@@ -1,6 +1,6 @@
 Abre SOLO esta carpeta:
 
-  Psicoterapia Lab.app
+  Telar.app
 
 No uses otra copia en src-tauri/target/ (se borra al compilar).
 

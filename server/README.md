@@ -7,7 +7,7 @@ Backend mínimo para cobrar **$15.000 CLP/mes** con **Mercado Pago** (Chile).
 Ya tienes cuenta; falta crear la **aplicación** y sacar las credenciales:
 
 1. Entra a [Mercado Pago Developers](https://www.mercadopago.cl/developers/panel/app).
-2. **Crear aplicación** → nombre: `Psicoterapia Lab`.
+2. **Crear aplicación** → nombre: `Telar`.
 3. En **Credenciales de prueba** (para desarrollo):
    - Copia el **Access Token** de prueba → `MP_ACCESS_TOKEN` en `.env`.
 4. En **Credenciales de producción** (cuando vayas live):
@@ -40,7 +40,7 @@ Mercado Pago exige URL **HTTPS** para notificaciones. Opciones baratas:
 | [Railway](https://railway.app) | ~USD 5/mes | Siempre activo |
 | [PythonAnywhere](https://www.pythonanywhere.com) | Gratis limitado | Solo HTTPS en plan de pago |
 
-Tras desplegar, pon la URL en `BACKEND_URL` (ej. `https://psicoterapia-lab-api.onrender.com`).
+Tras desplegar, pon la URL en `BACKEND_URL` (ej. `https://telar-api.onrender.com`).
 
 ## Webhook en Mercado Pago
 
@@ -69,7 +69,7 @@ App guarda plan: "pro" en perfil local
 En `src/js/subscription.js` cambia `SUBSCRIPTION_API_BASE` a tu URL desplegada, o define en consola:
 
 ```js
-window.PSICOTERAPIA_SUBSCRIPTION_API = 'https://tu-api.onrender.com';
+window.TELAR_SUBSCRIPTION_API = 'https://tu-api.onrender.com';
 ```
 
 La app abre el checkout en el navegador y, al volver, puede consultar el estado con el email del perfil (Ajustes).

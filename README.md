@@ -1,12 +1,14 @@
-# Psicoterapia Lab
+# Telar
 
 App de escritorio (Tauri 2) para gestión clínica y neurofeedback con **Muse 2**. Los datos del consultorio se guardan **solo en tu equipo**, cifrados con SQLCipher.
 
-**Plataformas:** macOS y Windows · **Licencia:** [AGPL-3.0](LICENSE)
+**Web:** [telarapp.cl](https://telarapp.cl) · **Plataformas:** macOS y Windows · **Licencia:** [AGPL-3.0](LICENSE)
+
+Pitch para colegas: [docs/PITCH-1-PAGINA.md](docs/PITCH-1-PAGINA.md)
 
 ## Descargar
 
-Instaladores en [GitHub Releases](https://github.com/maren-keld/psicoterapialab/releases).
+Instaladores en [GitHub Releases](https://github.com/maren-keld/telarapp/releases).
 
 ## Compilar
 
@@ -15,7 +17,7 @@ Requisitos: Rust, Node.js, Python 3.
 ```bash
 ./scripts/build-sidecar.sh
 ./scripts/dev.sh          # desarrollo
-./scripts/build-app.sh    # → dist/Psicoterapia Lab.app
+./scripts/build-app.sh    # → dist/Telar.app
 ```
 
 ## Estructura

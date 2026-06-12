@@ -1,4 +1,4 @@
-/** Descripciones desde Manual Psicoterapia LAB 2026 (§ Herramientas de estudio de caso) */
+/** Descripciones desde Manual Telar 2026 (§ Herramientas de estudio de caso) */
 
 export const SPACE_CHECK_DESCRIPTIONS = {
   fortalezas: {

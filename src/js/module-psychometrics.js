@@ -10,7 +10,7 @@ export const MODULE_PSYCHOMETRICS = {
     learnMore: 'No sustituye evaluación clínica integral.',
   },
   eed: {
-    authors: 'Psicoterapia Lab (basado en DSQ)',
+    authors: 'Telar (basado en DSQ)',
     ageRange: '16 años en adelante',
     reliability:
       'Instrumento de elaboración propia; sin estandarización publicada. Uso exploratorio.',
@@ -19,14 +19,14 @@ export const MODULE_PSYCHOMETRICS = {
     learnMore: 'Ver manual: Escala de Estilos Defensivos.',
   },
   escala_animo: {
-    authors: 'Psicoterapia Lab',
+    authors: 'Telar',
     ageRange: 'Todas las edades',
     reliability: '—',
     validity: 'Registro subjetivo VAS 1–100; sin estandarización en Chile.',
     learnMore: '1 = ánimo muy bajo, 100 = muy alto (últimos 7 días).',
   },
   escala_ansiedad: {
-    authors: 'Psicoterapia Lab',
+    authors: 'Telar',
     ageRange: 'Todas las edades',
     reliability: '—',
     validity: 'Registro subjetivo VAS 1–100; sin estandarización en Chile.',
@@ -52,7 +52,7 @@ export const MODULE_PSYCHOMETRICS = {
     learnMore: 'Puntaje total 16–112 (mayor = mejor). Dominios orientativos, no diagnóstico.',
   },
   escala_fer: {
-    authors: 'Psicoterapia Lab',
+    authors: 'Telar',
     ageRange: 'Adolescentes y adultos (≥ 14 años)',
     reliability: 'Instrumento de elaboración propia; sin estandarización publicada. Uso exploratorio.',
     validity:

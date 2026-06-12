@@ -69,7 +69,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
 
   container.querySelector('#btn-buy-modules')?.addEventListener('click', () => {
     requireProOrSubscribe({
-      onAllowed: () => openExternalUrl('https://psicoterapialab.com/modules'),
+      onAllowed: () => openExternalUrl('https://telarapp.cl/modules'),
     });
   });
 

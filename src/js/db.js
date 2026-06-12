@@ -9,10 +9,10 @@ async function loadDatabase() {
   if (dbInstance) return dbInstance;
   if (!isTauriApp()) {
     throw new Error(
-      'Abre Psicoterapia Lab con la app de escritorio (dist/Psicoterapia Lab.app), no con el navegador ni abriendo index.html directo.',
+      'Abre Telar con la app de escritorio (dist/Telar.app), no con el navegador ni abriendo index.html directo.',
     );
   }
-  dbInstance = await loadSqlDatabase('sqlite:psicoterapia.db');
+  dbInstance = await loadSqlDatabase('sqlite:telar.db');
   return dbInstance;
 }
 

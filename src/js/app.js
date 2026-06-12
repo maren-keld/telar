@@ -10,6 +10,7 @@ import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { teardownNeurofeedback } from './modules/neurofeedback.js';
+import { initAppUpdateChecker } from './app-updates.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
@@ -101,9 +102,9 @@ async function render() {
     console.error(err);
     app.innerHTML = `
       <div class="app-content">
-        <h1>Psicoterapia LAB</h1>
+        <h1>Telar</h1>
         <p>${err.message}</p>
-        <p style="color:var(--text-secondary)">Usa <code>dist/Psicoterapia Lab.app</code> o <code>./scripts/dev.sh</code>.</p>
+        <p style="color:var(--text-secondary)">Usa <code>dist/Telar.app</code> o <code>./scripts/dev.sh</code>.</p>
       </div>`;
     toast(err.message);
   }
@@ -112,6 +113,7 @@ async function render() {
 window.addEventListener('hashchange', render);
 window.addEventListener('DOMContentLoaded', async () => {
   initThemeFromProfile();
+  initAppUpdateChecker();
   if (!location.hash) {
     if (isTauriApp()) {
       try {

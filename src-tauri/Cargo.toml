@@ -1,5 +1,5 @@
 [package]
-name = "psicoterapia-lab"
+name = "telar"
 version = "0.1.0"
 description = "Gestión local de pacientes de neurofeedback"
 authors = ["Felipe Uppen"]
@@ -8,7 +8,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "psicoterapia_lab_lib"
+name = "telar_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -17,6 +17,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -29,6 +31,7 @@ rusqlite = { version = "0.37", features = ["bundled-sqlcipher-vendored-openssl",
 argon2 = "0.5"
 rand = "0.8"
 base64 = "0.22"
+ureq = { version = "2", features = ["json"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSRunLoop", "NSDate", "NSString", "NSObjCRuntime"] }

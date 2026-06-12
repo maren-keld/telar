@@ -2,7 +2,7 @@
 # Dashboard Render → New → Blueprint → conecta este repo
 services:
   - type: web
-    name: psicoterapia-lab-api
+    name: telar-api
     runtime: python
     rootDir: server
     buildCommand: pip install -r requirements.txt
@@ -18,3 +18,8 @@ services:
         value: "15000"
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: BACKEND_URL
+        fromService:
+          name: telar-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL

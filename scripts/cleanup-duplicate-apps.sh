@@ -2,9 +2,9 @@
 # Deja una sola .app canónica dentro del repo; avisa sobre copias extra en el Mac.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CANONICAL="$ROOT/dist/Psicoterapia Lab.app"
-TARGET_BUNDLE="$ROOT/src-tauri/target/release/bundle/macos/Psicoterapia Lab.app"
-TARGET_DEBUG="$ROOT/src-tauri/target/debug/bundle/macos/Psicoterapia Lab.app"
+CANONICAL="$ROOT/dist/Telar.app"
+TARGET_BUNDLE="$ROOT/src-tauri/target/release/bundle/macos/Telar.app"
+TARGET_DEBUG="$ROOT/src-tauri/target/debug/bundle/macos/Telar.app"
 
 removed=0
 for extra in "$TARGET_BUNDLE" "$TARGET_DEBUG"; do
@@ -16,7 +16,7 @@ for extra in "$TARGET_BUNDLE" "$TARGET_DEBUG"; do
 done
 
 echo ""
-echo "Copias de «Psicoterapia Lab.app» encontradas:"
+echo "Copias de «Telar.app» encontradas:"
 found=0
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
@@ -28,8 +28,8 @@ while IFS= read -r path; do
   fi
 done < <(
   {
-    find "$ROOT" -name "Psicoterapia Lab.app" -type d 2>/dev/null
-    [[ -d "/Applications/Psicoterapia Lab.app" ]] && echo "/Applications/Psicoterapia Lab.app"
+    find "$ROOT" -name "Telar.app" -type d 2>/dev/null
+    [[ -d "/Applications/Telar.app" ]] && echo "/Applications/Telar.app"
   } | sort -u
 )
 
@@ -49,7 +49,7 @@ elif [[ $found -gt 1 ]]; then
   done
   echo ""
   echo "Abre solo: ./scripts/open-app.sh"
-  echo "Si también tienes /Applications/Psicoterapia Lab.app distinta, ejecuta: ./scripts/install-app.sh"
+  echo "Si también tienes /Applications/Telar.app distinta, ejecuta: ./scripts/install-app.sh"
 fi
 
 if [[ $removed -gt 0 ]]; then

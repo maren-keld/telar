@@ -9,26 +9,21 @@ export function getInvoke() {
   const invoke = window.__TAURI__?.core?.invoke;
   if (!invoke) {
     throw new Error(
-      'Esta pantalla debe abrirse desde Psicoterapia Lab.app. Si ya la abriste y ves esto, reinstala la última versión desde dist/.',
+      'Esta pantalla debe abrirse desde Telar.app. Si ya la abriste y ves esto, reinstala la última versión desde dist/.',
     );
   }
   return invoke;
 }
 
 export async function openExternalUrl(url) {
-  if (!isTauriApp()) {
-    window.open(url, '_blank', 'noopener');
-    return;
-  }
-  const shell = window.__TAURI__?.shell;
-  if (shell?.open) {
-    await shell.open(url);
+  if (isTauriApp()) {
+    await getInvoke()('open_external_url', { url });
     return;
   }
   window.open(url, '_blank', 'noopener');
 }
 
-export async function loadSqlDatabase(dbName = 'sqlite:psicoterapia.db') {
+export async function loadSqlDatabase(dbName = 'sqlite:telar.db') {
   const invoke = getInvoke();
   // dbName se ignora: la DB se abre en Rust (cifrada) tras desbloqueo.
   const path = 'secure-db';

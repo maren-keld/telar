@@ -429,6 +429,33 @@ input[type='date']::-webkit-calendar-picker-indicator {
   font-size: 0.8125rem;
 }
 
+.unlock-update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--surface-elevated, #fff);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+}
+
+.unlock-update-bar--hidden {
+  display: none;
+}
+
+.unlock-update-bar__text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
 .unlock-page__build {
   margin-top: 24px;
   font-size: 0.75rem;

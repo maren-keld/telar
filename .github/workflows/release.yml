@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión SemVer (ej. 0.1.1)'
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            rust_target: aarch64-apple-darwin
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust_target: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python deps (sidecar)
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller numpy scipy
+
+      - name: Build sidecar
+        shell: bash
+        run: ./scripts/build-sidecar.sh
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: src-tauri
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}
+          releaseName: Telar ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}
+          releaseBody: |
+            ## Descargas
+            - **macOS (Apple Silicon):** `Telar-macos.zip`
+            - **Windows:** `Telar-windows.exe`
+            - **Auto-actualización:** `latest.json` + bundles firmados (Tauri updater)
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true
+          args: --target ${{ matrix.target }}
+
+      - name: Package macOS zip (nombre canónico)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          APP="src-tauri/target/${{ matrix.rust_target }}/release/bundle/macos/Telar.app"
+          ./scripts/sign-macos-app.sh "$APP"
+
+      - name: Package Windows installer (nombre canónico)
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: ./scripts/package-windows-installer.sh
+
+      - name: Upload canonical assets to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}"
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            gh release upload "$TAG" dist/Telar-macos.zip --clobber
+          else
+            gh release upload "$TAG" dist/Telar-windows.exe --clobber
+          fi

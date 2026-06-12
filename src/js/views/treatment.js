@@ -14,7 +14,7 @@ export async function renderTreatment(container, { treatmentId, onNavigate }) {
     <div class="workspace-layout" style="grid-template-columns: 240px 1fr;">
       <aside class="sidebar sidebar--wide">
         <div class="sidebar-brand">
-          Psicoterapia LAB
+          Telar
           <small>Programa de tratamiento</small>
         </div>
         <button class="nav-item nav-item--row" data-back>← Agenda</button>

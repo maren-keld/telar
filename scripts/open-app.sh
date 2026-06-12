@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="$ROOT/dist/Psicoterapia Lab.app"
+APP="$ROOT/dist/Telar.app"
 
 if [[ ! -d "$APP" ]]; then
-  echo "No existe dist/Psicoterapia Lab.app — ejecuta primero: ./scripts/build-app.sh"
+  echo "No existe dist/Telar.app — ejecuta primero: ./scripts/build-app.sh"
   exit 1
 fi
 
@@ -15,13 +15,13 @@ elif [[ -f "$ROOT/dist/.build-stamp" ]]; then
 fi
 
 # Cerrar instancias viejas (p. ej. otra copia en /Applications o en target/)
-osascript -e 'quit app "Psicoterapia Lab"' 2>/dev/null || true
-pkill -x psicoterapia-lab 2>/dev/null || true
+osascript -e 'quit app "Telar"' 2>/dev/null || true
+pkill -x telar 2>/dev/null || true
 sleep 0.4
 
 # Avisar si hay otra copia instalada distinta a la canónica
-if [[ -d "/Applications/Psicoterapia Lab.app" ]]; then
-  if ! diff -rq "$APP" "/Applications/Psicoterapia Lab.app" >/dev/null 2>&1; then
+if [[ -d "/Applications/Telar.app" ]]; then
+  if ! diff -rq "$APP" "/Applications/Telar.app" >/dev/null 2>&1; then
     echo ""
     echo "Aviso: /Applications tiene otra versión distinta."
     echo "  Para alinear: ./scripts/install-app.sh"

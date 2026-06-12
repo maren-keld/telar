@@ -2,8 +2,8 @@
 # Deja UNA sola copia en /Applications (reemplaza la anterior)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/dist/Psicoterapia Lab.app"
-DEST="/Applications/Psicoterapia Lab.app"
+SRC="$ROOT/dist/Telar.app"
+DEST="/Applications/Telar.app"
 
 if [[ ! -d "$SRC" ]]; then
   echo "Primero: ./scripts/build-app.sh"
@@ -13,4 +13,4 @@ fi
 rm -rf "$DEST"
 cp -R "$SRC" "$DEST"
 echo "✓ Instalado: $DEST"
-echo "  (Solo deberías ver un icono de Psicoterapia Lab en Aplicaciones)"
+echo "  (Solo deberías ver un icono de Telar en Aplicaciones)"

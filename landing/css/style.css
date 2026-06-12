@@ -571,15 +571,6 @@ section {
   color: var(--text);
 }
 
-.install-warning {
-  margin-top: 1.25rem;
-  padding: 1rem 1.25rem;
-  background: var(--accent-soft);
-  border-radius: var(--radius);
-  font-size: 0.9rem;
-  color: var(--accent-dark);
-}
-
 /* CTA */
 .cta-section {
   padding: 5rem 0;

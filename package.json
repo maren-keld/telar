@@ -1,7 +1,7 @@
 {
-  "name": "psicoterapia-lab",
+  "name": "telar",
   "version": "0.1.0",
-  "description": "Consultorio clínico local con neurofeedback Muse 2 — Psicoterapia Lab",
+  "description": "Consultorio clínico local con neurofeedback Muse 2 — Telar",
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {

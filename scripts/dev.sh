@@ -15,7 +15,7 @@ if [[ ! -f "$ROOT/src-tauri/binaries/analyze_session-aarch64-apple-darwin" ]] \
   "$ROOT/scripts/build-sidecar.sh"
 fi
 
-echo "→ Psicoterapia Lab (MODO DEV)"
+echo "→ Telar (MODO DEV)"
 echo "   • Guarda un archivo en src/ → la ventana se recarga sola (CSS/HTML/JS)"
 echo "   • Si no recarga: Cmd+R en la ventana de la app"
 echo "   • NO uses build-app.sh para probar CSS — solo para la .app final"

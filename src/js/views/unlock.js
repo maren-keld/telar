@@ -3,6 +3,7 @@ import { BUILD_STAMP_LABEL } from '../build-info.js';
 import { ICON_FINGERPRINT, ICON_LOCK } from '../icons.js';
 import { loadProfile } from '../profile.js';
 import { getInvoke } from '../tauri-bridge.js';
+import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
 import { toast } from '../utils.js';
 
 export async function renderUnlock(host, { onNavigate }) {
@@ -50,6 +51,10 @@ export async function renderUnlock(host, { onNavigate }) {
         <div id="hint" class="unlock-hint"></div>
       </div>
       <p class="unlock-page__build">${BUILD_STAMP_LABEL}</p>
+      <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
+        <span class="unlock-update-bar__text">Actualización disponible</span>
+        <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">Actualizar</button>
+      </div>
     </div>
   `;
 
@@ -163,6 +168,36 @@ export async function renderUnlock(host, { onNavigate }) {
   host.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && pinBlock && !pinBlock.classList.contains('unlock-pin-block--hidden')) {
       doUnlock();
+    }
+  });
+
+  const updateBar = host.querySelector('#unlockUpdateBar');
+  const updateBtn = host.querySelector('#unlockUpdateBtn');
+
+  const showUpdateBar = (info) => {
+    if (!updateBar || !info) return;
+    const label = updateBar.querySelector('.unlock-update-bar__text');
+    if (label) label.textContent = `Actualización ${info.version} disponible`;
+    updateBar.classList.remove('unlock-update-bar--hidden');
+  };
+
+  if (getPendingUpdate()) {
+    showUpdateBar(getPendingUpdate());
+  } else {
+    checkForAppUpdate().then(showUpdateBar);
+  }
+
+  document.addEventListener('app-update-status', (ev) => {
+    if (ev.detail) showUpdateBar(ev.detail);
+  });
+
+  updateBtn?.addEventListener('click', async () => {
+    updateBtn.disabled = true;
+    try {
+      await installAppUpdate();
+    } catch (e) {
+      toast(e?.message || String(e));
+      updateBtn.disabled = false;
     }
   });
 }

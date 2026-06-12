@@ -86,9 +86,12 @@ fn validate_execute_sql(sql: &str) -> Result<(), String> {
     }
 }
 
-const PLAINTEXT_DB_NAME: &str = "psicoterapia.db";
-const ENCRYPTED_DB_NAME: &str = "psicoterapia.enc.db";
+const PLAINTEXT_DB_NAME: &str = "telar.db";
+const ENCRYPTED_DB_NAME: &str = "telar.enc.db";
 const KEYINFO_NAME: &str = "secure.keyinfo.json";
+const LEGACY_APP_ID: &str = "cl.psicoterapialab.desktop";
+const LEGACY_ENCRYPTED_DB: &str = "psicoterapia.enc.db";
+const LEGACY_PLAINTEXT_DB: &str = "psicoterapia.db";
 
 #[derive(Debug, Serialize)]
 pub struct DbStatus {
@@ -108,6 +111,42 @@ fn app_config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path()
         .resolve("", BaseDirectory::AppConfig)
         .map_err(|e| format!("No se pudo resolver AppConfig dir: {e}"))
+}
+
+/// Tras renombrar la app (Psicoterapia Lab → Telar), copia datos desde el bundle id anterior.
+fn migrate_legacy_app_data(app: &tauri::AppHandle) -> Result<(), String> {
+    let new_dir = app_config_dir(app)?;
+    let has_new = new_dir.exists()
+        && fs::read_dir(&new_dir)
+            .map(|d| d.filter_map(Result::ok).any(|e| !e.file_name().to_string_lossy().starts_with('.')))
+            .unwrap_or(false);
+    if has_new {
+        return Ok(());
+    }
+
+    let Some(parent) = new_dir.parent() else {
+        return Ok(());
+    };
+    let legacy_dir = parent.join(LEGACY_APP_ID);
+    if !legacy_dir.is_dir() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(&new_dir).map_err(|e| format!("No se pudo crear AppConfig dir: {e}"))?;
+
+    let pairs = [
+        (LEGACY_ENCRYPTED_DB, ENCRYPTED_DB_NAME),
+        (LEGACY_PLAINTEXT_DB, PLAINTEXT_DB_NAME),
+        (KEYINFO_NAME, KEYINFO_NAME),
+    ];
+    for (from, to) in pairs {
+        let src = legacy_dir.join(from);
+        let dst = new_dir.join(to);
+        if src.exists() && !dst.exists() {
+            fs::copy(&src, &dst).map_err(|e| format!("Migración legacy ({from}): {e}"))?;
+        }
+    }
+    Ok(())
 }
 
 fn keyinfo_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -314,6 +353,7 @@ fn with_conn<T>(f: impl FnOnce(&Connection) -> Result<T, String>) -> Result<T, S
 
 #[tauri::command]
 pub fn db_status(app: tauri::AppHandle) -> Result<DbStatus, String> {
+    migrate_legacy_app_data(&app)?;
     let keyinfo = read_keyinfo(&app)?;
     let enc = encrypted_db_path(&app)?;
     let plain = plaintext_db_path(&app)?;
@@ -335,6 +375,61 @@ pub fn db_lock() -> Result<(), String> {
     let mut guard = DB_CONN.lock().map_err(|_| "DB lock poisoned".to_string())?;
     *guard = None;
     Ok(())
+}
+
+/// Copia `telar.enc.db` (y keyinfo) a Documentos/Telar/respaldos/.
+pub fn backup_encrypted_db(app: &tauri::AppHandle) -> Result<String, String> {
+    let enc_path = encrypted_db_path(app)?;
+    if !enc_path.exists() {
+        return Err(
+            "Aún no hay base de datos cifrada. Configura un PIN y desbloquea la app al menos una vez."
+                .to_string(),
+        );
+    }
+
+    let dir = app
+        .path()
+        .document_dir()
+        .map_err(|e| format!("No se pudo resolver carpeta Documentos: {e}"))?
+        .join("Telar")
+        .join("respaldos");
+    fs::create_dir_all(&dir).map_err(|e| format!("No se pudo crear carpeta de respaldos: {e}"))?;
+
+    let stamp = std::process::Command::new("date")
+        .args(["+%Y-%m-%d_%H%M%S"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "backup".to_string());
+
+    let db_name = format!("telar.enc.{stamp}.db");
+    let dest = dir.join(&db_name);
+    fs::copy(&enc_path, &dest)
+        .map_err(|e| format!("No se pudo copiar la base de datos: {e}"))?;
+
+    let keyinfo = keyinfo_path(app)?;
+    if keyinfo.exists() {
+        let key_dest = dir.join(format!("secure.keyinfo.{stamp}.json"));
+        let _ = fs::copy(&keyinfo, &key_dest);
+    }
+
+    Ok(dest.to_string_lossy().to_string())
+}
+
+/// Elimina todos los datos clínicos y de práctica. Conserva el esquema y el PIN de acceso.
+#[tauri::command]
+pub fn db_wipe_all_data() -> Result<(), String> {
+    with_conn(|conn| {
+        conn.execute_batch(
+            "DELETE FROM patients;
+             DELETE FROM convenios;
+             UPDATE practice_goals SET goals_json = '{}', updated_at = datetime('now') WHERE id = 1;",
+        )
+        .map_err(|e| format!("Error al borrar datos: {e}"))?;
+        Ok(())
+    })
 }
 
 fn unlock_with_key(app: &tauri::AppHandle, key: &str) -> Result<(), String> {
@@ -359,7 +454,7 @@ fn prepare_encrypted_db(app: &tauri::AppHandle, key: &str) -> Result<(), String>
 
     if plain_path.exists() {
         export_plaintext_to_encrypted(&plain_path, &enc_path, key)?;
-        let backup = cfg_dir.join("psicoterapia.plaintext.backup.db");
+        let backup = cfg_dir.join("telar.plaintext.backup.db");
         let _ = fs::copy(&plain_path, &backup);
         let _ = fs::remove_file(&plain_path);
     }
@@ -457,7 +552,7 @@ fn touch_id_authenticate_on_main(app: &tauri::AppHandle, reason: &str) -> Result
 
 #[tauri::command]
 pub fn db_unlock_touch_id(app: tauri::AppHandle) -> Result<(), String> {
-    touch_id_authenticate_on_main(&app, "Desbloquear Psicoterapia Lab")?;
+    touch_id_authenticate_on_main(&app, "Desbloquear Telar")?;
     let path = touch_id_storage_path(&app)?;
     let key = touch_id::load_db_key(&path)?;
     unlock_with_key(&app, &key)
@@ -488,7 +583,7 @@ pub fn touch_id_register_pin(app: tauri::AppHandle, pin: String) -> Result<(), S
 
     touch_id_authenticate_on_main(
         &app,
-        "Psicoterapia Lab quiere usar Touch ID para desbloquear la app",
+        "Telar quiere usar Touch ID para desbloquear la app",
     )?;
     let path = touch_id_storage_path(&app)?;
     touch_id::save_db_key(&path, &key)
@@ -497,7 +592,7 @@ pub fn touch_id_register_pin(app: tauri::AppHandle, pin: String) -> Result<(), S
 /// Muestra el diálogo nativo de Touch ID (sin desbloquear la base de datos).
 #[tauri::command]
 pub fn touch_id_prompt(app: tauri::AppHandle) -> Result<(), String> {
-    touch_id_authenticate_on_main(&app, "Desbloquear Psicoterapia Lab")
+    touch_id_authenticate_on_main(&app, "Desbloquear Telar")
 }
 
 #[tauri::command]

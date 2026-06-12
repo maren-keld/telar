@@ -1,5 +1,5 @@
 """
-API mínima de suscripciones — Plan Profesional Psicoterapia Lab.
+API mínima de suscripciones — Plan Profesional Telar.
 Mercado Pago (Chile) · preapproval mensual en CLP.
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ CORS(APP, resources={r"/api/*": {"origins": "*"}})
 MP_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001").rstrip("/")
 FRONTEND_RETURN_URL = os.environ.get("FRONTEND_RETURN_URL", f"{BACKEND_URL}/gracias")
+MP_PUBLIC_BACK_URL = os.environ.get("MP_PUBLIC_BACK_URL", "").strip()
 PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "15000"))
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 DB_PATH = Path(__file__).parent / "subscriptions.db"
@@ -57,6 +58,14 @@ def mp_sdk():
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+def checkout_back_url() -> str | None:
+    """Mercado Pago exige https en back_url; localhost no sirve al crear la suscripción."""
+    url = FRONTEND_RETURN_URL
+    if url.startswith("http://") and ("localhost" in url or "127.0.0.1" in url):
+        return MP_PUBLIC_BACK_URL.rstrip("/") if MP_PUBLIC_BACK_URL else None
+    return url
 
 
 def upsert_subscription(email: str, preapproval_id: str | None, status: str):
@@ -102,6 +111,7 @@ def health():
     return jsonify({
         "ok": True,
         "mp_configured": bool(MP_TOKEN),
+        "mp_test_mode": MP_TOKEN.startswith("TEST-"),
         "return_url": FRONTEND_RETURN_URL,
     })
 
@@ -114,7 +124,7 @@ def gracias():
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pago recibido — Psicoterapia Lab</title>
+  <title>Pago recibido — Telar</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 480px; margin: 48px auto; padding: 0 20px; color: #1a2b4a; }
     h1 { font-size: 1.35rem; color: #2f6fed; }
@@ -124,7 +134,7 @@ def gracias():
 </head>
 <body>
   <h1>¡Listo!</h1>
-  <p>Si completaste el pago en Mercado Pago, vuelve a <strong>Psicoterapia Lab</strong> en tu Mac.</p>
+  <p>Si completaste el pago en Mercado Pago, vuelve a <strong>Telar</strong> en tu Mac.</p>
   <p>En <strong>Ajustes → Plan</strong> pulsa <strong>«Ya pagué — verificar suscripción»</strong>.</p>
   <p>Tus datos clínicos siguen solo en tu computador.</p>
 </body>
@@ -141,9 +151,15 @@ def checkout():
     if not MP_TOKEN:
         return jsonify({"error": "Mercado Pago no configurado en el servidor"}), 503
 
+    back_url = checkout_back_url()
+    if not back_url:
+        return jsonify({
+            "error": "Falta MP_PUBLIC_BACK_URL en .env (URL https pública + /gracias, ej. Render)",
+        }), 503
+
     sdk = mp_sdk()
     payload = {
-        "reason": "Plan Profesional — Psicoterapia Lab",
+        "reason": "Plan Profesional — Telar",
         "external_reference": f"pro-{email}",
         "payer_email": email,
         "auto_recurring": {
@@ -152,7 +168,7 @@ def checkout():
             "transaction_amount": PLAN_AMOUNT,
             "currency_id": "CLP",
         },
-        "back_url": FRONTEND_RETURN_URL,
+        "back_url": back_url,
         "status": "pending",
     }
     result = sdk.preapproval().create(payload)
@@ -161,7 +177,11 @@ def checkout():
         return jsonify({"error": body.get("message", "Error Mercado Pago"), "detail": body}), 502
 
     preapproval_id = body.get("id")
-    init_point = body.get("init_point") or body.get("sandbox_init_point")
+    # Con credenciales TEST- usar sandbox; con APP_USR- producción.
+    if MP_TOKEN.startswith("TEST-"):
+        init_point = body.get("sandbox_init_point") or body.get("init_point")
+    else:
+        init_point = body.get("init_point") or body.get("sandbox_init_point")
     if not init_point:
         return jsonify({"error": "Mercado Pago no devolvió URL de pago", "detail": body}), 502
 

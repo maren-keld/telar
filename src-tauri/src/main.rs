@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    psicoterapia_lab_lib::run()
+    telar_lib::run()
 }

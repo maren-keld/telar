@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
   <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>Psicoterapia LAB necesita Bluetooth para conectar el dispositivo Muse durante sesiones de neurofeedback.</string>
+  <string>Telar necesita Bluetooth para conectar el dispositivo Muse durante sesiones de neurofeedback.</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
   <string>Conexión al headband Muse para neurofeedback en tiempo real.</string>
   <key>NSFaceIDUsageDescription</key>
-  <string>Psicoterapia LAB usa Touch ID para desbloquear tu base de datos clínica cifrada.</string>
+  <string>Telar usa Touch ID para desbloquear tu base de datos clínica cifrada.</string>
 </dict>
 </plist>

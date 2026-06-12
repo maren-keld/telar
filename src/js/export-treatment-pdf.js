@@ -105,7 +105,7 @@ export async function exportTreatmentPdf(treatmentId) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   let y = MARGIN;
 
-  y = pdfText(doc, 'Programa de tratamiento — Psicoterapia LAB', MARGIN, y, { size: 14, style: 'bold' });
+  y = pdfText(doc, 'Programa de tratamiento — Telar', MARGIN, y, { size: 14, style: 'bold' });
   y += 4;
   y = pdfText(doc, `Generado: ${formatDate(new Date().toISOString())}`, MARGIN, y, { size: 9 });
   if (profile.name) y = pdfText(doc, `Profesional: ${profile.name}`, MARGIN, y, { size: 9 });

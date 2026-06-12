@@ -11,7 +11,7 @@ const OPTIONS = [
   { v: 5, label: 'Totalmente de acuerdo' },
 ];
 
-/** 26 ítems — Manual EED Psicoterapia Lab */
+/** 26 ítems — Manual EED Telar */
 const ITEMS = [
   'Cuando me siento abrumado/a, canalizo mi energía en actividades creativas o productivas',
   'Ayudar a otros me hace sentir mejor cuando tengo problemas personales',

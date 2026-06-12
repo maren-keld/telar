@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'psicoterapia-lab.practitioner';
+const STORAGE_KEY = 'telar.practitioner';
 
 const DEFAULTS = {
   name: '',
@@ -45,4 +45,10 @@ export function initThemeFromProfile() {
   const profile = loadProfile();
   applyTheme(profile.darkMode);
   applyPresentationMode(Boolean(profile.presentationMode));
+}
+
+/** Borra datos del profesional y módulos custom; conserva preferencias de interfaz y Touch ID. */
+export function wipeProfileData() {
+  const { darkMode, useTouchId } = loadProfile();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, darkMode, useTouchId }));
 }

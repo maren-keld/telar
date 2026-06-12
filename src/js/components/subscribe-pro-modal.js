@@ -1,6 +1,6 @@
 import { isProUser, loadProfile } from '../profile.js';
 import { openExternalUrl } from '../tauri-bridge.js';
-import { tryActivatePro, verifyProSubscription } from '../subscription.js';
+import { getSubscriptionApiBase, tryActivatePro, verifyProSubscription } from '../subscription.js';
 
 const PRO_FEATURES = [
   'Grabar sesiones de Neurofeedback',
@@ -63,6 +63,17 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
   });
 
   const profile = loadProfile();
+  const isLocalApi = /127\.0\.0\.1|localhost/.test(getSubscriptionApiBase());
+  if (isLocalApi) {
+    overlay.querySelector('#subscribe-pro-btn')?.insertAdjacentHTML(
+      'beforebegin',
+      `<p class="subscribe-pro-modal__warn">
+        <strong>Modo prueba (TEST):</strong> crea un <strong>Comprador</strong> en Mercado Pago Developers → Cuentas de prueba.
+        Usa <em>ese</em> email en Ajustes y en el checkout (ventana privada). Tarjeta Visa <code>4168 8188 4444 7115</code>, titular <code>APRO</code>, doc. Otro <code>123456789</code>.
+      </p>`,
+    );
+  }
+
   if (!profile.email?.trim()) {
     const intro = overlay.querySelector('.subscribe-pro-modal__intro');
     if (intro) {
@@ -86,7 +97,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
   });
 
   overlay.querySelector('#subscribe-pro-help')?.addEventListener('click', () => {
-    const url = 'mailto:soporte@psicoterapialab.com?subject=Suscripción%20Plan%20Profesional';
+    const url = 'mailto:soporte@telarapp.cl?subject=Suscripción%20Plan%20Profesional';
     openExternalUrl(url);
   });
 }
