@@ -6,10 +6,10 @@
 #   ./scripts/publish-github-release.sh 0.1.0
 #   ./scripts/publish-github-release.sh 0.1.0 --draft
 #
-# Requisitos: gh auth login, repo maren-keld/telarapp
+# Requisitos: gh auth login, repo maren-keld/telar
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REPO="${GITHUB_REPO:-maren-keld/telarapp}"
+REPO="${GITHUB_REPO:-maren-keld/telar}"
 
 VERSION="${1:-}"
 shift || true

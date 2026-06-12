@@ -2,7 +2,7 @@
 # Verifica / prepara el despliegue de la API de suscripciones en Render.
 #
 # Opción A — Dashboard (recomendada la primera vez):
-#   1. render.com → New → Blueprint → conecta github.com/maren-keld/telarapp
+#   1. render.com → New → Blueprint → conecta github.com/maren-keld/telar
 #   2. Pega MP_ACCESS_TOKEN (TEST-… para pruebas) cuando lo pida
 #   3. Tras el deploy, ejecuta este script para verificar y actualizar la app
 #

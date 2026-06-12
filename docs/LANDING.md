@@ -1,6 +1,6 @@
 # Landing page — despliegue en Vercel + GitHub
 
-La landing está en `landing/` (HTML estático, sin build). Mensaje alineado al [plan de marketing junio 2026](https://github.com/maren-keld/telarapp).
+La landing está en `landing/` (HTML estático, sin build). Mensaje alineado al [plan de marketing junio 2026](https://github.com/maren-keld/telar).
 
 ---
 
@@ -21,11 +21,11 @@ La landing está en `landing/` (HTML estático, sin build). Mensaje alineado al 
 
 **Atajo directo** (tras login en Vercel):
 
-[Importar telarapp con root `landing`](https://vercel.com/new/import?s=https://github.com/maren-keld/telarapp&rootDirectory=landing)
+[Importar telarapp con root `landing`](https://vercel.com/new/import?s=https://github.com/maren-keld/telar&rootDirectory=landing)
 
 Pasos:
 
-1. **Continue with GitHub** → autoriza acceso al repo `maren-keld/telarapp`
+1. **Continue with GitHub** → autoriza acceso al repo `maren-keld/telar`
 2. Confirma **Root Directory:** `landing`
 3. Framework Preset: **Other** (sin build command, sin install)
 4. **Deploy**

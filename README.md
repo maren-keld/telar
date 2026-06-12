@@ -8,7 +8,7 @@ Pitch para colegas: [docs/PITCH-1-PAGINA.md](docs/PITCH-1-PAGINA.md)
 
 ## Descargar
 
-Instaladores en [GitHub Releases](https://github.com/maren-keld/telarapp/releases).
+Instaladores en [GitHub Releases](https://github.com/maren-keld/telar/releases).
 
 ## Compilar
 

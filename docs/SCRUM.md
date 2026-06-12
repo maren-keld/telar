@@ -146,4 +146,4 @@
 | 2026-06-12 | DI-3: GitHub Releases (`Telar-macos.zip`, `Telar-windows.exe`), workflow CI, Tauri updater con toast + banner desbloqueo + Ajustes |
 | 2026-06-12 | `.cursor/` fuera del repo público (`.gitignore`; archivos siguen en local para Cursor) |
 | 2026-06-12 | Backlog: módulos (terapia roja, libros, estimulación bilateral), integraciones (Encuadro, red psicólogos, Archbee→OSS, add-ons), UX-10–13 (firma, keywords, badges, dashboard), escalas CL-5–9 (GAD-7, IES, SPRINT-E-CL, A-DES, guía de apego) |
-| 2026-06-12 | **Rebrand:** Psicoterapia Lab → **Telar** (`cl.telarapp.desktop`, `Telar.app`, `telar.db`, dominio telarapp.cl, repo `maren-keld/telarapp`); migración legacy desde `cl.psicoterapialab.desktop` |
+| 2026-06-12 | **Rebrand:** Psicoterapia Lab → **Telar** (`cl.telarapp.desktop`, `Telar.app`, `telar.db`, dominio telarapp.cl, repo `maren-keld/telar`); migración legacy desde `cl.psicoterapialab.desktop` |

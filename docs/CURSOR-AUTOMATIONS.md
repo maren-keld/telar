@@ -29,7 +29,7 @@ Revisa que `docs/SCRUM.md` se actualizó cuando abres un Pull Request.
 | **Name** | `SCRUM — revisar PR` |
 | **Description** | Comprueba actualización de SCRUM.md al abrir PRs con cambios de código. |
 | **Trigger** | GitHub → **Pull request opened** |
-| **Repository** | `maren-keld/telarapp` |
+| **Repository** | `maren-keld/telar` |
 | **Tools** | ✅ **Comment on pull request** (solo esto; read-only) |
 | **Scope** | Single repository, branch `main` como base del PR |
 
@@ -97,7 +97,7 @@ Click **Create** / **Save** en el editor de Automations.
 
 ## Requisitos previos
 
-- [x] Repo en GitHub: `maren-keld/telarapp`
+- [x] Repo en GitHub: `maren-keld/telar`
 - [ ] Cursor conectado a GitHub (Settings → GitHub → autorizar org/repo)
 - [ ] Plan con **Cloud Agents** activo (Automations corren en la nube)
 

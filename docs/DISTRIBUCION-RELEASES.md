@@ -26,7 +26,7 @@ Tras instalar, la app se reinicia sola.
 ./scripts/publish-github-release.sh 0.1.0
 ```
 
-El zip queda en `dist/Telar-macos.zip` y se sube a [GitHub Releases](https://github.com/maren-keld/telarapp/releases).
+El zip queda en `dist/Telar-macos.zip` y se sube a [GitHub Releases](https://github.com/maren-keld/telar/releases).
 
 Opciones:
 
@@ -94,7 +94,7 @@ En el repo → Settings → Secrets → Actions:
 El endpoint configurado es:
 
 ```
-https://github.com/maren-keld/telarapp/releases/latest/download/latest.json
+https://github.com/maren-keld/telar/releases/latest/download/latest.json
 ```
 
 Eso **solo funciona si el release es descargable sin login**. Opciones:

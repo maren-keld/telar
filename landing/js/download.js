@@ -3,7 +3,7 @@
  * mac: ./scripts/sign-macos-app.sh → dist/Telar-macos.zip
  */
 const DOWNLOAD_URLS = {
-  mac: 'https://github.com/maren-keld/telarapp/releases/latest/download/Telar-macos.zip',
+  mac: 'https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip',
   windows: '', // .exe pendiente — DI-2
 };
 
