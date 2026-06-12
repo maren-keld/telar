@@ -43,6 +43,7 @@ Detalle clínico: [Manual 2026](docs/Manual%20Psicoterapia%20LAB%202026.md) · p
 | [DESARROLLO.md](docs/DESARROLLO.md) | Compilar, dev, build, sidecar |
 | [SCRUM.md](docs/SCRUM.md) | Backlog interno |
 | [SUSCRIPCIONES.md](docs/SUSCRIPCIONES.md) | API Mercado Pago / Render |
+| [LANDING.md](docs/LANDING.md) | Landing pública (Vercel / GitHub Pages) |
 
 ```bash
 ./scripts/build-sidecar.sh && ./scripts/dev.sh

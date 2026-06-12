@@ -71,6 +71,7 @@
 | CL-4 | Respaldar base de datos en Ajustes | `db_backup_encrypted` → Documentos/Psicoterapia Lab/respaldos |
 | DIST-1 | API suscripciones Render | `render.yaml`, `subscription-config.js`, `scripts/deploy-subscription-api.sh`, CSP |
 | DI-1 | Firma / notarización macOS | `scripts/sign-macos-app.sh`, `entitlements.plist`, `docs/DISTRIBUCION-MACOS.md` |
+| MARK-1 | Landing 1 página (marketing Chile) | `landing/` HTML estático, `docs/LANDING.md`, deploy Vercel/GitHub Pages |
 
 ---
 
@@ -101,9 +102,11 @@
 | 2026-06-10 | Fix: cabecera modal convenio — botón cerrar alineado arriba a la derecha |
 | 2026-06-10 | UX-8 dark mode puntajes/agenda/selector; alinear botones módulo; editar módulos custom; migración 010 limpia pacientes de prueba |
 | 2026-06-10 | UX-9: EFR alerta oculta con «Nunca»; quitar +Añadir en Fortalezas/Defensas/Riesgos; agenda oculta categorías vacías; PDF se abre tras exportar |
-| 2026-06-11 | Git inicializado; repo privado `felipeuppen/psicoterapialab` en GitHub; `.gitignore` reforzado (`.env`, sidecar, venv) |
+| 2026-06-11 | Git inicializado; repo privado en GitHub; `.gitignore` reforzado (`.env`, sidecar, venv) |
+| 2026-06-11 | GitHub: cuenta `maren-keld` (antes `felipeuppen`); actualizar `git remote` y conexión Render si aplica |
 | 2026-06-11 | Automation #1 documentada: revisión SCRUM en PR (`docs/CURSOR-AUTOMATIONS.md`, borrador `.cursor/automations/scrum-pr-review.md`) |
 | 2026-06-11 | Storytelling externo: README orientado a colegas clínicos; guía técnica en `docs/DESARROLLO.md`; manual actualizado (export PDF/CSV) |
 | 2026-06-11 | Pitch 1 página (`docs/PITCH-1-PAGINA.md`); README rebalanceado macOS/Windows, repo = devs |
+| 2026-06-12 | MARK-1: landing `landing/` (hero, funciones, planes, requisitos, instalación Mac, CTA demo); guía deploy Vercel + GitHub en `docs/LANDING.md` |
 | 2026-06-09 | PRIV-1: Ajustes → Privacidad y datos — exportar CSV (pacientes, sesiones, NF, perfil) y eliminar todos los datos con triple confirmación |
 | 2026-06-09 | CL-4 respaldo .enc.db; DIST-1 URL Render + deploy script + CSP; DI-1 sign-macos-app.sh y guía distribución |
