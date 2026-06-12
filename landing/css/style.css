@@ -187,9 +187,10 @@ a:hover {
   color: #c0392b;
 }
 
-.badge-foss {
-  background: var(--success-soft);
-  color: var(--success);
+.badge-encrypted {
+  background: #e6f4ea;
+  color: #1e6b45;
+  border: 1px solid #b8dfc8;
 }
 
 .badge-local {
