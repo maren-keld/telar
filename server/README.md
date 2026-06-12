@@ -2,8 +2,6 @@
 
 Backend mínimo para cobrar **$15.000 CLP/mes** con **Mercado Pago** (Chile).
 
-**Guía paso a paso (Opción B):** [`docs/SUSCRIPCIONES.md`](../docs/SUSCRIPCIONES.md)
-
 ## Qué necesitas de Mercado Pago
 
 Ya tienes cuenta; falta crear la **aplicación** y sacar las credenciales:
