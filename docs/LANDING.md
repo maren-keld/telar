@@ -19,12 +19,18 @@ La landing está en `landing/` (HTML estático, sin build). Mensaje alineado al 
 
 ## Desplegar en Vercel (gratis)
 
-1. Sube el repo a **GitHub** (`maren-keld/psicoterapialab`)
-2. Entra a [vercel.com](https://vercel.com) → **Add New Project**
-3. Importa el repositorio
-4. En **Root Directory** escribe: `landing`
-5. Framework Preset: **Other** (sin build command)
-6. Deploy
+**Atajo directo** (tras login en Vercel):
+
+[Importar psicoterapialab con root `landing`](https://vercel.com/new/import?s=https://github.com/maren-keld/psicoterapialab&rootDirectory=landing)
+
+Pasos:
+
+1. **Continue with GitHub** → autoriza acceso al repo `maren-keld/psicoterapialab`
+2. Confirma **Root Directory:** `landing`
+3. Framework Preset: **Other** (sin build command, sin install)
+4. **Deploy**
+
+Sin dominio propio obtienes una URL gratis tipo `psicoterapia-lab.vercel.app`. Cuando compres el dominio, lo agregas en Vercel → Project → **Domains**.
 
 Cada `git push` a `main` redeploya automáticamente.
 
