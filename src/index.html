@@ -21,9 +21,15 @@
   <script src="vendor/leaflet/leaflet-heat.js"></script>
 </head>
 <body>
-  <div id="app" class="app-shell"></div>
+  <div id="app" class="app-shell">
+    <div id="boot-splash" class="boot-splash" aria-live="polite">
+      <p class="boot-splash__title">Telar</p>
+      <p class="boot-splash__sub">Cargando…</p>
+    </div>
+  </div>
   <div id="modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
+  <script src="js/boot-guard.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

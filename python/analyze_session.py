@@ -279,6 +279,10 @@ def parse_input(text_data: str) -> pd.DataFrame:
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
     df.dropna(subset=["timestamp"], inplace=True)
     df.sort_values("timestamp", inplace=True)
+    # Muse graba ráfagas con el mismo timestamp ISO — repartir a ~256 Hz.
+    if df["timestamp"].duplicated().any():
+        dup_rank = df.groupby("timestamp", sort=False).cumcount()
+        df["timestamp"] = df["timestamp"] + pd.to_timedelta(dup_rank / 256.0, unit="s")
     df.set_index("timestamp", inplace=True)
     return df
 
@@ -297,8 +301,11 @@ def main():
         df = parse_input(text_data)
         calm_s, att_s, calm_lvl, att_lvl, relax, calm, att = analyze_segments(df)
         print(f"{calm_s},{att_s},{calm_lvl},{att_lvl},{relax},{calm},{att}")
-    except Exception as exc:
+    except ValueError as exc:
         print(str(exc), file=sys.stderr)
+        sys.exit(1)
+    except Exception as exc:
+        print(f"Error en análisis: {exc}", file=sys.stderr)
         sys.exit(1)
 
 

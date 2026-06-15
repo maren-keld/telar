@@ -14,9 +14,12 @@ elif [[ -f "$ROOT/dist/.build-stamp" ]]; then
   echo "Build: $(cat "$ROOT/dist/.build-stamp")"
 fi
 
-# Cerrar instancias viejas (p. ej. otra copia en /Applications o en target/)
+# Cerrar instancias viejas (nombre anterior: Psicoterapia Lab)
 osascript -e 'quit app "Telar"' 2>/dev/null || true
+osascript -e 'quit app "Psicoterapia Lab"' 2>/dev/null || true
+osascript -e 'quit app "Psicoterapia LAB"' 2>/dev/null || true
 pkill -x telar 2>/dev/null || true
+pkill -x psicoterapia-lab 2>/dev/null || true
 sleep 0.4
 
 # Avisar si hay otra copia instalada distinta a la canónica

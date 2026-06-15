@@ -6,7 +6,11 @@ import sys
 from pathlib import Path
 
 REQUIRED = (
-    b"workspace-sidebar",
+    b"leftsidebar",
+    b"espaciocentral",
+    b"rightsidebar",
+    b"initialScreen",
+    b"neurofeedback",
     b"btn-add-module",
     b"btn-add-session",
 )

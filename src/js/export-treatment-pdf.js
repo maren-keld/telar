@@ -1,6 +1,7 @@
 import { TREATMENT_STATUS } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getSessionsWithModules, getTreatment, getTreatmentReport } from './db.js';
+import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
 import { buildReadableText } from './readable-text.js';
 import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
@@ -71,6 +72,12 @@ function moduleSummary(type, data) {
       const anxiety = sum([1, 3, 6, 8, 14, 18, 19]);
       const depression = sum([2, 4, 9, 12, 15, 16, 20]);
       return `Estrés: ${stress} · Ansiedad: ${anxiety} · Depresión: ${depression}`;
+    }
+    case 'gad7': {
+      const answers = d.answers || [];
+      if (!answers.some((v) => v !== null && v !== '')) return 'Sin respuestas.';
+      const total = answers.reduce((a, v) => a + (Number(v) || 0), 0);
+      return `GAD-7 total: ${total}/21`;
     }
     case 'escala_animo':
     case 'escala_ansiedad':
@@ -145,6 +152,15 @@ export async function exportTreatmentPdf(treatmentId) {
     y = pdfText(doc, moduleSummary('motivo_consulta', md), MARGIN, y);
   }
 
+  const psychBlock = buildPsychometricSummaryBlock(sessions);
+  if (psychBlock) {
+    y += 8;
+    y = ensureSpace(doc, y, 24);
+    y = pdfText(doc, 'Resumen psicométrico (TDAH / trauma)', MARGIN, y, { size: 12, style: 'bold' });
+    y += 2;
+    y = pdfText(doc, psychBlock, MARGIN, y, { size: 9 });
+  }
+
   y += 8;
   y = ensureSpace(doc, y, 20);
   y = pdfText(doc, 'Sesiones y módulos', MARGIN, y, { size: 12, style: 'bold' });
@@ -155,7 +171,9 @@ export async function exportTreatmentPdf(treatmentId) {
     y = pdfText(doc, `Sesión ${session.number}`, MARGIN, y, { size: 11, style: 'bold' });
     y += 2;
 
-    const mods = session.modules.filter((m) => m.module_type !== 'selector_modulo');
+    const mods = session.modules.filter(
+      (m) => m.module_type !== 'selector_modulo' && m.module_type !== 'registro_inicial',
+    );
     if (!mods.length) {
       y = pdfText(doc, 'Sin módulos registrados.', MARGIN + 4, y, { size: 9 });
       y += 4;

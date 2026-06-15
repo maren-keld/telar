@@ -227,7 +227,7 @@ export async function renderGoals(container, { onNavigate }) {
 
   container.innerHTML = `
     ${renderAppSidebar('goals')}
-    <div class="app-main">
+    <div class="app-main" id="goals">
       <div class="app-content goals-page">
         <header class="goals-page__head">
           <div>

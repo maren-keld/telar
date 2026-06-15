@@ -656,3 +656,30 @@ pub fn db_select(args: DbQueryArgs) -> Result<Vec<HashMap<String, JsonValue>>, S
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{lockout_delay_secs, validate_execute_sql, validate_select_sql};
+
+    #[test]
+    fn pin_lockout_delay_escalates() {
+        assert_eq!(lockout_delay_secs(3), None);
+        assert_eq!(lockout_delay_secs(5), Some(30));
+        assert_eq!(lockout_delay_secs(7), Some(120));
+        assert_eq!(lockout_delay_secs(10), Some(300));
+    }
+
+    #[test]
+    fn sql_allowlist_select() {
+        assert!(validate_select_sql("SELECT 1").is_ok());
+        assert!(validate_select_sql("  with x as (select 1) select * from x").is_ok());
+        assert!(validate_select_sql("DELETE FROM patients").is_err());
+    }
+
+    #[test]
+    fn sql_allowlist_execute() {
+        assert!(validate_execute_sql("INSERT INTO t VALUES (1)").is_ok());
+        assert!(validate_execute_sql("UPDATE t SET x=1").is_ok());
+        assert!(validate_execute_sql("SELECT 1").is_err());
+    }
+}
+

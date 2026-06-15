@@ -60,6 +60,7 @@ body {
   color: var(--text-primary);
   background: var(--bg-app);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 button,

@@ -2,7 +2,7 @@
 
 1. # ¿Qué es?
 
-**Telar** es una aplicación de escritorio (macOS) para diseñar y gestionar programas de psicoterapia.
+**Telar** es una aplicación de escritorio para **macOS y Windows** (Apple Silicon / Intel y PC x64) para diseñar y gestionar programas de psicoterapia.
 
 Incluye ficha clínica del paciente y módulos prediseñados para enfoques con Terapia Cognitivo-Conductual, Neurofeedback y otros. También permite crear módulos personalizados según las necesidades de cada profesional.
 
@@ -180,6 +180,25 @@ Módulo que contiene Escalas de depresión, ansiedad y estrés (En inglés: Depr
 A requerimiento del autor de la escala, para uso solicitamos adjuntar el certificado de título o comprobante de alumno regular en el mismo módulo.
 
 Para su aplicación el profesional debe consultar al paciente: \-¿Cuánto ha sentido los siguientes síntomas los últimos 7 días? Teniendo las opciones Nunca, A veces, A menudo y Casi siempre-.
+
+Tamizaje orientativo — no sustituye evaluación clínica ni diagnóstico.
+
+###### ***Instrumentos TDAH y trauma (2026)***
+
+Además del DASS-21, Telar incluye tamizajes con respaldo empírico y herramientas de seguimiento longitudinal:
+
+* **ASRS v1.1** (Kessler et al., WHO) — TDAH en adultos; Parte A tamizaje WHO.
+* **GAD-7** (Spitzer et al.) — ansiedad generalizada; atribución PHQ/GAD developers.
+* **PCL-5** (Weathers et al., DSM-5) — TEPT; orientativo, no diagnóstico.
+* **IES-R** (Weiss & Marmar) — impacto de eventos estresantes.
+* **SPRINT-E-CL** (Norris et al.; validación chilena Leiva-Bianchi & Gallardo, 2013) — trauma breve post 27-F.
+* **A-DES** (Armstrong, Putnam & Carlson) — disociación en adolescentes (10–21 años); dominio público.
+
+**Plantillas de programa:** «TDAH adulto» y «Trauma + regulación (adulto)» prearmadas en nuevo paciente. Revisa módulos según edad (p. ej. A-DES solo adolescentes).
+
+**Presets de neurofeedback:** «Atención (TDAH)» (beta frontal) y «Relajación (trauma)» (alpha/theta). Ver sección Neurofeedback.
+
+Todos los puntajes apoyan el juicio clínico; ninguno reemplaza entrevista estructurada ni diagnóstico categorial.
 
 ###### *![][image5]*
 

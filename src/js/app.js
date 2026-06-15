@@ -8,9 +8,12 @@ import { renderUnlock } from './views/unlock.js';
 import { renderWorkspace } from './views/workspace.js';
 import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
+import { initLocaleFromProfile } from './i18n.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { teardownNeurofeedback } from './modules/neurofeedback.js';
+import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
+import { maybeSendUsagePing } from './usage-ping.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
@@ -47,19 +50,25 @@ async function render() {
 
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
     teardownNeurofeedback();
+    teardownBilateralStimulation();
   }
   lastRenderedView = view;
+
+  app.className = view === 'unlock' ? 'app-shell app-shell--unlock' : 'app-shell';
 
   try {
     // Gate: DB debe estar desbloqueada para todo excepto unlock.
     if (isTauriApp() && view !== 'unlock') {
       const invoke = getInvoke();
+      window.__telarStage = `render:db_status(${view})`;
       const st = await invoke('db_status');
       if (!st.unlocked) {
         location.hash = '/unlock';
+        await renderUnlock(app, { onNavigate });
         return;
       }
     }
+    window.__telarStage = `render:view(${view})`;
 
     switch (view) {
       case 'agenda':
@@ -110,13 +119,56 @@ async function render() {
   }
 }
 
+// Auto-resize textareas on input
+document.addEventListener('input', (e) => {
+  const ta = e.target;
+  if (ta.tagName !== 'TEXTAREA') return;
+  ta.style.height = '0';
+  ta.style.height = ta.scrollHeight + 'px';
+});
+
+// Auto-resize textareas when added to DOM
+new MutationObserver((mutations) => {
+  for (const m of mutations) {
+    for (const node of m.addedNodes) {
+      if (node.nodeType !== 1) continue;
+      const tas = node.tagName === 'TEXTAREA' ? [node] : [...node.querySelectorAll('textarea')];
+      for (const ta of tas) {
+        ta.style.height = '0';
+        ta.style.height = ta.scrollHeight + 'px';
+      }
+    }
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
 window.addEventListener('hashchange', render);
 window.addEventListener('DOMContentLoaded', async () => {
-  initThemeFromProfile();
-  initAppUpdateChecker();
+  const stage = (s) => {
+    window.__telarStage = s;
+  };
+  const safe = (label, fn) => {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`[init:${label}]`, err);
+    }
+  };
+
+  stage('init:theme');
+  safe('theme', initThemeFromProfile);
+  stage('init:locale');
+  safe('locale', initLocaleFromProfile);
+  stage('init:updates');
+  safe('updates', initAppUpdateChecker);
+  if (isTauriApp()) {
+    stage('init:usagePing');
+    safe('usagePing', maybeSendUsagePing);
+  }
+
   if (!location.hash) {
     if (isTauriApp()) {
       try {
+        stage('db_status(boot)');
         const st = await getInvoke()('db_status');
         location.hash = st.unlocked ? '/agenda' : '/unlock';
       } catch {
@@ -126,5 +178,11 @@ window.addEventListener('DOMContentLoaded', async () => {
       location.hash = '/agenda';
     }
   }
-  render();
+
+  try {
+    stage('render');
+    await render();
+  } finally {
+    window.__telarBooted = true;
+  }
 });

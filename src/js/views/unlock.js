@@ -7,11 +7,28 @@ import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-up
 import { toast } from '../utils.js';
 
 export async function renderUnlock(host, { onNavigate }) {
+  host.innerHTML = `
+    <div id="initialScreen" class="initial-screen">
+      <div class="initial-screen__inner">
+        <header class="initial-screen__brand">
+          <div class="initial-screen__logo" aria-hidden="true">
+            <img src="assets/telar-icon.png" width="72" height="72" alt="" />
+          </div>
+          <h1 class="initial-screen__title">Telar</h1>
+        </header>
+        <p class="initial-screen__sub">Preparando desbloqueo…</p>
+      </div>
+    </div>`;
+
   const invoke = getInvoke();
   const profile = loadProfile();
+  if (typeof window !== 'undefined') window.__telarStage = 'unlock:db_status';
   const status = await invoke('db_status');
+  if (typeof window !== 'undefined') window.__telarStage = 'unlock:touch_available';
   const touchAvailable = await invoke('touch_id_available');
+  if (typeof window !== 'undefined') window.__telarStage = 'unlock:touch_stored';
   const touchStored = touchAvailable ? await invoke('touch_id_has_stored_key') : false;
+  if (typeof window !== 'undefined') window.__telarStage = 'unlock:render';
   const showTouchChoice = touchAvailable && !status.needs_setup;
 
   const subtitle = status.needs_setup
@@ -21,39 +38,45 @@ export async function renderUnlock(host, { onNavigate }) {
       : 'Ingresa tu PIN de 6 dígitos para descifrar tu base de datos.';
 
   host.innerHTML = `
-    <div class="app-content unlock-page">
-      <div class="unlock-icon-circle" aria-hidden="true">🔒</div>
-      <h1 class="unlock-page__title">Desbloquear</h1>
-      <p class="unlock-page__sub" id="unlockSub">${subtitle}</p>
+    <div id="initialScreen" class="initial-screen">
+      <div class="initial-screen__inner">
+        <header class="initial-screen__brand">
+          <div class="initial-screen__logo" aria-hidden="true">
+            <img src="assets/telar-icon.png" width="72" height="72" alt="" />
+          </div>
+          <h1 class="initial-screen__title">Telar</h1>
+        </header>
+        <p class="initial-screen__sub" id="unlockSub">${subtitle}</p>
 
-      <div class="card unlock-card">
-        ${
-          showTouchChoice
-            ? `<div class="unlock-method-row">
-                 <button type="button" id="touchIdBtn" class="btn btn-primary unlock-method-btn" title="Desbloquear con Touch ID">
-                   <span class="unlock-method-btn__icon">${ICON_FINGERPRINT}</span>
-                   <span>Touch ID</span>
-                 </button>
-                 <button type="button" id="usePinBtn" class="btn btn-secondary unlock-method-btn" title="Desbloquear con PIN">
-                   <span class="unlock-method-btn__icon">${ICON_LOCK}</span>
-                   <span>PIN</span>
-                 </button>
-               </div>`
-            : ''
-        }
-        <div id="unlockPinBlock" class="unlock-pin-block${showTouchChoice ? ' unlock-pin-block--hidden' : ''}">
-          ${pinBoxesHtml('pin1', status.needs_setup ? 'Nuevo PIN' : '')}
-          ${status.needs_setup ? pinBoxesHtml('pin2', 'Repetir PIN') : ''}
-          <button id="unlockBtn" class="btn btn-primary unlock-actions__primary unlock-pin-block__submit">
-            ${status.needs_setup ? 'Crear y desbloquear' : 'Confirmar PIN'}
-          </button>
+        <div class="card unlock-card">
+          ${
+            showTouchChoice
+              ? `<div class="unlock-method-row">
+                   <button type="button" id="touchIdBtn" class="btn btn-primary unlock-method-btn" title="Desbloquear con Touch ID">
+                     <span class="unlock-method-btn__icon">${ICON_FINGERPRINT}</span>
+                     <span>Touch ID</span>
+                   </button>
+                   <button type="button" id="usePinBtn" class="btn btn-secondary unlock-method-btn" title="Desbloquear con PIN">
+                     <span class="unlock-method-btn__icon">${ICON_LOCK}</span>
+                     <span>PIN</span>
+                   </button>
+                 </div>`
+              : ''
+          }
+          <div id="unlockPinBlock" class="unlock-pin-block${showTouchChoice ? ' unlock-pin-block--hidden' : ''}">
+            ${pinBoxesHtml('pin1', status.needs_setup ? 'Nuevo PIN' : '')}
+            ${status.needs_setup ? pinBoxesHtml('pin2', 'Repetir PIN') : ''}
+            <button id="unlockBtn" class="btn btn-primary unlock-actions__primary unlock-pin-block__submit">
+              ${status.needs_setup ? 'Crear y desbloquear' : 'Confirmar PIN'}
+            </button>
+          </div>
+          <div id="hint" class="unlock-hint"></div>
         </div>
-        <div id="hint" class="unlock-hint"></div>
-      </div>
-      <p class="unlock-page__build">${BUILD_STAMP_LABEL}</p>
-      <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
-        <span class="unlock-update-bar__text">Actualización disponible</span>
-        <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">Actualizar</button>
+        <p class="unlock-page__build">${BUILD_STAMP_LABEL}</p>
+        <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
+          <span class="unlock-update-bar__text">Actualización disponible</span>
+          <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">Actualizar</button>
+        </div>
       </div>
     </div>
   `;

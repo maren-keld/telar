@@ -1,4 +1,5 @@
 import { getSessionsWithModules } from '../db.js';
+import { psychometricChartMeta, psychometricSeries } from '../psychometric-summary.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 
 const DASS_STRESS_BANDS = [
@@ -190,6 +191,24 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes) {
     }
   }
 
+  for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
+    if (!types.has(psychType)) continue;
+    const meta = psychometricChartMeta(psychType);
+    const series = psychometricSeries(sessions, psychType);
+    const cid = `chart-${psychType}`;
+    sections.push(
+      accordionHtml(
+        cid,
+        meta.title,
+        'Evolución por sesión (puntaje total)',
+        series.length
+          ? lineChartHtml(cid, meta.yMax)
+          : `<p class="scores-empty">Sin puntajes ${escapeHtml(meta.title)} registrados aún.</p>`,
+        !sections.length,
+      ),
+    );
+  }
+
   if (types.has('escala_animo') || types.has('escala_ansiedad')) {
     if (types.has('escala_animo')) {
       sections.push(
@@ -248,6 +267,12 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes) {
   if (types.has('neurofeedback')) {
     const { calm, att } = buildNfSeries(sessions);
     paintNfChart('chart-nf-time', calm, att);
+  }
+
+  for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
+    if (!types.has(psychType)) continue;
+    const meta = psychometricChartMeta(psychType);
+    paintSimpleLine(`chart-${psychType}`, psychometricSeries(sessions, psychType), meta.yMax, meta.color);
   }
 
   if (types.has('escala_animo')) {

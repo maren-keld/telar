@@ -1,6 +1,8 @@
 /**
  * Retroalimentación sonora local (NF-2) — sin CDN.
  */
+import { computeFeedbackMetrics } from './nf-signal.js';
+
 const BASE = 'assets/audio';
 
 let feedbackTrack = null;
@@ -9,6 +11,7 @@ let lowBatterySound = null;
 let disconnectSound = null;
 let lowBatteryPlayed = false;
 let protocol = 'relajacion';
+let audioEnabled = false;
 
 function track(path, loop = false) {
   const a = new Audio(`${BASE}/${path}`);
@@ -19,10 +22,23 @@ function track(path, loop = false) {
 
 export function initNfAudio() {
   if (feedbackTrack) return;
-  feedbackTrack = track('feedback-relaxation.wav', true);
+  feedbackTrack = track('feedback-relaxation.mp3', true);
   connectedSound = track('connected.wav');
   lowBatterySound = track('low-battery.wav');
   disconnectSound = track('disconnected.wav');
+}
+
+export function isAudioFeedbackEnabled() {
+  return audioEnabled;
+}
+
+export function setAudioFeedbackEnabled(on) {
+  audioEnabled = Boolean(on);
+  if (audioEnabled) {
+    enableAudioFeedback();
+  } else {
+    stopAudioFeedback();
+  }
 }
 
 export function setNfAudioProtocol(p) {
@@ -54,19 +70,8 @@ export function resetLowBatteryFlag() {
 
 /** bars: [delta, theta, alpha, beta] en % */
 export function applyAudioFeedback(bars) {
-  if (!feedbackTrack || feedbackTrack.muted) return;
-  const theta = bars[1] ?? 0;
-  const alpha = bars[2] ?? 0;
-  const beta = bars[3] ?? 0;
-  const calmPct = alpha + theta * 0.5;
-  const attentionPct = beta + alpha * 0.3;
-
-  let target = 0;
-  if (protocol === 'atencion') {
-    target = Math.min(1, attentionPct / 55);
-  } else {
-    target = Math.min(1, calmPct / 55);
-  }
+  if (!audioEnabled || !feedbackTrack || feedbackTrack.muted) return;
+  const { level: target } = computeFeedbackMetrics(protocol, bars);
 
   const smooth = 0.12;
   const nextVol = feedbackTrack.volume + (target - feedbackTrack.volume) * smooth;

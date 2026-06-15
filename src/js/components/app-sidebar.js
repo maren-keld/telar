@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 const ICONS = {
   agenda: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
   reportes: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>`,
@@ -9,24 +11,36 @@ const ICONS = {
 };
 
 const NAV = [
-  { id: 'agenda', label: 'Agenda' },
-  { id: 'reportes', label: 'Estadísticas' },
-  { id: 'goals', label: 'Objetivos' },
-  { id: 'modules', label: 'Módulos' },
-  { id: 'settings', label: 'Ajustes' },
-  { id: 'help', label: 'Ayuda', disabled: true },
+  { id: 'agenda', labelKey: 'nav.agenda' },
+  { id: 'reportes', labelKey: 'nav.reportes' },
+  { id: 'goals', labelKey: 'nav.goals' },
+  { id: 'modules', labelKey: 'nav.modules' },
+  { id: 'settings', labelKey: 'nav.settings' },
+  { id: 'help', labelKey: 'nav.help', disabled: true },
 ];
+
+const SCREEN_IDS = {
+  agenda: 'nav-patients',
+  reportes: 'nav-statistics',
+  goals: 'nav-goals',
+  settings: 'nav-settings',
+  help: 'help',
+  modules: 'nav-modules',
+};
 
 export function renderAppSidebar(activeNav = 'agenda') {
   const items = NAV.map((item) => {
+    const label = t(item.labelKey, item.id);
     const active = item.id === activeNav ? ' active' : '';
     const disabled = item.disabled ? ' disabled' : '';
     const dataNav = item.disabled ? '' : ` data-nav="${item.id}"`;
     const icon = ICONS[item.id] || '';
+    const screenId = SCREEN_IDS[item.id];
+    const idAttr = screenId ? ` id="${screenId}"` : '';
     return `
-      <button type="button" class="nav-item${active}${disabled}"${dataNav} title="${item.label}">
+      <button type="button" class="nav-item${active}${disabled}"${idAttr}${dataNav} title="${label}">
         <span class="nav-icon">${icon}</span>
-        ${item.label}
+        ${label}
       </button>`;
   }).join('');
 

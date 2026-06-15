@@ -8,13 +8,21 @@ import {
   updateClinicalNote,
 } from '../db.js';
 import { debounce } from '../autobind.js';
-import { renderWorkspaceScores } from './workspace-scores.js';
-import { getTreatmentModuleTypes } from '../db.js';
 import { spaceCheckDescription } from '../space-check-descriptions.js';
 import { loadProfile } from '../profile.js';
-import { escapeHtml, practitionerInitials } from '../utils.js';
+import { escapeHtml, practitionerInitials, toast } from '../utils.js';
+import { resolveAiConfig } from '../ai-config.js';
+import { chatCompletion } from '../ai-client.js';
+import { buildCaseContextText } from '../export-case-context.js';
+import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
 
-export async function mountNotesPanel(container, treatmentId) {
+const PERFIL_SECTIONS = [
+  { id: 'fortalezas', label: 'Fortalezas' },
+  { id: 'defensas', label: 'Defensas' },
+  { id: 'riesgos', label: 'Debilidades' },
+];
+
+export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   let refreshList = async () => {};
   let activeTab = 'notas';
   const profile = loadProfile();
@@ -25,10 +33,8 @@ export async function mountNotesPanel(container, treatmentId) {
       <nav class="space-tools__tabs2" role="tablist">
         ${[
           ['notas', 'Notas'],
-          ['puntajes', 'Puntajes'],
-          ['fortalezas', 'Fortalezas'],
-          ['defensas', 'Defensas'],
-          ['riesgos', 'Riesgos'],
+          ['perfil', 'Perfil'],
+          ['herramientas', 'Herramientas'],
         ]
           .map(
             ([id, label]) =>
@@ -44,9 +50,10 @@ export async function mountNotesPanel(container, treatmentId) {
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
         <div class="ai-dock__input-row">
-          <input type="text" class="input ai-dock__input" disabled placeholder="Pregunta a la IA sobre el caso" />
-          <button type="button" class="btn btn-primary" disabled>Enviar</button>
+          <input type="text" class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" />
+          <button type="button" class="btn btn-primary" id="ai-dock-send">Consultar</button>
         </div>
+        <p class="ai-dock__hint" id="ai-dock-hint" hidden></p>
       </aside>
     </div>`;
 
@@ -55,7 +62,6 @@ export async function mountNotesPanel(container, treatmentId) {
   refreshList = async () => {
     if (activeTab === 'notas') {
       const all = await getClinicalNotes(treatmentId);
-      // Mezclar todo: comments + annotations + futuras respuestas IA (kind='ai')
       const sorted = [...all].sort((a, b) => {
         const as = Number(b.starred) - Number(a.starred);
         if (as) return as;
@@ -70,40 +76,14 @@ export async function mountNotesPanel(container, treatmentId) {
       return;
     }
 
-    if (activeTab === 'puntajes') {
-      const types = await getTreatmentModuleTypes(treatmentId);
-      await renderWorkspaceScores(listEl, treatmentId, types);
+    if (activeTab === 'perfil') {
+      await renderPerfilTab(listEl, treatmentId, profile, refreshList);
       return;
     }
 
-    // checklists por tratamiento
-    const defs = defaultsFor(activeTab);
-    const existing = await getSpaceChecks(treatmentId, activeTab);
-    const map = new Map(existing.map((r) => [r.label, Number(r.checked) === 1]));
-    const items = defs.map((label) => ({ label, checked: map.get(label) || false }));
-    listEl.innerHTML = `
-      <div class="space-checklist">
-        ${items
-          .map((it) => {
-            const desc = spaceCheckDescription(activeTab, it.label);
-            return `
-          <label class="space-check">
-            <input type="checkbox" data-space-check value="${escapeHtml(it.label)}" ${it.checked ? 'checked' : ''}/>
-            <span class="space-check__body">
-              <span class="space-check__title">${escapeHtml(it.label)}</span>
-              ${desc ? `<span class="space-check__desc">${escapeHtml(desc)}</span>` : ''}
-            </span>
-          </label>`;
-          })
-          .join('')}
-      </div>
-    `;
-
-    listEl.querySelectorAll('[data-space-check]').forEach((cb) => {
-      cb.addEventListener('change', async () => {
-        await setSpaceCheck(treatmentId, activeTab, cb.value, cb.checked);
-      });
-    });
+    if (activeTab === 'herramientas') {
+      mountWorkspaceToolsTab(listEl, { treatmentId, ...toolsOpts });
+    }
   };
 
   container.querySelectorAll('.space-tab2').forEach((btn) => {
@@ -130,6 +110,71 @@ export async function mountNotesPanel(container, treatmentId) {
 
   await refreshList();
 
+  const aiInput = container.querySelector('#ai-dock-input');
+  const aiSend = container.querySelector('#ai-dock-send');
+  const aiHint = container.querySelector('#ai-dock-hint');
+  const aiCfg = resolveAiConfig(profile);
+
+  if (!aiCfg.enabled) {
+    aiInput.disabled = true;
+    aiSend.disabled = true;
+    aiHint.textContent = 'Activa el asistente IA en Ajustes → Proveedor de IA.';
+    aiHint.hidden = false;
+  } else {
+    const sendAiQuestion = async () => {
+      const q = aiInput.value.trim();
+      if (!q) return;
+      aiInput.disabled = true;
+      aiSend.disabled = true;
+      aiSend.textContent = 'Consultando';
+      try {
+        const context = await buildCaseContextText(treatmentId);
+        const { text } = await chatCompletion({
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Eres un asistente clínico de apoyo al psicoterapeuta. Responde de forma concisa y fundamentada. Evita listas con asteriscos; usa texto corrido o numeración. Contexto del caso:\n\n' +
+                context,
+            },
+            { role: 'user', content: q },
+          ],
+          maxTokens: 800,
+        });
+        await addClinicalNote(treatmentId, {
+          kind: 'ia_answer',
+          color: 'teal',
+          content: text,
+          authorInitials: 'IA',
+          sourceLabel: q,
+        });
+        aiInput.value = '';
+        await refreshList();
+      } catch (err) {
+        await addClinicalNote(treatmentId, {
+          kind: 'ia_answer',
+          color: 'yellow',
+          content: err.message || 'Error al consultar la IA.',
+          authorInitials: 'IA',
+          sourceLabel: q,
+        });
+        await refreshList();
+      } finally {
+        aiInput.disabled = false;
+        aiSend.disabled = false;
+        aiSend.textContent = 'Consultar';
+      }
+    };
+
+    aiSend.addEventListener('click', sendAiQuestion);
+    aiInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendAiQuestion();
+      }
+    });
+  }
+
   const focusNotasTab = async () => {
     activeTab = 'notas';
     const tools = container.querySelector('.space-tools');
@@ -149,6 +194,140 @@ export async function mountNotesPanel(container, treatmentId) {
       return refreshList();
     },
   };
+}
+
+async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
+  const aiCfg = resolveAiConfig(profile);
+  listEl.innerHTML = `
+    <div class="perfil-panel">
+      <button type="button" class="btn btn-secondary btn-sm btn-block" id="btn-analyze-perfil" ${aiCfg.enabled ? '' : 'disabled'}>
+        Analizar perfil con IA
+      </button>
+      ${aiCfg.enabled ? '' : '<p class="perfil-panel__hint">Activa el asistente IA en Ajustes para usar esta función.</p>'}
+      <div id="perfil-sections"></div>
+    </div>`;
+
+  const sectionsHost = listEl.querySelector('#perfil-sections');
+  await renderPerfilSections(sectionsHost, treatmentId);
+
+  listEl.querySelector('#btn-analyze-perfil')?.addEventListener('click', async () => {
+    const btn = listEl.querySelector('#btn-analyze-perfil');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Analizando…';
+    try {
+      await analyzeProfileWithAi(treatmentId);
+      await renderPerfilSections(sectionsHost, treatmentId);
+      toast('Perfil actualizado según el análisis de IA');
+    } catch (err) {
+      toast(err.message || 'No se pudo analizar el perfil');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prev;
+    }
+  });
+}
+
+async function renderPerfilSections(host, treatmentId) {
+  const html = await Promise.all(
+    PERFIL_SECTIONS.map(async (sec) => {
+      const labels = sortLabels(defaultsFor(sec.id));
+      const existing = await getSpaceChecks(treatmentId, sec.id);
+      const map = new Map(existing.map((r) => [r.label, Number(r.checked) === 1]));
+      const checkedCount = labels.filter((l) => map.get(l)).length;
+      const items = labels
+        .map((label) => {
+          const checked = map.get(label) || false;
+          const desc = spaceCheckDescription(sec.id, label);
+          return `
+          <label class="space-check">
+            <input type="checkbox" data-space-check data-category="${sec.id}" value="${escapeHtml(label)}" ${checked ? 'checked' : ''}/>
+            <span class="space-check__body">
+              <span class="space-check__title">${escapeHtml(label)}</span>
+              ${desc ? `<span class="space-check__desc">${escapeHtml(desc)}</span>` : ''}
+            </span>
+          </label>`;
+        })
+        .join('');
+
+      return `
+        <details class="perfil-section" open>
+          <summary class="perfil-section__head">
+            <span class="perfil-section__title">${escapeHtml(sec.label)}</span>
+            <span class="perfil-section__count">${checkedCount}/${labels.length}</span>
+          </summary>
+          <div class="space-checklist">${items}</div>
+        </details>`;
+    }),
+  );
+  host.innerHTML = html.join('');
+
+  host.querySelectorAll('[data-space-check]').forEach((cb) => {
+    cb.addEventListener('change', async () => {
+      await setSpaceCheck(treatmentId, cb.dataset.category, cb.value, cb.checked);
+      const section = cb.closest('.perfil-section');
+      const boxes = section?.querySelectorAll('[data-space-check]');
+      const count = section?.querySelector('.perfil-section__count');
+      if (boxes && count) {
+        const n = [...boxes].filter((x) => x.checked).length;
+        count.textContent = `${n}/${boxes.length}`;
+      }
+    });
+  });
+}
+
+async function analyzeProfileWithAi(treatmentId) {
+  const context = await buildCaseContextText(treatmentId);
+  const lists = Object.fromEntries(
+    PERFIL_SECTIONS.map((s) => [s.id === 'riesgos' ? 'debilidades' : s.id, sortLabels(defaultsFor(s.id))]),
+  );
+
+  const { text } = await chatCompletion({
+    messages: [
+      {
+        role: 'system',
+        content: `Eres psicólogo clínico. Según el contexto del caso, marca qué ítems aplican del paciente actual.
+Responde SOLO JSON válido sin markdown:
+{"fortalezas":["..."],"defensas":["..."],"debilidades":["..."]}
+Usa exactamente los nombres de las listas proporcionadas. Incluye solo ítems con evidencia en el contexto.`,
+      },
+      {
+        role: 'user',
+        content: `Contexto del caso:\n${context}\n\nFortalezas posibles:\n${lists.fortalezas.join('\n')}\n\nDefensas posibles:\n${lists.defensas.join('\n')}\n\nDebilidades posibles:\n${lists.debilidades.join('\n')}`,
+      },
+    ],
+    maxTokens: 1200,
+  });
+
+  const parsed = parseProfileAiJson(text);
+  const apply = async (category, labels) => {
+    const allowed = new Set(defaultsFor(category));
+    for (const label of labels || []) {
+      if (allowed.has(label)) {
+        await setSpaceCheck(treatmentId, category, label, true);
+      }
+    }
+  };
+
+  await apply('fortalezas', parsed.fortalezas);
+  await apply('defensas', parsed.defensas);
+  await apply('riesgos', parsed.debilidades || parsed.riesgos);
+}
+
+function parseProfileAiJson(text) {
+  const raw = String(text || '').trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('La IA no devolvió un formato válido');
+  }
+}
+
+function sortLabels(labels) {
+  return [...labels].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 function defaultsFor(tab) {
@@ -232,8 +411,12 @@ function defaultsFor(tab) {
   return [];
 }
 
-function colorMeta(colorId) {
-  return NOTE_COLORS.find((c) => c.id === colorId) || NOTE_COLORS[0];
+function renderMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
 }
 
 function kindleNoteHtml(note, fallbackInitials) {
@@ -244,25 +427,33 @@ function kindleNoteHtml(note, fallbackInitials) {
   const quote = note.quote_text || '';
   const source = note.source_label || '';
   const showQuote = kind === 'annotation' && quote;
+  const isAi = kind === 'ia_answer';
 
   const paletteDots = NOTE_COLORS.map(
     (c) =>
       `<button type="button" class="kindle-note__palette-dot${c.id === color ? ' active' : ''}" data-color="${c.id}" title="${escapeHtml(c.label)}" style="background:var(--note-${c.id})"></button>`,
   ).join('');
 
-  return `
-    <article class="kindle-note kindle-note--${escapeHtml(color)}${starred ? ' kindle-note--starred' : ''}" data-id="${note.id}" data-color="${escapeHtml(color)}">
-      <div class="kindle-note__body">
+  const bodyContent = isAi
+    ? `
+        ${source ? `<p class="kindle-note__source kindle-note__source--question">${escapeHtml(source)}</p>` : ''}
+        <div class="kindle-note__ai-answer">${renderMarkdown(note.content || '')}</div>`
+    : `
         ${source ? `<p class="kindle-note__source">${escapeHtml(source)}</p>` : ''}
-        ${showQuote ? `<blockquote class="kindle-note__quote"><span class="kindle-note__quote-mark">“</span>${escapeHtml(quote)}</blockquote>` : ''}
+        ${showQuote ? `<blockquote class="kindle-note__quote"><span class="kindle-note__quote-mark">"</span>${escapeHtml(quote)}</blockquote>` : ''}
         ${showQuote ? '<hr class="kindle-note__rule" />' : ''}
-        <textarea class="kindle-note__comment" data-note-id="${note.id}" placeholder="${showQuote ? 'Tu comentario sobre la cita…' : 'Escribe un comentario…'}">${escapeHtml(note.content || '')}</textarea>
+        <textarea class="kindle-note__comment" data-note-id="${note.id}" placeholder="${showQuote ? 'Tu comentario sobre la cita…' : 'Escribe un comentario…'}">${escapeHtml(note.content || '')}</textarea>`;
+
+  return `
+    <article class="kindle-note kindle-note--${escapeHtml(color)}${starred ? ' kindle-note--starred' : ''}${isAi ? ' kindle-note--ia' : ''}" data-id="${note.id}" data-color="${escapeHtml(color)}" data-kind="${kind}">
+      <div class="kindle-note__body">
+        ${bodyContent}
       </div>
       <div class="kindle-note__rail">
         <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
-        <span class="kindle-note__rail-btn kindle-note__author" title="Autor/a de la nota">${escapeHtml(initials)}</span>
-        <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota">🎨</button>
-        <div class="kindle-note__palette-pop" hidden>${paletteDots}</div>
+        <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? 'Respuesta IA' : 'Autor/a de la nota'}">${escapeHtml(initials)}</span>
+        ${!isAi ? `<button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota">🎨</button>
+        <div class="kindle-note__palette-pop" hidden>${paletteDots}</div>` : ''}
         <button type="button" class="kindle-note__rail-btn note-delete" title="Eliminar nota">×</button>
       </div>
     </article>`;
@@ -278,7 +469,7 @@ function bindNoteCards(listEl, rerender) {
       content: ta?.value ?? '',
       color: card.dataset.color || 'teal',
       starred: card.classList.contains('kindle-note--starred'),
-      quoteText: card.querySelector('.kindle-note__quote')?.textContent?.replace(/^“/, '')?.trim() ?? '',
+      quoteText: card.querySelector('.kindle-note__quote')?.textContent?.replace(/^"/, '')?.trim() ?? '',
       sourceLabel: card.querySelector('.kindle-note__source')?.textContent?.trim() ?? '',
     });
 
@@ -316,14 +507,13 @@ function bindNoteCards(listEl, rerender) {
     pop?.querySelectorAll('.kindle-note__palette-dot').forEach((dot) => {
       dot.addEventListener('click', () => {
         const c = dot.dataset.color;
-        card.className = `kindle-note kindle-note--${c}${card.classList.contains('kindle-note--starred') ? ' kindle-note--starred' : ''}`;
+        card.className = `kindle-note kindle-note--${c}${card.classList.contains('kindle-note--starred') ? ' kindle-note--starred' : ''}${card.dataset.kind === 'ia_answer' ? ' kindle-note--ia' : ''}`;
         card.dataset.color = c;
         pop.setAttribute('hidden', '');
         save();
       });
     });
   });
-
 }
 
 let paletteCloseBound = false;

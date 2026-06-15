@@ -131,26 +131,42 @@ export const SUBSCRIPTION_API_PRODUCTION = 'https://telar-api.onrender.com';
 
 ---
 
-## Suscripciones: cuenta Comprador de prueba (obligatorio)
+### Probar Pro sin pagar (desarrollo local)
 
-Las **suscripciones** de Mercado Pago no usan el mismo sandbox que un pago simple. Necesitas una **cuenta Comprador de prueba** creada en el panel:
+Si MP sandbox o tu tarjeta no cooperan:
 
-1. [Mercado Pago Developers](https://www.mercadopago.cl/developers/panel/app) → app **Telar**
-2. **Pruebas** → **Cuentas de prueba** → **Crear cuenta** → país **Chile** → tipo **Comprador**
-3. Copia el **User** (email tipo `test_user_…@testuser.com`) y la **Password**
-4. En **Telar → Ajustes → Correo**, pega **ese email del comprador test** (no tu email real)
-5. **Suscribirse** de nuevo → ventana privada → en el checkout usa **el mismo email** del comprador test
-6. **Nueva tarjeta** (no tarjetas guardadas) + datos de la tabla de abajo
+```env
+SUBSCRIPTION_DEV_BYPASS=1
+BACKEND_URL=http://localhost:5001
+```
 
-Si ves `UNDEFINED SOURCE` o el botón **Confirmar** gris, casi siempre es porque falta el comprador test o el email no coincide.
+Reinicia `python app.py`. En Telar → Plan → **Activar Pro (solo desarrollo)**.
 
-## Modo prueba vs. tu cuenta real en el navegador
+**No** uses `SUBSCRIPTION_DEV_BYPASS` en Render ni en builds que distribuyas.
 
-Con token **TEST-** la API es de prueba, pero la página sigue siendo `mercadopago.cl`. **No inicies sesión con tu cuenta real** (Felipe / saldo $280k).
+## Suscripciones en modo prueba (limitación MP Chile)
 
-1. Ventana privada / incógnito
-2. Email del checkout = email del **comprador test** = email en Ajustes de la app
-3. Tarjeta de prueba nueva (no Santander ni saldo disponible)
+Las **Credenciales de prueba** de la app (menú → Pruebas → **Credenciales de prueba**) son las que van en `MP_ACCESS_TOKEN` para desarrollo. Terminan en tu user ID real (ej. `…321938991`).
+
+La tarjeta **Vendedor** en **Cuentas de prueba** da usuario/contraseña para **iniciar sesión** en mercadopago.cl, **no** un Access Token distinto para la API.
+
+Por eso, suscripción + comprador test a veces falla con *«Una de las partes es de prueba»*: vendedor = tu cuenta real, comprador = test.
+
+### Probar el flujo completo (recomendado cuando sandbox falle)
+
+1. Panel → **Credenciales de producción** → activar → copiar `APP_USR-…` a `server/.env`
+2. Telar → Ajustes → **tu email real**
+3. Suscribirse → pagar $15.000 (pago real; puedes cancelar la suscripción en MP después)
+
+### Probar sin cobrar (solo funciones Pro en dev)
+
+Mientras MP sandbox falle, puedes activar Pro manualmente en la base local o pedir un bypass de desarrollo.
+
+### Comprador test (si quieres seguir intentando sandbox)
+
+1. **Cuentas de prueba** → **Comprador** → copia email y contraseña
+2. Telar → Ajustes → Correo = email del comprador test
+3. Ventana privada → checkout → login comprador test + tarjeta `4168 8188 4444 7115`, titular `APRO`
 
 ---
 
@@ -181,6 +197,6 @@ Copia **exacto** (cuidado: es `8188`, no `8818`):
 | "Configura tu email" | Ajustes → Correo electrónico |
 | Verificar no activa Pro | Espera 1 min; revisa webhook en MP; usa mismo email que en Ajustes |
 | «No puedes pagar con esta tarjeta» | Número correcto: <code>4168 8188 4444 7115</code> (8188, no 8818); doc. Otro 123456789 |
-| `UNDEFINED SOURCE` / Confirmar gris | Crea cuenta Comprador test; mismo email en app y checkout; nueva tarjeta en incógnito |
+| «Una de las partes es de prueba» | Ventana privada; cierra sesión de tu MP real; entra solo con el comprador test (mismo email que Ajustes) |
 | Render lento al primer request | Plan free "duerme"; el primer click tarda ~30 s |
 | No quiero telarapp.cl | Correcto, no lo necesitas; `/gracias` vive en el mismo Render |

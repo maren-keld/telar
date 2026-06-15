@@ -133,3 +133,34 @@ export function hannWindow(buffer) {
   }
   return out;
 }
+
+/** Atenúa bins >22 Hz en vivo para reducir EMG/músculo que infla beta (solo sesión, no Python). */
+export function attenuateHighFrequencySpectrum(spectrum, fs = NF_SAMPLE_RATE) {
+  const n = spectrum.length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const freq = (i * fs) / (n * 2);
+    let gain = 1;
+    if (freq > 22) gain = Math.max(0.4, 1 - (freq - 22) / 28);
+    out[i] = spectrum[i] * gain;
+  }
+  return out;
+}
+
+/**
+ * Índice de retroalimentación en vivo (0–100 %) a partir de bandas relativas.
+ * Relajación: proporción alpha+theta (fisiológica). Atención: beta+alpha frontal.
+ */
+export function computeFeedbackMetrics(protocol, bars) {
+  const delta = bars[0] ?? 0;
+  const theta = bars[1] ?? 0;
+  const alpha = bars[2] ?? 0;
+  const beta = bars[3] ?? 0;
+  const total = Math.max(delta + theta + alpha + beta, 1);
+  if (protocol === 'atencion') {
+    const percent = Math.min(100, Math.round(((beta + alpha * 0.25) / total) * 100));
+    return { percent, level: percent / 100 };
+  }
+  const percent = Math.min(100, Math.round(((alpha + theta) / total) * 100));
+  return { percent, level: percent / 100 };
+}

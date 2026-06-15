@@ -31,6 +31,12 @@ class MuseCircularBuffer {
     if (this.head === this.tail) this.isFull = true;
     this.length += 1;
   }
+  drain() {
+    const out = [];
+    let v;
+    while ((v = this.read()) !== null) out.push(v);
+    return out;
+  }
   next(n) {
     const nxt = n + 1;
     return nxt === this.memory.length ? 0 : nxt;

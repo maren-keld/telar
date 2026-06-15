@@ -2,7 +2,7 @@ import { canMoveModule, getModule, moveModuleToPosition } from '../db.js';
 import { toast } from '../utils.js';
 
 export function bindWorkspaceModuleDnD(container, { treatmentId, activeModuleId, onNavigate }) {
-  const scroll = container.querySelector('#sidebar-sessions');
+  const scroll = container.querySelector('#leftsidebar .workspace-sidebar__scroll');
   if (!scroll) return;
 
   let draggedId = null;

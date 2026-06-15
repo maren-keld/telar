@@ -26,6 +26,12 @@ class MuseCircularBuffer {
     if (this.head === this.tail) this.isFull = true;
     this.length += 1;
   }
+  drain() {
+    const out = [];
+    let v;
+    while ((v = this.read()) !== null) out.push(v);
+    return out;
+  }
   next(n) {
     const nxt = n + 1;
     return nxt === this.memory.length ? 0 : nxt;
@@ -39,6 +45,8 @@ export class MuseNative {
     this.eeg = Array.from({ length: 5 }, () => new MuseCircularBuffer(256));
     this._unlisten = [];
     this._deviceName = 'Muse';
+    this._connecting = false;
+    this.onConnected = null;
   }
 
   async _setupListeners() {
@@ -56,7 +64,19 @@ export class MuseNative {
       }),
     );
     this._unlisten.push(
+      await listen('muse-connected', ({ payload }) => {
+        this._deviceName = payload?.name || this._deviceName;
+        if (this._connecting) {
+          this.state = 2;
+          this._connecting = false;
+          this.onConnected?.();
+        }
+      }),
+    );
+    this._unlisten.push(
       await listen('muse-disconnected', () => {
+        if (this._connecting) return;
+        this.state = 0;
         this.onDisconnected?.();
       }),
     );
@@ -65,22 +85,37 @@ export class MuseNative {
   async connect() {
     if (!isTauriApp()) throw new Error('BLE nativo solo en la app de escritorio.');
     this.state = 1;
+    this._connecting = true;
     await this._setupListeners();
     const invoke = getInvoke();
-    const name = await invoke('muse_connect');
-    this._deviceName = name || 'Muse';
-    this.state = 2;
-    return this;
+    try {
+      const name = await invoke('muse_connect');
+      this._deviceName = name || 'Muse';
+      this.state = 2;
+      this._connecting = false;
+      return this;
+    } catch (e) {
+      this._connecting = false;
+      this.state = 0;
+      throw e;
+    }
   }
 
   disconnect() {
+    this._connecting = false;
+    this._disconnecting = true;
     this.state = 0;
     this.batteryLevel = null;
     for (const fn of this._unlisten) fn?.();
     this._unlisten = [];
+    this.onDisconnected = () => {};
     if (isTauriApp()) {
-      getInvoke()('muse_disconnect').catch(() => {});
+      return getInvoke()('muse_disconnect').catch(() => {}).finally(() => {
+        this._disconnecting = false;
+      });
     }
+    this._disconnecting = false;
+    return Promise.resolve();
   }
 
   onDisconnected() {

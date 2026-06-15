@@ -1,0 +1,159 @@
+[
+  {
+    "id": "abc_modelo_simple",
+    "slug": "abc-modelo-simple",
+    "title": "Modelo ABC (Versión Simple)",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "cognitivo",
+      "tdah",
+      "trauma"
+    ],
+    "pilot": true,
+    "txt": "abc-modelo-simple.txt",
+    "html": "abc-modelo-simple.html"
+  },
+  {
+    "id": "activacion_conductual",
+    "slug": "activacion-conductual",
+    "title": "Activación conductual",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "conductual",
+      "tdah",
+      "animo"
+    ],
+    "pilot": true,
+    "txt": "activacion-conductual.txt",
+    "html": "activacion-conductual.html"
+  },
+  {
+    "id": "plan_seguridad_vital",
+    "slug": "plan-seguridad-vital",
+    "title": "Plan Seguridad Vital",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "trauma",
+      "crisis",
+      "seguridad"
+    ],
+    "pilot": true,
+    "txt": "plan-seguridad-vital.txt",
+    "html": "plan-seguridad-vital.html"
+  },
+  {
+    "id": "cuestionamiento_socratico",
+    "slug": "cuestionamiento-socratico",
+    "title": "Cuestionamiento socrático",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "cognitivo",
+      "ansiedad"
+    ],
+    "pilot": false,
+    "txt": "cuestionamiento-socratico.txt",
+    "html": "cuestionamiento-socratico.html"
+  },
+  {
+    "id": "flexibilidad_cognitiva",
+    "slug": "flexibilidad-cognitiva",
+    "title": "Rutinas de flexibilidad cognitiva",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "cognitivo",
+      "tdah"
+    ],
+    "pilot": false,
+    "txt": "flexibilidad-cognitiva.txt",
+    "html": "flexibilidad-cognitiva.html"
+  },
+  {
+    "id": "probabilidades_posibilidades",
+    "slug": "probabilidades-vs-posibilidades",
+    "title": "Probabilidades vs Posibilidades",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "ansiedad",
+      "trauma"
+    ],
+    "pilot": false,
+    "txt": "probabilidades-vs-posibilidades.txt",
+    "html": "probabilidades-vs-posibilidades.html"
+  },
+  {
+    "id": "identificando_sesgos",
+    "slug": "identificando-sesgos",
+    "title": "Identificando sesgos",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "cognitivo"
+    ],
+    "pilot": false,
+    "txt": "identificando-sesgos.txt",
+    "html": "identificando-sesgos.html"
+  },
+  {
+    "id": "exploracion_autoconceptos",
+    "slug": "exploracion-autoconceptos",
+    "title": "Exploración de autoconceptos",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "trauma",
+      "esquemas"
+    ],
+    "pilot": false,
+    "txt": "exploracion-autoconceptos.txt",
+    "html": "exploracion-autoconceptos.html"
+  },
+  {
+    "id": "exploracion_preocupaciones",
+    "slug": "exploracion-preocupaciones",
+    "title": "Exploración de preocupaciones",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "ansiedad",
+      "tdah"
+    ],
+    "pilot": false,
+    "txt": "exploracion-preocupaciones.txt",
+    "html": "exploracion-preocupaciones.html"
+  },
+  {
+    "id": "rutinas_gratitud",
+    "slug": "rutinas-gratitud",
+    "title": "Rutinas de gratitud",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "regulacion",
+      "trauma"
+    ],
+    "pilot": false,
+    "txt": "rutinas-gratitud.txt",
+    "html": "rutinas-gratitud.html"
+  },
+  {
+    "id": "rutinas_reduccion_estres",
+    "slug": "rutinas-reduccion-estres",
+    "title": "Rutinas de reducción de estrés",
+    "category": "tcc",
+    "tags": [
+      "tcc",
+      "estres",
+      "trauma",
+      "tdah"
+    ],
+    "pilot": false,
+    "txt": "rutinas-reduccion-estres.txt",
+    "html": "rutinas-reduccion-estres.html"
+  }
+]

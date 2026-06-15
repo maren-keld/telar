@@ -1,12 +1,19 @@
 import { isProUser, loadProfile } from '../profile.js';
 import { openExternalUrl } from '../tauri-bridge.js';
-import { getSubscriptionApiBase, tryActivatePro, verifyProSubscription } from '../subscription.js';
+import {
+  fetchSubscriptionHealth,
+  getSubscriptionApiBase,
+  isLocalSubscriptionApi,
+  tryActivatePro,
+  tryActivateProDevBypass,
+  verifyProSubscription,
+} from '../subscription.js';
 
 const PRO_FEATURES = [
   'Grabar sesiones de Neurofeedback',
   'Compartir programas de tratamiento',
   'Comprar e instalar nuevos módulos',
-  'Añadir documentos a tu workspace estilo Notebook LM',
+  'Adjuntar documentos de referencia al espacio de trabajo',
   'Ver mapa de geolocalización de pacientes',
   'Acceso a actualizaciones y funciones experimentales',
 ];
@@ -16,14 +23,9 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
   overlay.className = 'modal-backdrop subscribe-pro-overlay';
   overlay.innerHTML = `
     <div class="subscribe-pro-modal" role="dialog" aria-labelledby="subscribe-pro-title">
-      <aside class="subscribe-pro-modal__brand" aria-hidden="true">
-        <div class="subscribe-pro-logo">
-          <span class="subscribe-pro-logo__col"></span>
-          <span class="subscribe-pro-logo__mid">
-            <span></span><span></span>
-          </span>
-          <span class="subscribe-pro-logo__col"></span>
-        </div>
+      <aside class="subscribe-pro-modal__brand">
+        <span class="subscribe-pro-modal__brand-name">Telar</span>
+        <span class="subscribe-pro-modal__brand-tag">Plan Profesional</span>
       </aside>
       <div class="subscribe-pro-modal__content">
         <header class="subscribe-pro-modal__head">
@@ -31,8 +33,9 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           <button type="button" class="modal-close" aria-label="Cerrar">×</button>
         </header>
         <p class="subscribe-pro-modal__intro">
-          Suscribiéndote al Plan Profesional apoyarás el crecimiento de este proyecto, además de acceder a nuevas funciones:
+          Apoya el desarrollo de <strong>Telar</strong> y desbloquea funciones avanzadas del consultorio:
         </p>
+        <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite">Comprobando servidor de pagos…</p>
         <ul class="subscribe-pro-features">
           ${PRO_FEATURES.map((f) => `<li><span class="subscribe-pro-features__plus">+</span>${f}</li>`).join('')}
         </ul>
@@ -63,15 +66,75 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
   });
 
   const profile = loadProfile();
-  const isLocalApi = /127\.0\.0\.1|localhost/.test(getSubscriptionApiBase());
-  if (isLocalApi) {
-    overlay.querySelector('#subscribe-pro-btn')?.insertAdjacentHTML(
-      'beforebegin',
-      `<p class="subscribe-pro-modal__warn">
-        <strong>Modo prueba (TEST):</strong> crea un <strong>Comprador</strong> en Mercado Pago Developers → Cuentas de prueba.
-        Usa <em>ese</em> email en Ajustes y en el checkout (ventana privada). Tarjeta Visa <code>4168 8188 4444 7115</code>, titular <code>APRO</code>, doc. Otro <code>123456789</code>.
-      </p>`,
-    );
+  const apiStatus = overlay.querySelector('#subscribe-pro-api-status');
+
+  fetchSubscriptionHealth()
+    .then((health) => {
+      if (!apiStatus) return;
+      if (health.dev_bypass) {
+        apiStatus.textContent =
+          'Desarrollo local: Mercado Pago no sirve aquí (vendedor real + comprador test). Activa Pro abajo, sin cobro.';
+        apiStatus.classList.add('subscribe-pro-modal__api-status--ok');
+        const cta = overlay.querySelector('#subscribe-pro-btn');
+        const verify = overlay.querySelector('#subscribe-pro-verify');
+        const fine = overlay.querySelector('.subscribe-pro-modal__fine');
+        if (cta) {
+          cta.textContent = 'Activar Pro (desarrollo local)';
+          cta.onclick = async () => {
+            const ok = await tryActivateProDevBypass();
+            if (ok) {
+              close();
+              onSubscribed?.();
+            }
+          };
+        }
+        if (verify) verify.hidden = true;
+        if (fine) {
+          fine.textContent =
+            'Sin Mercado Pago en esta Mac. Para cobrar de verdad: producción en Render + token APP_USR-.';
+        }
+        return;
+      }
+      const mode = health.mp_test_mode ? 'modo prueba' : 'producción';
+      if (health.mp_test_mode && health.mp_sandbox_ready === false) {
+        apiStatus.textContent =
+          'Modo prueba: vendedor = cuenta real MP. Si falla el checkout, usa producción o comprador test en incógnito.';
+        apiStatus.classList.add('subscribe-pro-modal__api-status--err');
+      }
+      if (health.mp_test_mode && health.mp_sandbox_ready === false && health.mp_sandbox_hint) {
+        // hint largo solo en consola
+        console.info('[subscription]', health.mp_sandbox_hint);
+      }
+      if (health.mp_test_mode && health.mp_sandbox_ready === false) {
+        return;
+      }
+      apiStatus.textContent = health.mp_configured
+        ? `Servidor conectado (${mode}) · ${getSubscriptionApiBase().replace(/^https?:\/\//, '')}`
+        : 'Servidor sin credenciales de Mercado Pago — contacta soporte';
+      apiStatus.classList.toggle('subscribe-pro-modal__api-status--ok', Boolean(health.mp_configured));
+      apiStatus.classList.toggle('subscribe-pro-modal__api-status--err', !health.mp_configured);
+    })
+    .catch(() => {
+      if (!apiStatus) return;
+      const base = getSubscriptionApiBase();
+      const localHint = isLocalSubscriptionApi()
+        ? ''
+        : ' Para pruebas en tu Mac: ejecuta la API local (server/) y define window.TELAR_SUBSCRIPTION_API = "http://127.0.0.1:5001".';
+      apiStatus.textContent = `No se pudo conectar con ${base}.${localHint}`;
+      apiStatus.classList.add('subscribe-pro-modal__api-status--err');
+    });
+
+  if (isLocalSubscriptionApi()) {
+    fetchSubscriptionHealth().then((health) => {
+      if (health.dev_bypass) return;
+      overlay.querySelector('#subscribe-pro-btn')?.insertAdjacentHTML(
+        'beforebegin',
+        `<p class="subscribe-pro-modal__warn">
+          <strong>Modo prueba MP:</strong> suscripciones sandbox en Chile suelen fallar.
+          Usa <code>SUBSCRIPTION_DEV_BYPASS=1</code> en <code>server/.env</code> para probar Pro sin pagar.
+        </p>`,
+      );
+    }).catch(() => {});
   }
 
   if (!profile.email?.trim()) {

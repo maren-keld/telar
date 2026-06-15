@@ -1,15 +1,70 @@
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { openEditFieldModal } from '../components/edit-field-modal.js';
-import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
+import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
-import { getSubscriptionApiBase } from '../subscription.js';
+import { syncProFromServer } from '../subscription.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openPinModal } from '../components/pin-modal.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
+import { getLocale, localeLabel, setLocale, t } from '../i18n.js';
+import { SETTINGS_ICONS } from '../icons.js';
+
+let settingsRenderGen = 0;
+
+function isSettingsRoute() {
+  const path = (location.hash.slice(1) || '/agenda').split('?')[0];
+  const view = path.split('/').filter(Boolean)[0] || 'agenda';
+  return view === 'settings';
+}
+
+const SETTINGS_ROW_SKIP_GENERIC = new Set([
+  'lock',
+  'useTouchId',
+  'darkMode',
+  'presentationMode',
+  'usagePing',
+  'locale',
+  'backupDb',
+  'exportData',
+  'wipeData',
+  'checkUpdate',
+  'aiAssistant',
+]);
+
+function openLanguagePicker(onPick) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-backdrop" data-close>
+      <div class="modal-card" role="dialog" aria-labelledby="lang-title">
+        <h2 id="lang-title" class="modal-card__title">${escapeHtml(t('settings.chooseLanguage'))}</h2>
+        <div class="settings-lang-options">
+          <button type="button" class="btn btn-secondary btn-block" data-lang="es">${escapeHtml(localeLabel('es'))}</button>
+          <button type="button" class="btn btn-secondary btn-block" data-lang="en">${escapeHtml(localeLabel('en'))}</button>
+        </div>
+        <div class="modal-card__actions">
+          <button type="button" class="btn btn-ghost" data-cancel>${escapeHtml(t('settings.cancel', 'Cancelar'))}</button>
+        </div>
+      </div>
+    </div>`;
+
+  const close = () => {
+    root.innerHTML = '';
+  };
+  root.querySelector('[data-cancel]')?.addEventListener('click', close);
+  root.querySelector('[data-close]')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) close();
+  });
+  root.querySelectorAll('[data-lang]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      onPick(btn.dataset.lang);
+      close();
+    });
+  });
+}
 
 function row({ icon, title, subtitle, action = 'chevron', toggleOn = false, dataField, danger = false }) {
   const control =
@@ -33,6 +88,7 @@ function row({ icon, title, subtitle, action = 'chevron', toggleOn = false, data
 }
 
 export async function renderSettings(container, { onNavigate }) {
+  const renderGen = ++settingsRenderGen;
   const profile = loadProfile();
   let touchIdAvailable = false;
   if (isTauriApp()) {
@@ -44,40 +100,45 @@ export async function renderSettings(container, { onNavigate }) {
   }
 
   const isLinux = navigator.platform.toLowerCase().includes('linux');
+  const locale = getLocale();
   const touchIdRow = touchIdAvailable
     ? row({
-        icon: '👆',
-        title: 'Desbloquear con Touch ID',
-        subtitle: profile.useTouchId
-          ? 'Activo en este Mac (desbloquea con huella tras configurar PIN)'
-          : 'Usar huella en lugar del PIN cuando esté configurado',
+        icon: SETTINGS_ICONS.touchId,
+        title: t('settings.touchId'),
+        subtitle: profile.useTouchId ? t('settings.touchIdOn') : t('settings.touchIdOff'),
         dataField: 'useTouchId',
         action: 'toggle',
         toggleOn: profile.useTouchId,
       })
     : isTauriApp() && isLinux
       ? `<div class="settings-row settings-row--static settings-row--disabled">
-          <span class="settings-row__icon" aria-hidden="true">👆</span>
+          <span class="settings-row__icon" aria-hidden="true">${SETTINGS_ICONS.touchId}</span>
           <span class="settings-row__text">
-            <span class="settings-row__title">Desbloquear con Touch ID</span>
-            <span class="settings-row__sub">No disponible para Linux todavía</span>
+            <span class="settings-row__title">${escapeHtml(t('settings.touchId'))}</span>
+            <span class="settings-row__sub">${escapeHtml(t('settings.touchIdLinux'))}</span>
           </span>
         </div>`
       : '';
 
   container.innerHTML = `
     ${renderAppSidebar('settings')}
-    <div class="app-main">
+    <div class="app-main" id="settings">
       <div class="app-content settings-page">
-        <h1 class="settings-page__title">Ajustes</h1>
+        <h1 class="settings-page__title">${escapeHtml(t('settings.title'))}</h1>
         <div class="settings-card">
-          ${row({ icon: '👤', title: 'Nombre', subtitle: profile.name || 'Sin configurar', dataField: 'name' })}
-          ${row({ icon: '@', title: 'Correo electrónico', subtitle: profile.email || 'Sin configurar', dataField: 'email' })}
-          ${row({ icon: '📱', title: 'Celular', subtitle: profile.phone || 'Sin configurar', dataField: 'phone' })}
-          ${row({ icon: '📍', title: 'Dirección de atención', subtitle: profile.address || 'Sin configurar', dataField: 'address' })}
+          ${row({ icon: SETTINGS_ICONS.name, title: t('settings.name'), subtitle: profile.name || '—', dataField: 'name' })}
+          ${row({ icon: SETTINGS_ICONS.email, title: t('settings.email'), subtitle: profile.email || '—', dataField: 'email' })}
+          ${row({ icon: SETTINGS_ICONS.phone, title: t('settings.phone'), subtitle: profile.phone || '—', dataField: 'phone' })}
+          ${row({ icon: SETTINGS_ICONS.address, title: t('settings.address'), subtitle: profile.address || '—', dataField: 'address' })}
           ${row({
-            icon: '🌙',
-            title: 'Modo oscuro',
+            icon: SETTINGS_ICONS.locale,
+            title: t('settings.language'),
+            subtitle: localeLabel(locale),
+            dataField: 'locale',
+          })}
+          ${row({
+            icon: SETTINGS_ICONS.darkMode,
+            title: t('settings.darkMode'),
             dataField: 'darkMode',
             action: 'toggle',
             toggleOn: profile.darkMode,
@@ -87,61 +148,85 @@ export async function renderSettings(container, { onNavigate }) {
           <div class="settings-plan">
             <span class="settings-plan__badge">${isProUser() ? 'Pro' : 'Free'}</span>
             <span class="settings-plan__text">
-              <span class="settings-plan__label">Plan Profesional — Mercado Pago</span>
-              <span class="settings-plan__sub">${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')} · ${escapeHtml(getSubscriptionApiBase().replace(/^https?:\/\//, ''))}</span>
+              <span class="settings-plan__label">Plan Profesional — Telar</span>
+              <span class="settings-plan__sub">${isProUser() ? 'Suscripción activa' : 'Gratis'} · ${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')}</span>
             </span>
             <span class="settings-row__chevron">›</span>
           </div>
         </button>
         <div class="settings-card">
           ${row({
-            icon: '👁',
-            title: 'Modo presentación',
-            subtitle: profile.presentationMode
-              ? 'Activo: datos sensibles ocultos en la app'
-              : 'Oculta nombre, RUT, teléfono y correo hasta desactivarlo',
+            icon: SETTINGS_ICONS.presentation,
+            title: t('settings.presentationMode'),
+            subtitle: profile.presentationMode ? t('settings.presentationOn') : t('settings.presentationOff'),
             dataField: 'presentationMode',
             action: 'toggle',
             toggleOn: profile.presentationMode,
           })}
         </div>
         <div class="settings-card">
-          ${row({ icon: '🔒', title: 'Bloquear app', subtitle: 'Requerir PIN o Touch ID al abrir', dataField: 'lock' })}
+          ${row({ icon: SETTINGS_ICONS.lock, title: t('settings.lock'), subtitle: t('settings.lockSub'), dataField: 'lock' })}
           ${touchIdRow}
         </div>
-        <h2 class="settings-section__title">Privacidad y datos</h2>
-        <p class="settings-section__hint">Tus datos están solo en este dispositivo. Puedes exportarlos o borrarlos por completo.</p>
+        <div class="settings-section">
+          <h2 class="settings-section__title">Asistente IA</h2>
+          <p class="settings-section__hint">
+            Elige IA local privada (modelo aparte, sin salir del Mac) o tu API externa. Sin modelos embebidos en Telar.app.
+          </p>
+        </div>
         <div class="settings-card">
           ${row({
-            icon: '💾',
-            title: 'Respaldar base de datos',
-            subtitle: 'Copia telar.enc.db cifrada a Documentos/Telar/respaldos',
+            icon: SETTINGS_ICONS.ai,
+            title: 'Proveedor de IA',
+            subtitle: aiSettingsSummary(profile),
+            dataField: 'aiAssistant',
+          })}
+        </div>
+        <div class="settings-section">
+          <h2 class="settings-section__title">${escapeHtml(t('settings.privacyTitle'))}</h2>
+          <p class="settings-section__hint">${escapeHtml(t('settings.privacyHint'))}</p>
+        </div>
+        <div class="settings-card">
+          ${row({
+            icon: SETTINGS_ICONS.usagePing,
+            title: t('settings.usagePing', 'Contador anónimo de uso'),
+            subtitle: profile.usagePingOptOut
+              ? t('settings.usagePingOff', 'Desactivado — no se envía ningún ping')
+              : t('settings.usagePingOn', 'Activo (predeterminado) — solo versión de app 1×/día; anónimo, sin IP ni datos clínicos'),
+            dataField: 'usagePing',
+            action: 'toggle',
+            toggleOn: !profile.usagePingOptOut,
+          })}
+          ${row({
+            icon: SETTINGS_ICONS.backup,
+            title: t('settings.backup'),
+            subtitle: t('settings.backupSub'),
             dataField: 'backupDb',
           })}
           ${row({
-            icon: '📥',
-            title: 'Descargar mis datos',
-            subtitle: 'Exportar pacientes, sesiones y perfil en CSV (carpeta en Documentos)',
+            icon: SETTINGS_ICONS.export,
+            title: t('settings.export'),
+            subtitle: t('settings.exportSub'),
             dataField: 'exportData',
           })}
           ${row({
-            icon: '🗑',
-            title: 'Eliminar todos mis datos',
-            subtitle: 'Borra pacientes, tratamientos, notas y perfil. No se puede deshacer',
+            icon: SETTINGS_ICONS.wipe,
+            title: t('settings.wipe'),
+            subtitle: t('settings.wipeSub'),
             dataField: 'wipeData',
             danger: true,
           })}
         </div>
         <div class="settings-card">
           <div class="settings-row settings-row--static">
-            <span class="settings-row__icon" aria-hidden="true">ℹ</span>
+            <span class="settings-row__icon" aria-hidden="true">${SETTINGS_ICONS.info}</span>
             <span class="settings-row__text">
-              <span class="settings-row__title">Versión</span>
+              <span class="settings-row__title">${escapeHtml(t('settings.version'))}</span>
               <span class="settings-row__sub">Build ${escapeHtml(BUILD_STAMP_LABEL)}</span>
             </span>
           </div>
           ${row({
-            icon: '⬆',
+            icon: SETTINGS_ICONS.update,
             title: getPendingUpdate() ? `Actualizar a ${getPendingUpdate().version}` : 'Buscar actualizaciones',
             subtitle: getPendingUpdate()
               ? 'Hay una versión nueva lista para instalar'
@@ -154,20 +239,51 @@ export async function renderSettings(container, { onNavigate }) {
 
   bindAppSidebar(container, { onNavigate });
 
+  syncProFromServer().then(({ changed, revoked }) => {
+    if (renderGen !== settingsRenderGen) return;
+    if (!isSettingsRoute()) return;
+    if (!changed) return;
+    if (revoked) {
+      toast(
+        t(
+          'settings.proRevoked',
+          'La suscripción Profesional no está activa. Algunas funciones quedaron limitadas.',
+        ),
+      );
+    }
+    renderSettings(container, { onNavigate });
+  });
+
   container.querySelector('#btn-settings-plan')?.addEventListener('click', () => {
     openSubscribeProModal();
   });
 
+  container.querySelector('[data-field="locale"]')?.addEventListener('click', () => {
+    openLanguagePicker((code) => {
+      if (code === getLocale()) return;
+      setLocale(code);
+      toast(t('toast.langChanged'));
+      renderSettings(container, { onNavigate });
+    });
+  });
+
+  container.querySelector('[data-field="aiAssistant"]')?.addEventListener('click', async () => {
+    const { openAiSettingsModal } = await import('../components/open-ai-settings-modal.js');
+    openAiSettingsModal({
+      onSaved: () => renderSettings(container, { onNavigate }),
+    });
+  });
+
   const fields = {
-    name: { title: 'Nombre', multiline: false },
-    email: { title: 'Correo electrónico', multiline: false },
-    phone: { title: 'Celular', multiline: false },
-    address: { title: 'Dirección de atención', multiline: true },
+    name: { title: t('settings.name'), multiline: false },
+    email: { title: t('settings.email'), multiline: false },
+    phone: { title: t('settings.phone'), multiline: false },
+    address: { title: t('settings.address'), multiline: true },
   };
 
   container.querySelectorAll('.settings-row[data-field]').forEach((btn) => {
     const field = btn.dataset.field;
-    if (!field || field === 'lock' || field === 'useTouchId') return;
+    if (!field || SETTINGS_ROW_SKIP_GENERIC.has(field)) return;
     btn.addEventListener('click', () => {
       const def = fields[field];
       if (!def) return;
@@ -179,7 +295,7 @@ export async function renderSettings(container, { onNavigate }) {
         onSave: async (value) => {
           saveProfile({ [field]: value });
           renderSettings(container, { onNavigate });
-          toast('Guardado');
+          toast(t('toast.saved'));
         },
       });
     });
@@ -195,6 +311,18 @@ export async function renderSettings(container, { onNavigate }) {
     saveProfile({ presentationMode: on });
     applyPresentationMode(on);
     toast(on ? 'Modo presentación activado' : 'Modo presentación desactivado');
+  });
+
+  container.querySelector('[data-toggle="usagePing"]')?.addEventListener('change', (e) => {
+    const enabled = e.target.checked;
+    saveProfile({ usagePingOptOut: !enabled });
+    toast(enabled ? t('settings.usagePingEnabled', 'Contador anónimo activado') : t('settings.usagePingDisabled', 'Contador anónimo desactivado'));
+    const sub = e.target.closest('.settings-row')?.querySelector('.settings-row__sub');
+    if (sub) {
+      sub.textContent = enabled
+        ? t('settings.usagePingOn', 'Activo (predeterminado) — solo versión de app 1×/día; anónimo, sin IP ni datos clínicos')
+        : t('settings.usagePingOff', 'Desactivado — no se envía ningún ping');
+    }
   });
 
   container.querySelector('[data-toggle="useTouchId"]')?.addEventListener('change', async (e) => {

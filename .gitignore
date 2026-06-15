@@ -18,7 +18,6 @@ __pycache__/
 *.pyc
 .idea/
 .vscode/
-.cursor/
+.cursor/automations/
 .tools/
-CLAUDE.md
 *.log

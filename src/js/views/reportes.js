@@ -173,7 +173,7 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
 
   container.innerHTML = `
     ${renderAppSidebar('reportes')}
-    <div class="app-main">
+    <div class="app-main" id="statistics">
       <div class="app-content reportes-page">
         <h1 class="reportes-page__title">Estadísticas</h1>
         ${renderGlobalDashboard(dash, groups)}

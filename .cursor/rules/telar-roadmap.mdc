@@ -1,0 +1,14 @@
+---
+description: Telar — leer WORKFLOW y SCRUM antes de features grandes
+alwaysApply: true
+---
+
+# Telar
+
+Lee **`docs/WORKFLOW.md`** (cómo trabajar) y **`docs/SCRUM.md`** (prioridades). No duplicar backlog en rules.
+
+**Fase:** validación beta · vertical **TDAH + trauma** · NF Muse 2 opcional.
+
+**Tras cambios en `src/`:** `./scripts/finish-iteration.sh` → `./scripts/open-app.sh`. App canónica: `dist/Telar.app`.
+
+**Al cerrar tareas:** actualizar SCRUM (Hecho + Changelog). No tocar DB de usuario salvo petición explícita.

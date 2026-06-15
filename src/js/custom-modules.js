@@ -1,4 +1,5 @@
 import { MODULE_DEFS } from './config.js';
+import { moduleLabelI18n } from './i18n.js';
 import { loadProfile, saveProfile } from './profile.js';
 
 const PREFIX = 'custom_';
@@ -60,7 +61,10 @@ export function resolveModuleDef(moduleType) {
 }
 
 export function moduleLabelFor(type) {
-  return resolveModuleDef(type)?.label || type;
+  const def = resolveModuleDef(type);
+  if (!def) return type;
+  if (def.custom) return def.label;
+  return moduleLabelI18n(type, def.label);
 }
 
 export function newCustomModuleId() {

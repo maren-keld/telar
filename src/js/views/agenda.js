@@ -54,7 +54,7 @@ export async function renderAgenda(container, { search = '', onNavigate }) {
 
   container.innerHTML = `
     ${renderAppSidebar('agenda')}
-    <div class="app-main">
+    <div class="app-main" id="patients">
       <div class="app-content">
         <div class="toolbar">
           <div class="search-bar">

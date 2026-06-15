@@ -21,13 +21,22 @@ fi
 echo "→ Invalidando caché de assets del frontend…"
 rm -rf "$CARGO_TARGET_DIR/release/build/telar-"*
 
+TAURI_BUILD_EXTRA=()
+if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+  echo "→ Firma de actualizaciones activa (TAURI_SIGNING_PRIVATE_KEY)"
+else
+  # Sin clave explícita: build local sin artefactos de updater (evita cuelgues)
+  unset TAURI_SIGNING_PRIVATE_KEY_PATH
+  TAURI_BUILD_EXTRA=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
+fi
+
 echo "→ Compilando (frontend src/ embebido en la .app)…"
 cd "$ROOT/src-tauri"
-cargo tauri build
+cargo tauri build "${TAURI_BUILD_EXTRA[@]}"
 
-ASSETS_DIR="$(find "$CARGO_TARGET_DIR/release/build" -maxdepth 1 -type d -name 'telar-*' 2>/dev/null | head -1)/out/tauri-codegen-assets"
-if [[ ! -d "$ASSETS_DIR" ]]; then
-  echo "Error: no se generaron assets embebidos en $ASSETS_DIR"
+ASSETS_DIR="$(find "$CARGO_TARGET_DIR/release/build" -path '*/out/tauri-codegen-assets' -type d 2>/dev/null | sort | tail -1)"
+if [[ -z "$ASSETS_DIR" || ! -d "$ASSETS_DIR" ]]; then
+  echo "Error: no se generaron assets embebidos (tauri-codegen-assets)"
   exit 1
 fi
 python3 "$ROOT/scripts/verify-frontend-embedded.py" "$ASSETS_DIR"

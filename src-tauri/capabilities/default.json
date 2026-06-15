@@ -6,6 +6,22 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [{ "name": "analyze_session", "sidecar": true }]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [{ "name": "analyze_session", "sidecar": true }]
+    },
+    {
+      "identifier": "shell:allow-stdin-write",
+      "allow": [{ "name": "analyze_session", "sidecar": true }]
+    },
+    {
+      "identifier": "shell:allow-kill",
+      "allow": [{ "name": "analyze_session", "sidecar": true }]
+    },
     "updater:default",
     "process:allow-restart"
   ]

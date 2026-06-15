@@ -12,7 +12,8 @@ La landing está en `landing/` (HTML estático, sin build). Mensaje alineado al 
 - Planes Gratis vs Pro ($15.000 CLP/mes)
 - Requisitos Mac/Windows + Muse 2
 - Guía instalación Mac (Gatekeeper — S1.2)
-- CTA demo por correo (mailto)
+- CTA por correo (mailto)
+- Página aparte `neurofeedback.html` (guía + FAQ)
 - Enlaces a GitHub y términos/privacidad
 
 ---

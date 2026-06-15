@@ -29,3 +29,4 @@ Requisitos: Rust, Node.js, Python 3.
 | `python/` | Análisis post-sesión NF |
 | `server/` | API opcional de suscripciones (Plan Profesional) |
 | `landing/` | Sitio estático de presentación |
+| `docs/WORKFLOW.md` | Workflow para agentes de código (Cursor, Claude Code) |

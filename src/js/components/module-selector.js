@@ -2,6 +2,7 @@ import { MODULE_DEFS } from '../config.js';
 import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
 import { openCreateModuleModal } from './create-module-modal.js';
 import { psychometricsFor } from '../module-psychometrics.js';
+import { moduleSearchBlob, tccHandoutDef, TCC_VARIABLES } from '../tcc-handout-defs.js';
 import {
   canDeleteModule,
   deleteSessionModule,
@@ -22,14 +23,63 @@ const CATEGORIES = [
   {
     id: 'intervencion',
     label: 'Intervención',
-    types: ['neurofeedback'],
+    types: ['neurofeedback', 'bilateral_stimulation'],
+  },
+  {
+    id: 'tcc',
+    label: 'Psicoeducación',
+    types: [
+      'tcc_abc',
+      'tcc_plan_seguridad',
+      'tcc_activacion',
+      'tcc_socratico',
+      'tcc_flexibilidad',
+      'tcc_probabilidades',
+      'tcc_sesgos',
+      'tcc_autoconceptos',
+      'tcc_preocupaciones',
+      'tcc_gratitud',
+      'tcc_estres',
+    ],
   },
   {
     id: 'pruebas',
     label: 'Pruebas psicométricas',
-    types: ['dass21', 'eed', 'qols', 'rosenberg', 'escala_animo', 'escala_ansiedad', 'escala_fer'],
+    types: [
+      'dass21',
+      'gad7',
+      'asrs',
+      'pcl5',
+      'sprint_ecl',
+      'iesr',
+      'ades',
+      'eed',
+      'qols',
+      'rosenberg',
+      'escala_animo',
+      'escala_ansiedad',
+      'escala_fer',
+    ],
   },
 ];
+
+function searchTextForType(type, def, psych, customTitle) {
+  if (customTitle) {
+    return `${customTitle} custom mis módulos`.toLowerCase();
+  }
+  return moduleSearchBlob(type, def, psych);
+}
+
+function variablesRow(type) {
+  const handout = tccHandoutDef(type);
+  const vars = handout?.variables || TCC_VARIABLES[type];
+  if (!vars?.length) return '';
+  return `
+    <div class="mod-info-row">
+      <span class="mod-info-icon" aria-hidden="true">🎯</span>
+      <span><strong>Variables:</strong> ${vars.map(escapeHtml).join(' · ')}</span>
+    </div>`;
+}
 
 function previewHtml(type, def, psych) {
   const hasPsych = Boolean(psych);
@@ -55,7 +105,8 @@ function previewHtml(type, def, psych) {
       <div class="mod-info-row">
         <span class="mod-info-icon" aria-hidden="true">📋</span>
         <span>${escapeHtml(def.description || 'Módulo clínico.')}</span>
-      </div>`;
+      </div>
+      ${variablesRow(type)}`;
 
   return `
     <div class="mod-info">
@@ -69,27 +120,39 @@ function previewHtml(type, def, psych) {
     </div>`;
 }
 
+function applyModuleSearch(listEl, query) {
+  const q = query.trim().toLowerCase();
+  listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
+    const hay = !q || (btn.dataset.search || '').includes(q);
+    btn.hidden = !hay;
+  });
+  listEl.querySelectorAll('.mod-selector-cat').forEach((cat) => {
+    const visible = cat.querySelectorAll('.mod-selector-item:not([hidden])').length > 0;
+    cat.hidden = !visible;
+  });
+}
+
 /** Selector embebido en el centro del workspace (no modal). */
 export async function mountModuleSelector(host, ctx) {
   const card = host.closest('.center-module-card');
-  const actionsEl = card?.querySelector('.module-card-actions');
-  let createBtn = actionsEl?.querySelector('#btn-create-module');
-  if (!createBtn && actionsEl) {
-    createBtn = document.createElement('button');
-    createBtn.type = 'button';
-    createBtn.className = 'btn btn-secondary btn-sm';
-    createBtn.id = 'btn-create-module';
-    createBtn.title = 'Diseñar un cuestionario propio';
-    createBtn.textContent = 'Crear módulo';
-    actionsEl.insertBefore(createBtn, actionsEl.firstChild);
-  }
+  card?.classList.add('center-module-card--selector');
+  card?.querySelector('.module-card-actions')?.querySelector('#btn-create-module')?.remove();
 
   host.innerHTML = `
     <div class="card module-selector-inline">
-      <div class="module-selector-title-row">
-        <h2 class="module-title" style="margin:0">Seleccionar módulo</h2>
+      <div class="module-selector-head">
+        <div class="module-selector-head__text">
+          <div class="module-selector-title-row">
+            <h2 class="module-title" style="margin:0">Seleccionar módulo</h2>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-module" title="Diseñar un cuestionario propio">Crear módulo</button>
+          </div>
+          <p class="module-card-head__sub module-selector-sub">Elige un módulo para esta sesión. Al seleccionarlo, este espacio mostrará el módulo elegido.</p>
+        </div>
       </div>
-      <p class="module-card-head__sub module-selector-sub">Elige un módulo para esta sesión. Al seleccionarlo, este espacio mostrará el módulo elegido.</p>
+      <div class="mod-selector-search-wrap">
+        <input type="search" class="mod-selector-search input" id="mod-selector-search"
+          placeholder="Buscar por nombre, categoría, tags (ej. trauma, GAD, ABC)…" autocomplete="off" />
+      </div>
       <div class="mod-selector-grid mod-selector-grid--inline">
         <div id="mod-selector-list"></div>
         <div id="mod-selector-preview" class="mod-selector-preview">
@@ -98,7 +161,7 @@ export async function mountModuleSelector(host, ctx) {
       </div>
     </div>`;
 
-  (createBtn || host.querySelector('#btn-create-module'))?.addEventListener('click', () => {
+  host.querySelector('#btn-create-module')?.addEventListener('click', () => {
     openCreateModuleModal({
       onCreated: async ({ moduleType }) => {
         await loadSelectorList({
@@ -109,10 +172,16 @@ export async function mountModuleSelector(host, ctx) {
           refreshWorkspace: ctx.refreshWorkspace,
           listEl: host.querySelector('#mod-selector-list'),
           previewEl: host.querySelector('#mod-selector-preview'),
+          searchInput: host.querySelector('#mod-selector-search'),
           selectType: moduleType,
         });
       },
     });
+  });
+
+  const searchInput = host.querySelector('#mod-selector-search');
+  searchInput?.addEventListener('input', () => {
+    applyModuleSearch(host.querySelector('#mod-selector-list'), searchInput.value);
   });
 
   await loadSelectorList({
@@ -123,6 +192,7 @@ export async function mountModuleSelector(host, ctx) {
     refreshWorkspace: ctx.refreshWorkspace,
     listEl: host.querySelector('#mod-selector-list'),
     previewEl: host.querySelector('#mod-selector-preview'),
+    searchInput,
   });
 }
 
@@ -144,18 +214,20 @@ async function loadSelectorList(ctx) {
 
   const customMods = listCustomModules();
 
-  const { listEl, previewEl } = ctx;
+  const { listEl, previewEl, searchInput } = ctx;
   let selectedType = null;
 
   const customCategoryHtml = customMods.length
-    ? `<div class="mod-selector-cat">
+    ? `<div class="mod-selector-cat" data-cat="custom">
         <h4>Mis módulos</h4>
         ${customMods
           .map((cm) => {
             const type = `custom_${cm.id}`;
             const inUse = inTreatment.has(type) || inSession.has(type);
+            const def = resolveModuleDef(type) || { label: cm.title };
+            const search = searchTextForType(type, def, null, cm.title);
             return `
-          <button type="button" class="mod-selector-item" data-type="${type}">
+          <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}">
             <span>${escapeHtml(cm.title)}</span>
             ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
           </button>`;
@@ -167,20 +239,26 @@ async function loadSelectorList(ctx) {
   listEl.innerHTML =
     customCategoryHtml +
     CATEGORIES.map((cat) => {
-    const items = cat.types
-      .map((type) => {
-        const def = resolveModuleDef(type) || { label: type, description: '' };
-        const blocked = def.oncePerTreatment && oncePerTreatmentBlocked[type];
-        const inUse = inTreatment.has(type) || inSession.has(type);
-        return `
-          <button type="button" class="mod-selector-item" data-type="${type}" ${blocked ? 'disabled' : ''}>
+      const items = cat.types
+        .map((type) => {
+          const def = resolveModuleDef(type) || { label: type, description: '' };
+          const psych = psychometricsFor(type);
+          const blocked = def.oncePerTreatment && oncePerTreatmentBlocked[type];
+          const inUse = inTreatment.has(type) || inSession.has(type);
+          const search = searchTextForType(type, def, psych);
+          return `
+          <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}" ${blocked ? 'disabled' : ''}>
             <span>${escapeHtml(def.label)}</span>
             ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
           </button>`;
-      })
-      .join('');
-    return `<div class="mod-selector-cat"><h4>${escapeHtml(cat.label)}</h4>${items}</div>`;
-  }).join('');
+        })
+        .join('');
+      return `<div class="mod-selector-cat" data-cat="${cat.id}"><h4>${escapeHtml(cat.label)}</h4>${items}</div>`;
+    }).join('');
+
+  if (searchInput?.value) {
+    applyModuleSearch(listEl, searchInput.value);
+  }
 
   const finishNavigation = async (sessionId, moduleId) => {
     if (ctx.refreshWorkspace) {
@@ -226,11 +304,7 @@ async function loadSelectorList(ctx) {
         }
       }
 
-      const modId = await replaceSelectorWithModule(
-        ctx.selectorModuleId,
-        type,
-        ctx.treatmentId,
-      );
+      const modId = await replaceSelectorWithModule(ctx.selectorModuleId, type, ctx.treatmentId);
       await finishNavigation(ctx.sessionId, modId);
     } catch (e) {
       toast(e.message || 'No se pudo añadir el módulo');

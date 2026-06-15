@@ -6,7 +6,7 @@
 
 ## En una frase
 
-**Telar** es una app de escritorio (**Mac y Windows**) para armar programas de psicoterapia, registrar sesiones, aplicar instrumentos clínicos y —si usas banda Muse— hacer **neurofeedback en el mismo software**, con los datos **cifrados en tu computador**, sin subir fichas a la nube.
+**Telar** es una app de escritorio (**Mac y Windows**) para **TDAH adulto y trauma**: programas por sesiones, ASRS / PCL-5 / IES-R, gráficos longitudinales y neurofeedback Muse 2 opcional — **cifrado local**, sin nube clínica.
 
 ---
 
@@ -26,7 +26,8 @@ Psicólogos/as y profesionales de salud mental que:
 |------------|---------|
 | **Agenda** | Pacientes, estados, objetivos, convenios |
 | **Programa** | Sesiones + módulos (TCC, psicometría, estudio de caso) |
-| **Instrumentos** | DASS-21, EED, Rosenberg, QOLS, FER, escalas ánimo/ansiedad, diagnóstico, genograma, cuestionarios a medida |
+| **Instrumentos** | ASRS, GAD-7, PCL-5, SPRINT-E-CL, IES-R, DASS-21, EED, Rosenberg, QOLS, FER, escalas subjetivas |
+| **Plantillas** | «TDAH adulto» y «Trauma + regulación» (5 sesiones prearmadas) |
 | **Notas** | Panel tipo Kindle, anotaciones y subrayados por tratamiento |
 | **Neurofeedback** | Muse 2: conexión Bluetooth, feedback en vivo, grabación y análisis de sesión |
 | **Informes** | PDF del programa de tratamiento; export CSV de datos (Ajustes) |

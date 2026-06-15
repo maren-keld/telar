@@ -126,8 +126,9 @@ scripts/             dev, build, sidecar
 
 ## Backlog y reglas
 
+- **Workflow agentes (Cursor, Claude Code, etc.):** [WORKFLOW.md](WORKFLOW.md)
 - Prioridades: [SCRUM.md](SCRUM.md)
-- Tras cerrar tareas: actualizar SCRUM (Hecho, Changelog, deuda técnica)
+- Tras cerrar tareas: ver checklist en WORKFLOW.md
 - Automations Cursor: [CURSOR-AUTOMATIONS.md](CURSOR-AUTOMATIONS.md)
 
 ---

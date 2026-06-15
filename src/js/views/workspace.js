@@ -13,13 +13,72 @@ import {
   getSessionsWithModules,
   getTreatment,
 } from '../db.js';
-import { renderModule } from '../modules/index.js';
+import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
 import { teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
-import { escapeHtml, toast } from '../utils.js';
+import { exportCaseContext } from '../export-case-context.js';
+import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+import { t } from '../i18n.js';
+import { tccHandoutDef } from '../tcc-handout-defs.js';
+import { buildReadableText } from '../readable-text.js';
+
+/** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
+const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
+
+/** Posición de scroll del centro a restaurar tras re-render (p. ej. borrar módulo). */
+let pendingCenterScrollRestore = null;
 
 export function moduleLabel(type) {
   return moduleLabelFor(type);
+}
+
+async function printModulePdf(mod, patientName) {
+  const def = tccHandoutDef(mod.module_type);
+  if (!def) return;
+  const data = parseJsonSafe(mod.data, {});
+  const readable = buildReadableText(mod.module_type, data) || '';
+
+  // jsPDF está cargado globalmente desde index.html
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 18;
+  const maxW = pageW - margin * 2;
+  let y = 20;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(def.title, margin, y);
+  y += 7;
+
+  if (patientName) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(patientName, margin, y);
+    doc.setTextColor(0);
+    y += 6;
+  }
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  const introLines = doc.splitTextToSize(def.intro, maxW);
+  doc.text(introLines, margin, y);
+  y += introLines.length * 4.5 + 4;
+
+  if (readable) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(readable, maxW);
+    for (const line of lines) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.text(line, margin, y);
+      y += 5;
+    }
+  }
+
+  const safe = (patientName || 'paciente').replace(/[^\w\s-]/gi, '').trim() || 'paciente';
+  doc.save(`${def.title.replace(/\s+/g, '-').toLowerCase()}-${safe}.pdf`);
 }
 
 export async function renderWorkspace(container, { treatmentId, sessionId, moduleId, onNavigate }) {
@@ -47,21 +106,18 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
 
   container.innerHTML = `
     <div class="workspace-layout">
-      <aside class="workspace-sidebar">
+      <aside class="workspace-sidebar" id="leftsidebar">
         <header class="workspace-sidebar__header">
-          <button type="button" class="workspace-back" data-back title="Volver a agenda">←</button>
+          <button type="button" class="workspace-back" data-back title="${escapeHtml(t('workspace.backAgenda'))}">←</button>
           <h1 class="workspace-patient-name">${patientLabel}</h1>
         </header>
-        <div class="workspace-sidebar__scroll" id="sidebar-sessions">
+        <div class="workspace-sidebar__scroll">
           ${sessions.map((s) => sidebarSessionHtml(s, activeModule)).join('')}
-          <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="Añadir una nueva sesión al tratamiento">+ Agregar sesión</button>
+          <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>
         </div>
-        <footer class="workspace-sidebar__footer">
-          <button type="button" class="btn btn-ghost btn-block workspace-export-btn" id="btn-export-treatment" title="Exportar programa de tratamiento en PDF">Exportar programa</button>
-        </footer>
       </aside>
 
-      <main class="workspace-center">
+      <main class="workspace-center" id="espaciocentral">
         <div class="workspace-center__scroll" id="workspace-center-scroll">
           <div class="workspace-center__inner" id="center-modules">
             ${sessions.length ? '' : '<p class="empty-hint">Añade una sesión para comenzar.</p>'}
@@ -69,7 +125,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         </div>
       </main>
 
-      <aside class="workspace-tools" id="notes-panel-root"></aside>
+      <aside class="workspace-tools" id="rightsidebar"></aside>
     </div>`;
 
   const centerHost = container.querySelector('#center-modules');
@@ -89,6 +145,8 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         });
       },
       async onDelete(deletedId) {
+        const root = container.querySelector('#workspace-center-scroll');
+        pendingCenterScrollRestore = root?.scrollTop ?? 0;
         const wasActive = String(deletedId) === String(activeModule?.id);
         const remaining = sessions
           .flatMap((s) => s.modules)
@@ -126,13 +184,26 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   }
 
   if (activeModule) {
-    scrollToModule(container, activeModule.id, { force: true });
-    scrollSidebarToModule(container, activeModule.id);
+    const scrollToRestore = pendingCenterScrollRestore;
+    pendingCenterScrollRestore = null;
+    if (scrollToRestore != null) {
+      const root = container.querySelector('#workspace-center-scroll');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (root) root.scrollTop = scrollToRestore;
+          setActiveModuleHighlight(container, activeModule.id);
+        });
+      });
+    } else {
+      scrollToModule(container, activeModule.id, { force: true });
+      scrollSidebarToModule(container, activeModule.id);
+    }
   }
   bindModuleScrollSpy(container);
 
   container.querySelector('[data-back]')?.addEventListener('click', () => {
     teardownNeurofeedback();
+    teardownBilateralStimulation();
     onNavigate({ view: 'agenda' });
   });
 
@@ -179,14 +250,16 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
     });
   });
 
-  container.querySelector('#btn-export-treatment')?.addEventListener('click', async () => {
-    try {
+  const toolsOpts = {
+    onExportContext: async () => {
+      await exportCaseContext(treatmentId);
+      toast('Contexto exportado');
+    },
+    onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
       toast('PDF exportado');
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar el PDF');
-    }
-  });
+    },
+  };
 
   bindWorkspaceModuleDnD(container, {
     treatmentId,
@@ -194,7 +267,9 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
     onNavigate,
   });
 
-  const notesApi = await mountNotesPanel(container.querySelector('#notes-panel-root'), treatmentId);
+  bindSessionCollapse(container, activeModule);
+
+  const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, toolsOpts);
   unmountHighlight = mountTextHighlight(centerHost, {
     treatmentId,
     onNoteCreated: async () => {
@@ -253,7 +328,7 @@ function scrollToModule(container, moduleId, { force = false, smooth = false } =
 }
 
 function scrollSidebarToModule(container, moduleId) {
-  const sidebar = container.querySelector('#sidebar-sessions');
+  const sidebar = container.querySelector('#leftsidebar .workspace-sidebar__scroll');
   const link = container.querySelector(`.module-link[data-module-id="${moduleId}"]`);
   if (!sidebar || !link) return;
 
@@ -308,6 +383,7 @@ function bindModuleScrollSpy(container) {
 }
 
 async function renderAllCenterModules(host, sessions, treatment, activeModule, ctx) {
+  teardownBilateralStimulation();
   host.innerHTML = '';
 
   for (let si = 0; si < sessions.length; si++) {
@@ -330,6 +406,26 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       if (deletable) {
         const actions = document.createElement('div');
         actions.className = 'module-card-actions';
+
+        // Botón imprimir PDF — solo módulos TCC/psicoeducación
+        if (tccHandoutDef(mod.module_type)) {
+          const printBtn = document.createElement('button');
+          printBtn.type = 'button';
+          printBtn.className = 'module-print-btn';
+          printBtn.title = 'Descargar PDF del módulo';
+          printBtn.setAttribute('aria-label', 'Imprimir módulo');
+          printBtn.textContent = '⬇';
+          printBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+              await printModulePdf(mod, treatment.patient_name);
+            } catch (err) {
+              toast(err.message || 'No se pudo generar el PDF');
+            }
+          });
+          actions.appendChild(printBtn);
+        }
+
         const del = document.createElement('button');
         del.type = 'button';
         del.className = 'module-delete-btn';
@@ -364,6 +460,8 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       host.appendChild(wrap);
       await renderModule(body, mod, {
         treatment,
+        sessionNumber: session.number,
+        patientName: treatment.patient_name,
         onNavigate: ctx.onNavigate,
         refreshWorkspace: ctx.refreshWorkspace,
       });
@@ -402,6 +500,12 @@ async function openSessionSelector(treatmentId, sessionId, onNavigate) {
 }
 
 function sidebarSessionHtml(session, activeModule) {
+  const modCount = session.modules.length;
+  const activeInSession =
+    activeModule && session.modules.some((m) => String(m.id) === String(activeModule.id));
+  const startCollapsed =
+    modCount > SESSION_COLLAPSE_MODULE_THRESHOLD && !activeInSession;
+
   const mods = session.modules
     .map((m) => {
       const active = activeModule && String(m.id) === String(activeModule.id);
@@ -414,9 +518,34 @@ function sidebarSessionHtml(session, activeModule) {
     .join('');
 
   return `
-    <section class="session-block" data-session-id="${session.id}">
-      <h2 class="session-block__title">Sesión ${session.number}</h2>
-      <nav class="session-block__modules">${mods || '<span class="text-muted">Sin módulos</span>'}</nav>
-      <button type="button" class="btn btn-ghost btn-add-module" data-session-id="${session.id}" title="Añadir módulo a esta sesión">+ Agregar módulo</button>
+    <section class="session-block${startCollapsed ? ' session-block--collapsed' : ''}" data-session-id="${session.id}">
+      <button type="button" class="session-block__title" data-session-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
+        <span class="session-block__chevron" aria-hidden="true">▾</span>
+        ${escapeHtml(t('workspace.session'))} ${session.number}
+      </button>
+      <div class="session-block__body">
+        <nav class="session-block__modules">${mods || `<span class="text-muted">${escapeHtml(t('workspace.noModules'))}</span>`}</nav>
+        <button type="button" class="btn btn-ghost btn-block btn-add-module" data-session-id="${session.id}" title="${escapeHtml(t('workspace.addModule'))}">${escapeHtml(t('workspace.addModule'))}</button>
+      </div>
     </section>`;
+}
+
+function bindSessionCollapse(container, activeModule) {
+  container.querySelectorAll('[data-session-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const block = btn.closest('.session-block');
+      if (!block) return;
+      const collapsed = block.classList.toggle('session-block--collapsed');
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    });
+  });
+
+  if (activeModule) {
+    const link = container.querySelector(`.module-link[data-module-id="${activeModule.id}"]`);
+    const block = link?.closest('.session-block');
+    if (block?.classList.contains('session-block--collapsed')) {
+      block.classList.remove('session-block--collapsed');
+      block.querySelector('[data-session-toggle]')?.setAttribute('aria-expanded', 'true');
+    }
+  }
 }

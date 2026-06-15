@@ -376,6 +376,273 @@ section {
   background: linear-gradient(135deg, #f8fbff 0%, var(--accent-soft) 100%);
 }
 
+/* Neurofeedback explainer */
+.nf-section {
+  background: linear-gradient(180deg, var(--bg) 0%, #eef4fc 100%);
+}
+
+.nf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.nf-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  position: relative;
+}
+
+.nf-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+
+.nf-card h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.nf-card p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.nf-note {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.nf-card-title {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.page-hero {
+  padding: 3rem 0 2rem;
+}
+
+.page-hero h1 {
+  font-size: clamp(1.85rem, 4vw, 2.5rem);
+  margin: 0 0 1rem;
+  letter-spacing: -0.02em;
+}
+
+.page-hero-lead {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 40rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.nf-muse-section {
+  padding-top: 0;
+}
+
+.nf-muse-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.nf-muse-main h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.nf-muse-main p {
+  margin: 0 0 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.nf-muse-specs {
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.nf-muse-specs div {
+  padding: 0.65rem 0.85rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.nf-muse-specs dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.nf-muse-specs dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.nf-course-section {
+  background: linear-gradient(180deg, #eef4fc 0%, var(--bg) 100%);
+}
+
+.nf-course-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.nf-course-content h3 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+
+.nf-course-list {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.nf-course-note {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.nf-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.nf-gallery-placeholder {
+  grid-column: 1 / -1;
+  min-height: 200px;
+  background: var(--bg-card);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-secondary);
+}
+
+.nf-gallery-placeholder span {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.nf-gallery-placeholder p {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nf-gallery-placeholder small {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.nf-gallery-placeholder--dim {
+  grid-column: auto;
+  min-height: 120px;
+}
+
+.nf-gallery-placeholder--dim span {
+  font-size: 1.25rem;
+}
+
+.nf-faq-section {
+  padding-top: 0;
+}
+
+.nf-faq {
+  margin: 0;
+}
+
+.nf-faq-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.nf-faq-item dt {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.nf-faq-item dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.nav-links a.nav-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.feature-link {
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.feature-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.feature-link a:hover {
+  text-decoration: underline;
+}
+
 /* Features */
 .features-grid {
   display: grid;
@@ -652,6 +919,9 @@ section {
 @media (max-width: 900px) {
   .hero-grid,
   .problem-grid,
+  .nf-grid,
+  .nf-muse-card,
+  .nf-course-grid,
   .features-grid,
   .pricing-grid,
   .req-grid {

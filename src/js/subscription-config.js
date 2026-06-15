@@ -4,6 +4,6 @@
  * 2. Pégala abajo SIN barra final
  * 3. Ejecuta ./scripts/finish-iteration.sh
  */
-// Déjalo vacío mientras pruebas en tu Mac (python app.py en server/).
-// Cuando despliegues Render: 'https://telar-api.onrender.com'
+// Tras deploy en Render: 'https://telar-api.onrender.com' (./scripts/deploy-subscription-api.sh)
+// Vacío = la .app usa API local en 127.0.0.1:5001 (python app.py en server/)
 export const SUBSCRIPTION_API_PRODUCTION = '';

@@ -7,6 +7,7 @@ export async function renderDiagnostico(host, moduleRow) {
   const data = parseJsonSafe(moduleRow.data, {});
   const view = data.view || 'matriz';
   const query = data.query || '';
+  const structured = data.structured || {};
   const problems = Array.isArray(data.problems) ? data.problems : defaultProblems();
 
   host.innerHTML = `
@@ -18,18 +19,42 @@ export async function renderDiagnostico(host, moduleRow) {
         </div>
       </div>
 
+      <form id="dx-form">
+        <input type="hidden" name="view" value="${escapeHtml(view)}" />
+        <section class="dx-structured">
+          <h3 class="dx-structured__title">Conceptualización TDAH / trauma</h3>
+          <div class="dx-structured__grid">
+            <label class="dx-structured__field">
+              <span>Comorbilidades</span>
+              <textarea name="structured_comorbidities" rows="2" placeholder="p. ej. ansiedad, TEPT, consumo">${escapeHtml(structured.comorbidities || '')}</textarea>
+            </label>
+            <label class="dx-structured__field">
+              <span>Eventos traumáticos / antecedentes</span>
+              <textarea name="structured_trauma_events" rows="2" placeholder="Eventos relevantes, edad, contexto">${escapeHtml(structured.trauma_events || '')}</textarea>
+            </label>
+            <label class="dx-structured__field">
+              <span>Medicación psicotrópica</span>
+              <textarea name="structured_medication" rows="2" placeholder="Fármaco, dosis, adherencia">${escapeHtml(structured.medication || '')}</textarea>
+            </label>
+            <label class="dx-structured__field dx-structured__field--wide">
+              <span>Notas clínicas estructuradas</span>
+              <textarea name="structured_dx_notes" rows="3" placeholder="Hipótesis, factores mantenedores, recursos">${escapeHtml(structured.dx_notes || '')}</textarea>
+            </label>
+          </div>
+        </section>
+      </form>
+
       <div class="dx-tabs" data-no-autobind>
         <button type="button" class="dx-tab ${view === 'matriz' ? 'active' : ''}" data-view="matriz">Matriz de Problemas</button>
         <button type="button" class="dx-tab ${view === 'personalizado' ? 'active' : ''}" data-view="personalizado">Personalizado</button>
       </div>
 
-      <div class="dx-search">
-        <span>🔎</span>
-        <input name="query" value="${escapeHtml(query)}" placeholder="Búsqueda" form="dx-form" />
-      </div>
-
-      <form id="dx-form">
-        <input type="hidden" name="view" value="${escapeHtml(view)}" />
+      <form id="dx-form-matrix">
+        <input type="hidden" name="view" value="${escapeHtml(view)}" form="dx-form-matrix" />
+        <div class="dx-search">
+          <span>🔎</span>
+          <input name="query" value="${escapeHtml(query)}" placeholder="Búsqueda" form="dx-form-matrix" />
+        </div>
         <div class="dx-matrix">
           <div class="dx-matrix__head">
             <span class="dx-matrix__head-assign" title="Asignar al tratamiento"></span>
@@ -46,15 +71,32 @@ export async function renderDiagnostico(host, moduleRow) {
     </div>
   `;
 
-  const form = host.querySelector('#dx-form');
-  const persist = async () => {
-    const fd = collectFormData(form);
-    const next = { view: fd.view || 'matriz', query: fd.query || '', problems: parseProblemsFromForm(fd) };
-    await syncModuleReadableText(moduleRow, next, 'completado');
-  };
-  bindAutoSave(form, persist, workspaceAutoSaveStatus());
+  const structForm = host.querySelector('#dx-form');
+  const matrixForm = host.querySelector('#dx-form-matrix');
 
-  host.querySelector('.dx-search input')?.addEventListener('input', (e) => {
+  const buildPayload = () => {
+    const sfd = collectFormData(structForm);
+    const mfd = collectFormData(matrixForm);
+    return {
+      view: mfd.view || sfd.view || 'matriz',
+      query: mfd.query || '',
+      structured: {
+        comorbidities: sfd.structured_comorbidities || '',
+        trauma_events: sfd.structured_trauma_events || '',
+        medication: sfd.structured_medication || '',
+        dx_notes: sfd.structured_dx_notes || '',
+      },
+      problems: parseProblemsFromForm(mfd),
+    };
+  };
+
+  const persist = async () => {
+    await syncModuleReadableText(moduleRow, buildPayload(), 'completado');
+  };
+  bindAutoSave(structForm, persist, workspaceAutoSaveStatus());
+  bindAutoSave(matrixForm, persist, workspaceAutoSaveStatus());
+
+  matrixForm?.querySelector('.dx-search input')?.addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
     host.querySelectorAll('.dx-matrix__row').forEach((row) => {
       const text = row.textContent.toLowerCase();
@@ -65,7 +107,7 @@ export async function renderDiagnostico(host, moduleRow) {
   host.querySelectorAll('.dx-tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       host.querySelectorAll('.dx-tab').forEach((b) => b.classList.toggle('active', b === btn));
-      form.querySelector('[name="view"]').value = btn.dataset.view;
+      matrixForm?.querySelector('[name="view"]')?.setAttribute('value', btn.dataset.view);
       persist();
     });
   });
@@ -98,6 +140,18 @@ function bindAssignChecks(host) {
 
 function defaultProblems() {
   return [
+    {
+      name: 'TDAH en adultos',
+      assigned: false,
+      indicators: ['ASRS Parte A ≥4/6', 'Dificultades sostenidas de atención e impulsividad'],
+      objectives: ['Mejorar autorregulación atencional', 'Implementar estrategias compensatorias'],
+    },
+    {
+      name: 'Estrés postraumático',
+      assigned: false,
+      indicators: ['PCL-5 ≥31 o IES-R ≥33', 'Intrusiones, evitación o hiperactivación'],
+      objectives: ['Reducir síntomas de impacto traumático', 'Fortalecer regulación emocional'],
+    },
     {
       name: 'Estrés alto',
       assigned: false,

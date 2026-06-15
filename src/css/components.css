@@ -293,6 +293,57 @@ input[type='date']::-webkit-calendar-picker-indicator {
   text-align: center;
 }
 
+.initial-screen {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+.initial-screen__inner {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.initial-screen__brand {
+  margin-bottom: 20px;
+}
+
+.initial-screen__logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.initial-screen__logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.initial-screen__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.initial-screen__sub {
+  margin: 0 0 20px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
 .unlock-icon-circle {
   width: 56px;
   height: 56px;
@@ -1293,39 +1344,27 @@ html[data-presentation='on'] .genogram-node__name::after {
 }
 
 .subscribe-pro-modal__brand {
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-
-.subscribe-pro-logo {
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
-  height: 72px;
-}
-
-.subscribe-pro-logo__col {
-  width: 18px;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.subscribe-pro-logo__mid {
+  background: linear-gradient(160deg, #1a2b4a 0%, #0f1729 100%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #fff;
 }
 
-.subscribe-pro-logo__mid span {
-  display: block;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  background: #fff;
+.subscribe-pro-modal__brand-name {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.subscribe-pro-modal__brand-tag {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .subscribe-pro-modal__content {
@@ -1346,10 +1385,44 @@ html[data-presentation='on'] .genogram-node__name::after {
 }
 
 .subscribe-pro-modal__intro {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.subscribe-pro-modal__api-status {
+  margin: 0 0 14px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.subscribe-pro-modal__api-status--ok {
+  color: var(--accent);
+}
+
+.subscribe-pro-modal__api-status--err {
+  color: #c62828;
+}
+
+[data-theme='dark'] .subscribe-pro-modal__api-status--err {
+  color: #ef9a9a;
+}
+
+.subscribe-pro-modal__warn {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background: rgba(47, 111, 237, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(47, 111, 237, 0.2);
+}
+
+.subscribe-pro-modal__warn code {
+  font-size: 0.85em;
 }
 
 .subscribe-pro-features {
@@ -1408,4 +1481,166 @@ html[data-presentation='on'] .genogram-node__name::after {
   .subscribe-pro-modal__brand {
     min-height: 100px;
   }
+}
+
+/* Workspace — menú Herramientas */
+.workspace-tools-menu {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: min(440px, 94vw);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.workspace-tools-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-tools-menu__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.workspace-tools-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+}
+
+.workspace-tools-menu__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.workspace-tools-menu__item:hover {
+  background: rgba(47, 111, 237, 0.08);
+}
+
+.workspace-tools-menu__icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.workspace-tools-menu__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-tools-menu__text strong {
+  font-size: 0.92rem;
+}
+
+.workspace-tools-menu__text small {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Documentos de referencia */
+.ref-docs-modal {
+  width: min(520px, 94vw);
+}
+
+.ref-docs-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ref-docs-modal__hint {
+  margin: 0 0 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.ref-docs-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  text-align: center;
+  margin-bottom: 16px;
+  background: var(--bg-sidebar);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ref-docs-dropzone--over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ref-docs-dropzone p {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.ref-docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.ref-docs-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ref-docs-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+}
+
+.ref-docs-item__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ref-docs-item__meta strong {
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ref-docs-item__meta small {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ref-docs-item__remove {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px 8px;
 }

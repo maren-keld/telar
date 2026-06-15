@@ -8,6 +8,7 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
@@ -24,10 +25,29 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001").rstrip("/")
 FRONTEND_RETURN_URL = os.environ.get("FRONTEND_RETURN_URL", f"{BACKEND_URL}/gracias")
 MP_PUBLIC_BACK_URL = os.environ.get("MP_PUBLIC_BACK_URL", "").strip()
 PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "15000"))
+PLAN_REASON = os.environ.get("MP_PLAN_REASON", "Plan Profesional — Telar")
+MP_PREAPPROVAL_PLAN_ID = os.environ.get("MP_PREAPPROVAL_PLAN_ID", "").strip()
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
+DEV_PRO_EMAIL = os.environ.get("DEV_PRO_EMAIL", "").strip().lower()
 DB_PATH = Path(__file__).parent / "subscriptions.db"
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
+_plan_cache: dict | None = None
+
+
+def dev_bypass_enabled() -> bool:
+    flag = os.environ.get("SUBSCRIPTION_DEV_BYPASS", "").strip().lower() in ("1", "true", "yes")
+    if not flag:
+        return False
+    return "localhost" in BACKEND_URL or "127.0.0.1" in BACKEND_URL
+
+
+def dev_bypass_allows(email: str) -> bool:
+    if not dev_bypass_enabled():
+        return False
+    if not DEV_PRO_EMAIL:
+        return True
+    return normalize_payer_email(email).lower() == normalize_payer_email(DEV_PRO_EMAIL).lower()
 
 
 def db():
@@ -48,6 +68,17 @@ def init_db():
             )"""
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sub_email ON subscriptions(email)")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS usage_opens (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                total INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )"""
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO usage_opens (id, total, updated_at) VALUES (1, 0, ?)",
+            (now_iso(),),
+        )
 
 
 def mp_sdk():
@@ -60,11 +91,140 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def normalize_payer_email(raw: str) -> str:
+    """Acepta email real o usuario test MP (TESTUSER… → TESTUSER…@testuser.com)."""
+    email = (raw or "").strip()
+    if not email:
+        return ""
+    if "@" not in email and email.upper().startswith("TESTUSER"):
+        return f"{email}@testuser.com"
+    return email.lower()
+
+
+def is_valid_payer_email(raw: str) -> bool:
+    email = (raw or "").strip()
+    if not email:
+        return False
+    if "@" in email:
+        return True
+    return email.upper().startswith("TESTUSER")
+
+
+def fetch_mp_me() -> dict:
+    if not MP_TOKEN:
+        return {}
+    try:
+        res = mp_sdk().user().get()
+        if res.get("status") == 200:
+            return res.get("response") or {}
+    except Exception:
+        pass
+    return {}
+
+
+def is_test_mp_account(email: str) -> bool:
+    e = (email or "").strip().lower()
+    return "@testuser.com" in e or e.startswith("test_user_")
+
+
+def subscription_sandbox_status() -> dict:
+    """Suscripciones TEST exigen vendedor test + comprador test (misma «burbuja»)."""
+    me = fetch_mp_me()
+    email = me.get("email") or ""
+    test_mode = MP_TOKEN.startswith("TEST-")
+    seller_is_test = is_test_mp_account(email)
+    if not test_mode:
+        return {
+            "mp_sandbox_ready": True,
+            "mp_seller_email": email,
+            "mp_collector_id": me.get("id"),
+            "mp_sandbox_hint": None,
+        }
+    ready = seller_is_test
+    hint = None
+    if not ready:
+        hint = (
+            "Suscripciones: el token TEST de la app usa tu cuenta real como vendedor (ID "
+            f"{me.get('id')}). Con comprador test, MP puede rechazar el pago. "
+            "Opciones: (1) credenciales de producción + pago real $15.000, o "
+            "(2) comprador test + ventana privada e intentar igual."
+        )
+    return {
+        "mp_sandbox_ready": ready,
+        "mp_seller_email": email,
+        "mp_collector_id": me.get("id"),
+        "mp_sandbox_hint": hint,
+    }
+
+
+def plan_init_point(plan_body: dict) -> str | None:
+    if MP_TOKEN.startswith("TEST-"):
+        return plan_body.get("sandbox_init_point") or plan_body.get("init_point")
+    return plan_body.get("init_point") or plan_body.get("sandbox_init_point")
+
+
+def resolve_mp_plan(sdk, back_url: str) -> tuple[dict | None, str | None]:
+    """Obtiene o crea el plan MP. Sin plan, /preapproval devuelve 500 en sandbox CL."""
+    global _plan_cache  # noqa: PLW0603
+    me = fetch_mp_me()
+    collector_id = me.get("id")
+
+    if _plan_cache and collector_id and _plan_cache.get("collector_id") == collector_id:
+        return _plan_cache, None
+    _plan_cache = None
+
+    if MP_PREAPPROVAL_PLAN_ID:
+        res = sdk.plan().get(MP_PREAPPROVAL_PLAN_ID)
+        if res.get("status") == 200:
+            plan = res["response"]
+            if not collector_id or plan.get("collector_id") == collector_id:
+                _plan_cache = plan
+                return _plan_cache, None
+        return None, f"No se encontró el plan {MP_PREAPPROVAL_PLAN_ID} para este vendedor"
+
+    res = sdk.plan().search({"limit": 30})
+    for item in (res.get("response") or {}).get("results") or []:
+        if item.get("status") != "active":
+            continue
+        if collector_id and item.get("collector_id") != collector_id:
+            continue
+        if item.get("reason") != PLAN_REASON:
+            continue
+        recurring = item.get("auto_recurring") or {}
+        if int(recurring.get("transaction_amount") or 0) != PLAN_AMOUNT:
+            continue
+        _plan_cache = item
+        return _plan_cache, None
+
+    create_res = sdk.plan().create({
+        "reason": PLAN_REASON,
+        "auto_recurring": {
+            "frequency": 1,
+            "frequency_type": "months",
+            "transaction_amount": PLAN_AMOUNT,
+            "currency_id": "CLP",
+            "billing_day": 1,
+            "billing_day_proportional": True,
+        },
+        "back_url": back_url,
+    })
+    if create_res.get("status") not in (200, 201):
+        body = create_res.get("response") or {}
+        msg = body.get("message") or body.get("error") or "Error al crear plan en Mercado Pago"
+        return None, msg
+
+    _plan_cache = create_res["response"]
+    return _plan_cache, None
+
+
 def checkout_back_url() -> str | None:
     """Mercado Pago exige https en back_url; localhost no sirve al crear la suscripción."""
     url = FRONTEND_RETURN_URL
     if url.startswith("http://") and ("localhost" in url or "127.0.0.1" in url):
-        return MP_PUBLIC_BACK_URL.rstrip("/") if MP_PUBLIC_BACK_URL else None
+        if MP_PUBLIC_BACK_URL:
+            return MP_PUBLIC_BACK_URL.rstrip("/")
+        # Render no desplegado: MP acepta su propia URL como retorno en pruebas
+        return "https://www.mercadopago.cl"
     return url
 
 
@@ -108,12 +268,35 @@ def find_mp_preapproval_by_email(email: str):
 
 @APP.get("/api/health")
 def health():
+    sandbox = subscription_sandbox_status()
+    usage_total = 0
+    with db() as conn:
+        row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
+        if row:
+            usage_total = row["total"]
     return jsonify({
         "ok": True,
         "mp_configured": bool(MP_TOKEN),
         "mp_test_mode": MP_TOKEN.startswith("TEST-"),
         "return_url": FRONTEND_RETURN_URL,
+        "dev_bypass": dev_bypass_enabled(),
+        "usage_opens_total": usage_total,
+        **sandbox,
     })
+
+
+@APP.post("/api/usage/ping")
+def usage_ping():
+    """Contador anónimo de aperturas. No registra IP ni identificadores de usuario."""
+    data = request.get_json(silent=True) or {}
+    app_version = (data.get("app_version") or "unknown").strip()[:32]
+    with db() as conn:
+        conn.execute(
+            "UPDATE usage_opens SET total = total + 1, updated_at = ? WHERE id = 1",
+            (now_iso(),),
+        )
+        row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
+    return jsonify({"ok": True, "total": row["total"] if row else None, "app_version": app_version})
 
 
 @APP.get("/gracias")
@@ -145,60 +328,77 @@ def gracias():
 @APP.post("/api/subscriptions/checkout")
 def checkout():
     data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    if not email or "@" not in email:
+    raw_email = (data.get("email") or "").strip()
+    if not is_valid_payer_email(raw_email):
         return jsonify({"error": "Email inválido"}), 400
+    email = normalize_payer_email(raw_email)
     if not MP_TOKEN:
         return jsonify({"error": "Mercado Pago no configurado en el servidor"}), 503
+
+    sandbox = subscription_sandbox_status()
+    # Advertencia en health; no bloqueamos checkout (MP no entrega token API del vendedor test en el panel).
 
     back_url = checkout_back_url()
     if not back_url:
         return jsonify({
-            "error": "Falta MP_PUBLIC_BACK_URL en .env (URL https pública + /gracias, ej. Render)",
+            "error": "Falta MP_PUBLIC_BACK_URL en .env (URL https pública, ej. https://www.mercadopago.cl)",
         }), 503
 
     sdk = mp_sdk()
-    payload = {
-        "reason": "Plan Profesional — Telar",
-        "external_reference": f"pro-{email}",
-        "payer_email": email,
-        "auto_recurring": {
-            "frequency": 1,
-            "frequency_type": "months",
-            "transaction_amount": PLAN_AMOUNT,
-            "currency_id": "CLP",
-        },
-        "back_url": back_url,
-        "status": "pending",
-    }
-    result = sdk.preapproval().create(payload)
-    body = result.get("response") or {}
-    if result.get("status") not in (200, 201):
-        return jsonify({"error": body.get("message", "Error Mercado Pago"), "detail": body}), 502
+    plan_body, plan_err = resolve_mp_plan(sdk, back_url)
+    if not plan_body:
+        return jsonify({"error": plan_err or "No se pudo resolver el plan de suscripción"}), 502
 
-    preapproval_id = body.get("id")
-    # Con credenciales TEST- usar sandbox; con APP_USR- producción.
-    if MP_TOKEN.startswith("TEST-"):
-        init_point = body.get("sandbox_init_point") or body.get("init_point")
-    else:
-        init_point = body.get("init_point") or body.get("sandbox_init_point")
+    init_point = plan_init_point(plan_body)
     if not init_point:
-        return jsonify({"error": "Mercado Pago no devolvió URL de pago", "detail": body}), 502
+        return jsonify({"error": "Mercado Pago no devolvió URL de pago", "detail": plan_body}), 502
 
-    upsert_subscription(email, preapproval_id, "pending")
+    # En TEST no prefijamos payer_email: el comprador inicia sesión en el checkout de MP.
+    checkout_url = init_point
+    if not MP_TOKEN.startswith("TEST-"):
+        sep = "&" if "?" in init_point else "?"
+        checkout_url = f"{init_point}{sep}payer_email={quote(email)}"
+
+    upsert_subscription(email, None, "pending")
 
     return jsonify({
-        "checkout_url": init_point,
-        "preapproval_id": preapproval_id,
+        "checkout_url": checkout_url,
+        "preapproval_plan_id": plan_body.get("id"),
         "amount_clp": PLAN_AMOUNT,
     })
 
 
+@APP.post("/api/subscriptions/dev-activate")
+def dev_activate():
+    """Solo local: activa Pro sin Mercado Pago (SUBSCRIPTION_DEV_BYPASS=1 en .env)."""
+    if not dev_bypass_enabled():
+        return jsonify({"error": "No disponible"}), 404
+    data = request.get_json(silent=True) or {}
+    raw_email = (data.get("email") or "").strip()
+    if not is_valid_payer_email(raw_email):
+        return jsonify({"error": "Email inválido"}), 400
+    email = normalize_payer_email(raw_email)
+    if not dev_bypass_allows(email):
+        return jsonify({"error": "Email no autorizado para bypass de desarrollo"}), 403
+    upsert_subscription(email, "dev-bypass", "authorized")
+    return jsonify({"active": True, "status": "authorized", "dev_bypass": True})
+
+
 @APP.get("/api/subscriptions/status")
 def status():
-    email = (request.args.get("email") or "").strip().lower()
-    if not email:
+    raw_email = (request.args.get("email") or "").strip()
+    if not raw_email:
         return jsonify({"error": "Falta email"}), 400
+    email = normalize_payer_email(raw_email)
+
+    if dev_bypass_allows(email):
+        upsert_subscription(email, "dev-bypass", "authorized")
+        return jsonify({
+            "active": True,
+            "status": "authorized",
+            "updated_at": now_iso(),
+            "dev_bypass": True,
+        })
 
     mp_status = "none"
     preapproval_id = None
@@ -224,7 +424,7 @@ def status():
                 upsert_subscription(email, preapproval_id, mp_status)
         except Exception:
             pass
-    elif MP_TOKEN and mp_status == "none":
+    elif MP_TOKEN and mp_status in ("none", "pending"):
         remote = find_mp_preapproval_by_email(email)
         if remote:
             preapproval_id = remote.get("id")

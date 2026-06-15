@@ -11,6 +11,7 @@ if [[ ! -d "$SRC" ]]; then
 fi
 
 rm -rf "$DEST"
+rm -rf "/Applications/Psicoterapia Lab.app" "/Applications/Psicoterapia LAB.app" 2>/dev/null || true
 cp -R "$SRC" "$DEST"
 echo "✓ Instalado: $DEST"
-echo "  (Solo deberías ver un icono de Telar en Aplicaciones)"
+echo "  (Se eliminó la copia antigua «Psicoterapia Lab» si existía en Aplicaciones)"

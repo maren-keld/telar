@@ -41,7 +41,7 @@ Eres el revisor de backlog de Telar. Solo comenta en el PR; no edites archivos n
 Contexto del proyecto:
 - App de escritorio Tauri 2, 100% local, datos clínicos nunca en el repo.
 - Backlog oficial: docs/SCRUM.md (secciones En curso, Backlog, Hecho, Deuda técnica, Changelog).
-- Regla del equipo (CLAUDE.md): al terminar tareas de producto hay que actualizar SCRUM.
+- Regla del equipo ([WORKFLOW.md](WORKFLOW.md)): al terminar tareas de producto hay que actualizar SCRUM.
 
 Tarea:
 1. Lee el diff del PR.

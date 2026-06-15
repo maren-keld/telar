@@ -52,6 +52,30 @@ pub fn subscription_checkout(email: String, api_base: String) -> Result<Value, S
 }
 
 #[tauri::command]
+pub fn subscription_health(api_base: String) -> Result<Value, String> {
+    let base = api_base.trim().trim_end_matches('/');
+    if base.is_empty() {
+        return Err("Falta apiBase".into());
+    }
+    let url = format!("{base}/api/health");
+    let result = ureq::get(&url).call();
+    handle_response(result, base, "API de suscripciones no disponible")
+}
+
+#[tauri::command]
+pub fn subscription_dev_activate(email: String, api_base: String) -> Result<Value, String> {
+    let base = api_base.trim().trim_end_matches('/');
+    if base.is_empty() {
+        return Err("Falta apiBase".into());
+    }
+    let url = format!("{base}/api/subscriptions/dev-activate");
+    let result = ureq::post(&url)
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({ "email": email }));
+    handle_response(result, base, "No se pudo activar Pro en desarrollo")
+}
+
+#[tauri::command]
 pub fn subscription_status(email: String, api_base: String) -> Result<Value, String> {
     let base = api_base.trim().trim_end_matches('/');
     if base.is_empty() {

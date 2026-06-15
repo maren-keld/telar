@@ -18,6 +18,8 @@ done
 echo ""
 echo "Copias de «Telar.app» encontradas:"
 found=0
+LEGACY_NAMES=("Psicoterapia Lab.app" "Psicoterapia LAB.app")
+
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   found=$((found + 1))
@@ -30,8 +32,22 @@ done < <(
   {
     find "$ROOT" -name "Telar.app" -type d 2>/dev/null
     [[ -d "/Applications/Telar.app" ]] && echo "/Applications/Telar.app"
+    for legacy in "${LEGACY_NAMES[@]}"; do
+      find "$ROOT" -name "$legacy" -type d 2>/dev/null
+      [[ -d "/Applications/$legacy" ]] && echo "/Applications/$legacy"
+    done
   } | sort -u
 )
+
+for legacy in "${LEGACY_NAMES[@]}"; do
+  for extra in "$ROOT/dist/$legacy" "$ROOT/src-tauri/target/release/bundle/macos/$legacy"; do
+    if [[ -d "$extra" ]]; then
+      rm -rf "$extra"
+      echo "→ Eliminada copia con nombre antiguo: $extra"
+      removed=$((removed + 1))
+    fi
+  done
+done
 
 if [[ $found -eq 0 ]]; then
   echo "  (ninguna — ejecuta ./scripts/build-app.sh)"

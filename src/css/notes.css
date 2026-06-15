@@ -16,7 +16,7 @@
   min-width: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
@@ -170,6 +170,10 @@
   display: none !important;
 }
 
+.space-tools:not([data-active-tab='notas']) .ai-dock {
+  display: none !important;
+}
+
 .btn-fab {
   width: 100%;
   box-shadow: 0 4px 16px rgba(15, 35, 71, 0.15);
@@ -248,12 +252,31 @@
   min-height: 72px;
   border: none;
   background: transparent;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   font-size: 0.875rem;
   font-family: inherit;
   color: var(--text-primary);
   padding: 0;
   line-height: 1.5;
+}
+
+.kindle-note--ia {
+  border-left: 3px solid var(--accent);
+}
+
+.kindle-note__source--question {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.kindle-note__ai-answer {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .kindle-note__comment:focus {
@@ -463,4 +486,125 @@
   flex-shrink: 0;
   padding-left: 12px;
   padding-right: 12px;
+}
+
+.ai-dock__response {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.ai-dock__hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Perfil — fortalezas / defensas / debilidades */
+.perfil-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perfil-panel__hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.perfil-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.perfil-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  list-style: none;
+}
+
+.perfil-section__head::-webkit-details-marker {
+  display: none;
+}
+
+.perfil-section__head::before {
+  content: '▾';
+  margin-right: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.perfil-section:not([open]) .perfil-section__head::before {
+  content: '▸';
+}
+
+.perfil-section__count {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.perfil-section .space-checklist {
+  padding: 0 10px 10px;
+}
+
+/* Herramientas — pestaña derecha */
+.workspace-tools-tab__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-tools-tab__item {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.workspace-tools-tab__item:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.workspace-tools-tab__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-tools-tab__text strong {
+  font-size: 0.85rem;
+}
+
+.workspace-tools-tab__text small {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
 }

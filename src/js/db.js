@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from './config.js';
+import { getTreatmentTemplate } from './treatment-templates.js';
 import { isCustomModuleType, resolveModuleDef } from './custom-modules.js';
 import { parseJsonSafe } from './utils.js';
 import { getInvoke, isTauriApp, loadSqlDatabase } from './tauri-bridge.js';
@@ -264,7 +264,40 @@ export async function resolveWorkspaceEntry(treatmentId) {
   return { sessionId: session.id, moduleId: mod?.id ?? null };
 }
 
-export async function createTreatment(patientId) {
+export async function applyTreatmentTemplate(treatmentId, templateId) {
+  const tpl = getTreatmentTemplate(templateId);
+  if (!tpl) throw new Error('Plantilla no encontrada');
+
+  let sessions = await getSessions(treatmentId);
+  for (let i = 0; i < tpl.sessions.length; i++) {
+    const spec = tpl.sessions[i];
+    let sessionId;
+    if (sessions[i]) {
+      sessionId = sessions[i].id;
+    } else {
+      sessionId = await addSession(treatmentId, { addSelector: false });
+      sessions = await getSessions(treatmentId);
+    }
+    for (const modType of spec.modules) {
+      if (modType === 'selector_modulo') continue;
+      try {
+        await addModuleToSession(sessionId, modType, treatmentId);
+      } catch {
+        /* duplicado en sesión o once-per-treatment */
+      }
+    }
+    const mods = await getSessionModules(sessionId);
+    if (!mods.some((m) => m.module_type === 'selector_modulo')) {
+      try {
+        await addModuleToSession(sessionId, 'selector_modulo', treatmentId);
+      } catch {
+        /* ya existe */
+      }
+    }
+  }
+}
+
+export async function createTreatment(patientId, { templateId = null } = {}) {
   const [{ maxn }] = await query(
     `SELECT COALESCE(MAX(number), 0) + 1 AS maxn FROM treatments WHERE patient_id = ?`,
     [patientId],
@@ -275,6 +308,7 @@ export async function createTreatment(patientId) {
   );
   const treatmentId = result.lastInsertId;
   await bootstrapDefaultTreatment(treatmentId);
+  if (templateId) await applyTreatmentTemplate(treatmentId, templateId);
   return treatmentId;
 }
 

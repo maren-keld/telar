@@ -1,5 +1,5 @@
 /** Generado en build — no editar a mano */
-export const BUILD_STAMP_ISO = '2026-06-12T03:43:54Z';
-export const BUILD_STAMP_LABEL = 'thu 11 jun 23:43';
+export const BUILD_STAMP_ISO = '2026-06-15T14:05:44Z';
+export const BUILD_STAMP_LABEL = 'mon 15 jun 10:05';
 /** @deprecated Usar BUILD_STAMP_LABEL */
 export const BUILD_STAMP = BUILD_STAMP_LABEL;

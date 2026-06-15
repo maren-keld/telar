@@ -142,6 +142,7 @@ export async function renderDass21(host, moduleRow) {
           </div>
           ${ITEMS.map((text, i) => itemRowHtml(i, text, answers[i])).join('')}
         </form>
+        <p class="pcl5-note dass-note">DASS-21 (Lovibond & Lovibond). Tamizaje de depresión, ansiedad y estrés — no diagnóstico. Interpretación según criterio clínico y contexto del paciente.</p>
       </div>
     </div>
   `;

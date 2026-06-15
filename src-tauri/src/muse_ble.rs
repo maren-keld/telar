@@ -127,7 +127,7 @@ async fn find_muse(adapter: &Adapter) -> Result<Peripheral, String> {
                 .and_then(|p| p.local_name.as_ref())
                 .map(|n| n.to_lowercase())
                 .unwrap_or_default();
-            if is_supported_muse2(&name) {
+            if name.is_empty() || is_supported_muse2(&name) {
                 found = Some(p);
                 break;
             }
@@ -147,16 +147,20 @@ fn char_map(chars: &[Characteristic]) -> HashMap<Uuid, Characteristic> {
 
 async fn write_cmd(peripheral: &Peripheral, control: &Characteristic, cmd: &str) -> Result<(), String> {
     peripheral
-        .write(control, &encode_command(cmd), WriteType::WithResponse)
+        .write(control, &encode_command(cmd), WriteType::WithoutResponse)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("Comando Muse «{cmd}»: {e}"))
 }
 
 async fn muse_start_stream(peripheral: &Peripheral, control: &Characteristic) -> Result<(), String> {
     write_cmd(peripheral, control, "h").await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     write_cmd(peripheral, control, "p50").await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     write_cmd(peripheral, control, "s").await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     write_cmd(peripheral, control, "d").await?;
+    tokio::time::sleep(Duration::from_millis(50)).await;
     write_cmd(peripheral, control, "v1").await?;
     Ok(())
 }

@@ -4,10 +4,12 @@ use std::process::{Command, Stdio};
 
 use serde::Deserialize;
 
+mod ai_api;
 mod muse_ble;
 mod secure_db;
 mod subscription_api;
 mod touch_id;
+mod usage_ping;
 
 use tauri::Manager;
 use tauri_plugin_shell::process::CommandEvent;
@@ -163,28 +165,48 @@ async fn analyze_neurofeedback_session(
     app: tauri::AppHandle,
     text_data: String,
 ) -> Result<String, String> {
-    if let Ok(out) = run_sidecar(&app, &text_data).await {
-        return Ok(out);
+    if text_data.trim().is_empty() {
+        return Err("Sin datos grabados".into());
     }
-    run_python_script(&text_data)
+    match run_sidecar(&app, &text_data).await {
+        Ok(out) => Ok(out),
+        Err(sidecar_err) => run_python_script(&text_data).map_err(|py_err| {
+            if py_err.contains("No se encontró el analizador") {
+                sidecar_err
+            } else {
+                format!("{sidecar_err} (fallback: {py_err})")
+            }
+        }),
+    }
 }
 
 async fn run_sidecar(app: &tauri::AppHandle, text_data: &str) -> Result<String, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("No se pudo resolver caché: {e}"))?;
+    std::fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("No se pudo crear caché: {e}"))?;
+    let tmp = cache_dir.join(format!(
+        "nf-{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    std::fs::write(&tmp, text_data.as_bytes())
+        .map_err(|e| format!("No se pudo escribir datos temporales: {e}"))?;
+    let path_arg = tmp.to_string_lossy().to_string();
+
     let sidecar = app
         .shell()
         .sidecar("analyze_session")
         .map_err(|e| format!("Sidecar no disponible: {e}"))?;
 
-    // Spawn without --file: Python falls back to sys.stdin.read().
-    // Sending data via stdin avoids writing PHI to /tmp.
-    let (mut rx, mut child) = sidecar
+    let (mut rx, _child) = sidecar
+        .args(["--file", &path_arg])
         .spawn()
         .map_err(|e| format!("No se pudo iniciar sidecar: {e}"))?;
-
-    // Send data via stdin; dropping child closes the pipe (EOF signals end of input).
-    child
-        .write(text_data.as_bytes())
-        .map_err(|e| format!("Error enviando datos al sidecar: {e}"))?;
 
     let mut stdout = String::new();
     let mut stderr = String::new();
@@ -200,6 +222,8 @@ async fn run_sidecar(app: &tauri::AppHandle, text_data: &str) -> Result<String, 
             _ => {}
         }
     }
+
+    let _ = std::fs::remove_file(&tmp);
 
     if !exit_ok {
         return Err(format!(
@@ -334,8 +358,12 @@ pub fn run() {
             save_data_export,
             db_wipe_all_data,
             db_backup_encrypted,
+            ai_api::ai_chat_completion,
             subscription_api::subscription_checkout,
+            subscription_api::subscription_dev_activate,
+            subscription_api::subscription_health,
             subscription_api::subscription_status,
+            usage_ping::usage_ping,
         ])
         .setup(|app| {
             #[cfg(desktop)]
