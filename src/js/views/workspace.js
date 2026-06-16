@@ -14,13 +14,15 @@ import {
   getTreatment,
 } from '../db.js';
 import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
-import { teardownNeurofeedback } from '../modules/neurofeedback.js';
+import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
-import { exportCaseContext } from '../export-case-context.js';
+import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { t } from '../i18n.js';
 import { tccHandoutDef } from '../tcc-handout-defs.js';
-import { buildReadableText } from '../readable-text.js';
+import { ICON_DOWNLOAD, ICON_MORE_VERT } from '../icons.js';
+import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
+import { isTauriApp, getInvoke } from '../tauri-bridge.js';
 
 /** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
 const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
@@ -36,49 +38,25 @@ async function printModulePdf(mod, patientName) {
   const def = tccHandoutDef(mod.module_type);
   if (!def) return;
   const data = parseJsonSafe(mod.data, {});
-  const readable = buildReadableText(mod.module_type, data) || '';
 
-  // jsPDF está cargado globalmente desde index.html
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 18;
-  const maxW = pageW - margin * 2;
-  let y = 20;
+  renderHandoutPdf(doc, { def, data, patientName });
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(def.title, margin, y);
-  y += 7;
+  const filename = handoutPdfFilename(def, patientName);
 
-  if (patientName) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(120);
-    doc.text(patientName, margin, y);
-    doc.setTextColor(0);
-    y += 6;
+  if (isTauriApp()) {
+    const bytes = doc.output('arraybuffer');
+    await getInvoke()('open_pdf_export', {
+      filename,
+      data: Array.from(new Uint8Array(bytes)),
+    });
+    toast(`Handout guardado en Documentos/Telar/exportaciones/${filename}`);
+    return;
   }
 
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(9);
-  const introLines = doc.splitTextToSize(def.intro, maxW);
-  doc.text(introLines, margin, y);
-  y += introLines.length * 4.5 + 4;
-
-  if (readable) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const lines = doc.splitTextToSize(readable, maxW);
-    for (const line of lines) {
-      if (y > 275) { doc.addPage(); y = 20; }
-      doc.text(line, margin, y);
-      y += 5;
-    }
-  }
-
-  const safe = (patientName || 'paciente').replace(/[^\w\s-]/gi, '').trim() || 'paciente';
-  doc.save(`${def.title.replace(/\s+/g, '-').toLowerCase()}-${safe}.pdf`);
+  doc.save(filename);
+  toast(`Handout descargado: ${filename}`);
 }
 
 export async function renderWorkspace(container, { treatmentId, sessionId, moduleId, onNavigate }) {
@@ -110,6 +88,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         <header class="workspace-sidebar__header">
           <button type="button" class="workspace-back" data-back title="${escapeHtml(t('workspace.backAgenda'))}">←</button>
           <h1 class="workspace-patient-name">${patientLabel}</h1>
+          <button type="button" class="workspace-patient-menu" id="btn-patient-menu" title="Opciones del paciente" aria-label="Opciones del paciente">${ICON_MORE_VERT}</button>
         </header>
         <div class="workspace-sidebar__scroll">
           ${sessions.map((s) => sidebarSessionHtml(s, activeModule)).join('')}
@@ -207,6 +186,13 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
     onNavigate({ view: 'agenda' });
   });
 
+  container.querySelector('#btn-patient-menu')?.addEventListener('click', (e) => {
+    openWorkspacePatientMenu(e.currentTarget, treatment, {
+      onNavigate,
+      onUpdated: () => toast('Estado del tratamiento actualizado'),
+    });
+  });
+
   container.querySelectorAll('.module-link').forEach((link) => {
     let didDrag = false;
     link.addEventListener('dragstart', () => {
@@ -251,13 +237,9 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   });
 
   const toolsOpts = {
-    onExportContext: async () => {
-      await exportCaseContext(treatmentId);
-      toast('Contexto exportado');
-    },
     onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
-      toast('PDF exportado');
+      toast('PDF exportado en Documentos/Telar/exportaciones');
     },
   };
 
@@ -394,6 +376,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
     for (const mod of session.modules) {
       const deletable = canDeleteModule(mod, session.modules);
+      const handout = tccHandoutDef(mod.module_type);
       const isActive = activeModule && String(mod.id) === String(activeModule.id);
       const wrap = document.createElement('article');
       wrap.className = `center-module-card${isActive ? ' center-module-card--active' : ''}`;
@@ -403,18 +386,31 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       wrap.dataset.moduleType = mod.module_type;
       wrap.dataset.sessionNumber = session.number;
 
-      if (deletable) {
+      if (handout || deletable || mod.module_type === 'neurofeedback') {
         const actions = document.createElement('div');
         actions.className = 'module-card-actions';
 
-        // Botón imprimir PDF — solo módulos TCC/psicoeducación
-        if (tccHandoutDef(mod.module_type)) {
+        if (mod.module_type === 'neurofeedback') {
+          const helpBtn = document.createElement('button');
+          helpBtn.type = 'button';
+          helpBtn.className = 'module-help-btn';
+          helpBtn.title = 'Ayuda neurofeedback';
+          helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
+          helpBtn.textContent = '?';
+          helpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toast(NF_HELP_MESSAGE);
+          });
+          actions.appendChild(helpBtn);
+        }
+
+        if (handout) {
           const printBtn = document.createElement('button');
           printBtn.type = 'button';
           printBtn.className = 'module-print-btn';
           printBtn.title = 'Descargar PDF del módulo';
-          printBtn.setAttribute('aria-label', 'Imprimir módulo');
-          printBtn.textContent = '⬇';
+          printBtn.setAttribute('aria-label', 'Descargar PDF del módulo');
+          printBtn.innerHTML = ICON_DOWNLOAD;
           printBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             try {
@@ -426,31 +422,34 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
           actions.appendChild(printBtn);
         }
 
-        const del = document.createElement('button');
-        del.type = 'button';
-        del.className = 'module-delete-btn';
-        del.title = 'Eliminar módulo';
-        del.setAttribute('aria-label', 'Eliminar módulo');
-        del.textContent = '×';
-        del.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const label = moduleLabel(mod.module_type);
-          const ok = await openConfirmModal({
-            title: '¿Eliminar módulo?',
-            message:
-              `¿Estás seguro de eliminar «${label}»? La información del módulo no se puede recuperar.`,
-            confirmLabel: 'Eliminar módulo',
+        if (deletable) {
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'module-delete-btn';
+          del.title = 'Eliminar módulo';
+          del.setAttribute('aria-label', 'Eliminar módulo');
+          del.textContent = '×';
+          del.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const label = moduleLabel(mod.module_type);
+            const ok = await openConfirmModal({
+              title: '¿Eliminar módulo?',
+              message:
+                `¿Estás seguro de eliminar «${label}»? La información del módulo no se puede recuperar.`,
+              confirmLabel: 'Eliminar módulo',
+            });
+            if (!ok) return;
+            try {
+              await deleteSessionModule(mod.id);
+              toast('Módulo eliminado');
+              await ctx.onDelete(mod.id);
+            } catch (err) {
+              toast(err.message);
+            }
           });
-          if (!ok) return;
-          try {
-            await deleteSessionModule(mod.id);
-            toast('Módulo eliminado');
-            await ctx.onDelete(mod.id);
-          } catch (err) {
-            toast(err.message);
-          }
-        });
-        actions.appendChild(del);
+          actions.appendChild(del);
+        }
+
         wrap.appendChild(actions);
       }
 

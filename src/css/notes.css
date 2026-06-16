@@ -16,11 +16,10 @@
   min-width: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
-  min-width: 0;
 }
 
 .space-tab2 {
@@ -97,6 +96,11 @@
 
 .notes-scroll > * {
   flex-shrink: 0;
+}
+
+.notes-scroll .scores-panel {
+  width: 100%;
+  min-width: 0;
 }
 
 .space-check__body {
@@ -189,8 +193,8 @@
   box-sizing: border-box;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-radius: 1px var(--radius-lg) var(--radius-lg) 1px;
+  overflow: visible;
   box-shadow: var(--shadow-card);
 }
 
@@ -209,7 +213,8 @@
   width: 36px;
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  flex-shrink: 0;
 }
 
 .kindle-note__body {
@@ -262,6 +267,10 @@
 }
 
 .kindle-note--ia {
+  border-radius: 1px var(--radius-lg) var(--radius-lg) 1px;
+}
+
+.kindle-note--ia .kindle-note__body {
   border-left: 3px solid var(--accent);
 }
 
@@ -272,7 +281,7 @@
 }
 
 .kindle-note__ai-answer {
-  font-size: 0.875rem;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--text-primary);
   white-space: pre-wrap;
@@ -353,13 +362,18 @@
   color: #e6a800;
 }
 
+.kindle-note__rail-btn .nav-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
 .kindle-note__palette-pop {
   position: absolute;
-  left: 50%;
-  right: auto;
-  bottom: calc(100% + 6px);
-  top: auto;
-  transform: translateX(-50%);
+  right: calc(100% + 6px);
+  left: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
   display: flex;
   gap: 4px;
   padding: 6px;
@@ -367,8 +381,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
-  margin-right: 0;
-  z-index: 5;
+  z-index: 20;
 }
 
 /* Importante: los dots del picker solo aparecen cuando popover está visible */
@@ -402,6 +415,10 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(15, 35, 71, 0.18);
+}
+
+.highlight-toolbar[hidden] {
+  display: none !important;
 }
 
 .highlight-toolbar::after {
@@ -443,6 +460,20 @@
   box-shadow: 0 0 0 1px var(--border);
   cursor: pointer;
   padding: 0;
+}
+
+html[data-theme='dark'] .highlight-toolbar__dot {
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 1px var(--border), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='dark'] .kindle-note__palette-dot {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+html[data-theme='dark'] .kindle-note__palette-dot.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .highlight-toolbar__dot:hover {
@@ -521,6 +552,31 @@
   line-height: 1.4;
 }
 
+.perfil-panel__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.perfil-panel__toolbar .input-sm {
+  font-size: 0.85rem;
+  padding: 8px 10px;
+}
+
+.perfil-panel__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.perfil-panel__toggle input {
+  margin: 0;
+}
+
 .perfil-section {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -576,7 +632,9 @@
 }
 
 .workspace-tools-tab__item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -588,6 +646,23 @@
   color: inherit;
 }
 
+.workspace-tools-tab__icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.workspace-tools-tab__icon .nav-icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
 .workspace-tools-tab__item:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -597,6 +672,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .workspace-tools-tab__text strong {

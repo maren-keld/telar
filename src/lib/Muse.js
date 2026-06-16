@@ -6,6 +6,8 @@
  * @see https://c86405ffad19a6265b95230b2818f733.cdn.bubble.io/f1712687056037x412629362840832640/Muse.js
  */
 
+import { decodeMuseBatteryLevel } from './muse-battery.js';
+
 class MuseCircularBuffer {
   constructor(size) {
     this.memory = new Array(size);
@@ -105,7 +107,8 @@ export class Muse {
   batteryData(event) {
     let data = event.target.value;
     data = data.buffer ? data : new DataView(data);
-    this.batteryLevel = data.getUint16(2) / 512;
+    const level = decodeMuseBatteryLevel(data);
+    if (level != null) this.batteryLevel = level;
   }
 
   motionData(dv, scale, ofs) {

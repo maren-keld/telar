@@ -46,14 +46,19 @@ function ensureToolbar() {
     if (!dot || !state?.pending) return;
     e.preventDefault();
     e.stopPropagation();
+    const field = state.anchorField;
     const { text, ctx, color } = {
       text: state.pending.text,
       ctx: state.pending.ctx,
       color: dot.dataset.color,
     };
     if (!ctx) return;
-    const field = state.anchorField;
-    await addClinicalNote(state.treatmentId, {
+    const { treatmentId, authorInitials, onNoteCreated } = state;
+    colors.querySelectorAll('.highlight-toolbar__dot').forEach((d) => {
+      d.setAttribute('aria-checked', d === dot ? 'true' : 'false');
+    });
+    dismissToolbar(field);
+    await addClinicalNote(treatmentId, {
       kind: 'annotation',
       color,
       content: '',
@@ -61,11 +66,10 @@ function ensureToolbar() {
       sourceLabel: ctx.sourceLabel,
       sessionId: ctx.sessionId,
       moduleId: ctx.moduleId,
-      authorInitials: state.authorInitials,
+      authorInitials,
     });
-    dismissToolbar(field);
     toast('Anotación añadida a Notas');
-    await state.onNoteCreated?.();
+    await onNoteCreated?.();
   });
 
   colors.addEventListener('keydown', (e) => {
@@ -82,9 +86,17 @@ function ensureToolbar() {
       });
       dots[next].focus();
     }
+    if (e.key === 'Escape') dismissToolbar(state?.anchorField);
   });
 
   document.body.appendChild(toolbarEl);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && toolbarEl && !toolbarEl.hidden) {
+      dismissToolbar(state?.anchorField);
+    }
+  });
+
   return toolbarEl;
 }
 
@@ -105,16 +117,20 @@ function hideToolbar() {
 }
 
 function dismissToolbar(field) {
-  suppressToolbarUntil = Date.now() + 400;
+  suppressToolbarUntil = Date.now() + 1200;
+  hideToolbar();
   if (field) {
-    const end = field.selectionEnd ?? field.value.length;
-    field.setSelectionRange(end, end);
+    try {
+      const end = field.selectionEnd ?? field.value.length;
+      field.setSelectionRange(end, end);
+    } catch {
+      /* ignore */
+    }
     field.blur();
   }
   if (document.activeElement?.closest?.('.highlight-toolbar')) {
     document.activeElement.blur();
   }
-  hideToolbar();
 }
 
 function readTextareaSelection(field, root) {
@@ -206,29 +222,20 @@ export function mountTextHighlight(root, { treatmentId, onNoteCreated }) {
   };
 
   const onMouseUp = (e) => {
+    if (Date.now() < suppressToolbarUntil) return;
     const field = e.target.closest('textarea');
     if (!isMultilineField(field) || !root.contains(field)) return;
     requestAnimationFrame(() => showToolbarForSelection(field, root));
   };
 
-  root.addEventListener('mouseup', onMouseUp);
-  document.addEventListener('selectionchange', onSelectionChange);
-
   const onDismissPointer = (e) => {
-    if (toolbarEl?.hidden) return;
-    if (toolbarEl?.contains(e.target)) return;
-    const field = e.target.closest('textarea');
-    if (field && root.contains(field)) {
-      requestAnimationFrame(() => {
-        if (Date.now() < suppressToolbarUntil) return;
-        const sel = readTextareaSelection(field, root);
-        if (!sel) hideToolbar();
-      });
-      return;
-    }
-    hideToolbar();
+    if (!toolbarEl || toolbarEl.hidden) return;
+    if (toolbarEl.contains(e.target)) return;
+    dismissToolbar(state?.anchorField);
   };
 
+  root.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('selectionchange', onSelectionChange);
   document.addEventListener('mousedown', onDismissPointer, true);
   document.addEventListener('click', onDismissPointer, true);
 

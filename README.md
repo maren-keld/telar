@@ -2,9 +2,9 @@
 
 App de escritorio (Tauri 2) para gestión clínica y neurofeedback con **Muse 2**. Los datos del consultorio se guardan **solo en tu equipo**, cifrados con SQLCipher.
 
-**Web:** [telarapp.cl](https://telarapp.cl) · **Plataformas:** macOS y Windows · **Licencia:** [AGPL-3.0](LICENSE)
+**Versión actual:** Beta 1 (`0.1.0-beta.1`) · validación con psicólogos en Chile.
 
-Pitch para colegas: [docs/PITCH-1-PAGINA.md](docs/PITCH-1-PAGINA.md)
+**Web:** [telarapp.cl](https://telarapp.cl) · **Plataformas:** macOS y Windows · **Licencia:** [AGPL-3.0](LICENSE)
 
 ## Descargar
 
@@ -20,6 +20,15 @@ Requisitos: Rust, Node.js, Python 3.
 ./scripts/build-app.sh    # → dist/Telar.app
 ```
 
+## Documentación
+
+| Documento | Contenido |
+|-----------|-----------|
+| [docs/DESARROLLO.md](docs/DESARROLLO.md) | Compilar, probar y contribuir |
+| [docs/DISTRIBUCION-RELEASES.md](docs/DISTRIBUCION-RELEASES.md) | Publicar releases |
+| [docs/Manual Telar 2026.md](docs/Manual%20Telar%202026.md) | Manual de uso clínico |
+| [docs/SUSCRIPCIONES.md](docs/SUSCRIPCIONES.md) | Plan Profesional (API opcional) |
+
 ## Estructura
 
 | Carpeta | Contenido |
@@ -29,4 +38,7 @@ Requisitos: Rust, Node.js, Python 3.
 | `python/` | Análisis post-sesión NF |
 | `server/` | API opcional de suscripciones (Plan Profesional) |
 | `landing/` | Sitio estático de presentación |
-| `docs/WORKFLOW.md` | Workflow para agentes de código (Cursor, Claude Code) |
+
+## Contribuir
+
+Issues y pull requests en GitHub. Al trabajar en el código, revisa [docs/DESARROLLO.md](docs/DESARROLLO.md).

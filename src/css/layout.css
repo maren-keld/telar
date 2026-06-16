@@ -55,6 +55,19 @@
   min-width: 0;
 }
 
+.grid-2 > .form-group--full {
+  grid-column: 1 / -1;
+}
+
+.grid-2 .address-autocomplete {
+  width: 100%;
+  display: block;
+}
+
+.grid-2 .address-autocomplete > input {
+  width: 100%;
+}
+
 .grid-2 input,
 .grid-2 select,
 .grid-2 textarea,
@@ -114,6 +127,31 @@
   color: var(--accent);
   text-align: left;
   line-height: 1.4;
+}
+
+.workspace-patient-menu {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.workspace-patient-menu:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.workspace-patient-menu .nav-icon-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .workspace-sidebar__scroll {
@@ -206,8 +244,8 @@
 
 .center-module-card--active .center-module-card__body > .card,
 .center-module-card--active .center-module-card__body > .nf-panel {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 2px;
+  border-color: var(--border);
+  box-shadow: none;
 }
 
 .center-module-card {
@@ -262,6 +300,29 @@
 }
 
 
+.module-help-btn {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-help-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .module-delete-btn {
   position: static;
   width: 32px;
@@ -299,6 +360,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.module-print-btn .nav-icon-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .module-print-btn:hover {
@@ -355,6 +421,15 @@
   margin: 0 0 8px;
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.boot-splash__release {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .boot-splash__sub {

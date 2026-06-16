@@ -187,6 +187,12 @@ a:hover {
   color: #c0392b;
 }
 
+.badge-beta {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  border: 1px solid rgba(75, 127, 209, 0.35);
+}
+
 .badge-encrypted {
   background: #e6f4ea;
   color: #1e6b45;

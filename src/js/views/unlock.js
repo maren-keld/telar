@@ -1,10 +1,11 @@
 import { bindPinBoxes, focusFirstEmpty, isValidPin, pinBoxesHtml, readPin } from '../components/pin-input.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
+import { APP_RELEASE_LABEL, appVersionLabel } from '../app-version.js';
 import { ICON_FINGERPRINT, ICON_LOCK } from '../icons.js';
 import { loadProfile } from '../profile.js';
 import { getInvoke } from '../tauri-bridge.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
-import { toast } from '../utils.js';
+import { toast, escapeHtml } from '../utils.js';
 
 export async function renderUnlock(host, { onNavigate }) {
   host.innerHTML = `
@@ -15,6 +16,7 @@ export async function renderUnlock(host, { onNavigate }) {
             <img src="assets/telar-icon.png" width="72" height="72" alt="" />
           </div>
           <h1 class="initial-screen__title">Telar</h1>
+          <p class="initial-screen__release">${APP_RELEASE_LABEL}</p>
         </header>
         <p class="initial-screen__sub">Preparando desbloqueo…</p>
       </div>
@@ -45,6 +47,7 @@ export async function renderUnlock(host, { onNavigate }) {
             <img src="assets/telar-icon.png" width="72" height="72" alt="" />
           </div>
           <h1 class="initial-screen__title">Telar</h1>
+          <p class="initial-screen__release">${APP_RELEASE_LABEL}</p>
         </header>
         <p class="initial-screen__sub" id="unlockSub">${subtitle}</p>
 
@@ -72,7 +75,7 @@ export async function renderUnlock(host, { onNavigate }) {
           </div>
           <div id="hint" class="unlock-hint"></div>
         </div>
-        <p class="unlock-page__build">${BUILD_STAMP_LABEL}</p>
+        <p class="unlock-page__build">${escapeHtml(appVersionLabel())} · ${BUILD_STAMP_LABEL}</p>
         <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
           <span class="unlock-update-bar__text">Actualización disponible</span>
           <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">Actualizar</button>

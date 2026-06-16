@@ -83,8 +83,22 @@ if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
 else
   gh release create "$TAG" "${ASSETS[@]}" \
     --repo "$REPO" \
-    --title "Telar $TAG" \
-    --notes "Descarga Telar-macos.zip (macOS Apple Silicon) o Telar-windows.exe (Windows)." \
+    --title "Telar $TAG — Beta 1" \
+    --notes "$(cat <<EOF
+## Telar Beta 1
+
+Primera beta pública para validación clínica (TDAH + trauma, neurofeedback Muse 2 opcional).
+
+### Descargas
+- **macOS (Apple Silicon):** \`Telar-macos.zip\` — descomprime y arrastra \`Telar.app\` a Aplicaciones.
+- **Windows:** pendiente en esta release (compilar desde el repo o esperar siguiente tag).
+
+### Notas
+- Datos 100 % locales y cifrados (SQLCipher).
+- Si macOS advierte al abrir: clic derecho → Abrir (primera vez).
+- Reportes: [GitHub Issues](https://github.com/maren-keld/telar/issues)
+EOF
+)" \
     "${DRAFT_FLAG[@]}"
 fi
 

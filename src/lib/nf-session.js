@@ -1,5 +1,5 @@
 /**
- * Motor de sesión NF adaptado de nf-core.js (felipeuppen/nf-psilab)
+ * Motor de sesión NF (BLE Muse, grabación, feedback en vivo).
  */
 import { Muse } from './Muse.js';
 import { MuseNative, isNativeBleAvailable } from './muse-native.js';
@@ -13,10 +13,11 @@ import {
   setNfAudioProtocol,
   stopAudioFeedback,
 } from './nf-audio.js';
-import { NF_FEEDBACK_INTERVAL_MS, NF_FFT_SIZE, NF_SAMPLE_RATE } from './nf-bands.js';
+import { NF_FEEDBACK_INTERVAL_MS, NF_FFT_SIZE, NF_LIVE_FEEDBACK_CHANNELS, NF_SAMPLE_RATE } from './nf-bands.js';
 import {
   computeBandPercentages,
   computeFeedbackMetrics,
+  FeedbackEma,
   hannWindow,
   LiveEegFilters,
   attenuateHighFrequencySpectrum,
@@ -115,6 +116,7 @@ export class NeurofeedbackSession {
     this.voltageChart = null;
     this.voltageHistory = { TP9: [], FP1: [], FP2: [], TP10: [] };
     this.smoothedBars = [0, 0, 0, 0];
+    this.feedbackEma = new FeedbackEma();
     this.smoothAlpha = 0.28;
     this.onBandsUpdate = null;
     this.onDisconnected = null;
@@ -176,6 +178,7 @@ export class NeurofeedbackSession {
 
   setProtocol(p) {
     this.protocol = p === 'atencion' ? 'atencion' : 'relajacion';
+    this.feedbackEma.reset();
     setNfAudioProtocol(this.protocol);
   }
 
@@ -228,8 +231,9 @@ export class NeurofeedbackSession {
       this.frequencyChart.data.datasets[0].data = [...this.smoothedBars];
       this.frequencyChart.update();
     }
-    this.onBandsUpdate?.([...this.smoothedBars]);
-    applyAudioFeedback(this.smoothedBars);
+    const { level, percent } = computeFeedbackMetrics(this.protocol, this.smoothedBars, this.feedbackEma);
+    this.onBandsUpdate?.({ bars: [...this.smoothedBars], level, percent });
+    applyAudioFeedback(level);
   }
 
   computeSpectrum256(arr) {
@@ -277,32 +281,34 @@ export class NeurofeedbackSession {
           this.eegFrequencyBuffer[e] = this.eegFrequencyBuffer[e].slice(-FFT_SIZE * 2);
         }
       }
+    }
 
-      if (this.recording && maxLen > 0) {
-        this._recordTickCount = (this._recordTickCount ?? 0) + 1;
-        if (this._recordTickCount % RECORD_EVERY_N_TICKS === 0) {
-          const li = maxLen - 1;
-          const tMs =
-            (this._startedAt?.getTime() ?? Date.now()) +
-            (this._recordSeq ?? 0) * (EEG_TICK_MS * RECORD_EVERY_N_TICKS);
-          this._recordSeq = (this._recordSeq ?? 0) + 1;
-          const ts = new Date(tMs).toISOString();
-          const cell = (e) => {
-            if (!this.activeElectrodes[e]) return '';
-            const v = raw[e]?.[li];
-            return v !== undefined ? String(v) : '';
-          };
-          this.recordedData.push(
-            `${ts},${cell('TP9')},${cell('FP1')},${cell('FP2')},${cell('TP10')}`,
-          );
-        }
+    if (this.recording && maxLen > 0) {
+      this._recordTickCount = (this._recordTickCount ?? 0) + 1;
+      if (this._recordTickCount % RECORD_EVERY_N_TICKS === 0) {
+        const li = maxLen - 1;
+        const tMs =
+          (this._startedAt?.getTime() ?? Date.now()) +
+          (this._recordSeq ?? 0) * (EEG_TICK_MS * RECORD_EVERY_N_TICKS);
+        this._recordSeq = (this._recordSeq ?? 0) + 1;
+        const ts = new Date(tMs).toISOString();
+        const cell = (e) => {
+          if (!this.activeElectrodes[e]) return '';
+          const v = channels[e][li];
+          return v !== undefined ? String(v) : '';
+        };
+        this.recordedData.push(
+          `${ts},${cell('TP9')},${cell('FP1')},${cell('FP2')},${cell('TP10')}`,
+        );
       }
     }
   }
 
   updateFrequencyGraph() {
+    const feedbackChannels =
+      NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
     const spectra = [];
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of feedbackChannels) {
       if (!this.activeElectrodes[e]) continue;
       const buf = this.eegFrequencyBuffer[e];
       if (buf.length >= FFT_SIZE) {
@@ -387,6 +393,7 @@ export class NeurofeedbackSession {
       this._isConnecting = false;
       this.connectError = null;
       this._setStatus('connected');
+      this.feedbackEma.reset();
       if (isAudioFeedbackEnabled()) {
         playConnectedSound();
       }
@@ -538,7 +545,7 @@ export class NeurofeedbackSession {
     return {
       device: this.useNativeBle ? 'Muse (BLE nativo)' : 'Muse 2',
       locations: activeLocs,
-      protocol: this.protocol === 'atencion' ? 'Atención' : 'Relajación',
+      protocol: this.protocol === 'atencion' ? 'Atención' : 'Calma',
       started_at: this._startedAt?.toISOString(),
       ended_at: this._endedAt?.toISOString(),
       duration_sec: dur,

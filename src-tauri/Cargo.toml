@@ -1,8 +1,8 @@
 [package]
 name = "telar"
-version = "0.1.0"
+version = "0.1.0-beta.1"
 description = "Gestión local de pacientes de neurofeedback"
-authors = ["Felipe Uppen"]
+authors = ["Telar contributors"]
 license = "AGPL-3.0-only"
 edition = "2021"
 rust-version = "1.77"

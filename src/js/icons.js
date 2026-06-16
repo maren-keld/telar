@@ -11,6 +11,20 @@ export const ICON_VOLUME_ON = `<svg class="nav-icon-svg" viewBox="0 0 24 24" fil
 const svg = (paths) =>
   `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 
+export const ICON_BATTERY = svg(
+  '<rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/><rect x="4" y="9" width="10" height="6" rx="1" fill="currentColor" stroke="none"/>',
+);
+
+export const ICON_PALETTE = svg(
+  '<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.25" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.25" fill="currentColor" stroke="none"/><circle cx="10" cy="15" r="1.25" fill="currentColor" stroke="none"/>',
+);
+export const ICON_COPY = svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>');
+export const ICON_DOWNLOAD = svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>');
+export const ICON_MORE_VERT = svg('<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>');
+export const ICON_SEARCH = svg('<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>');
+export const ICON_CLOSE = svg('<path d="M18 6L6 18M6 6l12 12"/>');
+export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
+
 /** Iconos Ajustes — misma familia que app-sidebar */
 export const SETTINGS_ICONS = {
   name: svg('<circle cx="12" cy="8" r="4"/><path d="M6 20v-1a6 6 0 0112 0v1"/>'),

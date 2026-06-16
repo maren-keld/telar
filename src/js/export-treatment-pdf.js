@@ -4,29 +4,17 @@ import { getSessionsWithModules, getTreatment, getTreatmentReport } from './db.j
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
 import { buildReadableText } from './readable-text.js';
 import { loadProfile } from './profile.js';
+import {
+  dxItemTexts,
+  ensurePdfSpace,
+  PDF_MARGIN as MARGIN,
+  PDF_MAX_W as MAX_W,
+  pdfText,
+} from './pdf-utils.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
 
-const MARGIN = 18;
-const LINE = 5.5;
-const PAGE_W = 210;
-const MAX_W = PAGE_W - MARGIN * 2;
-
-function pdfText(doc, text, x, y, { maxWidth = MAX_W, size = 10, style = 'normal' } = {}) {
-  doc.setFontSize(size);
-  doc.setFont('helvetica', style);
-  const lines = doc.splitTextToSize(String(text || ''), maxWidth);
-  doc.text(lines, x, y);
-  return y + lines.length * (size * 0.42);
-}
-
-function ensureSpace(doc, y, needed = 20) {
-  if (y + needed > 280) {
-    doc.addPage();
-    return MARGIN + 8;
-  }
-  return y;
-}
+const MODULES_NAME_ONLY = new Set(['motivo_consulta', 'diagnostico']);
 
 function stripMarkdownHeaders(text) {
   return String(text || '')
@@ -35,24 +23,12 @@ function stripMarkdownHeaders(text) {
 }
 
 function moduleSummary(type, data) {
+  if (MODULES_NAME_ONLY.has(type)) return '';
   const d = data || {};
   const built = buildReadableText(type, d);
   if (built) return stripMarkdownHeaders(built);
 
   switch (type) {
-    case 'diagnostico': {
-      const problems = (d.problems || []).filter((p) => p.assigned && p.name);
-      if (!problems.length) return 'Sin diagnósticos asignados.';
-      return problems
-        .map((p) => {
-          const ind = (p.indicators || []).filter(Boolean).join('; ');
-          const obj = (p.objectives || []).filter(Boolean).join('; ');
-          return [p.name, ind ? `Indicadores: ${ind}` : null, obj ? `Objetivos: ${obj}` : null]
-            .filter(Boolean)
-            .join('\n');
-        })
-        .join('\n\n');
-    }
     case 'redes_apoyo': {
       const people = (d.people || []).filter((p) => p.name);
       if (!people.length) return 'Sin personas registradas.';
@@ -96,6 +72,69 @@ function patientFromSessions(sessions) {
   return {};
 }
 
+function renderDiagnosticoBlock(doc, y, data) {
+  const d = data || {};
+  const structured = d.structured || {};
+  const structFields = [
+    ['comorbidities', 'Comorbilidades'],
+    ['trauma_events', 'Eventos traumáticos / antecedentes'],
+    ['medication', 'Medicación psicotrópica'],
+    ['dx_notes', 'Notas clínicas'],
+  ];
+  for (const [key, label] of structFields) {
+    const val = structured[key]?.trim?.() || structured[key];
+    if (!val) continue;
+    y = ensurePdfSpace(doc, y, 14);
+    y = pdfText(doc, label, MARGIN, y, { size: 9, style: 'bold' });
+    y = pdfText(doc, val, MARGIN + 4, y, { size: 9, maxWidth: MAX_W - 4 });
+    y += 2;
+  }
+
+  const custom = d.custom_diagnosis?.trim();
+  if (custom) {
+    y = ensurePdfSpace(doc, y, 14);
+    y = pdfText(doc, 'Diagnóstico personalizado', MARGIN, y, { size: 9, style: 'bold' });
+    y = pdfText(doc, custom, MARGIN + 4, y, { size: 9, maxWidth: MAX_W - 4 });
+    y += 2;
+  }
+
+  const problems = (d.problems || []).filter((p) => p.assigned && p.name);
+  for (const p of problems) {
+    y = ensurePdfSpace(doc, y, 20);
+    y = pdfText(doc, p.name, MARGIN, y, { size: 10, style: 'bold' });
+    y += 1;
+
+    const indicators = dxItemTexts(p.indicators);
+    if (indicators.length) {
+      y = pdfText(doc, 'Indicadores', MARGIN + 4, y, { size: 9, style: 'bold' });
+      for (const line of indicators) {
+        y = pdfText(doc, `• ${line}`, MARGIN + 8, y, { size: 9, maxWidth: MAX_W - 8 });
+      }
+      y += 1;
+    }
+
+    const objectives = dxItemTexts(p.objectives);
+    if (objectives.length) {
+      y = pdfText(doc, 'Objetivos', MARGIN + 4, y, { size: 9, style: 'bold' });
+      for (const line of objectives) {
+        y = pdfText(doc, `• ${line}`, MARGIN + 8, y, { size: 9, maxWidth: MAX_W - 8 });
+      }
+      y += 1;
+    }
+    y += 2;
+  }
+
+  return y;
+}
+
+function hasDiagnosticoContent(data) {
+  const d = data || {};
+  if (d.custom_diagnosis?.trim()) return true;
+  const structured = d.structured || {};
+  if (Object.values(structured).some((v) => String(v || '').trim())) return true;
+  return (d.problems || []).some((p) => p.assigned && p.name);
+}
+
 export async function exportTreatmentPdf(treatmentId) {
   const jsPDF = window.jspdf?.jsPDF;
   if (!jsPDF) throw new Error('Biblioteca PDF no disponible. Recarga la aplicación.');
@@ -118,7 +157,7 @@ export async function exportTreatmentPdf(treatmentId) {
   if (profile.name) y = pdfText(doc, `Profesional: ${profile.name}`, MARGIN, y, { size: 9 });
   y += 6;
 
-  y = ensureSpace(doc, y, 30);
+  y = ensurePdfSpace(doc, y, 30);
   y = pdfText(doc, 'Datos del paciente', MARGIN, y, { size: 12, style: 'bold' });
   y += 2;
   const patientLines = [
@@ -146,33 +185,60 @@ export async function exportTreatmentPdf(treatmentId) {
   if (motivo) {
     const md = parseJsonSafe(motivo.data, {});
     y += 6;
-    y = ensureSpace(doc, y, 20);
+    y = ensurePdfSpace(doc, y, 20);
     y = pdfText(doc, 'Motivo de consulta', MARGIN, y, { size: 12, style: 'bold' });
     y += 2;
-    y = pdfText(doc, moduleSummary('motivo_consulta', md), MARGIN, y);
+    y = pdfText(doc, moduleSummary('motivo_consulta', md) || buildReadableText('motivo_consulta', md) || '—', MARGIN, y);
+  }
+
+  const dxEntries = [];
+  for (const session of sessions) {
+    for (const mod of session.modules) {
+      if (mod.module_type !== 'diagnostico') continue;
+      const data = parseJsonSafe(mod.data, {});
+      if (hasDiagnosticoContent(data)) dxEntries.push({ sessionNumber: session.number, data });
+    }
+  }
+  if (dxEntries.length) {
+    y += 8;
+    y = ensurePdfSpace(doc, y, 24);
+    y = pdfText(doc, 'Diagnósticos', MARGIN, y, { size: 12, style: 'bold' });
+    y += 4;
+    for (const entry of dxEntries) {
+      y = ensurePdfSpace(doc, y, 16);
+      if (dxEntries.length > 1) {
+        y = pdfText(doc, `Sesión ${entry.sessionNumber}`, MARGIN, y, { size: 10, style: 'bold' });
+        y += 2;
+      }
+      y = renderDiagnosticoBlock(doc, y, entry.data);
+    }
   }
 
   const psychBlock = buildPsychometricSummaryBlock(sessions);
   if (psychBlock) {
     y += 8;
-    y = ensureSpace(doc, y, 24);
+    y = ensurePdfSpace(doc, y, 24);
     y = pdfText(doc, 'Resumen psicométrico (TDAH / trauma)', MARGIN, y, { size: 12, style: 'bold' });
     y += 2;
     y = pdfText(doc, psychBlock, MARGIN, y, { size: 9 });
   }
 
   y += 8;
-  y = ensureSpace(doc, y, 20);
+  y = ensurePdfSpace(doc, y, 20);
   y = pdfText(doc, 'Sesiones y módulos', MARGIN, y, { size: 12, style: 'bold' });
   y += 4;
 
   for (const session of sessions) {
-    y = ensureSpace(doc, y, 16);
+    y = ensurePdfSpace(doc, y, 16);
     y = pdfText(doc, `Sesión ${session.number}`, MARGIN, y, { size: 11, style: 'bold' });
     y += 2;
 
     const mods = session.modules.filter(
-      (m) => m.module_type !== 'selector_modulo' && m.module_type !== 'registro_inicial',
+      (m) =>
+        m.module_type !== 'selector_modulo' &&
+        m.module_type !== 'registro_inicial' &&
+        m.module_type !== 'motivo_consulta' &&
+        m.module_type !== 'diagnostico',
     );
     if (!mods.length) {
       y = pdfText(doc, 'Sin módulos registrados.', MARGIN + 4, y, { size: 9 });
@@ -181,16 +247,16 @@ export async function exportTreatmentPdf(treatmentId) {
     }
 
     for (const mod of mods) {
-      y = ensureSpace(doc, y, 14);
+      y = ensurePdfSpace(doc, y, 14);
       const label = moduleLabelFor(mod.module_type);
       const data = parseJsonSafe(mod.data, {});
       const summary = moduleSummary(mod.module_type, data);
-      y = pdfText(doc, `• ${label} (${mod.status || 'pendiente'})`, MARGIN + 4, y, {
+      y = pdfText(doc, `• ${label}`, MARGIN + 4, y, {
         size: 10,
         style: 'bold',
       });
       if (summary) {
-        y = pdfText(doc, summary, MARGIN + 8, y, { size: 9 });
+        y = pdfText(doc, summary, MARGIN + 8, y, { size: 9, maxWidth: MAX_W - 8 });
       }
       y += 2;
     }
@@ -199,11 +265,11 @@ export async function exportTreatmentPdf(treatmentId) {
 
   if (nfRecordings.length) {
     y += 4;
-    y = ensureSpace(doc, y, 20);
+    y = ensurePdfSpace(doc, y, 20);
     y = pdfText(doc, 'Resultados neurofeedback', MARGIN, y, { size: 12, style: 'bold' });
     y += 4;
     for (const r of nfRecordings) {
-      y = ensureSpace(doc, y, 12);
+      y = ensurePdfSpace(doc, y, 12);
       const res = parseJsonSafe(r.results_json, {});
       const line = [
         `Sesión ${r.session_number}`,

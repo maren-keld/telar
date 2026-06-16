@@ -6,13 +6,59 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
-  gap: 8px;
+  padding: 20px 0 12px;
+  gap: 0;
   height: 100vh;
   position: sticky;
   top: 0;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.sidebar-pro {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px 4px;
+  margin-top: auto;
+  color: var(--accent);
+}
+
+.sidebar-pro__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+}
+
+.sidebar-pro__icon .nav-icon-svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.sidebar-pro__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
 }
 
 .sidebar--wide {
@@ -245,7 +291,8 @@ input[type='date']::-webkit-calendar-picker-indicator {
 .card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+  box-shadow: none;
   padding: 24px;
   min-width: 0;
   overflow: hidden;
@@ -335,6 +382,15 @@ input[type='date']::-webkit-calendar-picker-indicator {
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.initial-screen__release {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .initial-screen__sub {
@@ -1191,6 +1247,13 @@ html[data-theme='dark'] .badge--info {
 
 .address-autocomplete {
   position: relative;
+  width: 100%;
+  display: block;
+}
+
+.address-autocomplete > input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .address-autocomplete__list {

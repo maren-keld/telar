@@ -11,6 +11,10 @@ import {
   NF_SAMPLE_RATE,
 } from './nf-bands.js';
 
+const DELTA_WEIGHT = 0.7;
+const EMA_ALPHA = 0.06;
+const EPS = 1e-9;
+
 /** Filtro biquad IIR (Audio EQ Cookbook), procesamiento muestra a muestra. */
 class Biquad {
   constructor(type, fs, f0, Q = 0.707) {
@@ -96,6 +100,51 @@ export class LiveEegFilters {
   }
 }
 
+class EmaZ {
+  constructor(alpha = EMA_ALPHA) {
+    this.a = alpha;
+    this.init = false;
+    this.mean = 0;
+    this.var = 1;
+  }
+
+  update(x) {
+    if (!this.init) {
+      this.mean = x;
+      this.var = 1;
+      this.init = true;
+      return;
+    }
+    const mPrev = this.mean;
+    this.mean = (1 - this.a) * this.mean + this.a * x;
+    this.var = (1 - this.a) * this.var + this.a * (x - mPrev) * (x - mPrev);
+    this.var = Math.max(this.var, 1e-6);
+  }
+
+  z(x) {
+    return (x - this.mean) / Math.sqrt(this.var);
+  }
+
+  reset() {
+    this.init = false;
+    this.mean = 0;
+    this.var = 1;
+  }
+}
+
+/** Estado EMA para normalizar índices en vivo (como analyze_session.py). */
+export class FeedbackEma {
+  constructor() {
+    this.att = new EmaZ();
+    this.calm = new EmaZ();
+  }
+
+  reset() {
+    this.att.reset();
+    this.calm.reset();
+  }
+}
+
 export function sumSpectrumPower(spectrum, fs, startFreq, endFreq) {
   const freqResolution = fs / NF_FFT_SIZE;
   const startIndex = Math.max(0, Math.ceil(startFreq / freqResolution));
@@ -141,26 +190,43 @@ export function attenuateHighFrequencySpectrum(spectrum, fs = NF_SAMPLE_RATE) {
   for (let i = 0; i < n; i++) {
     const freq = (i * fs) / (n * 2);
     let gain = 1;
-    if (freq > 22) gain = Math.max(0.4, 1 - (freq - 22) / 28);
+    if (freq > 22) gain = Math.max(0.35, 1 - (freq - 22) / 24);
     out[i] = spectrum[i] * gain;
   }
   return out;
 }
 
+function sigmoid(z) {
+  return 1 / (1 + Math.exp(-z));
+}
+
+function indicesFromBands(bars) {
+  const d = Math.max(bars[0] ?? 0, EPS);
+  const t = Math.max(bars[1] ?? 0, EPS);
+  const a = Math.max(bars[2] ?? 0, EPS);
+  const b = Math.max(bars[3] ?? 0, EPS);
+  const D = Math.log(d);
+  const T = Math.log(t);
+  const A = Math.log(a);
+  const B = Math.log(b);
+  const attIdx = B - Math.log(Math.exp(T) + DELTA_WEIGHT * Math.exp(D) + EPS);
+  const calmIdx = Math.log(Math.exp(A) + Math.exp(T) + EPS) - B;
+  return { attIdx, calmIdx };
+}
+
 /**
- * Índice de retroalimentación en vivo (0–100 %) a partir de bandas relativas.
- * Relajación: proporción alpha+theta (fisiológica). Atención: beta+alpha frontal.
+ * Índice de retroalimentación en vivo (0–100 %) — misma fórmula que analyze_session.py.
  */
-export function computeFeedbackMetrics(protocol, bars) {
-  const delta = bars[0] ?? 0;
-  const theta = bars[1] ?? 0;
-  const alpha = bars[2] ?? 0;
-  const beta = bars[3] ?? 0;
-  const total = Math.max(delta + theta + alpha + beta, 1);
+export function computeFeedbackMetrics(protocol, bars, ema = null) {
+  const { attIdx, calmIdx } = indicesFromBands(bars);
   if (protocol === 'atencion') {
-    const percent = Math.min(100, Math.round(((beta + alpha * 0.25) / total) * 100));
+    if (ema) ema.att.update(attIdx);
+    const z = ema ? ema.att.z(attIdx) : attIdx;
+    const percent = Math.round(100 * sigmoid(z));
     return { percent, level: percent / 100 };
   }
-  const percent = Math.min(100, Math.round(((alpha + theta) / total) * 100));
+  if (ema) ema.calm.update(calmIdx);
+  const z = ema ? ema.calm.z(calmIdx) : calmIdx;
+  const percent = Math.round(100 * sigmoid(z));
   return { percent, level: percent / 100 };
 }

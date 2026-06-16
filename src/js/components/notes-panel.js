@@ -3,6 +3,7 @@ import {
   addClinicalNote,
   deleteClinicalNote,
   getClinicalNotes,
+  getSessionsWithModules,
   getSpaceChecks,
   setSpaceCheck,
   updateClinicalNote,
@@ -15,7 +16,26 @@ import { resolveAiConfig } from '../ai-config.js';
 import { chatCompletion } from '../ai-client.js';
 import { buildCaseContextText } from '../export-case-context.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
+import { renderWorkspaceScores } from './workspace-scores.js';
+import { ICON_PALETTE } from '../icons.js';
 
+const PERFIL_ONLY_SELECTED_KEY = (treatmentId) => `telar.perfil.onlySelected.${treatmentId}`;
+
+function readPerfilOnlySelected(treatmentId) {
+  try {
+    return localStorage.getItem(PERFIL_ONLY_SELECTED_KEY(treatmentId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writePerfilOnlySelected(treatmentId, on) {
+  try {
+    localStorage.setItem(PERFIL_ONLY_SELECTED_KEY(treatmentId), on ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
 const PERFIL_SECTIONS = [
   { id: 'fortalezas', label: 'Fortalezas' },
   { id: 'defensas', label: 'Defensas' },
@@ -33,6 +53,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       <nav class="space-tools__tabs2" role="tablist">
         ${[
           ['notas', 'Notas'],
+          ['puntajes', 'Puntajes'],
           ['perfil', 'Perfil'],
           ['herramientas', 'Herramientas'],
         ]
@@ -59,20 +80,34 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
   const listEl = container.querySelector('#notes-list');
 
-  refreshList = async () => {
+  const scrollNotesToBottom = () => {
+    requestAnimationFrame(() => {
+      listEl.scrollTop = listEl.scrollHeight;
+    });
+  };
+
+  refreshList = async ({ scrollBottom = false } = {}) => {
     if (activeTab === 'notas') {
       const all = await getClinicalNotes(treatmentId);
-      const sorted = [...all].sort((a, b) => {
-        const as = Number(b.starred) - Number(a.starred);
-        if (as) return as;
-        return String(b.created_at || '').localeCompare(String(a.created_at || ''));
-      });
+      const sorted = [...all].sort((a, b) =>
+        String(a.created_at || '').localeCompare(String(b.created_at || '')),
+      );
       if (!sorted.length) {
         listEl.innerHTML = `<p class="notes-empty">Pulsa + Nota para añadir un comentario. También puedes seleccionar texto en un módulo para crear una anotación.</p>`;
         return;
       }
       listEl.innerHTML = sorted.map((n) => kindleNoteHtml(n, defaultInitials)).join('');
       bindNoteCards(listEl, refreshList);
+      if (scrollBottom) scrollNotesToBottom();
+      return;
+    }
+
+    if (activeTab === 'puntajes') {
+      const sessions = await getSessionsWithModules(treatmentId);
+      const moduleTypes = [
+        ...new Set(sessions.flatMap((s) => s.modules.map((m) => m.module_type))),
+      ];
+      await renderWorkspaceScores(listEl, treatmentId, moduleTypes, { expandAll: true });
       return;
     }
 
@@ -104,7 +139,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       color: 'yellow',
       authorInitials: defaultInitials,
     });
-    await refreshList();
+    await refreshList({ scrollBottom: true });
     listEl.querySelector(`[data-note-id="${id}"]`)?.focus();
   });
 
@@ -149,7 +184,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           sourceLabel: q,
         });
         aiInput.value = '';
-        await refreshList();
+        await refreshList({ scrollBottom: true });
       } catch (err) {
         await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
@@ -158,7 +193,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        await refreshList();
+        await refreshList({ scrollBottom: true });
       } finally {
         aiInput.disabled = false;
         aiSend.disabled = false;
@@ -184,7 +219,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     });
     const fab = container.querySelector('#btn-add-note');
     if (fab) fab.hidden = false;
-    await refreshList();
+    await refreshList({ scrollBottom: true });
   };
 
   return {
@@ -198,17 +233,43 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
 async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
   const aiCfg = resolveAiConfig(profile);
+  const onlySelected = readPerfilOnlySelected(treatmentId);
   listEl.innerHTML = `
     <div class="perfil-panel">
       <button type="button" class="btn btn-secondary btn-sm btn-block" id="btn-analyze-perfil" ${aiCfg.enabled ? '' : 'disabled'}>
         Analizar perfil con IA
       </button>
       ${aiCfg.enabled ? '' : '<p class="perfil-panel__hint">Activa el asistente IA en Ajustes para usar esta función.</p>'}
+      <div class="perfil-panel__toolbar">
+        <input type="search" class="input input-sm" id="perfil-search" placeholder="Buscar en perfil…" autocomplete="off" />
+        <label class="perfil-panel__toggle">
+          <input type="checkbox" id="perfil-only-selected" ${onlySelected ? 'checked' : ''} />
+          <span>Solo seleccionados</span>
+        </label>
+      </div>
       <div id="perfil-sections"></div>
     </div>`;
 
   const sectionsHost = listEl.querySelector('#perfil-sections');
-  await renderPerfilSections(sectionsHost, treatmentId);
+  const searchEl = listEl.querySelector('#perfil-search');
+  const onlyEl = listEl.querySelector('#perfil-only-selected');
+
+  const renderSections = async () => {
+    await renderPerfilSections(sectionsHost, treatmentId, {
+      query: searchEl?.value?.trim().toLowerCase() || '',
+      onlySelected: Boolean(onlyEl?.checked),
+    });
+  };
+
+  searchEl?.addEventListener('input', () => {
+    renderSections();
+  });
+  onlyEl?.addEventListener('change', () => {
+    writePerfilOnlySelected(treatmentId, onlyEl.checked);
+    renderSections();
+  });
+
+  await renderSections();
 
   listEl.querySelector('#btn-analyze-perfil')?.addEventListener('click', async () => {
     const btn = listEl.querySelector('#btn-analyze-perfil');
@@ -218,7 +279,9 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
     btn.textContent = 'Analizando…';
     try {
       await analyzeProfileWithAi(treatmentId);
-      await renderPerfilSections(sectionsHost, treatmentId);
+      writePerfilOnlySelected(treatmentId, true);
+      if (onlyEl) onlyEl.checked = true;
+      await renderSections();
       toast('Perfil actualizado según el análisis de IA');
     } catch (err) {
       toast(err.message || 'No se pudo analizar el perfil');
@@ -229,12 +292,19 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
   });
 }
 
-async function renderPerfilSections(host, treatmentId) {
+async function renderPerfilSections(host, treatmentId, { query = '', onlySelected = false } = {}) {
   const html = await Promise.all(
     PERFIL_SECTIONS.map(async (sec) => {
-      const labels = sortLabels(defaultsFor(sec.id));
+      let labels = sortLabels(defaultsFor(sec.id));
       const existing = await getSpaceChecks(treatmentId, sec.id);
       const map = new Map(existing.map((r) => [r.label, Number(r.checked) === 1]));
+      if (onlySelected) {
+        labels = labels.filter((l) => map.get(l));
+      }
+      if (query) {
+        labels = labels.filter((l) => l.toLowerCase().includes(query));
+      }
+      if (!labels.length) return '';
       const checkedCount = labels.filter((l) => map.get(l)).length;
       const items = labels
         .map((label) => {
@@ -261,7 +331,9 @@ async function renderPerfilSections(host, treatmentId) {
         </details>`;
     }),
   );
-  host.innerHTML = html.join('');
+  host.innerHTML =
+    html.filter(Boolean).join('') ||
+    '<p class="perfil-panel__hint">Sin ítems que coincidan con el filtro.</p>';
 
   host.querySelectorAll('[data-space-check]').forEach((cb) => {
     cb.addEventListener('change', async () => {
@@ -445,15 +517,15 @@ function kindleNoteHtml(note, fallbackInitials) {
         <textarea class="kindle-note__comment" data-note-id="${note.id}" placeholder="${showQuote ? 'Tu comentario sobre la cita…' : 'Escribe un comentario…'}">${escapeHtml(note.content || '')}</textarea>`;
 
   return `
-    <article class="kindle-note kindle-note--${escapeHtml(color)}${starred ? ' kindle-note--starred' : ''}${isAi ? ' kindle-note--ia' : ''}" data-id="${note.id}" data-color="${escapeHtml(color)}" data-kind="${kind}">
+    <article class="kindle-note kindle-note--${escapeHtml(color)}${starred ? ' kindle-note--starred' : ''}${isAi ? ' kindle-note--ia' : ''}" data-id="${note.id}" data-color="${escapeHtml(color)}" data-kind="${kind}" data-content-encoded="${encodeURIComponent(note.content || '')}">
       <div class="kindle-note__body">
         ${bodyContent}
       </div>
       <div class="kindle-note__rail">
-        <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
         <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? 'Respuesta IA' : 'Autor/a de la nota'}">${escapeHtml(initials)}</span>
-        ${!isAi ? `<button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota">🎨</button>
-        <div class="kindle-note__palette-pop" hidden>${paletteDots}</div>` : ''}
+        <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
+        <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota" aria-haspopup="true">${ICON_PALETTE}</button>
+        <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="Color de la nota">${paletteDots}</div>
         <button type="button" class="kindle-note__rail-btn note-delete" title="Eliminar nota">×</button>
       </div>
     </article>`;
@@ -465,13 +537,24 @@ function bindNoteCards(listEl, rerender) {
     const id = Number(card.dataset.id);
     const ta = card.querySelector('.kindle-note__comment');
 
-    const readFields = () => ({
-      content: ta?.value ?? '',
-      color: card.dataset.color || 'teal',
-      starred: card.classList.contains('kindle-note--starred'),
-      quoteText: card.querySelector('.kindle-note__quote')?.textContent?.replace(/^"/, '')?.trim() ?? '',
-      sourceLabel: card.querySelector('.kindle-note__source')?.textContent?.trim() ?? '',
-    });
+    const readFields = () => {
+      const isAiNote = card.dataset.kind === 'ia_answer';
+      let content = ta?.value ?? '';
+      if (isAiNote) {
+        try {
+          content = decodeURIComponent(card.dataset.contentEncoded || '');
+        } catch {
+          content = card.querySelector('.kindle-note__ai-answer')?.textContent ?? '';
+        }
+      }
+      return {
+        content,
+        color: card.dataset.color || 'teal',
+        starred: card.classList.contains('kindle-note--starred'),
+        quoteText: card.querySelector('.kindle-note__quote')?.textContent?.replace(/^"/, '')?.trim() ?? '',
+        sourceLabel: card.querySelector('.kindle-note__source')?.textContent?.trim() ?? '',
+      };
+    };
 
     const save = debounce(async () => {
       const f = readFields();
@@ -487,7 +570,6 @@ function bindNoteCards(listEl, rerender) {
       const f = readFields();
       f.starred = next;
       await updateClinicalNote(id, f);
-      await rerender();
     });
 
     card.querySelector('.note-delete')?.addEventListener('click', async () => {
@@ -503,6 +585,8 @@ function bindNoteCards(listEl, rerender) {
       if (hidden) pop.removeAttribute('hidden');
       else pop.setAttribute('hidden', '');
     });
+
+    pop?.addEventListener('click', (e) => e.stopPropagation());
 
     pop?.querySelectorAll('.kindle-note__palette-dot').forEach((dot) => {
       dot.addEventListener('click', () => {
@@ -520,7 +604,8 @@ let paletteCloseBound = false;
 function ensurePaletteClose() {
   if (paletteCloseBound) return;
   paletteCloseBound = true;
-  document.addEventListener('click', () => {
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.note-palette') || e.target.closest('.kindle-note__palette-pop')) return;
     document.querySelectorAll('.kindle-note__palette-pop').forEach((p) => p.setAttribute('hidden', ''));
   });
 }

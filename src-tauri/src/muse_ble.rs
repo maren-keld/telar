@@ -27,6 +27,30 @@ const EEG_CHARS: [&str; 5] = [
     "273e0007-4c4d-454d-96be-f03bac821358",
 ];
 
+fn decode_muse_battery(data: &[u8]) -> Option<f32> {
+    let mut candidates = Vec::new();
+    if data.len() >= 3 {
+        let pct = data[2];
+        if pct <= 100 {
+            candidates.push(pct as f32 / 100.0);
+        }
+    }
+    for off in [2usize, 4, 6] {
+        if data.len() < off + 2 {
+            continue;
+        }
+        let be = u16::from_be_bytes([data[off], data[off + 1]]) as f32 / 512.0;
+        let le256 = u16::from_le_bytes([data[off], data[off + 1]]) as f32 / 256.0;
+        let le512 = u16::from_le_bytes([data[off], data[off + 1]]) as f32 / 512.0;
+        for v in [be, le256, le512] {
+            if v > 0.0 && v <= 1.05 {
+                candidates.push(v.min(1.0));
+            }
+        }
+    }
+    candidates.into_iter().reduce(f32::max)
+}
+
 static RUNNING: AtomicBool = AtomicBool::new(false);
 static SESSION: Lazy<Arc<Mutex<Option<MuseSession>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
 
@@ -204,9 +228,8 @@ async fn subscribe_eeg(
         let uuid = notification.uuid;
 
         if Some(uuid) == battery_uuid {
-            if data.len() >= 4 {
-                let level = u16::from_le_bytes([data[2], data[3]]) as f32 / 512.0;
-                let percent = (level.clamp(0.0, 1.0) * 100.0).round() as u8;
+            if let Some(level) = decode_muse_battery(&data) {
+                let percent = (level * 100.0).round() as u8;
                 let _ = app.emit("muse-battery", MuseBatteryPayload { percent });
             }
             continue;

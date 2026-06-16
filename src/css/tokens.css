@@ -46,6 +46,11 @@ html[data-theme="dark"] {
   --accent-dark: #c5d9ff;
   --border: #2a3850;
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.35);
+  --note-teal: #3d8a82;
+  --note-yellow: #b89a3a;
+  --note-lavender: #7a6aa8;
+  --note-pink: #a86a82;
+  --note-blue: #4a7ab8;
 }
 
 * {

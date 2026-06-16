@@ -130,6 +130,40 @@ function formatInvokeError(e) {
   }
 }
 
+const LAST_SYNC_KEY = 'telar.subscriptionSyncLast';
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Consulta estado Pro en el servidor como máximo 1 vez al día (email en Ajustes). */
+export async function maybeSyncProFromServer() {
+  const profile = loadProfile();
+  const email = (profile.email || '').trim();
+  if (!email) return { changed: false, revoked: false, nowPro: profile.plan === 'pro' };
+
+  const today = todayKey();
+  try {
+    if (localStorage.getItem(LAST_SYNC_KEY) === today) {
+      return { changed: false, revoked: false, nowPro: profile.plan === 'pro' };
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const result = await syncProFromServer();
+  try {
+    localStorage.setItem(LAST_SYNC_KEY, today);
+  } catch {
+    /* ignore */
+  }
+
+  if (result.revoked) {
+    toast('Tu suscripción Pro ya no está activa. Algunas funciones quedaron limitadas.');
+  }
+  return result;
+}
+
 export async function startProSubscription() {
   const profile = loadProfile();
   const email = (profile.email || '').trim();

@@ -35,15 +35,15 @@ pip install -r python/requirements.txt
 
 ---
 
-## Desarrollo en Cursor
+## Desarrollo local
 
-La app es **ventana Tauri aparte** (DB, Bluetooth, etc.), no preview embebido en el editor.
+La app es **ventana Tauri aparte** (DB, Bluetooth, etc.), no un preview en el navegador del editor.
 
 1. `./scripts/dev.sh` o tarea **Telar: Dev** (⌘⇧B / F5)
 2. Edita `src/` → la ventana recarga sola (~¼ s) o **Cmd+R**
 3. Cambios en `src-tauri/`: reinicia dev
 
-Vista solo CSS (sin DB): Simple Browser → `http://127.0.0.1:1420` con dev corriendo.
+Vista solo CSS (sin DB): abre `http://127.0.0.1:1420` con dev corriendo.
 
 ---
 
@@ -110,7 +110,7 @@ src/lib/             Muse, nf-session, nf-signal, nf-audio
 src-tauri/           Rust, SQLite, BLE, secure_db, migraciones
 python/              analyze_session.py
 server/              API suscripciones Mercado Pago (Render)
-docs/                Manual, SCRUM, legal
+docs/                Manual, legal, distribución
 scripts/             dev, build, sidecar
 ```
 
@@ -121,15 +121,6 @@ scripts/             dev, build, sidecar
 - DB cifrada: `telar.enc.db` en Application Support (`cl.telarapp.desktop`)
 - **No tocar** la DB de usuario salvo petición explícita en desarrollo
 - Migraciones: `src-tauri/migrations/`
-
----
-
-## Backlog y reglas
-
-- **Workflow agentes (Cursor, Claude Code, etc.):** [WORKFLOW.md](WORKFLOW.md)
-- Prioridades: [SCRUM.md](SCRUM.md)
-- Tras cerrar tareas: ver checklist en WORKFLOW.md
-- Automations Cursor: [CURSOR-AUTOMATIONS.md](CURSOR-AUTOMATIONS.md)
 
 ---
 

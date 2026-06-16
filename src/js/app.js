@@ -14,6 +14,7 @@ import { teardownNeurofeedback } from './modules/neurofeedback.js';
 import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
+import { maybeSyncProFromServer } from './subscription.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
@@ -163,6 +164,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (isTauriApp()) {
     stage('init:usagePing');
     safe('usagePing', maybeSendUsagePing);
+    stage('init:subscriptionSync');
+    maybeSyncProFromServer().catch((err) => console.debug('[subscription-sync]', err?.message || err));
   }
 
   if (!location.hash) {

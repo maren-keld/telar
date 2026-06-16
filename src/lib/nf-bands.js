@@ -37,10 +37,10 @@ export const NF_PROTOCOL_PRESETS = {
   },
   relajacion: {
     id: 'relajacion',
-    label: 'Relajación (trauma)',
-    shortLabel: 'Relajación',
+    label: 'Calma',
+    shortLabel: 'Calma',
     description: 'Regulación fisiológica: más alpha + theta',
-    pctLabel: 'relajación',
+    pctLabel: 'calma',
     pctHint: 'alpha + theta',
   },
 };
@@ -49,6 +49,12 @@ export const NF_PROTOCOL_PRESETS = {
 export const NF_PROTOCOL_ELECTRODES = {
   relajacion: { FP1: true, FP2: true, TP9: true, TP10: true },
   atencion: { FP1: true, FP2: true, TP9: false, TP10: false },
+};
+
+/** Canales para feedback en vivo (mismo criterio que analyze_session.py). */
+export const NF_LIVE_FEEDBACK_CHANNELS = {
+  relajacion: ['TP9', 'TP10'],
+  atencion: ['FP2'],
 };
 
 export function nfPreset(id) {

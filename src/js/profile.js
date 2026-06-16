@@ -14,6 +14,7 @@ const DEFAULTS = {
   locale: 'es',
   plan: 'free',
   customModules: [],
+  hiddenDxProblems: [],
   ...AI_DEFAULTS,
 };
 
@@ -44,6 +45,18 @@ export function applyPresentationMode(on) {
 
 export function isProUser() {
   return loadProfile().plan === 'pro';
+}
+
+export function getHiddenDxProblemNames() {
+  const list = loadProfile().hiddenDxProblems;
+  return Array.isArray(list) ? list : [];
+}
+
+export function hideDxProblemName(name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return;
+  const hidden = new Set([...getHiddenDxProblemNames(), trimmed]);
+  saveProfile({ hiddenDxProblems: [...hidden] });
 }
 
 export function initThemeFromProfile() {

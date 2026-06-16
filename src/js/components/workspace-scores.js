@@ -101,6 +101,91 @@ function buildNfSeries(sessions) {
   return { calm, att };
 }
 
+function rosenbergTotal(answers) {
+  const reverseIdx = new Set([2, 4, 7, 8, 9]);
+  let sum = 0;
+  let any = false;
+  for (let i = 0; i < 10; i++) {
+    const raw = answers[i];
+    if (raw === null || raw === undefined || raw === '') continue;
+    const v = Number(raw);
+    sum += reverseIdx.has(i) ? 5 - v : v;
+    any = true;
+  }
+  return any ? sum : null;
+}
+
+function buildRosenbergSeries(sessions) {
+  const points = [];
+  sessions.forEach((s) => {
+    const mod = s.modules.find((m) => m.module_type === 'rosenberg');
+    if (!mod) return;
+    const data = parseJsonSafe(mod.data, {});
+    const answers = Array.isArray(data.answers) ? data.answers : [];
+    const total = rosenbergTotal(answers);
+    if (total != null) points.push({ label: `S${s.number}`, value: total });
+  });
+  return points;
+}
+
+function qolsTotal(answers) {
+  const vals = answers
+    .slice(0, 16)
+    .map((v) => (v === null || v === undefined || v === '' ? null : Number(v)))
+    .filter((v) => v != null);
+  if (!vals.length) return null;
+  return vals.reduce((a, v) => a + v, 0);
+}
+
+function buildQolsSeries(sessions) {
+  const points = [];
+  sessions.forEach((s) => {
+    const mod = s.modules.find((m) => m.module_type === 'qols');
+    if (!mod) return;
+    const data = parseJsonSafe(mod.data, {});
+    const answers = Array.isArray(data.answers) ? data.answers : [];
+    const total = qolsTotal(answers);
+    if (total != null) points.push({ label: `S${s.number}`, value: total });
+  });
+  return points;
+}
+
+function ferScores(answers) {
+  const sumRange = (start, count) => {
+    let total = 0;
+    let any = false;
+    for (let i = 0; i < count; i++) {
+      const v = answers[start + i];
+      if (v === null || v === undefined || v === '') continue;
+      total += Number(v);
+      any = true;
+    }
+    return any ? total : null;
+  };
+  return {
+    fortalezas: sumRange(0, 6),
+    riesgos: sumRange(6, 6),
+  };
+}
+
+function buildFerSeries(sessions, kind) {
+  const points = [];
+  sessions.forEach((s) => {
+    const mod = s.modules.find((m) => m.module_type === 'escala_fer');
+    if (!mod) return;
+    const data = parseJsonSafe(mod.data, {});
+    const answers = Array.isArray(data.answers) ? data.answers : [];
+    const scores = ferScores(answers);
+    const value = scores[kind];
+    if (value != null) points.push({ label: `S${s.number}`, value });
+  });
+  return points;
+}
+
+function canvasIn(root, id) {
+  return root?.querySelector(`#${id}`) || document.getElementById(id);
+}
+
 function accordionHtml(id, title, hint, bodyHtml, open = true, hintIsHtml = false) {
   const hintBlock = hint
     ? `<p class="score-accordion__hint">${hintIsHtml ? hint : escapeHtml(hint)}</p>`
@@ -120,7 +205,12 @@ function lineChartHtml(canvasId, yMax) {
   return `<div class="score-chart-wrap"><canvas id="${canvasId}" height="160"></canvas></div>`;
 }
 
-export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes) {
+export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { expandAll = false } = {}) {
+  listEl.querySelectorAll('canvas').forEach((canvas) => {
+    const prev = window.Chart?.getChart?.(canvas);
+    if (prev) prev.destroy();
+  });
+
   const sessions = await getSessionsWithModules(treatmentId);
   const types = new Set(moduleTypes.filter((t) => t !== 'selector_modulo'));
   const sections = [];
@@ -209,6 +299,60 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes) {
     );
   }
 
+  if (types.has('rosenberg')) {
+    const series = buildRosenbergSeries(sessions);
+    sections.push(
+      accordionHtml(
+        'chart-rosenberg',
+        'Escala de Autoestima de Rosenberg (EAR)',
+        series.length ? `Último puntaje: ${series[series.length - 1].value}/40` : 'Evolución por sesión',
+        series.length
+          ? lineChartHtml('chart-rosenberg', 40)
+          : '<p class="scores-empty">Sin puntajes Rosenberg registrados aún.</p>',
+        !sections.length,
+        Boolean(series.length),
+      ),
+    );
+  }
+
+  if (types.has('qols')) {
+    const series = buildQolsSeries(sessions);
+    sections.push(
+      accordionHtml(
+        'chart-qols',
+        'Escala de calidad de vida (QOLS)',
+        series.length ? `Último puntaje: ${series[series.length - 1].value}/112` : 'Evolución por sesión',
+        series.length
+          ? lineChartHtml('chart-qols', 112)
+          : '<p class="scores-empty">Sin puntajes QOLS registrados aún.</p>',
+        !sections.length,
+        Boolean(series.length),
+      ),
+    );
+  }
+
+  if (types.has('escala_fer')) {
+    [
+      { key: 'fortalezas', title: 'EFR — Fortalezas', yMax: 24 },
+      { key: 'riesgos', title: 'EFR — Riesgos', yMax: 24 },
+    ].forEach((dim, di) => {
+      const series = buildFerSeries(sessions, dim.key);
+      const cid = `chart-fer-${dim.key}`;
+      sections.push(
+        accordionHtml(
+          cid,
+          dim.title,
+          series.length ? `Último: ${series[series.length - 1].value}/${dim.yMax}` : 'Evolución por sesión',
+          series.length
+            ? lineChartHtml(cid, dim.yMax)
+            : '<p class="scores-empty">Sin puntajes EFR registrados aún.</p>',
+          !sections.length && di === 0,
+          Boolean(series.length),
+        ),
+      );
+    });
+  }
+
   if (types.has('escala_animo') || types.has('escala_ansiedad')) {
     if (types.has('escala_animo')) {
       sections.push(
@@ -250,41 +394,65 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes) {
     });
   });
 
+  if (expandAll) {
+    listEl.querySelectorAll('[data-accordion]').forEach((acc) => {
+      acc.classList.add('score-accordion--open');
+      acc.querySelector('.score-accordion__head')?.setAttribute('aria-expanded', 'true');
+    });
+  }
+
   if (!window.Chart) return;
 
-  if (types.has('dass21')) {
-    paintDassChart('chart-dass-stress', buildDassSeries(sessions, STRESS_IDX), DASS_STRESS_BANDS);
-    paintDassChart('chart-dass-dep', buildDassSeries(sessions, DEP_IDX), DASS_DEP_BANDS);
-    paintDassChart('chart-dass-anx', buildDassSeries(sessions, ANX_IDX), DASS_ANX_BANDS);
-  }
+  const paint = () => {
+    if (types.has('dass21')) {
+      paintDassChart(listEl, 'chart-dass-stress', buildDassSeries(sessions, STRESS_IDX), DASS_STRESS_BANDS);
+      paintDassChart(listEl, 'chart-dass-dep', buildDassSeries(sessions, DEP_IDX), DASS_DEP_BANDS);
+      paintDassChart(listEl, 'chart-dass-anx', buildDassSeries(sessions, ANX_IDX), DASS_ANX_BANDS);
+    }
 
-  if (types.has('eed')) {
-    paintSimpleLine('chart-eed-adapt', buildEedSeries(sessions, 'adapt'), 5, '#2e7d32');
-    paintSimpleLine('chart-eed-inter', buildEedSeries(sessions, 'inter'), 5, '#856404');
-    paintSimpleLine('chart-eed-mal', buildEedSeries(sessions, 'mal'), 5, '#c0392b');
-  }
+    if (types.has('eed')) {
+      paintSimpleLine(listEl, 'chart-eed-adapt', buildEedSeries(sessions, 'adapt'), 5, '#2e7d32');
+      paintSimpleLine(listEl, 'chart-eed-inter', buildEedSeries(sessions, 'inter'), 5, '#856404');
+      paintSimpleLine(listEl, 'chart-eed-mal', buildEedSeries(sessions, 'mal'), 5, '#c0392b');
+    }
 
-  if (types.has('neurofeedback')) {
-    const { calm, att } = buildNfSeries(sessions);
-    paintNfChart('chart-nf-time', calm, att);
-  }
+    if (types.has('neurofeedback')) {
+      const { calm, att } = buildNfSeries(sessions);
+      paintNfChart(listEl, 'chart-nf-time', calm, att);
+    }
 
-  for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
-    if (!types.has(psychType)) continue;
-    const meta = psychometricChartMeta(psychType);
-    paintSimpleLine(`chart-${psychType}`, psychometricSeries(sessions, psychType), meta.yMax, meta.color);
-  }
+    for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
+      if (!types.has(psychType)) continue;
+      const meta = psychometricChartMeta(psychType);
+      paintSimpleLine(listEl, `chart-${psychType}`, psychometricSeries(sessions, psychType), meta.yMax, meta.color);
+    }
 
-  if (types.has('escala_animo')) {
-    paintSubjective('chart-animo', sessions, 'escala_animo', 'mood_score');
-  }
-  if (types.has('escala_ansiedad')) {
-    paintSubjective('chart-ansiedad', sessions, 'escala_ansiedad', 'anxiety_score');
-  }
+    if (types.has('rosenberg')) {
+      paintSimpleLine(listEl, 'chart-rosenberg', buildRosenbergSeries(sessions), 40, '#2f6fed');
+    }
+
+    if (types.has('qols')) {
+      paintSimpleLine(listEl, 'chart-qols', buildQolsSeries(sessions), 112, '#2f6fed');
+    }
+
+    if (types.has('escala_fer')) {
+      paintSimpleLine(listEl, 'chart-fer-fortalezas', buildFerSeries(sessions, 'fortalezas'), 24, '#2e7d32');
+      paintSimpleLine(listEl, 'chart-fer-riesgos', buildFerSeries(sessions, 'riesgos'), 24, '#c0392b');
+    }
+
+    if (types.has('escala_animo')) {
+      paintSubjective(listEl, 'chart-animo', sessions, 'escala_animo', 'mood_score');
+    }
+    if (types.has('escala_ansiedad')) {
+      paintSubjective(listEl, 'chart-ansiedad', sessions, 'escala_ansiedad', 'anxiety_score');
+    }
+  };
+
+  requestAnimationFrame(paint);
 }
 
-function paintDassChart(id, series, bands) {
-  const canvas = document.getElementById(id);
+function paintDassChart(root, id, series, bands) {
+  const canvas = canvasIn(root, id);
   if (!canvas || !series.length) return;
   const yMax = chartYMax(bands);
   const bg = bands.map((b, i) => {
@@ -356,8 +524,8 @@ function paintDassChart(id, series, bands) {
   });
 }
 
-function paintSimpleLine(id, series, yMax, color) {
-  const canvas = document.getElementById(id);
+function paintSimpleLine(root, id, series, yMax, color) {
+  const canvas = canvasIn(root, id);
   if (!canvas || !series.length) return;
   const prev = Chart.getChart(canvas);
   if (prev) prev.destroy();
@@ -377,8 +545,8 @@ function paintSimpleLine(id, series, yMax, color) {
   });
 }
 
-function paintNfChart(id, calm, att) {
-  const canvas = document.getElementById(id);
+function paintNfChart(root, id, calm, att) {
+  const canvas = canvasIn(root, id);
   if (!canvas) return;
   const labels = [...new Set([...calm, ...att].map((p) => p.label))];
   if (!labels.length) return;
@@ -416,7 +584,7 @@ function paintNfChart(id, calm, att) {
   });
 }
 
-function paintSubjective(id, sessions, moduleType, field) {
+function paintSubjective(root, id, sessions, moduleType, field) {
   const series = [];
   sessions.forEach((s) => {
     const mod = s.modules.find((m) => m.module_type === moduleType);
@@ -426,5 +594,5 @@ function paintSubjective(id, sessions, moduleType, field) {
     if (v === null || v === undefined || v === '') return;
     series.push({ label: `S${s.number}`, value: Number(v) });
   });
-  paintSimpleLine(id, series, 100, '#2f6fed');
+  paintSimpleLine(root, id, series, 100, '#2f6fed');
 }

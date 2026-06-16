@@ -26,11 +26,11 @@ DELTA_WEIGHT = 0.7
 WINDOW_SEC = 4.0
 STEP_SEC = 2.0
 EMA_ALPHA = 0.06
-STATE_START_PCT = 60.0
+STATE_START_PCT = 35.0
 CHANNELS_FOR_CALM = ["TP9", "TP10"]
 CHANNELS_FOR_ATT = ["FP2"]
 USE_ALL_CHANNELS = False
-ARTIFACT_P2P_UV = 800.0
+ARTIFACT_P2P_UV = 2500.0
 
 
 def bandpass_filter(data, lowcut, highcut, fs, order=2):
@@ -142,7 +142,7 @@ def avg_band_powers_for_channels(seg, channels, fs) -> Optional[Dict[str, float]
         if e not in seg.columns:
             continue
         x = seg[e].dropna().to_numpy(dtype=float)
-        if len(x) < int(fs * WINDOW_SEC * 0.5):
+        if len(x) < int(fs * WINDOW_SEC * 0.25):
             continue
         p2p = float(np.nanmax(x) - np.nanmin(x)) if len(x) else 0.0
         if p2p > ARTIFACT_P2P_UV:
@@ -165,12 +165,15 @@ def analyze_segments(df) -> Tuple[int, int, int, int, float, float, float]:
         return 0, 0, 0, 0, 0.0, 0.0, 0.0
 
     try:
-        time_ns = ts.astype("int64").to_numpy()
+        diffs = ts.to_series().diff().dt.total_seconds().dropna()
+        mean_diff = float(diffs.mean()) if len(diffs) else 0.0
     except Exception:
-        time_ns = ts.view("int64")
-
-    diffs = np.diff(time_ns) / 1e9
-    mean_diff = float(np.mean(diffs)) if len(diffs) else 0.0
+        time_ns = ts.astype("int64").to_numpy()
+        diffs = np.diff(time_ns)
+        unit = 1e9
+        if len(diffs) and np.median(diffs) < 1e6:
+            unit = 1e6  # datetime64[us]
+        mean_diff = float(np.mean(diffs) / unit) if len(diffs) else 0.0
     fs = 1.0 / mean_diff if mean_diff > 0 else 0.0
     if fs <= 0 or fs > 5000:
         return 0, 0, 0, 0, 0.0, 0.0, 0.0
@@ -243,21 +246,18 @@ def analyze_segments(df) -> Tuple[int, int, int, int, float, float, float]:
     calm_level = level_from_ratio(calm_ratio)
     att_level = level_from_ratio(att_ratio)
 
-    r_pct = relax_accum / max(relax_count, 1)
-    c_pct = calm_accum / max(calm_count, 1)
-    a_pct = att_accum / max(att_count, 1)
-    total = r_pct + c_pct + a_pct
-    if total > 0:
-        r_pct, c_pct, a_pct = (r_pct * 100 / total, c_pct * 100 / total, a_pct * 100 / total)
+    r_avg = relax_accum / max(relax_count, 1)
+    c_avg = calm_accum / max(calm_count, 1)
+    a_avg = att_accum / max(att_count, 1)
 
     return (
         int(round(calm_seconds)),
         int(round(att_seconds)),
         calm_level,
         att_level,
-        round(r_pct, 1),
-        round(c_pct, 1),
-        round(a_pct, 1),
+        round(r_avg, 1),
+        round(c_avg, 1),
+        round(a_avg, 1),
     )
 
 
@@ -276,6 +276,8 @@ def parse_input(text_data: str) -> pd.DataFrame:
     df = pd.DataFrame(parsed, columns=["timestamp", "TP9", "FP1", "FP2", "TP10"])
     for e in ["TP9", "FP1", "FP2", "TP10"]:
         df[e] = pd.to_numeric(df[e], errors="coerce")
+        if df[e].notna().any():
+            df[e] = df[e].ffill().bfill()
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
     df.dropna(subset=["timestamp"], inplace=True)
     df.sort_values("timestamp", inplace=True)

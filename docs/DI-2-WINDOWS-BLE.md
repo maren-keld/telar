@@ -1,6 +1,6 @@
 # DI-2 — Validación BLE Muse 2 en Windows
 
-Checklist para probar neurofeedback con **Muse 2** en hardware Windows real. La CI genera `Telar-windows.exe` (ver `.github/workflows/release.yml`); esta guía documenta la validación manual pendiente (DI-2 en `docs/SCRUM.md`).
+Checklist para probar neurofeedback con **Muse 2** en hardware Windows real. La CI genera `Telar-windows.exe` (ver `.github/workflows/release.yml`).
 
 ## Requisitos previos
 

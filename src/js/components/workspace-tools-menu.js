@@ -1,21 +1,21 @@
 import { isProUser } from '../profile.js';
 import { isTauriApp } from '../tauri-bridge.js';
+import { SETTINGS_ICONS } from '../icons.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
+
+const TOOL_ICONS = {
+  export: SETTINGS_ICONS.export,
+  reference: SETTINGS_ICONS.backup,
+  ai: SETTINGS_ICONS.ai,
+};
 
 function toolsItemsHtml() {
   return `
     <ul class="workspace-tools-tab__list">
       <li>
-        <button type="button" class="workspace-tools-tab__item" data-action="export-context">
-          <span class="workspace-tools-tab__text">
-            <strong>Exportar contexto</strong>
-            <small>Markdown con módulos, notas y resultados para IA o archivo</small>
-          </span>
-        </button>
-      </li>
-      <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-pdf">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
             <strong>Exportar programa PDF</strong>
             <small>Resumen del tratamiento para el paciente o supervisión</small>
@@ -24,6 +24,7 @@ function toolsItemsHtml() {
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="reference-docs">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.reference}</span>
           <span class="workspace-tools-tab__text">
             <strong>Documentos de referencia</strong>
             <small>Adjuntar guías, protocolos o material clínico${isProUser() ? '' : ' · Plan Profesional'}</small>
@@ -32,6 +33,7 @@ function toolsItemsHtml() {
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="ai-program">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.ai}</span>
           <span class="workspace-tools-tab__text">
             <strong>Crear programa con IA</strong>
             <small>Propuesta de sesiones y módulos según motivo, notas y tests (próximamente)</small>
@@ -41,15 +43,7 @@ function toolsItemsHtml() {
     </ul>`;
 }
 
-function bindToolsActions(root, { treatmentId, onExportContext, onExportPdf }) {
-  root.querySelector('[data-action="export-context"]')?.addEventListener('click', async () => {
-    try {
-      await onExportContext();
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar');
-    }
-  });
-
+function bindToolsActions(root, { treatmentId, onExportPdf }) {
   root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', async () => {
     try {
       await onExportPdf();
@@ -94,7 +88,6 @@ export function openWorkspaceToolsMenu(opts) {
           <button type="button" class="modal-close" data-dismiss aria-label="Cerrar">×</button>
         </header>
         <ul class="workspace-tools-menu__list">
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-context"><span class="workspace-tools-menu__text"><strong>Exportar contexto</strong><small>Markdown con módulos, notas y resultados</small></span></button></li>
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><strong>Exportar programa PDF</strong><small>Resumen del tratamiento</small></span></button></li>
           <li><button type="button" class="workspace-tools-menu__item" data-action="reference-docs"><span class="workspace-tools-menu__text"><strong>Documentos de referencia</strong><small>Adjuntar guías y protocolos</small></span></button></li>
           <li><button type="button" class="workspace-tools-menu__item" data-action="ai-program"><span class="workspace-tools-menu__text"><strong>Crear programa con IA</strong><small>Próximamente</small></span></button></li>
@@ -113,10 +106,6 @@ export function openWorkspaceToolsMenu(opts) {
 
   bindToolsActions(root, {
     ...opts,
-    onExportContext: async () => {
-      close();
-      await opts.onExportContext();
-    },
     onExportPdf: async () => {
       close();
       await opts.onExportPdf();

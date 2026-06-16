@@ -1,4 +1,6 @@
 import { t } from '../i18n.js';
+import { isProUser } from '../profile.js';
+import { ICON_PRO } from '../icons.js';
 
 const ICONS = {
   agenda: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
@@ -7,7 +9,6 @@ const ICONS = {
   modules: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
   goals: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`,
   settings: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`,
-  help: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 115 0c0 2-2.5 2-2.5 4M12 17h.01"/></svg>`,
 };
 
 const NAV = [
@@ -16,7 +17,6 @@ const NAV = [
   { id: 'goals', labelKey: 'nav.goals' },
   { id: 'modules', labelKey: 'nav.modules' },
   { id: 'settings', labelKey: 'nav.settings' },
-  { id: 'help', labelKey: 'nav.help', disabled: true },
 ];
 
 const SCREEN_IDS = {
@@ -24,7 +24,6 @@ const SCREEN_IDS = {
   reportes: 'nav-statistics',
   goals: 'nav-goals',
   settings: 'nav-settings',
-  help: 'help',
   modules: 'nav-modules',
 };
 
@@ -44,7 +43,14 @@ export function renderAppSidebar(activeNav = 'agenda') {
       </button>`;
   }).join('');
 
-  return `<nav class="sidebar">${items}</nav>`;
+  const proBadge = isProUser()
+    ? `<div class="sidebar-pro" title="Plan Profesional activo">
+        <span class="sidebar-pro__icon" aria-hidden="true">${ICON_PRO}</span>
+        <span class="sidebar-pro__label">Pro</span>
+      </div>`
+    : '';
+
+  return `<nav class="sidebar"><div class="sidebar-nav">${items}</div>${proBadge}</nav>`;
 }
 
 export function bindAppSidebar(container, { onNavigate }) {

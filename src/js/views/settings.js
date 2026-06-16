@@ -6,6 +6,7 @@ import { exportAllUserData } from '../export-user-data.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
 import { syncProFromServer } from '../subscription.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
+import { appVersionLabel } from '../app-version.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openPinModal } from '../components/pin-modal.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
@@ -222,7 +223,7 @@ export async function renderSettings(container, { onNavigate }) {
             <span class="settings-row__icon" aria-hidden="true">${SETTINGS_ICONS.info}</span>
             <span class="settings-row__text">
               <span class="settings-row__title">${escapeHtml(t('settings.version'))}</span>
-              <span class="settings-row__sub">Build ${escapeHtml(BUILD_STAMP_LABEL)}</span>
+              <span class="settings-row__sub">${escapeHtml(appVersionLabel())} · build ${escapeHtml(BUILD_STAMP_LABEL)}</span>
             </span>
           </div>
           ${row({

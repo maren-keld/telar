@@ -312,6 +312,24 @@ export async function createTreatment(patientId, { templateId = null } = {}) {
   return treatmentId;
 }
 
+/** Copia data/readable_text/status de módulos homólogos entre tratamientos del mismo paciente. */
+export async function copyModuleDataBetweenTreatments(sourceTreatmentId, destTreatmentId, moduleTypes) {
+  const srcSessions = await getSessionsWithModules(sourceTreatmentId);
+  const dstSessions = await getSessionsWithModules(destTreatmentId);
+  const srcMods = srcSessions.flatMap((s) => s.modules);
+  const dstMods = dstSessions.flatMap((s) => s.modules);
+
+  for (const type of moduleTypes) {
+    const src = srcMods.find((m) => m.module_type === type);
+    const dst = dstMods.find((m) => m.module_type === type);
+    if (!src || !dst) continue;
+    await execute(
+      `UPDATE session_modules SET data = ?, status = ?, readable_text = ?, updated_at = datetime('now') WHERE id = ?`,
+      [src.data || '{}', src.status || 'pendiente', src.readable_text || '', dst.id],
+    );
+  }
+}
+
 export async function updateTreatmentStatus(treatmentId, status) {
   await execute(`UPDATE treatments SET status = ? WHERE id = ?`, [status, treatmentId]);
 }

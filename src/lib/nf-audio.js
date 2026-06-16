@@ -1,8 +1,6 @@
 /**
  * Retroalimentación sonora local (NF-2) — sin CDN.
  */
-import { computeFeedbackMetrics } from './nf-signal.js';
-
 const BASE = 'assets/audio';
 
 let feedbackTrack = null;
@@ -10,7 +8,6 @@ let connectedSound = null;
 let lowBatterySound = null;
 let disconnectSound = null;
 let lowBatteryPlayed = false;
-let protocol = 'relajacion';
 let audioEnabled = false;
 
 function track(path, loop = false) {
@@ -41,8 +38,8 @@ export function setAudioFeedbackEnabled(on) {
   }
 }
 
-export function setNfAudioProtocol(p) {
-  protocol = p === 'atencion' ? 'atencion' : 'relajacion';
+export function setNfAudioProtocol(_p) {
+  /* reservado — volumen depende del level calculado en nf-session */
 }
 
 export function playConnectedSound() {
@@ -68,20 +65,26 @@ export function resetLowBatteryFlag() {
   lowBatteryPlayed = false;
 }
 
-/** bars: [delta, theta, alpha, beta] en % */
-export function applyAudioFeedback(bars) {
-  if (!audioEnabled || !feedbackTrack || feedbackTrack.muted) return;
-  const { level: target } = computeFeedbackMetrics(protocol, bars);
+/** level 0–1 — curva cúbica para que 25–35 % suene claramente más bajo que 80 %+ */
+function volumeFromLevel(level) {
+  const clamped = Math.max(0, Math.min(1, level));
+  return Math.min(0.82, clamped ** 3);
+}
 
-  const smooth = 0.12;
+/** @param {number} level 0–1 (ya calculado con computeFeedbackMetrics) */
+export function applyAudioFeedback(level) {
+  if (!audioEnabled || !feedbackTrack || feedbackTrack.muted) return;
+  const target = volumeFromLevel(level);
+
+  const smooth = 0.14;
   const nextVol = feedbackTrack.volume + (target - feedbackTrack.volume) * smooth;
-  if (nextVol < 0.02) {
+  if (nextVol < 0.008) {
     feedbackTrack.volume = 0;
     if (!feedbackTrack.paused) feedbackTrack.pause();
     return;
   }
   if (feedbackTrack.paused) feedbackTrack.play().catch(() => {});
-  feedbackTrack.volume = Math.min(1, nextVol);
+  feedbackTrack.volume = nextVol;
 }
 
 export function enableAudioFeedback() {

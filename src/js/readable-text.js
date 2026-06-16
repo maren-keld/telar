@@ -77,6 +77,18 @@ function formatRosenberg(d) {
   return `Total: ${total}/40 (autoestima ${band})`;
 }
 
+function formatDxItems(items) {
+  return (items || [])
+    .map((x) => {
+      const item = typeof x === 'string' ? { text: x, checked: false } : x;
+      const text = String(item?.text ?? '').trim();
+      if (!text) return null;
+      return item.checked ? `✓ ${text}` : text;
+    })
+    .filter(Boolean)
+    .join('; ');
+}
+
 function formatDiagnostico(d) {
   const structured = d.structured || {};
   const structLines = linesFromObject(structured, [
@@ -85,17 +97,20 @@ function formatDiagnostico(d) {
     { key: 'medication', label: 'Medicación psicotrópica' },
     { key: 'dx_notes', label: 'Notas clínicas estructuradas' },
   ]);
+  const custom = d.custom_diagnosis?.trim();
   const problems = (d.problems || []).filter((p) => p.assigned && p.name);
   const problemText = problems
     .map((p) => {
-      const ind = (p.indicators || []).filter(Boolean).join('; ');
-      const obj = (p.objectives || []).filter(Boolean).join('; ');
+      const ind = formatDxItems(p.indicators);
+      const obj = formatDxItems(p.objectives);
       return [p.name, ind ? `Indicadores: ${ind}` : null, obj ? `Objetivos: ${obj}` : null]
         .filter(Boolean)
         .join('\n');
     })
     .join('\n\n');
-  return [structLines, problemText].filter(Boolean).join('\n\n');
+  return [custom ? `Diagnóstico personalizado:\n${custom}` : null, structLines, problemText]
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 function formatIesr(d) {

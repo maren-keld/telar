@@ -4,7 +4,7 @@ import { getSubscriptionApiBase } from './subscription.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 
 const LAST_PING_KEY = 'telar.usagePingLast';
-const APP_VERSION = '0.1.0';
+import { APP_VERSION } from './app-version.js';
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
