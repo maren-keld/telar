@@ -26,25 +26,30 @@ async function fetchNominatim(query) {
   }
 }
 
-/** Autocompletado de direcciones (Nominatim/OSM en Chile + comunas locales offline). */
+/** Autocompletado de direcciones (Nominatim/OSM en Chile + comunas locales offline).
+ *  El dropdown se monta como portal en <body> con position:fixed para evitar que
+ *  cualquier overflow:hidden de los ancestros lo recorte. */
 export function bindAddressAutocomplete(input, { onSelect } = {}) {
   if (!input || input.dataset.addressAutocomplete) return;
   input.dataset.addressAutocomplete = '1';
   input.setAttribute('autocomplete', 'off');
 
-  const wrap = document.createElement('div');
-  wrap.className = 'address-autocomplete';
-  input.parentNode.insertBefore(wrap, input);
-  wrap.appendChild(input);
-
+  // Portal al body para que no quede recortado por overflow:hidden
   const list = document.createElement('ul');
-  list.className = 'address-autocomplete__list';
+  list.className = 'address-autocomplete__list address-autocomplete__list--portal';
   list.hidden = true;
-  wrap.appendChild(list);
+  document.body.appendChild(list);
 
   let items = [];
   let timer = null;
   let reqId = 0;
+
+  const positionList = () => {
+    const rect = input.getBoundingClientRect();
+    list.style.top = `${rect.bottom + 4}px`;
+    list.style.left = `${rect.left}px`;
+    list.style.width = `${rect.width}px`;
+  };
 
   const hide = () => {
     list.hidden = true;
@@ -84,6 +89,7 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
           `<li><button type="button" class="address-autocomplete__item" data-idx="${i}">${escapeHtml(label)}</button></li>`,
       )
       .join('');
+    positionList();
     list.hidden = false;
   };
 
@@ -116,4 +122,13 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') hide();
   });
+
+  // Limpiar el portal cuando el input se elimina del DOM
+  const observer = new MutationObserver(() => {
+    if (!document.contains(input)) {
+      list.remove();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }

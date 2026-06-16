@@ -9,10 +9,11 @@
   <meta property="og:description" content="Ficha clínica y neurofeedback en el mismo programa, sin subir datos a la nube.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CL">
+  <meta property="og:image" content="assets/telar-ficha-clinica.png">
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -38,47 +39,31 @@
 
   <main>
     <section class="hero">
-      <div class="container hero-grid">
-        <div>
-          <div class="badges">
-            <span class="badge badge-beta">Beta 1</span>
-            <span class="badge badge-chile">🇨🇱 Hecho en Latam</span>
-            <span class="badge badge-encrypted">🔒 Datos cifrados</span>
-            <span class="badge badge-local">💻 100% local</span>
-          </div>
-          <h1>Aplicación para trabajar TDAH, trauma y ansiedad</h1>
-          <p class="hero-lead">
-            Construye programas de psicoterapia, utiliza módulos de entrenamiento en tiempo real, potenciados con IA. Todas las herramientas que necesitas para empezar o potenciar tu consulta. Todo cifrado en tu Mac o PC.
-          </p>
-          <div class="hero-cta">
-            <a id="btn-download" href="#requisitos" class="btn btn-primary btn-lg">Descargar app</a>
-            <a href="https://github.com/maren-keld/telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Ver en GitHub</a>
-          </div>
+      <div class="hero-visual">
+        <figure class="app-shot">
+          <img
+            src="assets/telar-ficha-clinica.png"
+            alt="Ficha clínica en Telar: neurofeedback, notas clínicas y consulta a la IA en la misma sesión"
+            width="2940"
+            height="1690"
+            loading="eager"
+            decoding="async"
+          >
+        </figure>
+      </div>
+      <div class="container hero-text">
+        <div class="badges">
+          <span class="badge badge-beta">Beta 1</span>
+          <span class="badge badge-chile">🇨🇱 Hecho en Latam</span>
+          <span class="badge badge-encrypted">🔒 Datos cifrados</span>
+          <span class="badge badge-local">💻 100% local</span>
         </div>
-        <div class="hero-visual">
-          <div class="app-preview" aria-hidden="true">
-            <div class="preview-bar">
-              <span class="preview-dot"></span>
-              <span class="preview-dot"></span>
-              <span class="preview-dot"></span>
-            </div>
-            <div class="preview-body">
-              <div class="preview-sidebar">
-                <div class="preview-nav-item"></div>
-                <div class="preview-nav-item"></div>
-                <div class="preview-nav-item"></div>
-              </div>
-              <div class="preview-main">
-                <div class="preview-card wide"></div>
-                <div class="preview-card"></div>
-                <div class="preview-card narrow"></div>
-                <div class="preview-nf">
-                  <span class="preview-nf-dot"></span>
-                  Neurofeedback en vivo — Muse 2 conectado
-                </div>
-              </div>
-            </div>
-          </div>
+        <h1>Aplicación para trabajar TDAH, trauma y ansiedad</h1>
+        <p class="hero-lead">
+          Construye programas de psicoterapia, utiliza módulos de entrenamiento en tiempo real, potenciados con IA. Todas las herramientas que necesitas para mejorar tu consulta. Todo cifrado en tu Mac o PC.
+        </p>
+        <div class="hero-cta">
+          <a id="btn-download" href="#requisitos" class="btn btn-primary btn-lg">Descargar app</a>
         </div>
       </div>
     </section>
@@ -107,12 +92,12 @@
           <article class="feature-card">
             <div class="feature-icon blue">🎯</div>
             <h3>TDAH adulto</h3>
-            <p>ASRS v1.1 (WHO), GAD-7, plantilla de 5 sesiones, preset NF «Atención (TDAH)» con beta frontal y gráficos de evolución.</p>
+            <p>Plantilla de 8 sesiones para trabajar TDAH con Neurofeedback, además de módulos de psicoeducación y escalas (ASRS, GAD-7, y otros).</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green">🛡</div>
             <h3>Trauma y regulación</h3>
-            <p>PCL-5, SPRINT-E-CL (validación chilena), IES-R, preset «Relajación (trauma)» y export de contexto clínico para conceptualización.</p>
+            <p>Módulos de psicoeducación y entrenamientos con estimulación bilateral y Neurofeedback. Se incluyen escalas PCL-5, SPRINT-E-CL, IES-R, entre otros.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon purple">📊</div>
@@ -124,11 +109,22 @@
             <h3>Programa por sesiones</h3>
             <p>Agenda, objetivos, convenios y módulos configurables — no solo una ficha estática por paciente.</p>
           </article>
-          <article class="feature-card">
-            <div class="feature-icon purple">🧠</div>
-            <h3>Neurofeedback</h3>
-            <p>Da un salto al futuro con entrenamientos cerebrales. Con tan solo unos clics puedes trabajar variables como TDAH y calma con tus pacientes.</p>
-            <p class="feature-link"><a href="neurofeedback.html">Guía NF →</a></p>
+          <article class="feature-card feature-card--shot">
+            <div>
+              <div class="feature-icon purple">🧠</div>
+              <h3>Neurofeedback</h3>
+              <p>Da un salto al futuro con entrenamientos cerebrales. Con tan solo unos clics puedes trabajar variables como TDAH y ansiedad con tus pacientes.</p>
+              <p class="feature-link"><a href="neurofeedback.html">Guía NF →</a></p>
+            </div>
+            <img
+              class="feature-shot"
+              src="assets/telar-neurofeedback.png"
+              alt="Módulo de Neurofeedback en Telar con Muse 2 conectado y protocolo Calma activo"
+              width="1024"
+              height="968"
+              loading="lazy"
+              decoding="async"
+            >
           </article>
           <article class="feature-card">
             <div class="feature-icon green">🔒</div>

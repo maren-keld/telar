@@ -1,3 +1,19 @@
+/*
+ * IDENTIDAD VISUAL TELAR
+ *
+ * Tipografía display: Fraunces (variable, Google Fonts)
+ *   Elegida sobre Playfair Display y DM Serif Display porque su eje WONK
+ *   le da una personalidad artesanal que resuena con "telar" (loom): cálida,
+ *   hecha a mano, seria pero con alma latinoamericana. Perfecta para contextos
+ *   clínicos de trauma, TDAH y neurofeedback — nada de frío corporativo.
+ *   La calidez visual la aportan las imágenes y las ilustraciones, no el color.
+ *
+ * Color acento: #0f2347 (negro-azulado profundo, monocromático)
+ *   Sin colores de marca llamativos — solo negros, grises y blancos.
+ *   Mismo tono que --text-primary para coherencia total del sistema.
+ *   La personalidad visual viene de la tipografía y el contenido.
+ */
+
 :root {
   --bg-app: #e8f1fb;
   --bg-sidebar: #f4f8fd;
@@ -6,9 +22,9 @@
   --text-primary: #0f2347;
   --text-secondary: #5a6b85;
   --text-muted: #8b9bb5;
-  --accent: #2f6fed;
-  --accent-soft: #d6e6ff;
-  --accent-dark: #1a3a6e;
+  --accent: #0f2347;
+  --accent-soft: #eef1f6;
+  --accent-dark: #050d1e;
   --border: #d4e0f0;
   --success: #3d9b6e;
   --success-soft: #d8f3e6;
@@ -27,13 +43,14 @@
   --radius-pill: 999px;
   --shadow-card: 0 2px 12px rgba(15, 35, 71, 0.06);
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
   --sidebar-w: 88px;
   --sidebar-w-wide: 260px;
 }
 
 html[data-theme="dark"] {
-  --btn-primary-bg: #2f6fed;
-  --btn-primary-fg: #ffffff;
+  --btn-primary-bg: #c8d4e8;
+  --btn-primary-fg: #0c1220;
   --bg-app: #0c1220;
   --bg-sidebar: #121a2b;
   --bg-card: #1a2438;
@@ -41,9 +58,9 @@ html[data-theme="dark"] {
   --text-primary: #e8eef8;
   --text-secondary: #9aa8c0;
   --text-muted: #6b7a94;
-  --accent: #5b8ef7;
-  --accent-soft: #243a5c;
-  --accent-dark: #c5d9ff;
+  --accent: #c8d4e8;
+  --accent-soft: #1a2438;
+  --accent-dark: #e8eef8;
   --border: #2a3850;
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.35);
   --note-teal: #3d8a82;
@@ -66,6 +83,11 @@ body {
   background: var(--bg-app);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+/* Tipografía editorial en títulos — Fraunces */
+h1, h2, h3 {
+  font-family: var(--font-display);
 }
 
 button,

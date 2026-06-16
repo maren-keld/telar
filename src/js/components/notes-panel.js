@@ -1,4 +1,17 @@
 import { NOTE_COLORS } from '../config.js';
+
+/* Grid loader 3×3 — onda diagonal en idle, ripple desde centro al pensar */
+const AI_GRID_SVG = `<svg class="ai-grid" viewBox="0 0 22 22" width="16" height="16" fill="none" aria-hidden="true">
+  <circle class="d d0" cx="3"  cy="3"  r="1.9"/>
+  <circle class="d d1" cx="11" cy="3"  r="1.9"/>
+  <circle class="d d2" cx="19" cy="3"  r="1.9"/>
+  <circle class="d d3" cx="3"  cy="11" r="1.9"/>
+  <circle class="d d4" cx="11" cy="11" r="1.9"/>
+  <circle class="d d5" cx="19" cy="11" r="1.9"/>
+  <circle class="d d6" cx="3"  cy="19" r="1.9"/>
+  <circle class="d d7" cx="11" cy="19" r="1.9"/>
+  <circle class="d d8" cx="19" cy="19" r="1.9"/>
+</svg>`;
 import {
   addClinicalNote,
   deleteClinicalNote,
@@ -37,10 +50,55 @@ function writePerfilOnlySelected(treatmentId, on) {
   }
 }
 const PERFIL_SECTIONS = [
-  { id: 'fortalezas', label: 'Fortalezas' },
-  { id: 'defensas', label: 'Defensas' },
-  { id: 'riesgos', label: 'Debilidades' },
+  {
+    id: 'fortalezas',
+    label: 'Recursos y factores protectores',
+    subtitle: 'Capacidades, habilidades y redes de apoyo del paciente',
+    icon: `<svg class="perfil-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+  },
+  {
+    id: 'defensas',
+    label: 'Mecanismos de defensa',
+    subtitle: 'Orientativo; alineado con EED — marca 3–5 predominantes',
+    icon: `<svg class="perfil-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`,
+  },
+  {
+    id: 'riesgos',
+    label: 'Vulnerabilidades y riesgo clínico actual',
+    subtitle: 'Factores de riesgo y fragilidades identificadas en el caso',
+    icon: `<svg class="perfil-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  },
 ];
+
+/*
+ * Cross-referencias conceptuales entre secciones del Perfil.
+ * Un mecanismo en Defensas puede tener expresión conductual en Vulnerabilidades
+ * y viceversa — se muestra como hint en el ítem para guiar al clínico.
+ */
+const PERFIL_CROSS_REFS = {
+  defensas: {
+    'Acting out':
+      '→ Si hay conducta disruptiva real, ver «Violencia / impulsividad» en Vulnerabilidades',
+    'Pasivo-agresividad':
+      '→ Si hay hostilidad activa, considerar «Violencia / impulsividad» en Vulnerabilidades',
+    'Disociación leve':
+      '→ Si se intensifica o hay amnesia, ver «Factores psicosociales de vulnerabilidad»',
+    'Disociación profunda':
+      '→ Evaluar «Aislamiento social» y «Factores psicosociales de vulnerabilidad» en Vulnerabilidades',
+    Negación:
+      '→ Puede obstaculizar adherencia; evaluar nivel de riesgo en Vulnerabilidades',
+    'Identificación proyectiva':
+      '→ Evaluar impacto en vínculos; ver «Factores psicosociales de vulnerabilidad»',
+  },
+  riesgos: {
+    'Violencia / impulsividad':
+      '→ Ver «Acting out» y «Pasivo-agresividad» en Mecanismos de defensa',
+    'Aislamiento social':
+      '→ Ver «Disociación leve/profunda» en Mecanismos de defensa si hay desconexión',
+    'Factores psicosociales de vulnerabilidad':
+      '→ Revisar defensas desadaptativas en Mecanismos de defensa',
+  },
+};
 
 export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   let refreshList = async () => {};
@@ -67,12 +125,12 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <div class="notes-scroll" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
-        <button type="button" class="btn btn-primary btn-fab" id="btn-add-note" title="Añadir nota clínica">+ Nota</button>
+        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica">+ Nota</button>
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
         <div class="ai-dock__input-row">
-          <input type="text" class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" />
-          <button type="button" class="btn btn-primary" id="ai-dock-send">Consultar</button>
+          <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" rows="1"></textarea>
+          <button type="button" class="btn btn-primary" id="ai-dock-send"><span class="ai-dock-label">Consultar</span>${AI_GRID_SVG}</button>
         </div>
         <p class="ai-dock__hint" id="ai-dock-hint" hidden></p>
       </aside>
@@ -156,12 +214,38 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     aiHint.textContent = 'Activa el asistente IA en Ajustes → Proveedor de IA.';
     aiHint.hidden = false;
   } else {
+    // Auto-grow textarea hacia arriba (la notas list encoge con 1fr)
+    const autoGrow = () => {
+      aiInput.style.height = 'auto';
+      aiInput.style.height = Math.min(aiInput.scrollHeight, 120) + 'px';
+    };
+    aiInput.addEventListener('input', autoGrow);
+
+    // Disabled cuando vacío (solo evalúa si no estamos en estado "pensando")
+    const syncSendState = () => {
+      if (!aiSend.querySelector('.ai-grid--thinking')) {
+        aiSend.disabled = aiInput.value.trim() === '';
+      }
+    };
+    aiInput.addEventListener('input', syncSendState);
+    syncSendState();
+
+    const resetInput = () => {
+      aiInput.value = '';
+      aiInput.style.height = '';
+      syncSendState();
+    };
+
     const sendAiQuestion = async () => {
       const q = aiInput.value.trim();
       if (!q) return;
       aiInput.disabled = true;
       aiSend.disabled = true;
-      aiSend.textContent = 'Consultando';
+      const gridEl = aiSend.querySelector('.ai-grid');
+      aiSend.querySelector('.ai-dock-label').textContent = 'Consultando';
+      if (gridEl) gridEl.classList.add('ai-grid--thinking');
+      // Yield al navegador para que pinte la animación antes del trabajo pesado
+      await new Promise(r => requestAnimationFrame(r));
       try {
         const context = await buildCaseContextText(treatmentId);
         const { text } = await chatCompletion({
@@ -183,7 +267,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        aiInput.value = '';
+        resetInput();
         await refreshList({ scrollBottom: true });
       } catch (err) {
         await addClinicalNote(treatmentId, {
@@ -196,8 +280,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         await refreshList({ scrollBottom: true });
       } finally {
         aiInput.disabled = false;
-        aiSend.disabled = false;
-        aiSend.textContent = 'Consultar';
+        aiSend.querySelector('.ai-dock-label').textContent = 'Consultar';
+        const gridFinal = aiSend.querySelector('.ai-grid');
+        if (gridFinal) gridFinal.classList.remove('ai-grid--thinking');
+        syncSendState();
       }
     };
 
@@ -310,12 +396,14 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
         .map((label) => {
           const checked = map.get(label) || false;
           const desc = spaceCheckDescription(sec.id, label);
+          const xref = PERFIL_CROSS_REFS[sec.id]?.[label] || '';
           return `
           <label class="space-check">
             <input type="checkbox" data-space-check data-category="${sec.id}" value="${escapeHtml(label)}" ${checked ? 'checked' : ''}/>
             <span class="space-check__body">
               <span class="space-check__title">${escapeHtml(label)}</span>
               ${desc ? `<span class="space-check__desc">${escapeHtml(desc)}</span>` : ''}
+              ${xref ? `<span class="space-check__xref">${escapeHtml(xref)}</span>` : ''}
             </span>
           </label>`;
         })
@@ -324,7 +412,13 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
       return `
         <details class="perfil-section" open>
           <summary class="perfil-section__head">
-            <span class="perfil-section__title">${escapeHtml(sec.label)}</span>
+            <span class="perfil-section__head-left">
+              ${sec.icon}
+              <span class="perfil-section__title-group">
+                <span class="perfil-section__title">${escapeHtml(sec.label)}</span>
+                ${sec.subtitle ? `<span class="perfil-section__subtitle">${escapeHtml(sec.subtitle)}</span>` : ''}
+              </span>
+            </span>
             <span class="perfil-section__count">${checkedCount}/${labels.length}</span>
           </summary>
           <div class="space-checklist">${items}</div>
@@ -359,14 +453,21 @@ async function analyzeProfileWithAi(treatmentId) {
     messages: [
       {
         role: 'system',
-        content: `Eres psicólogo clínico. Según el contexto del caso, marca qué ítems aplican del paciente actual.
-Responde SOLO JSON válido sin markdown:
+        content: `Eres psicólogo clínico experto en psicoterapia. Analiza el caso y selecciona los ítems que aplican según estas reglas ESTRICTAS:
+
+REGLAS (NO las violes):
+1. NO marques el mismo concepto en «recursos» y en «defensas». Humor, Sublimación, Altruismo, Anticipación, Supresión son mecanismos de defensa adaptativos → van SOLO en defensas, NUNCA en recursos.
+2. «Recursos y factores protectores» = solo capacidades, habilidades y redes de apoyo genuinas del paciente, NO mecanismos defensivos.
+3. «Acting out» → solo en defensas. Si además hay conducta disruptiva real → marca TAMBIÉN «Violencia / impulsividad» en debilidades.
+4. «Disociación profunda» → defensas. Si hay desorganización grave o amnesia → considera también «Factores psicosociales de vulnerabilidad» en debilidades.
+5. Incluye solo ítems con evidencia EXPLÍCITA en el contexto. Prefiere pocos ítems certeros a muchos especulativos.
+6. Responde SOLO JSON válido sin markdown ni explicaciones:
 {"fortalezas":["..."],"defensas":["..."],"debilidades":["..."]}
-Usa exactamente los nombres de las listas proporcionadas. Incluye solo ítems con evidencia en el contexto.`,
+Usa exactamente los nombres de las listas proporcionadas.`,
       },
       {
         role: 'user',
-        content: `Contexto del caso:\n${context}\n\nFortalezas posibles:\n${lists.fortalezas.join('\n')}\n\nDefensas posibles:\n${lists.defensas.join('\n')}\n\nDebilidades posibles:\n${lists.debilidades.join('\n')}`,
+        content: `Contexto del caso:\n${context}\n\nRecursos posibles:\n${lists.fortalezas.join('\n')}\n\nDefensas posibles:\n${lists.defensas.join('\n')}\n\nDebilidades posibles:\n${lists.debilidades.join('\n')}`,
       },
     ],
     maxTokens: 1200,
@@ -404,31 +505,28 @@ function sortLabels(labels) {
 
 function defaultsFor(tab) {
   if (tab === 'fortalezas') {
+    // Solo recursos genuinos — los mecanismos de defensa adaptativos
+    // (Altruismo, Anticipación, Humor, Sublimación, Supresión, Asertividad emocional)
+    // están en "defensas" únicamente para evitar duplicaciones.
     return [
       'Adaptabilidad',
-      'Asertividad emocional',
       'Autocuidado',
       'Capacidad de estar solo sin aislarse',
       'Capacidad de reparación',
-      'Creatividad',
-      'Empatía',
-      'Flexibilidad cognitiva',
-      'Insight',
-      'Regulación afectiva',
-      'Tolerancia a la frustración',
-      'Actividad física',
       'Capacidad de disfrute',
       'Capacidad de pedir ayuda',
+      'Creatividad',
+      'Empatía',
       'Estructura diaria / disciplina',
+      'Flexibilidad cognitiva',
+      'Insight',
       'Participación en comunidad',
       'Propósito o sentido espiritual',
       'Red de apoyo emocional',
+      'Regulación afectiva',
+      'Tolerancia a la frustración',
       'Vínculos seguros',
-      'Altruismo',
-      'Anticipación',
-      'Humor',
-      'Sublimación',
-      'Supresión',
+      'Actividad física',
     ];
   }
   if (tab === 'defensas') {
@@ -465,6 +563,8 @@ function defaultsFor(tab) {
     ];
   }
   if (tab === 'riesgos') {
+    // 'Defensas desadaptativas predominantes' se quitó — el detalle queda
+    // en la sección Mecanismos de defensa con las defensas específicas marcadas.
     return [
       'Ideación suicida',
       'Plan suicida',
@@ -476,7 +576,6 @@ function defaultsFor(tab) {
       'Autolesiones',
       'Violencia / impulsividad',
       'Agitación o ansiedad elevada',
-      'Defensas desadaptativas predominantes',
       'Factores psicosociales de vulnerabilidad',
     ];
   }

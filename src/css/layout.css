@@ -87,11 +87,16 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+
+  /* Se controlan desde src/js/views/workspace.js */
+  --workspace-left-w: 260px;
+  --workspace-right-w: 320px;
 }
 
 .workspace-sidebar {
-  flex: 0 0 260px;
-  width: 260px;
+  flex: 0 0 var(--workspace-left-w, 260px);
+  width: var(--workspace-left-w, 260px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -159,6 +164,25 @@
   overflow-y: auto;
   padding: 0 16px 12px;
   min-height: 0;
+}
+
+/* Modo foco: sidebar izquierdo angosto (56px) con solo ← visible */
+#leftsidebar.workspace-sidebar--focus .workspace-patient-name,
+#leftsidebar.workspace-sidebar--focus .workspace-patient-menu,
+#leftsidebar.workspace-sidebar--focus .workspace-sidebar__scroll {
+  display: none;
+}
+
+#leftsidebar.workspace-sidebar--focus .workspace-sidebar__header {
+  padding: 14px 0 12px;
+  gap: 0;
+  justify-content: center;
+}
+
+#leftsidebar.workspace-sidebar--focus .workspace-back {
+  width: 100%;
+  text-align: center;
+  padding: 4px 0;
 }
 
 #leftsidebar .workspace-sidebar__scroll {
@@ -242,6 +266,15 @@
   font-weight: 500;
 }
 
+.center-add-session {
+  margin: 20px 0 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.9rem;
+  border-top: 1px dashed var(--border);
+}
+
 .center-module-card--active .center-module-card__body > .card,
 .center-module-card--active .center-module-card__body > .nf-panel {
   border-color: var(--border);
@@ -264,7 +297,8 @@
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 12px;
-  padding-right: 44px;
+  /* Espacio para hasta 3 iconos de acción (swap + print/help + delete) */
+  padding-right: 116px;
 }
 
 .module-card-head__sub {
@@ -373,9 +407,9 @@
 }
 
 .workspace-tools {
-  flex: 0 0 320px;
-  width: 320px;
-  max-width: 320px;
+  flex: 0 0 var(--workspace-right-w, 320px);
+  width: var(--workspace-right-w, 320px);
+  max-width: var(--workspace-right-w, 320px);
   min-width: 0;
   background: var(--bg-sidebar);
   border-left: 1px solid var(--border);
@@ -394,6 +428,43 @@
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+/* Handles para resize de sidebars */
+.workspace-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 40;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.workspace-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: var(--border);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.workspace-resizer:hover::after,
+.workspace-resizer:active::after {
+  opacity: 0.9;
+}
+
+.workspace-resizer--left {
+  left: calc(var(--workspace-left-w, 260px) - 3px);
+}
+
+.workspace-resizer--right {
+  right: calc(var(--workspace-right-w, 320px) - 3px);
 }
 
 /* Panel notas / IA: ver css/notes.css */
@@ -420,7 +491,9 @@
 .boot-splash__title {
   margin: 0 0 8px;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 400;
+  font-family: var(--font-display);
+  letter-spacing: 0;
 }
 
 .boot-splash__release {

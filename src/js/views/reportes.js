@@ -1,4 +1,3 @@
-import { renderPatientHeatMap } from '../chile-map.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats, getTreatmentReport } from '../db.js';
 import { escapeHtml, formatDate, parseJsonSafe } from '../utils.js';
@@ -84,11 +83,6 @@ function renderDemographicsSection() {
         ${pieCardHtml('chart-marital', 'Estado marital')}
         ${pieCardHtml('chart-prevision', 'Previsión')}
         ${pieCardHtml('chart-source', 'Fuente')}
-      </div>
-      <div class="card reportes-chart-card reportes-chart-card--map">
-        <div id="patient-heat-map" class="patient-heat-map"></div>
-        <h2 class="reportes-map-footer__title">Geolocalización de pacientes —</h2>
-        <p class="reportes-map-footer__desc">Descubre a través de mapas de calor el predominio de locaciones para potenciar objetivos publicitarios o investigativos.</p>
       </div>
     </section>`;
 }
@@ -240,6 +234,4 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
     }
   }
 
-  const mapHost = container.querySelector('#patient-heat-map');
-  if (mapHost) renderPatientHeatMap(mapHost, demo.addresses);
 }

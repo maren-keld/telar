@@ -1,6 +1,8 @@
 .module-title {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 0;
   margin: 0 0 20px;
 }
 
@@ -928,6 +930,8 @@
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 12px;
+  /* espacio para los iconos de module-card-actions (swap + delete) */
+  padding-right: 80px;
 }
 
 .support-view-tabs {
@@ -1499,13 +1503,13 @@
 
 #leftsidebar .btn-add-module:hover,
 #leftsidebar .workspace-add-session:hover {
-  background: rgba(47, 111, 237, 0.1);
+  background: rgba(15, 35, 71, 0.1);
   color: var(--accent-dark);
 }
 
 #leftsidebar .btn-add-module:active,
 #leftsidebar .workspace-add-session:active {
-  background: rgba(47, 111, 237, 0.18);
+  background: rgba(15, 35, 71, 0.18);
 }
 
 .workspace-sidebar .workspace-export-btn {
@@ -2416,7 +2420,7 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 .subjective-scale__box input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.15);
+  box-shadow: 0 0 0 4px rgba(15, 35, 71, 0.15);
 }
 
 .subjective-scale__range {

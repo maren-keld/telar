@@ -20,7 +20,7 @@ import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { t } from '../i18n.js';
 import { tccHandoutDef } from '../tcc-handout-defs.js';
-import { ICON_DOWNLOAD, ICON_MORE_VERT } from '../icons.js';
+import { ICON_DOWNLOAD, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
 import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
 import { isTauriApp, getInvoke } from '../tauri-bridge.js';
 
@@ -29,6 +29,194 @@ const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
 
 /** Posición de scroll del centro a restaurar tras re-render (p. ej. borrar módulo). */
 let pendingCenterScrollRestore = null;
+
+const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
+const WORKSPACE_RIGHT_WIDTH_KEY = 'telar.workspace.rightSidebarWidth';
+
+const LEFT_WIDTH_DEFAULT = 260;
+const LEFT_FOCUS_WIDTH = 56; // modo foco: solo botón ←
+const LEFT_WIDTH_MIN = LEFT_FOCUS_WIDTH;
+const LEFT_WIDTH_MAX = 260;
+// Al soltar el drag por debajo de este punto → snap a 56px (modo foco).
+// 160px es aprox. el punto medio del rango 56-260, suficientemente intencional.
+const LEFT_FOCUS_SNAP_THRESHOLD = 160;
+// La clase CSS de modo foco (oculta el scroll) solo se aplica cerca del mínimo,
+// para evitar que el scroll desaparezca de forma rara durante un drag largo.
+const LEFT_FOCUS_CSS_THRESHOLD = 90;
+
+const RIGHT_WIDTH_DEFAULT = 320;
+const RIGHT_WIDTH_MIN = 320;
+const RIGHT_WIDTH_MAX = 720; // aprox. al ancho “útil” del centro
+
+const MIN_CENTER_WIDTH = 420; // para que el layout no colapse feo al agrandar derecha
+
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function parsePxInt(raw) {
+  const n = Number.parseInt(String(raw ?? ''), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isLeftSidebarFocusMode(leftWidth) {
+  return leftWidth <= LEFT_FOCUS_CSS_THRESHOLD;
+}
+
+function applyWorkspaceSidebarWidths({ layoutEl, leftSidebarEl, leftWidth, rightWidth }) {
+  layoutEl.style.setProperty('--workspace-left-w', `${leftWidth}px`);
+  layoutEl.style.setProperty('--workspace-right-w', `${rightWidth}px`);
+  leftSidebarEl.classList.toggle('workspace-sidebar--focus', isLeftSidebarFocusMode(leftWidth));
+}
+
+function snapLeftWidthOnRelease(leftWidth) {
+  return leftWidth < LEFT_FOCUS_SNAP_THRESHOLD ? LEFT_FOCUS_WIDTH : leftWidth;
+}
+
+function initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSidebarEl }) {
+  const leftResizer = layoutEl.querySelector('.workspace-resizer--left');
+  const rightResizer = layoutEl.querySelector('.workspace-resizer--right');
+  if (!leftResizer || !rightResizer) return;
+
+  // Cargar anchos desde localStorage (con defaults).
+  let leftWidth = LEFT_WIDTH_DEFAULT;
+  let rightWidth = RIGHT_WIDTH_DEFAULT;
+  try {
+    leftWidth = parsePxInt(localStorage.getItem(WORKSPACE_LEFT_WIDTH_KEY)) ?? LEFT_WIDTH_DEFAULT;
+    rightWidth = parsePxInt(localStorage.getItem(WORKSPACE_RIGHT_WIDTH_KEY)) ?? RIGHT_WIDTH_DEFAULT;
+  } catch {
+    // ignore
+  }
+
+  const layoutWidth = layoutEl.getBoundingClientRect().width || window.innerWidth;
+  leftWidth = clamp(leftWidth, LEFT_WIDTH_MIN, LEFT_WIDTH_MAX);
+  leftWidth = snapLeftWidthOnRelease(leftWidth);
+  const maxRightByLayout = layoutWidth - leftWidth - MIN_CENTER_WIDTH;
+  const maxRight = Math.max(RIGHT_WIDTH_MIN, Math.min(RIGHT_WIDTH_MAX, maxRightByLayout));
+  rightWidth = clamp(rightWidth, RIGHT_WIDTH_MIN, maxRight);
+
+  applyWorkspaceSidebarWidths({ layoutEl, leftSidebarEl, leftWidth, rightWidth });
+
+  const persist = (nextLeft, nextRight) => {
+    try {
+      localStorage.setItem(WORKSPACE_LEFT_WIDTH_KEY, String(Math.round(nextLeft)));
+      localStorage.setItem(WORKSPACE_RIGHT_WIDTH_KEY, String(Math.round(nextRight)));
+    } catch {
+      // ignore
+    }
+  };
+
+  const setWidthsDuringDrag = (nextLeft, nextRight) => {
+    leftWidth = nextLeft;
+    rightWidth = nextRight;
+    applyWorkspaceSidebarWidths({ layoutEl, leftSidebarEl, leftWidth, rightWidth });
+  };
+
+  const startResize = (e, side) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startLeft = leftWidth;
+    const startRight = rightWidth;
+    const layoutRect = layoutEl.getBoundingClientRect();
+    const containerWidth = layoutRect.width || window.innerWidth;
+
+    // Evita selección de texto y flicker.
+    const body = document.body;
+    const prevUserSelect = body.style.userSelect;
+    body.style.userSelect = 'none';
+    body.style.cursor = 'col-resize';
+    layoutEl.classList.add('workspace-layout--resizing');
+
+    const onMove = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      const dx = ev.clientX - startX;
+
+      if (side === 'left') {
+        const maxLeft = Math.max(LEFT_WIDTH_MIN, Math.min(LEFT_WIDTH_MAX, containerWidth - startRight - MIN_CENTER_WIDTH));
+        const nextLeft = clamp(startLeft + dx, LEFT_WIDTH_MIN, maxLeft);
+        const maxRightByLayout = containerWidth - nextLeft - MIN_CENTER_WIDTH;
+        const maxRight = Math.max(RIGHT_WIDTH_MIN, Math.min(RIGHT_WIDTH_MAX, maxRightByLayout));
+        const nextRight = clamp(startRight, RIGHT_WIDTH_MIN, maxRight);
+        setWidthsDuringDrag(nextLeft, nextRight);
+      } else {
+        // Derecha: drag izquierda (dx<0) = panel crece, drag derecha (dx>0) = panel achica
+        const maxRight = Math.max(RIGHT_WIDTH_MIN, Math.min(RIGHT_WIDTH_MAX, containerWidth - startLeft - MIN_CENTER_WIDTH));
+        const nextRight = clamp(startRight - dx, RIGHT_WIDTH_MIN, maxRight);
+        setWidthsDuringDrag(startLeft, nextRight);
+      }
+    };
+
+    const onUp = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+
+      body.style.userSelect = prevUserSelect;
+      body.style.cursor = '';
+      layoutEl.classList.remove('workspace-layout--resizing');
+
+      if (side === 'left') {
+        const snappedLeft = snapLeftWidthOnRelease(leftWidth);
+        if (snappedLeft !== leftWidth) {
+          setWidthsDuringDrag(snappedLeft, rightWidth);
+        }
+      }
+
+      persist(leftWidth, rightWidth);
+    };
+
+    document.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('pointerup', onUp, { passive: true });
+  };
+
+  leftResizer.addEventListener('pointerdown', (e) => startResize(e, 'left'));
+  rightResizer.addEventListener('pointerdown', (e) => startResize(e, 'right'));
+
+  // Escuchar cambios de modo (Focus / Full) desde patient menu o tools tab.
+  if (window._telarWorkspaceModeHandler) {
+    document.removeEventListener('telar:workspace-mode', window._telarWorkspaceModeHandler);
+  }
+  const handleModeChange = (e) => {
+    const mode = e.detail?.mode;
+    if (mode === 'focus') {
+      const snapped = LEFT_FOCUS_WIDTH;
+      setWidthsDuringDrag(snapped, rightWidth);
+      persist(snapped, rightWidth);
+    } else if (mode === 'full') {
+      const snapped = LEFT_WIDTH_DEFAULT;
+      const layoutW = layoutEl.getBoundingClientRect().width || window.innerWidth;
+      const maxR = Math.max(RIGHT_WIDTH_MIN, Math.min(RIGHT_WIDTH_MAX, layoutW - snapped - MIN_CENTER_WIDTH));
+      const nextRight = clamp(rightWidth, RIGHT_WIDTH_MIN, maxR);
+      setWidthsDuringDrag(snapped, nextRight);
+      persist(snapped, nextRight);
+    }
+  };
+  document.addEventListener('telar:workspace-mode', handleModeChange);
+  window._telarWorkspaceModeHandler = handleModeChange;
+
+  // Doble click para reset.
+  leftResizer.addEventListener('dblclick', () => {
+    const layoutWidth = layoutEl.getBoundingClientRect().width || window.innerWidth;
+    const nextLeft = LEFT_WIDTH_DEFAULT;
+    const maxRightByLayout = layoutWidth - nextLeft - MIN_CENTER_WIDTH;
+    const maxRight = Math.max(RIGHT_WIDTH_MIN, Math.min(RIGHT_WIDTH_MAX, maxRightByLayout));
+    const nextRight = clamp(RIGHT_WIDTH_DEFAULT, RIGHT_WIDTH_MIN, maxRight);
+    setWidthsDuringDrag(nextLeft, nextRight);
+    persist(nextLeft, nextRight);
+  });
+
+  rightResizer.addEventListener('dblclick', () => {
+    const layoutWidth = layoutEl.getBoundingClientRect().width || window.innerWidth;
+    const nextRight = RIGHT_WIDTH_DEFAULT;
+    const maxLeftByLayout = layoutWidth - nextRight - MIN_CENTER_WIDTH;
+    const maxLeft = Math.max(LEFT_WIDTH_MIN, Math.min(LEFT_WIDTH_MAX, maxLeftByLayout));
+    const nextLeft = clamp(leftWidth, LEFT_WIDTH_MIN, maxLeft);
+    setWidthsDuringDrag(nextLeft, nextRight);
+    persist(nextLeft, nextRight);
+  });
+}
 
 export function moduleLabel(type) {
   return moduleLabelFor(type);
@@ -82,8 +270,13 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
 
+  // Guardar scroll de notas antes del re-render para no perder posición.
+  const savedNotesScroll = container.querySelector('#notes-list')?.scrollTop ?? 0;
+  const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
+
   container.innerHTML = `
-    <div class="workspace-layout">
+    <div class="workspace-layout" id="workspace-layout">
+      <div class="workspace-resizer workspace-resizer--left" data-resizer="left" aria-hidden="true"></div>
       <aside class="workspace-sidebar" id="leftsidebar">
         <header class="workspace-sidebar__header">
           <button type="button" class="workspace-back" data-back title="${escapeHtml(t('workspace.backAgenda'))}">←</button>
@@ -105,7 +298,16 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
       </main>
 
       <aside class="workspace-tools" id="rightsidebar"></aside>
+
+      <div class="workspace-resizer workspace-resizer--right" data-resizer="right" aria-hidden="true"></div>
     </div>`;
+
+  const layoutEl = container.querySelector('#workspace-layout');
+  const leftSidebarEl = container.querySelector('#leftsidebar');
+  const rightSidebarEl = container.querySelector('#rightsidebar');
+  if (layoutEl && leftSidebarEl && rightSidebarEl) {
+    initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSidebarEl });
+  }
 
   const centerHost = container.querySelector('#center-modules');
   let unmountHighlight = () => {};
@@ -122,6 +324,22 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
           moduleId,
           onNavigate,
         });
+      },
+      async onSwap(modId, sessionId) {
+        await deleteSessionModule(modId);
+        const mods = await getSessionModules(sessionId);
+        let sel = mods.find((m) => m.module_type === 'selector_modulo');
+        if (!sel) {
+          const id = await addModuleToSession(sessionId, 'selector_modulo', treatmentId);
+          sel = { id };
+        }
+        onNavigate({ view: 'workspace', treatmentId, sessionId, moduleId: sel.id });
+      },
+      async onAddSession() {
+        const id = await addSession(treatmentId);
+        const mods = await getSessionModules(id);
+        const sel = mods.find((m) => m.module_type === 'selector_modulo');
+        onNavigate({ view: 'workspace', treatmentId, sessionId: id, moduleId: sel?.id });
       },
       async onDelete(deletedId) {
         const root = container.querySelector('#workspace-center-scroll');
@@ -252,6 +470,17 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   bindSessionCollapse(container, activeModule);
 
   const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, toolsOpts);
+
+  // Restaurar tab activo y scroll de notas después de re-render.
+  if (savedNotesTab && savedNotesTab !== 'notas') {
+    const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
+    if (tabBtn) tabBtn.click();
+  }
+  requestAnimationFrame(() => {
+    const notesList = container.querySelector('#notes-list');
+    if (notesList && savedNotesScroll > 0) notesList.scrollTop = savedNotesScroll;
+  });
+
   unmountHighlight = mountTextHighlight(centerHost, {
     treatmentId,
     onNoteCreated: async () => {
@@ -386,9 +615,35 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       wrap.dataset.moduleType = mod.module_type;
       wrap.dataset.sessionNumber = session.number;
 
-      if (handout || deletable || mod.module_type === 'neurofeedback') {
+      const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
+
+      if (handout || deletable || mod.module_type === 'neurofeedback' || swappable) {
         const actions = document.createElement('div');
         actions.className = 'module-card-actions';
+
+        if (swappable) {
+          const swapBtn = document.createElement('button');
+          swapBtn.type = 'button';
+          swapBtn.className = 'module-print-btn';
+          swapBtn.title = 'Cambiar módulo';
+          swapBtn.setAttribute('aria-label', 'Cambiar módulo');
+          swapBtn.innerHTML = ICON_SWAP;
+          swapBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const ok = await openConfirmModal({
+              title: '¿Cambiar módulo?',
+              message: `¿Deseas reemplazar «${moduleLabel(mod.module_type)}»? Se perderá la información del módulo actual.`,
+              confirmLabel: 'Cambiar módulo',
+            });
+            if (!ok) return;
+            try {
+              await ctx.onSwap(mod.id, session.id);
+            } catch (err) {
+              toast(err.message);
+            }
+          });
+          actions.appendChild(swapBtn);
+        }
 
         if (mod.module_type === 'neurofeedback') {
           const helpBtn = document.createElement('button');
@@ -475,6 +730,17 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       addBtn.title = 'Añadir módulo a esta sesión';
       addBtn.textContent = '+ Agregar módulo';
       host.appendChild(addBtn);
+    }
+
+    // Botón "+ Agregar sesión" al final de la última sesión
+    if (si === sessions.length - 1 && ctx.onAddSession) {
+      const addSessionBtn = document.createElement('button');
+      addSessionBtn.type = 'button';
+      addSessionBtn.className = 'btn btn-ghost btn-block center-add-session';
+      addSessionBtn.title = 'Añadir sesión';
+      addSessionBtn.textContent = '+ Agregar sesión';
+      addSessionBtn.addEventListener('click', () => ctx.onAddSession());
+      host.appendChild(addSessionBtn);
     }
   }
 

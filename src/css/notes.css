@@ -48,12 +48,12 @@
 }
 
 .space-tab2:hover {
-  background: rgba(47, 111, 237, 0.06);
+  background: rgba(15, 35, 71, 0.06);
   color: var(--accent);
 }
 
 .space-tab2:active {
-  background: rgba(47, 111, 237, 0.12);
+  background: rgba(15, 35, 71, 0.12);
 }
 
 .space-tab2.active {
@@ -120,6 +120,14 @@
   font-size: 0.72rem;
   line-height: 1.35;
   color: var(--text-secondary);
+}
+
+.space-check__xref {
+  font-size: 0.69rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 1px;
 }
 
 .space-checklist {
@@ -349,12 +357,12 @@
 }
 
 .kindle-note__rail-btn:hover {
-  background: rgba(47, 111, 237, 0.1);
+  background: rgba(15, 35, 71, 0.1);
   color: var(--text-primary);
 }
 
 .kindle-note__rail-btn:active {
-  background: rgba(47, 111, 237, 0.2);
+  background: rgba(15, 35, 71, 0.2);
   transform: scale(0.96);
 }
 
@@ -500,7 +508,7 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 .ai-dock__input-row {
   display: flex;
   gap: 8px;
-  align-items: stretch;
+  align-items: flex-end;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
@@ -511,12 +519,22 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   min-width: 0;
   font-size: 0.8rem;
   padding: 8px 12px;
+  resize: none;
+  overflow-y: auto;
+  min-height: 36px;
+  max-height: 120px;
+  line-height: 1.45;
+  /* Altura calculada por JS (auto-grow) */
+  height: 36px;
+  box-sizing: border-box;
+  transition: height 0.1s ease;
 }
 
 .ai-dock__input-row .btn {
   flex-shrink: 0;
   padding-left: 12px;
   padding-right: 12px;
+  align-self: flex-end;
 }
 
 .ai-dock__response {
@@ -582,6 +600,11 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   border-radius: var(--radius-md);
   background: var(--bg-card);
   overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.perfil-section:last-child {
+  margin-bottom: 0;
 }
 
 .perfil-section__head {
@@ -594,6 +617,38 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   font-weight: 600;
   font-size: 0.85rem;
   list-style: none;
+  text-align: left;
+}
+
+.perfil-section__head-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.perfil-section-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.perfil-section__title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.perfil-section__subtitle {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.3;
 }
 
 .perfil-section__head::-webkit-details-marker {
@@ -685,3 +740,55 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   color: var(--text-secondary);
   line-height: 1.35;
 }
+
+/* ─── AI Grid loader ─────────────────────────────────────────── */
+@keyframes ai-grid-idle {
+  0%, 100% { opacity: 0.18; transform: scale(0.48); }
+  50%       { opacity: 0.85; transform: scale(1); }
+}
+@keyframes ai-grid-think {
+  0%, 100% { opacity: 0.06; transform: scale(0.35); }
+  42%       { opacity: 1;    transform: scale(1.18); }
+}
+
+.ai-grid {
+  display: inline-flex;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.ai-grid .d {
+  fill: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: ai-grid-idle;
+  animation-duration: 2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* Onda diagonal de arriba-izquierda a abajo-derecha */
+.ai-grid .d0 { animation-delay: 0.00s; }
+.ai-grid .d1 { animation-delay: 0.17s; }
+.ai-grid .d2 { animation-delay: 0.34s; }
+.ai-grid .d3 { animation-delay: 0.17s; }
+.ai-grid .d4 { animation-delay: 0.34s; }
+.ai-grid .d5 { animation-delay: 0.51s; }
+.ai-grid .d6 { animation-delay: 0.34s; }
+.ai-grid .d7 { animation-delay: 0.51s; }
+.ai-grid .d8 { animation-delay: 0.68s; }
+
+/* Thinking: más rápido + ripple desde el centro */
+.ai-grid--thinking .d {
+  animation-name: ai-grid-think;
+  animation-duration: 0.42s;
+}
+.ai-grid--thinking .d4 { animation-delay: 0.00s; } /* centro */
+.ai-grid--thinking .d1 { animation-delay: 0.05s; } /* arriba */
+.ai-grid--thinking .d5 { animation-delay: 0.10s; } /* derecha */
+.ai-grid--thinking .d7 { animation-delay: 0.15s; } /* abajo */
+.ai-grid--thinking .d3 { animation-delay: 0.20s; } /* izquierda */
+.ai-grid--thinking .d0 { animation-delay: 0.07s; } /* esquinas */
+.ai-grid--thinking .d2 { animation-delay: 0.07s; }
+.ai-grid--thinking .d6 { animation-delay: 0.17s; }
+.ai-grid--thinking .d8 { animation-delay: 0.17s; }

@@ -26,6 +26,8 @@ export const ICON_CLOSE = svg('<path d="M18 6L6 18M6 6l12 12"/>');
 export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
 
 /** Iconos Ajustes — misma familia que app-sidebar */
+export const ICON_SWAP = svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>');
+
 export const SETTINGS_ICONS = {
   name: svg('<circle cx="12" cy="8" r="4"/><path d="M6 20v-1a6 6 0 0112 0v1"/>'),
   email: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),

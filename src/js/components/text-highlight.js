@@ -215,7 +215,16 @@ export function mountTextHighlight(root, { treatmentId, onNoteCreated }) {
     if (Date.now() < suppressToolbarUntil) return;
     const active = document.activeElement;
     if (!isMultilineField(active) || !root.contains(active)) {
-      if (!toolbarEl?.contains(document.activeElement)) hideToolbar();
+      // El active element puede ser un textarea FUERA de root (ej. ai-dock-input).
+      // No cerrar la barra si el campo ancla aún mantiene una selección activa.
+      if (toolbarEl?.contains(document.activeElement)) return;
+      const anchorStillSelected =
+        state?.anchorField &&
+        root.contains(state.anchorField) &&
+        state.anchorField.selectionStart != null &&
+        state.anchorField.selectionEnd != null &&
+        state.anchorField.selectionStart !== state.anchorField.selectionEnd;
+      if (!anchorStillSelected) hideToolbar();
       return;
     }
     requestAnimationFrame(() => showToolbarForSelection(active, root));

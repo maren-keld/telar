@@ -4,52 +4,40 @@ export const SPACE_CHECK_DESCRIPTIONS = {
   fortalezas: {
     Adaptabilidad:
       'Aptitud para ajustarse con flexibilidad a cambios o crisis, manteniendo la integridad personal.',
-    'Asertividad emocional':
-      'Expresión clara y respetuosa de estados afectivos, necesidades y límites, integrando autovaloración y sensibilidad hacia el otro.',
     Autocuidado:
       'Conjunto de conductas orientadas a mantener la salud física, mental y emocional mediante hábitos conscientes.',
     'Capacidad de estar solo sin aislarse':
       'Habilidad para sostener momentos de soledad como espacios de reflexión y descanso, sin sentirse abandonado ni desvinculado.',
     'Capacidad de reparación':
       'Tendencia a reconocer errores, asumir responsabilidad y restaurar vínculos o coherencia interna.',
-    Creatividad:
-      'Capacidad de generar ideas o expresiones nuevas que integren emoción y pensamiento de forma constructiva.',
-    Empatía:
-      'Capacidad de comprender el mundo emocional del otro sin perder la diferenciación del propio yo.',
-    'Flexibilidad cognitiva':
-      'Disposición a revisar creencias o estrategias frente a nueva información, evitando rigidez mental o conductual.',
-    Insight:
-      'Comprensión reflexiva de los propios procesos internos y de cómo impactan en el comportamiento, favoreciendo la autoconciencia.',
-    'Regulación afectiva':
-      'Habilidad para modular la intensidad de las emociones, equilibrando expresión y contención.',
-    'Tolerancia a la frustración':
-      'Capacidad de soportar demoras, errores o pérdidas sin desorganizarse emocionalmente ni abandonar objetivos.',
-    'Actividad física':
-      'Práctica regular de movimiento o deporte que contribuye a la autorregulación, autoestima y vitalidad general.',
     'Capacidad de disfrute':
       'Habilidad para experimentar placer o gratitud sin culpa ni compulsión, permitiendo descanso genuino.',
     'Capacidad de pedir ayuda':
       'Reconocimiento de los propios límites y disposición a solicitar apoyo cuando es necesario.',
+    Creatividad:
+      'Capacidad de generar ideas o expresiones nuevas que integren emoción y pensamiento de forma constructiva.',
+    Empatía:
+      'Capacidad de comprender el mundo emocional del otro sin perder la diferenciación del propio yo.',
     'Estructura diaria / disciplina':
       'Organización coherente del tiempo y rutinas que brinda predictibilidad y sentido de control.',
+    'Flexibilidad cognitiva':
+      'Disposición a revisar creencias o estrategias frente a nueva información, evitando rigidez mental o conductual.',
+    Insight:
+      'Comprensión reflexiva de los propios procesos internos y de cómo impactan en el comportamiento, favoreciendo la autoconciencia.',
     'Participación en comunidad':
       'Vinculación activa con grupos o comunidades que ofrecen pertenencia, propósito y reciprocidad.',
     'Propósito o sentido espiritual':
       'Orientación hacia valores trascendentes o significativos que otorgan coherencia a la existencia.',
     'Red de apoyo emocional':
       'Presencia de personas significativas disponibles para brindar escucha, contención y ayuda práctica.',
+    'Regulación afectiva':
+      'Habilidad para modular la intensidad de las emociones, equilibrando expresión y contención.',
+    'Tolerancia a la frustración':
+      'Capacidad de soportar demoras, errores o pérdidas sin desorganizarse emocionalmente ni abandonar objetivos.',
     'Vínculos seguros':
       'Relaciones basadas en confianza, respeto y apoyo mutuo que ofrecen base emocional estable.',
-    Altruismo:
-      'Satisfacción de necesidades internas mediante actos de ayuda genuina hacia otros, sin sacrificio autodestructivo.',
-    Anticipación:
-      'Tendencia a prever escenarios futuros y prepararse emocional o conductualmente, reduciendo ansiedad e impulsividad.',
-    Humor:
-      'Capacidad de elaborar tensiones o conflictos mediante la ironía o el juego simbólico, sin negar la realidad.',
-    Sublimación:
-      'Transformación de impulsos o emociones intensas en actividades creativas, profesionales o espirituales con sentido.',
-    Supresión:
-      'Habilidad de postergar pensamientos o emociones perturbadoras sin reprimirlas, para atender las demandas presentes.',
+    'Actividad física':
+      'Práctica regular de movimiento o deporte que contribuye a la autorregulación, autoestima y vitalidad general.',
   },
   defensas: {
     Anticipación: 'Planificar emocional o conductualmente frente a la angustia.',
@@ -109,8 +97,6 @@ export const SPACE_CHECK_DESCRIPTIONS = {
     'Violencia / impulsividad': 'Conductas que ponen en riesgo al paciente u otros.',
     'Agitación o ansiedad elevada':
       'Estado de activación que puede acompañar crisis o riesgo vital.',
-    'Defensas desadaptativas predominantes':
-      'Uso frecuente de defensas inmaduras que dificultan la elaboración y amplifican otros riesgos.',
     'Factores psicosociales de vulnerabilidad':
       'Condiciones del entorno social, familiar, económico o cultural que mantienen fragilidad clínica.',
   },

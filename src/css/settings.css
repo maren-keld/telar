@@ -66,7 +66,7 @@
 }
 
 .settings-row:hover:not(.settings-row--static) {
-  background: rgba(47, 111, 237, 0.05);
+  background: rgba(15, 35, 71, 0.05);
 }
 
 .settings-row--static {

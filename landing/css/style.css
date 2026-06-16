@@ -4,9 +4,9 @@
   --text: #0f2347;
   --text-secondary: #5a6b85;
   --text-muted: #8b9bb5;
-  --accent: #2f6fed;
-  --accent-soft: #d6e6ff;
-  --accent-dark: #1a3a6e;
+  --accent: #0f2347;
+  --accent-soft: #eef1f6;
+  --accent-dark: #050d1e;
   --border: #d4e0f0;
   --success: #3d9b6e;
   --success-soft: #d8f3e6;
@@ -14,6 +14,7 @@
   --radius-lg: 20px;
   --shadow: 0 4px 24px rgba(15, 35, 71, 0.08);
   --font: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
   --max: 1080px;
 }
 
@@ -34,6 +35,11 @@ body {
   background: var(--bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografía editorial en títulos — Fraunces */
+h1, h2, h3 {
+  font-family: var(--font-display);
 }
 
 img {
@@ -77,8 +83,10 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  font-weight: 700;
-  font-size: 1.05rem;
+  font-weight: 500;
+  font-size: 1.15rem;
+  font-family: var(--font-display);
+  letter-spacing: 0;
   color: var(--text);
   text-decoration: none;
 }
@@ -134,11 +142,11 @@ a:hover {
 .btn-primary {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(47, 111, 237, 0.35);
+  box-shadow: 0 4px 14px rgba(15, 35, 71, 0.35);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(47, 111, 237, 0.45);
+  box-shadow: 0 6px 20px rgba(15, 35, 71, 0.45);
 }
 
 .btn-secondary {
@@ -164,11 +172,18 @@ a:hover {
   align-items: center;
 }
 
+.hero-text {
+  text-align: center;
+  max-width: 720px;
+  margin: 2.5rem auto 0;
+}
+
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
+  justify-content: center;
 }
 
 .badge {
@@ -205,17 +220,19 @@ a:hover {
 }
 
 .hero h1 {
-  font-size: clamp(2rem, 4.5vw, 2.75rem);
-  line-height: 1.15;
+  font-size: clamp(2.1rem, 4.5vw, 2.9rem);
+  font-weight: 400;
+  line-height: 1.1;
   margin: 0 0 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .hero-lead {
   font-size: 1.15rem;
   color: var(--text-secondary);
-  margin: 0 0 1.75rem;
+  margin: 0 auto 1.75rem;
   max-width: 32rem;
+  text-align: center;
 }
 
 .hero-cta {
@@ -223,6 +240,7 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  justify-content: center;
 }
 
 .hero-note {
@@ -231,9 +249,60 @@ a:hover {
 }
 
 .hero-visual {
-  position: relative;
+  width: 100%;
+  padding: 2rem 1.5rem 0;
+  box-sizing: border-box;
 }
 
+.app-shot {
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.app-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 56px rgba(30,60,120,0.14);
+}
+
+.app-shot--centered {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.app-shot-caption {
+  padding: 0.85rem 1rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  background: #fafbfd;
+}
+
+.feature-card--shot {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.feature-shot {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: block;
+}
+
+.nf-showcase {
+  padding: 0 0 3rem;
+}
+
+/* Legacy preview blocks (unused) */
 .app-preview {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -341,8 +410,9 @@ section {
 
 .section-title {
   font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 400;
   margin: 0 0 0.75rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .section-lead {
@@ -717,7 +787,7 @@ section {
 
 .pricing-card.featured {
   border-color: var(--accent);
-  box-shadow: 0 8px 32px rgba(47, 111, 237, 0.15);
+  box-shadow: 0 8px 32px rgba(15, 35, 71, 0.15);
   position: relative;
 }
 
@@ -938,8 +1008,14 @@ section {
     padding-top: 2.5rem;
   }
 
-  .hero-visual {
-    order: -1;
+
+  .feature-card--shot {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card--shot .feature-shot {
+    max-width: 400px;
+    margin: 0 auto;
   }
 
   .nav-links {

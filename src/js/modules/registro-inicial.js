@@ -160,8 +160,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
           </select>
         </div>
         <div class="form-group">
-          <label>Dirección</label>
-          <input name="address" id="registro-address" placeholder="Buscar comuna o ciudad en Chile…" value="${escapeHtml(data.address || '')}" autocomplete="off" />
+          <label>Ciudad</label>
+          <input name="address" id="registro-address" placeholder="Buscar ciudad o comuna en Chile…" value="${escapeHtml(data.address || '')}" autocomplete="off" />
         </div>
         <div class="form-group" data-no-autobind>
           <label>Ocupaciones</label>
@@ -277,6 +277,16 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       toast('Email copiado');
     } catch {
       toast('No se pudo copiar');
+    }
+  });
+
+  // Actualizar nombre del paciente en #leftsidebar en tiempo real
+  host.querySelector('[name="nombre"]')?.addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    const sidebarNameEl = document.querySelector('#leftsidebar .workspace-patient-name');
+    if (sidebarNameEl) {
+      const suffix = treatment.number > 1 ? ` ${treatment.number}` : '';
+      sidebarNameEl.textContent = (val || treatment.patient_name || 'Sin nombre') + suffix;
     }
   });
 

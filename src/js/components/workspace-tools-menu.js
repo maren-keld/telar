@@ -1,8 +1,24 @@
-import { isProUser } from '../profile.js';
+import { isProUser, loadProfile, saveProfile } from '../profile.js';
 import { isTauriApp } from '../tauri-bridge.js';
 import { SETTINGS_ICONS } from '../icons.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
+
+const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
+const LEFT_FOCUS_CSS_THRESHOLD = 90;
+
+function getCurrentWorkspaceMode() {
+  try {
+    const w = Number(localStorage.getItem(WORKSPACE_LEFT_WIDTH_KEY) || '260');
+    return w <= LEFT_FOCUS_CSS_THRESHOLD ? 'focus' : 'full';
+  } catch {
+    return 'full';
+  }
+}
+
+function dispatchWorkspaceMode(mode) {
+  document.dispatchEvent(new CustomEvent('telar:workspace-mode', { detail: { mode } }));
+}
 
 const TOOL_ICONS = {
   export: SETTINGS_ICONS.export,
@@ -73,8 +89,49 @@ function bindToolsActions(root, { treatmentId, onExportPdf }) {
 
 /** Pestaña Herramientas en #rightsidebar */
 export function mountWorkspaceToolsTab(host, opts) {
-  host.innerHTML = `<div class="workspace-tools-tab">${toolsItemsHtml()}</div>`;
+  const profile = loadProfile();
+  const currentMode = getCurrentWorkspaceMode();
+  const isDark = profile.darkMode;
+
+  host.innerHTML = `
+    <div class="workspace-tools-tab">
+      ${toolsItemsHtml()}
+
+      <div class="tools-section-divider"></div>
+      <p class="tools-section-label">Espacio de trabajo</p>
+      <div class="tools-mode-row">
+        <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">Foco</button>
+        <button type="button" class="tools-mode-btn${currentMode === 'full' ? ' tools-mode-btn--active' : ''}" data-mode="full">Completo</button>
+      </div>
+
+      <div class="tools-section-divider"></div>
+      <label class="tools-toggle-row" id="tools-dark-toggle">
+        <span class="tools-toggle-label">Modo oscuro</span>
+        <span class="tools-toggle-switch${isDark ? ' tools-toggle-switch--on' : ''}">
+          <span class="tools-toggle-thumb"></span>
+        </span>
+      </label>
+    </div>`;
+
   bindToolsActions(host, opts);
+
+  let dark = isDark;
+  host.querySelector('#tools-dark-toggle')?.addEventListener('click', () => {
+    dark = !dark;
+    const sw = host.querySelector('.tools-toggle-switch');
+    sw?.classList.toggle('tools-toggle-switch--on', dark);
+    saveProfile({ darkMode: dark });
+  });
+
+  host.querySelectorAll('[data-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      host.querySelectorAll('[data-mode]').forEach((b) => {
+        b.classList.toggle('tools-mode-btn--active', b.dataset.mode === mode);
+      });
+      dispatchWorkspaceMode(mode);
+    });
+  });
 }
 
 /** Modal legacy (si se necesita desde otro lugar) */
