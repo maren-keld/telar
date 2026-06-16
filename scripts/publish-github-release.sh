@@ -99,7 +99,7 @@ Primera beta pública para validación clínica (TDAH + trauma, neurofeedback Mu
 - Reportes: [GitHub Issues](https://github.com/maren-keld/telar/issues)
 EOF
 )" \
-    "${DRAFT_FLAG[@]}"
+    "${DRAFT_FLAG[@]+"${DRAFT_FLAG[@]}"}"
 fi
 
 echo "✓ Release publicada: https://github.com/$REPO/releases/tag/$TAG"
