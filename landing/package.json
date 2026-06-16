@@ -1,0 +1,17 @@
+{
+  "name": "telar-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telar landing page",
+  "scripts": {
+    "dev": "serve .",
+    "build": "npm run build:analytics",
+    "build:analytics": "esbuild js/analytics.js --bundle --format=esm --outfile=js/analytics.bundle.js --minify"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}
