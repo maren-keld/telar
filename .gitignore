@@ -18,6 +18,10 @@ __pycache__/
 *.pyc
 .idea/
 .vscode/
-.cursor/
 .tools/
 *.log
+
+# Interno — no publicar en GitHub
+.cursor/
+CLAUDE.md
+docs/
