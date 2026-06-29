@@ -4,7 +4,7 @@
  */
 const DOWNLOAD_URLS = {
   mac: 'https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip',
-  windows: '', // .exe pendiente — DI-2
+  windows: 'https://github.com/maren-keld/telar/releases/latest/download/Telar-windows.exe',
 };
 
 function detectPlatform() {
