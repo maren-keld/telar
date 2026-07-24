@@ -47,7 +47,7 @@ fn handle_response(
             ))
         }
         Err(e) => Err(format!(
-            "No se pudo conectar con la API ({base}). ¿Está corriendo «python app.py» en server/? Detalle: {e}"
+            "No se pudo conectar con la API ({base}). Detalle: {e}"
         )),
     }
 }

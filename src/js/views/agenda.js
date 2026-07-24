@@ -36,7 +36,7 @@ function section(statusKey, rows, collapsed = false) {
   const meta = TREATMENT_STATUS[statusKey] || { label: statusKey };
   const body = collapsed
     ? ''
-    : rows.map(patientCard).join('') || '<p class="text-muted">Sin pacientes</p>';
+    : rows.map(patientCard).join('') || '<p class="text-muted reportes-empty">Sin pacientes en esta sección.</p>';
   return `
     <section class="section-accordion" data-status="${statusKey}">
       <div class="section-accordion__head" data-toggle-section>
@@ -51,6 +51,16 @@ function section(statusKey, rows, collapsed = false) {
 export async function renderAgenda(container, { search = '', onNavigate }) {
   const groups = await getAgendaGroups(search);
   const order = ['en_tratamiento', 'en_pausa', 'completado', 'abandonado', 'archivado'];
+  const totalPatients = order.reduce((n, k) => n + (groups[k] || []).length, 0);
+  const sectionsHtml = totalPatients
+    ? order
+        .filter((k) => (groups[k] || []).length > 0)
+        .map((k) => section(k, groups[k] || [], k === 'archivado'))
+        .join('')
+    : `<div class="agenda-empty card">
+        <p class="agenda-empty__title">Sin pacientes añadidos aún</p>
+        <p class="agenda-empty__sub text-muted">Pulsa <strong>Añadir tratamiento</strong> para crear tu primer paciente.</p>
+      </div>`;
 
   container.innerHTML = `
     ${renderAppSidebar('agenda')}
@@ -64,10 +74,7 @@ export async function renderAgenda(container, { search = '', onNavigate }) {
           <button class="btn btn-primary" id="btn-add-treatment" title="Crear paciente y nuevo tratamiento">Añadir tratamiento</button>
         </div>
         <div id="agenda-sections">
-          ${order
-            .filter((k) => (groups[k] || []).length > 0)
-            .map((k) => section(k, groups[k] || [], k === 'archivado'))
-            .join('')}
+          ${sectionsHtml}
         </div>
       </div>
     </div>`;

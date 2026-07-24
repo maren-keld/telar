@@ -74,7 +74,7 @@ export function clearStaleLocalSubscriptionApiCache() {
  * Frontend servido por dev.sh/live-server — no la .app empaquetada.
  * macOS empaquetado: tauri://localhost (protocol tauri:). Windows: http://tauri.localhost.
  */
-function isLocalDevFrontend() {
+export function isLocalDevFrontend() {
   const proto = window.location?.protocol || '';
   if (proto === 'tauri:') return false;
   const h = window.location?.hostname || '';
@@ -98,9 +98,9 @@ function isLocalApiBase(base) {
   return /127\.0\.0\.1:5001|localhost:5001/.test(String(base));
 }
 
-/** Localhost: fetch desde el webview (CSP). Producción: invoke Rust (evita CORS remoto). */
-function shouldUseFetchForBase(base) {
-  return !isTauriApp() || isLocalApiBase(base);
+/** Tauri: fetch desde webview (CSP); Rust/ureq fallaba DNS en algunos Mac. */
+function shouldUseFetchForBase(_base) {
+  return true;
 }
 
 async function parseApiResponse(res) {

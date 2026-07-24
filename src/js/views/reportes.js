@@ -87,8 +87,12 @@ function renderDemographicsSection() {
     </section>`;
 }
 
+function isEmptyPieData(slices) {
+  return !slices?.length || (slices.length === 1 && slices[0].label === 'Sin dato');
+}
+
 function mountPieChart(canvas, slices, title) {
-  if (!canvas || !window.Chart || !slices.length) return;
+  if (!canvas || !window.Chart || isEmptyPieData(slices)) return;
   const prev = Chart.getChart(canvas);
   if (prev) prev.destroy();
   // eslint-disable-next-line no-new
@@ -222,15 +226,18 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
     'chart-age': demo.age_ranges,
     'chart-gender': demo.gender,
     'chart-marital': demo.marital_status,
-    'chart-prevision': demo.prevision.length ? demo.prevision : [{ label: 'Sin dato', count: 1 }],
+    'chart-prevision': demo.prevision,
     'chart-source': demo.source,
   };
 
   for (const [id, slices] of Object.entries(pieData)) {
     const canvas = container.querySelector(`#${id}`);
-    if (slices.length) mountPieChart(canvas, slices);
-    else if (canvas?.parentElement) {
-      canvas.parentElement.innerHTML = '<p class="reportes-empty">Sin datos aún.</p>';
+    if (isEmptyPieData(slices)) {
+      if (canvas?.parentElement) {
+        canvas.parentElement.innerHTML = '<p class="reportes-empty">Sin datos aún.</p>';
+      }
+    } else {
+      mountPieChart(canvas, slices);
     }
   }
 

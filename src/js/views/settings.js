@@ -5,7 +5,7 @@ import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
 import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
-import { syncProFromServer, resetLocalSubscriptionState } from '../subscription.js';
+import { syncProFromServer, resetLocalSubscriptionState, isLocalDevFrontend } from '../subscription.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
 import { appVersionLabel } from '../app-version.js';
 import { escapeHtml, toast } from '../utils.js';
@@ -157,14 +157,18 @@ export async function renderSettings(container, { onNavigate }) {
             <span class="settings-row__chevron">›</span>
           </div>
         </button>
-        <div class="settings-card">
+        ${
+          isLocalDevFrontend()
+            ? `<div class="settings-card">
           ${row({
             icon: SETTINGS_ICONS.resetPlan,
             title: 'Restablecer plan (pruebas)',
             subtitle: 'Vuelve a Free en este dispositivo para probar checkout de nuevo',
             dataField: 'resetSubscription',
           })}
-        </div>
+        </div>`
+            : ''
+        }
         <div class="settings-card">
           ${row({
             icon: SETTINGS_ICONS.presentation,
@@ -325,7 +329,21 @@ export async function renderSettings(container, { onNavigate }) {
         value: profileNow[field] || '',
         multiline: def.multiline,
         onSave: async (value) => {
-          saveProfile({ [field]: value });
+          if (field === 'email') {
+            const trimmed = value.trim().toLowerCase();
+            const hadEmail = Boolean(profileNow.email?.trim());
+            if (!trimmed && hadEmail) {
+              toast('El email es obligatorio. No puedes dejarlo vacío.');
+              return false;
+            }
+            if (trimmed && (!trimmed.includes('@') || !trimmed.includes('.'))) {
+              toast('Ingresa un email válido.');
+              return false;
+            }
+            saveProfile({ [field]: trimmed });
+          } else {
+            saveProfile({ [field]: value });
+          }
           renderSettings(container, { onNavigate });
           toast(t('toast.saved'));
         },

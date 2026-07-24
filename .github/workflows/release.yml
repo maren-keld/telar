@@ -77,7 +77,7 @@ jobs:
             - **Auto-actualización:** `latest.json` + bundles firmados (Tauri updater)
           releaseDraft: true
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: false
           args: --target ${{ matrix.target }}
 
       - name: Package macOS zip (nombre canónico)

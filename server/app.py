@@ -364,8 +364,23 @@ def usage_ping():
             "UPDATE usage_opens SET total = total + 1, updated_at = ? WHERE id = 1",
             (now_iso(),),
         )
-        row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
+        row = conn.execute("SELECT total, updated_at FROM usage_opens WHERE id = 1").fetchone()
     return jsonify({"ok": True, "total": row["total"] if row else None, "app_version": app_version})
+
+
+@APP.get("/api/admin/usage")
+def admin_usage():
+    """Estadísticas anónimas de uso (solo propietario, requiere WEBHOOK_SECRET)."""
+    if not WEBHOOK_SECRET or request.args.get("secret", "") != WEBHOOK_SECRET:
+        return jsonify({"error": "No autorizado"}), 401
+    with db() as conn:
+        row = conn.execute("SELECT total, updated_at FROM usage_opens WHERE id = 1").fetchone()
+    return jsonify({
+        "ok": True,
+        "usage_opens_total": row["total"] if row else 0,
+        "updated_at": row["updated_at"] if row else None,
+        "note": "Contador acumulado de aperturas de app (1 ping/día/dispositivo si está activo). No mide usuarios simultáneos.",
+    })
 
 
 @APP.get("/gracias")

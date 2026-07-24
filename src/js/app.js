@@ -15,6 +15,7 @@ import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
 import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLocalSubscriptionApiCache } from './subscription.js';
+import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './components/practitioner-onboarding.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
@@ -107,6 +108,10 @@ async function render() {
         break;
       default:
         location.hash = '/agenda';
+    }
+
+    if (view !== 'unlock' && needsPractitionerOnboarding()) {
+      openPractitionerOnboardingModal();
     }
   } catch (err) {
     console.error(err);

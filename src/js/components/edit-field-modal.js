@@ -34,7 +34,7 @@ export function openEditFieldModal({ title, value = '', multiline = false, onSav
 
   root.querySelector('#edit-field-save')?.addEventListener('click', async () => {
     const next = input?.value?.trim() ?? '';
-    await onSave(next);
-    close();
+    const keepOpen = (await onSave(next)) === false;
+    if (!keepOpen) close();
   });
 }
