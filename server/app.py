@@ -18,7 +18,17 @@ import mercadopago
 load_dotenv()
 
 APP = Flask(__name__)
-CORS(APP, resources={r"/api/*": {"origins": "*"}})
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "http://127.0.0.1:1420,http://localhost:1420,"
+        "http://tauri.localhost,https://tauri.localhost,"
+        "tauri://localhost",
+    ).split(",")
+    if origin.strip()
+]
+CORS(APP, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}})
 
 MP_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001").rstrip("/")
@@ -27,9 +37,9 @@ MP_PUBLIC_BACK_URL = os.environ.get("MP_PUBLIC_BACK_URL", "").strip()
 PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "15000"))
 PLAN_REASON = os.environ.get("MP_PLAN_REASON", "Plan Profesional — Telar")
 MP_PREAPPROVAL_PLAN_ID = os.environ.get("MP_PREAPPROVAL_PLAN_ID", "").strip()
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "") or os.environ.get("MP_WEBHOOK_SECRET", "")
 DEV_PRO_EMAIL = os.environ.get("DEV_PRO_EMAIL", "").strip().lower()
-DB_PATH = Path(__file__).parent / "subscriptions.db"
+DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "subscriptions.db"))
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
 _plan_cache: dict | None = None
@@ -39,7 +49,8 @@ def dev_bypass_enabled() -> bool:
     flag = os.environ.get("SUBSCRIPTION_DEV_BYPASS", "").strip().lower() in ("1", "true", "yes")
     if not flag:
         return False
-    return "localhost" in BACKEND_URL or "127.0.0.1" in BACKEND_URL
+    # Nunca en token de producción MP
+    return not MP_TOKEN.startswith("APP_USR-")
 
 
 def dev_bypass_allows(email: str) -> bool:
@@ -230,19 +241,37 @@ def checkout_back_url() -> str | None:
 
 def upsert_subscription(email: str, preapproval_id: str | None, status: str):
     with db() as conn:
-        if preapproval_id:
+        row = conn.execute(
+            "SELECT id FROM subscriptions WHERE email = ?",
+            (email,),
+        ).fetchone()
+        if row:
+            conn.execute(
+                """UPDATE subscriptions SET status = ?, updated_at = ?,
+                   mp_preapproval_id = COALESCE(?, mp_preapproval_id)
+                   WHERE email = ?""",
+                (status, now_iso(), preapproval_id, email),
+            )
+            return
+        # dev-bypass is shared across installs — never reassign an existing row by preapproval_id.
+        if preapproval_id and preapproval_id != "dev-bypass":
             row = conn.execute(
-                "SELECT id FROM subscriptions WHERE mp_preapproval_id = ?",
+                "SELECT id FROM subscriptions WHERE mp_preapproval_id = ? LIMIT 1",
                 (preapproval_id,),
             ).fetchone()
             if row:
                 conn.execute(
-                    "UPDATE subscriptions SET status = ?, updated_at = ?, email = ? WHERE mp_preapproval_id = ?",
-                    (status, now_iso(), email, preapproval_id),
+                    "UPDATE subscriptions SET status = ?, updated_at = ?, email = ? WHERE id = ?",
+                    (status, now_iso(), email, row["id"]),
                 )
                 return
         conn.execute(
-            "INSERT INTO subscriptions (email, mp_preapproval_id, status, updated_at) VALUES (?, ?, ?, ?)",
+            """INSERT INTO subscriptions (email, mp_preapproval_id, status, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(email) DO UPDATE SET
+                 mp_preapproval_id = COALESCE(excluded.mp_preapproval_id, subscriptions.mp_preapproval_id),
+                 status = excluded.status,
+                 updated_at = excluded.updated_at""",
             (email, preapproval_id, status, now_iso()),
         )
 
@@ -253,17 +282,57 @@ def fetch_mp_preapproval(preapproval_id: str):
     return (res.get("response") or {}) if res.get("status") == 200 else {}
 
 
+def preapproval_matches_email(item: dict, email: str) -> bool:
+    """MP dejó de exponer payer_email en preapprovals; usamos external_reference."""
+    candidates = (
+        (item.get("payer_email") or "").lower(),
+        (item.get("external_reference") or "").lower(),
+    )
+    return email in candidates
+
+
 def find_mp_preapproval_by_email(email: str):
+    sdk = mp_sdk()
+    for params in (
+        {"external_reference": email, "limit": 5},
+        {"payer_email": email, "limit": 5},
+    ):
+        try:
+            res = sdk.preapproval().search(params)
+            results = (res.get("response") or {}).get("results") or []
+            for item in results:
+                if preapproval_matches_email(item, email):
+                    return item
+        except Exception:
+            pass
+    return None
+
+
+def create_user_preapproval(sdk, email: str, back_url: str):
+    """Preapproval por usuario con external_reference=email — única forma fiable de
+    conciliar pagos, porque MP ya no devuelve payer_email en la API."""
     try:
-        sdk = mp_sdk()
-        res = sdk.preapproval().search({"payer_email": email, "limit": 5})
-        results = (res.get("response") or {}).get("results") or []
-        for item in results:
-            if (item.get("payer_email") or "").lower() == email:
-                return item
+        res = sdk.preapproval().create({
+            "reason": PLAN_REASON,
+            "external_reference": email,
+            "payer_email": email,
+            "back_url": back_url,
+            "auto_recurring": {
+                "frequency": 1,
+                "frequency_type": "months",
+                "transaction_amount": PLAN_AMOUNT,
+                "currency_id": "CLP",
+            },
+            "status": "pending",
+        })
+        if res.get("status") in (200, 201):
+            body = res.get("response") or {}
+            init_point = body.get("init_point")
+            if init_point and body.get("id"):
+                return init_point, body["id"]
     except Exception:
         pass
-    return None
+    return None, None
 
 
 @APP.get("/api/health")
@@ -318,7 +387,7 @@ def gracias():
 <body>
   <h1>¡Listo!</h1>
   <p>Si completaste el pago en Mercado Pago, vuelve a <strong>Telar</strong> en tu Mac.</p>
-  <p>En <strong>Ajustes → Plan</strong> pulsa <strong>«Ya pagué — verificar suscripción»</strong>.</p>
+  <p>Vuelve a la app en tu Mac: el plan se activará solo en unos segundos.</p>
   <p>Tus datos clínicos siguen solo en tu computador.</p>
 </body>
 </html>
@@ -345,6 +414,18 @@ def checkout():
         }), 503
 
     sdk = mp_sdk()
+
+    # Producción: preapproval por usuario (external_reference=email) para conciliar el pago.
+    if not MP_TOKEN.startswith("TEST-"):
+        init_point, preapproval_id = create_user_preapproval(sdk, email, back_url)
+        if init_point and preapproval_id:
+            upsert_subscription(email, preapproval_id, "pending")
+            return jsonify({
+                "checkout_url": init_point,
+                "preapproval_id": preapproval_id,
+                "amount_clp": PLAN_AMOUNT,
+            })
+
     plan_body, plan_err = resolve_mp_plan(sdk, back_url)
     if not plan_body:
         return jsonify({"error": plan_err or "No se pudo resolver el plan de suscripción"}), 502
@@ -380,7 +461,10 @@ def dev_activate():
     email = normalize_payer_email(raw_email)
     if not dev_bypass_allows(email):
         return jsonify({"error": "Email no autorizado para bypass de desarrollo"}), 403
-    upsert_subscription(email, "dev-bypass", "authorized")
+    try:
+        upsert_subscription(email, "dev-bypass", "authorized")
+    except Exception as exc:
+        return jsonify({"error": f"No se pudo activar Pro: {exc}"}), 500
     return jsonify({"active": True, "status": "authorized", "dev_bypass": True})
 
 
@@ -448,9 +532,10 @@ def process_preapproval_webhook(resource_id: str):
         if not body:
             return
         mp_status = body.get("status", "unknown")
-        payer_email = (body.get("payer_email") or "").lower()
-        if payer_email:
-            upsert_subscription(payer_email, resource_id, mp_status)
+        # MP ya no expone payer_email; external_reference lleva el email desde el checkout.
+        email = (body.get("payer_email") or body.get("external_reference") or "").lower()
+        if email and "@" in email:
+            upsert_subscription(email, resource_id, mp_status)
         else:
             with db() as conn:
                 conn.execute(
@@ -459,6 +544,25 @@ def process_preapproval_webhook(resource_id: str):
                 )
     except Exception:
         pass
+
+
+@APP.post("/api/admin/link-subscription")
+def admin_link_subscription():
+    """Liga manualmente email ↔ preapproval (soporte). Requiere WEBHOOK_SECRET."""
+    if not WEBHOOK_SECRET or request.args.get("secret", "") != WEBHOOK_SECRET:
+        return jsonify({"error": "No autorizado"}), 401
+    data = request.get_json(silent=True) or {}
+    raw_email = (data.get("email") or "").strip()
+    preapproval_id = (data.get("preapproval_id") or "").strip()
+    if not is_valid_payer_email(raw_email) or not preapproval_id:
+        return jsonify({"error": "Faltan email o preapproval_id"}), 400
+    email = normalize_payer_email(raw_email)
+    body = fetch_mp_preapproval(preapproval_id)
+    if not body:
+        return jsonify({"error": "Preapproval no encontrada en Mercado Pago"}), 404
+    mp_status = body.get("status", "unknown")
+    upsert_subscription(email, preapproval_id, mp_status)
+    return jsonify({"ok": True, "email": email, "status": mp_status})
 
 
 @APP.route("/api/webhooks/mercadopago", methods=["GET", "POST"])

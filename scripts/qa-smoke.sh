@@ -18,27 +18,32 @@ for i in $(seq 1 512); do
 done
 SAMPLE="${SAMPLE%@}"
 OUT=$(printf '%s' "$SAMPLE" | python3 python/analyze_session.py 2>/dev/null || true)
-if echo "$OUT" | grep -qE '^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$'; then
-  ok "stdin → CSV 7 campos numéricos"
+if echo "$OUT" | head -n1 | grep -qE '^[0-9]+(\.[0-9]+)?(,[0-9]+(\.[0-9]+)?){10}$'; then
+  ok "stdin → CSV 11 campos numéricos"
 else
-  bad "stdin → salida inválida: ${OUT:-vacío}"
+  bad "stdin → salida inválida: $(echo "$OUT" | head -n1)"
+fi
+if echo "$OUT" | sed -n '2p' | grep -q '"post"'; then
+  ok "stdin → JSON serie post"
+else
+  bad "stdin → falta JSON post en línea 2"
 fi
 
 TMP=$(mktemp)
 printf '%s' "$SAMPLE" > "$TMP"
 OUT2=$(python3 python/analyze_session.py --file "$TMP" 2>/dev/null || true)
 rm -f "$TMP"
-if echo "$OUT2" | grep -qE '^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$'; then
-  ok "--file → CSV 7 campos numéricos"
+if echo "$OUT2" | head -n1 | grep -qE '^[0-9]+(\.[0-9]+)?(,[0-9]+(\.[0-9]+)?){10}$'; then
+  ok "--file → CSV 11 campos numéricos"
 else
-  bad "--file → salida inválida: ${OUT2:-vacío}"
+  bad "--file → salida inválida: $(echo "$OUT2" | head -n1)"
 fi
 
 EMPTY=$(printf '' | python3 python/analyze_session.py 2>/dev/null || true)
-if [ "$EMPTY" = "0,0,0,0,0,0,0" ]; then
+if echo "$EMPTY" | head -n1 | grep -qE '^0,0,0,0,0,0,0,0,0,0,0$'; then
   ok "entrada vacía → ceros"
 else
-  bad "entrada vacía → esperado 0,0,0,0,0,0,0 got ${EMPTY:-vacío}"
+  bad "entrada vacía → esperado 11 ceros got $(echo "$EMPTY" | head -n1)"
 fi
 
 echo "→ QA-1: Rust unit tests (secure_db)"

@@ -20,6 +20,8 @@ __pycache__/
 .vscode/
 .tools/
 *.log
+test-results/
+playwright-report/
 
 # Interno — no publicar en GitHub
 .cursor/

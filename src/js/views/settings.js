@@ -1,10 +1,11 @@
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { openEditFieldModal } from '../components/edit-field-modal.js';
+import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
 import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
-import { syncProFromServer } from '../subscription.js';
+import { syncProFromServer, resetLocalSubscriptionState } from '../subscription.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
 import { appVersionLabel } from '../app-version.js';
 import { escapeHtml, toast } from '../utils.js';
@@ -34,6 +35,7 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'wipeData',
   'checkUpdate',
   'aiAssistant',
+  'resetSubscription',
 ]);
 
 function openLanguagePicker(onPick) {
@@ -157,6 +159,14 @@ export async function renderSettings(container, { onNavigate }) {
         </button>
         <div class="settings-card">
           ${row({
+            icon: SETTINGS_ICONS.resetPlan,
+            title: 'Restablecer plan (pruebas)',
+            subtitle: 'Vuelve a Free en este dispositivo para probar checkout de nuevo',
+            dataField: 'resetSubscription',
+          })}
+        </div>
+        <div class="settings-card">
+          ${row({
             icon: SETTINGS_ICONS.presentation,
             title: t('settings.presentationMode'),
             subtitle: profile.presentationMode ? t('settings.presentationOn') : t('settings.presentationOff'),
@@ -257,6 +267,21 @@ export async function renderSettings(container, { onNavigate }) {
 
   container.querySelector('#btn-settings-plan')?.addEventListener('click', () => {
     openSubscribeProModal();
+  });
+
+  container.querySelector('[data-field="resetSubscription"]')?.addEventListener('click', async () => {
+    const ok = await openConfirmModal({
+      title: '¿Restablecer plan local?',
+      message:
+        'Telar volverá a Free solo en este Mac. No cancela tu suscripción en Mercado Pago. ' +
+        'Úsalo para probar el checkout otra vez.',
+      confirmLabel: 'Restablecer',
+      cancelLabel: 'Cancelar',
+    });
+    if (!ok) return;
+    resetLocalSubscriptionState();
+    toast('Plan restablecido a Free en este dispositivo');
+    renderSettings(container, { onNavigate });
   });
 
   container.querySelector('[data-field="locale"]')?.addEventListener('click', () => {

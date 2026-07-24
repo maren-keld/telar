@@ -3,6 +3,7 @@ import { isTauriApp } from '../tauri-bridge.js';
 import { SETTINGS_ICONS } from '../icons.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
+import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
 const LEFT_FOCUS_CSS_THRESHOLD = 90;
@@ -60,20 +61,22 @@ function toolsItemsHtml() {
 }
 
 function bindToolsActions(root, { treatmentId, onExportPdf }) {
-  root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', async () => {
-    try {
-      await onExportPdf();
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar');
-    }
+  root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', () => {
+    requireProOrSubscribe({
+      onAllowed: async () => {
+        try {
+          await onExportPdf();
+        } catch (e) {
+          toast(e.message || 'No se pudo exportar');
+        }
+      },
+    });
   });
 
   root.querySelector('[data-action="reference-docs"]')?.addEventListener('click', () => {
-    if (!isProUser()) {
-      toast('Documentos de referencia requiere Plan Profesional');
-      return;
-    }
-    openReferenceDocumentsModal({ treatmentId });
+    requireProOrSubscribe({
+      onAllowed: () => openReferenceDocumentsModal({ treatmentId }),
+    });
   });
 
   root.querySelector('[data-action="ai-program"]')?.addEventListener('click', () => {

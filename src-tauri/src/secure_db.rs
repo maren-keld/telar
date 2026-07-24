@@ -553,6 +553,7 @@ fn touch_id_authenticate_on_main(app: &tauri::AppHandle, reason: &str) -> Result
 #[tauri::command]
 pub fn db_unlock_touch_id(app: tauri::AppHandle) -> Result<(), String> {
     touch_id_authenticate_on_main(&app, "Desbloquear Telar")?;
+    touch_id::purge_legacy_keychain();
     let path = touch_id_storage_path(&app)?;
     let key = touch_id::load_db_key(&path)?;
     unlock_with_key(&app, &key)

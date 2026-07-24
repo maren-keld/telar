@@ -1,5 +1,19 @@
 use serde_json::Value;
 
+const PRODUCTION_API_BASE: &str = "https://telar-api-aim8.onrender.com";
+
+fn validated_api_base(api_base: &str) -> Result<String, String> {
+    let base = api_base.trim().trim_end_matches('/');
+    if base == PRODUCTION_API_BASE {
+        return Ok(base.to_string());
+    }
+    // Local dev API — same machine only; used when Render is down or for checkout testing.
+    if base == "http://127.0.0.1:5001" || base == "http://localhost:5001" {
+        return Ok(base.to_string());
+    }
+    Err("Servidor de suscripciones no autorizado".into())
+}
+
 fn api_error_message(body: &Value, fallback: &str) -> String {
     body.get("error")
         .and_then(|v| v.as_str())
@@ -39,62 +53,43 @@ fn handle_response(
 }
 
 #[tauri::command]
-pub fn subscription_checkout(email: String, api_base: String) -> Result<Value, String> {
-    let base = api_base.trim().trim_end_matches('/');
-    if base.is_empty() {
-        return Err("Falta apiBase (URL de la API de suscripciones)".into());
-    }
+pub fn subscription_checkout(
+    email: String,
+    access_token: String,
+    api_base: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/subscriptions/checkout");
     let result = ureq::post(&url)
         .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({ "email": email }));
-    handle_response(result, base, "No se pudo iniciar el pago")
+        .send_json(serde_json::json!({
+            "email": email,
+            "access_token": access_token
+        }));
+    handle_response(result, &base, "No se pudo iniciar el pago")
 }
 
 #[tauri::command]
 pub fn subscription_health(api_base: String) -> Result<Value, String> {
-    let base = api_base.trim().trim_end_matches('/');
-    if base.is_empty() {
-        return Err("Falta apiBase".into());
-    }
+    let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/health");
     let result = ureq::get(&url).call();
-    handle_response(result, base, "API de suscripciones no disponible")
+    handle_response(result, &base, "API de suscripciones no disponible")
 }
 
 #[tauri::command]
-pub fn subscription_dev_activate(email: String, api_base: String) -> Result<Value, String> {
-    let base = api_base.trim().trim_end_matches('/');
-    if base.is_empty() {
-        return Err("Falta apiBase".into());
-    }
-    let url = format!("{base}/api/subscriptions/dev-activate");
+pub fn subscription_status(
+    email: String,
+    access_token: String,
+    api_base: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let url = format!("{base}/api/subscriptions/status");
     let result = ureq::post(&url)
         .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({ "email": email }));
-    handle_response(result, base, "No se pudo activar Pro en desarrollo")
-}
-
-#[tauri::command]
-pub fn subscription_status(email: String, api_base: String) -> Result<Value, String> {
-    let base = api_base.trim().trim_end_matches('/');
-    if base.is_empty() {
-        return Err("Falta apiBase".into());
-    }
-    let url = format!("{base}/api/subscriptions/status?email={}", urlencoding_simple(&email));
-    let result = ureq::get(&url).call();
-    handle_response(result, base, "No se pudo consultar la suscripción")
-}
-
-fn urlencoding_simple(s: &str) -> String {
-    let mut out = String::new();
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'@' => {
-                out.push(b as char);
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
+        .send_json(serde_json::json!({
+            "email": email,
+            "access_token": access_token
+        }));
+    handle_response(result, &base, "No se pudo consultar la suscripción")
 }

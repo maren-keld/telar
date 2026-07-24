@@ -1,6 +1,8 @@
 /**
  * Retroalimentación sonora local (NF-2) — sin CDN.
  */
+import { NF_AUDIO_SMOOTH } from './nf-bands.js';
+
 const BASE = 'assets/audio';
 
 let feedbackTrack = null;
@@ -76,7 +78,7 @@ export function applyAudioFeedback(level) {
   if (!audioEnabled || !feedbackTrack || feedbackTrack.muted) return;
   const target = volumeFromLevel(level);
 
-  const smooth = 0.14;
+  const smooth = NF_AUDIO_SMOOTH;
   const nextVol = feedbackTrack.volume + (target - feedbackTrack.volume) * smooth;
   if (nextVol < 0.008) {
     feedbackTrack.volume = 0;

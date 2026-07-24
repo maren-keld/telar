@@ -4,24 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>¿Qué es el Neurofeedback? — Telar</title>
-  <meta name="description" content="Guía para psicólogos: qué es el Neurofeedback, para qué sirve en consulta y cómo funciona con Muse 2 en Telar.">
+  <meta name="description" content="Guía para psicólogos sobre el módulo opcional de neurofeedback con Muse 2 en Telar. Entrenamiento de autorregulación, no equipamiento diagnóstico.">
+  <link rel="canonical" href="https://telarapp.cl/neurofeedback">
+  <meta property="og:title" content="Neurofeedback opcional con Muse 2 — Telar">
+  <meta property="og:description" content="Cómo integrar entrenamiento de autorregulación con Muse 2 dentro del seguimiento clínico en Telar.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:url" content="https://telarapp.cl/neurofeedback">
+  <meta property="og:image" content="https://telarapp.cl/assets/telar-neurofeedback.png">
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..400&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260724">
 </head>
 <body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="nav">
     <div class="container nav-inner">
       <a href="index.html" class="brand">
         <img src="assets/icon.png" alt="" width="36" height="36">
         Telar
       </a>
-      <button class="nav-toggle" type="button" aria-label="Menú" id="nav-toggle">
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <nav class="nav-links" id="nav-links">
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
         <a href="neurofeedback.html" class="nav-active">Neurofeedback</a>
         <a href="index.html#funciones">Funciones</a>
         <a href="index.html#planes">Planes</a>
@@ -31,7 +39,7 @@
     </div>
   </header>
 
-  <main>
+  <main id="contenido">
     <section class="page-hero nf-section">
       <div class="container">
         <p class="section-label">Guía para colegas</p>
@@ -46,7 +54,7 @@
           <article class="nf-card">
             <span class="nf-step">1</span>
             <h2 class="nf-card-title">Qué hace</h2>
-            <p>La persona aprende a modular su actividad cerebral mientras hace una tarea tranquila: respirar, mirar la pantalla o escuchar tonos. Un sensor en la frente — la banda <strong>Muse 2</strong> — mide ondas EEG y la app devuelve señal al instante cuando la actividad va en la dirección que tú defines en el protocolo.</p>
+            <p>La persona entrena autorregulación mientras respira, mira la pantalla o escucha tonos. La banda de consumo <strong>Muse 2</strong> registra señales EEG y la app entrega retroalimentación en tiempo real según el protocolo configurado.</p>
           </article>
           <article class="nf-card">
             <span class="nf-step">2</span>
@@ -82,7 +90,7 @@
       <div class="container">
         <p class="section-label">Dispositivo</p>
         <h2 class="section-title">Dónde comprar la banda Muse 2</h2>
-        <p class="section-lead">Telar solo es compatible con <strong>Muse 2</strong> (macOS y Windows). No sirven Muse S, Muse 2016 (Muse 1), Athena ni otros modelos Interaxon.</p>
+        <p class="section-lead">Telar solo es compatible con <strong>Muse 2</strong> (macOS y Windows). Es una banda de consumo para entrenamiento y no sustituye equipamiento diagnóstico. No sirven Muse S, Muse 2016 (Muse 1), Athena ni otros modelos Interaxon.</p>
 
         <div class="nf-muse-card">
           <div class="nf-muse-main">
@@ -153,7 +161,7 @@
       <div class="container">
         <div class="cta-box">
           <h2>¿Quieres ver cómo se ve en la app?</h2>
-          <p>WhatsApp o GitHub. Si ya tienes Muse 2, te mostramos el flujo en una videollamada corta.</p>
+          <p>Si ya tienes Muse 2, te mostramos el flujo en una videollamada corta.</p>
           <div class="cta-actions">
             <a href="https://wa.me/56933913074?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-primary btn-lg" target="_blank" rel="noopener">WhatsApp</a>
             <a href="index.html#requisitos" class="btn btn-secondary btn-lg" style="background:#fff;color:var(--accent-dark);border-color:#fff">Descargar Telar</a>
@@ -179,8 +187,23 @@
   </footer>
 
   <script>
-    document.getElementById('nav-toggle').addEventListener('click', () => {
-      document.getElementById('nav-links').classList.toggle('open');
+    const navToggle = document.getElementById('nav-toggle');
+    const navLinks = document.getElementById('nav-links');
+
+    function setMenu(open) {
+      navLinks.classList.toggle('open', open);
+      navToggle.setAttribute('aria-expanded', String(open));
+      navToggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    navToggle.addEventListener('click', () => {
+      setMenu(navToggle.getAttribute('aria-expanded') !== 'true');
+    });
+    navLinks.addEventListener('click', (event) => {
+      if (event.target.closest('a')) setMenu(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setMenu(false);
     });
   </script>
 </body>

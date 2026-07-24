@@ -360,12 +360,14 @@ pub fn run() {
             db_backup_encrypted,
             ai_api::ai_chat_completion,
             subscription_api::subscription_checkout,
-            subscription_api::subscription_dev_activate,
             subscription_api::subscription_health,
             subscription_api::subscription_status,
             usage_ping::usage_ping,
         ])
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            touch_id::purge_legacy_keychain();
+
             #[cfg(desktop)]
             {
                 app.handle()

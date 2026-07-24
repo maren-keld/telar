@@ -4,7 +4,8 @@
  */
 const DOWNLOAD_URLS = {
   mac: 'https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip',
-  windows: '', // .exe pendiente — DI-2
+  windows: 'https://github.com/maren-keld/telar/releases/latest/download/Telar-windows.exe',
+  all: 'https://github.com/maren-keld/telar/releases/latest',
 };
 
 function detectPlatform() {
@@ -16,41 +17,41 @@ function detectPlatform() {
   return 'other';
 }
 
-function applyDownloadButton() {
-  const btn = document.getElementById('btn-download');
-  if (!btn) return;
-
+function getDownloadTarget() {
   const platform = detectPlatform();
 
-  if (platform === 'mac' && DOWNLOAD_URLS.mac) {
-    btn.href = DOWNLOAD_URLS.mac;
-    btn.textContent = 'Descargar para macOS';
-    btn.removeAttribute('download');
-    btn.dataset.platform = 'mac';
-    return;
+  if (platform === 'mac') {
+    return {
+      href: DOWNLOAD_URLS.mac,
+      label: 'Descargar para macOS',
+      platform: 'mac',
+    };
   }
 
   if (platform === 'windows') {
-    if (DOWNLOAD_URLS.windows) {
-      btn.href = DOWNLOAD_URLS.windows;
-      btn.textContent = 'Descargar para Windows';
-      btn.dataset.platform = 'windows';
-    } else {
-      btn.href = '#contacto';
-      btn.textContent = 'Windows — avísame';
-      btn.dataset.platform = 'windows-pending';
-      btn.addEventListener('click', (e) => {
-        if (!DOWNLOAD_URLS.windows) {
-          sessionStorage.setItem('contact-reason', 'windows-download');
-        }
-      });
-    }
-    return;
+    return {
+      href: DOWNLOAD_URLS.windows,
+      label: 'Descargar para Windows',
+      platform: 'windows',
+    };
   }
 
-  btn.href = '#requisitos';
-  btn.textContent = 'Ver cómo instalar';
-  btn.dataset.platform = 'other';
+  return {
+    href: DOWNLOAD_URLS.all,
+    label: 'Ver descargas',
+    platform: 'other',
+  };
 }
 
-document.addEventListener('DOMContentLoaded', applyDownloadButton);
+function applyDownloadButtons() {
+  const target = getDownloadTarget();
+
+  document.querySelectorAll('[data-download]').forEach((button) => {
+    button.href = target.href;
+    button.textContent = target.label;
+    button.dataset.platform = target.platform;
+    button.removeAttribute('download');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', applyDownloadButtons);
