@@ -38,16 +38,22 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
         <p class="subscribe-pro-modal__intro">
           Antes de empezar, cuéntanos quién eres. El <strong>email</strong> se usa para el plan Pro y Mercado Pago.
         </p>
-        <label class="input-label" for="onboard-name">Nombre</label>
-        <input type="text" class="input" id="onboard-name" autocomplete="name"
-          value="${escapeHtml(profile.name || '')}" placeholder="Tu nombre profesional" />
-        <label class="input-label" for="onboard-email" style="margin-top:12px">Correo electrónico</label>
-        <input type="email" class="input" id="onboard-email" autocomplete="email"
-          value="${escapeHtml(profile.email || '')}" placeholder="tu@email.com" />
-        <p class="subscribe-pro-modal__fine" id="onboard-hint" style="margin-top:8px"></p>
-        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="onboard-save" style="margin-top:16px">
-          Continuar
-        </button>
+        <div class="practitioner-onboarding__form">
+          <div class="form-group">
+            <label for="onboard-name">Nombre</label>
+            <input type="text" id="onboard-name" autocomplete="name"
+              value="${escapeHtml(profile.name || '')}" placeholder="Tu nombre profesional" />
+          </div>
+          <div class="form-group">
+            <label for="onboard-email">Correo electrónico</label>
+            <input type="email" id="onboard-email" autocomplete="email"
+              value="${escapeHtml(profile.email || '')}" placeholder="tu@email.com" />
+          </div>
+          <p class="practitioner-onboarding__hint" id="onboard-hint" aria-live="polite"></p>
+          <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="onboard-save">
+            Continuar
+          </button>
+        </div>
       </div>
     </div>`;
 
