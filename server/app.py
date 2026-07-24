@@ -293,10 +293,13 @@ def preapproval_matches_email(item: dict, email: str) -> bool:
 
 def find_mp_preapproval_by_email(email: str):
     sdk = mp_sdk()
-    for params in (
-        {"external_reference": email, "limit": 5},
-        {"payer_email": email, "limit": 5},
-    ):
+    email = email.lower()
+    search_params = (
+        {"external_reference": email, "limit": 20},
+        {"payer_email": email, "limit": 20},
+        {"limit": 50},
+    )
+    for params in search_params:
         try:
             res = sdk.preapproval().search(params)
             results = (res.get("response") or {}).get("results") or []
@@ -524,12 +527,24 @@ def status():
         except Exception:
             pass
     elif MP_TOKEN and mp_status in ("none", "pending"):
-        remote = find_mp_preapproval_by_email(email)
-        if remote:
-            preapproval_id = remote.get("id")
-            mp_status = remote.get("status", "unknown")
-            upsert_subscription(email, preapproval_id, mp_status)
-            updated_at = now_iso()
+        hint_id = (request.args.get("preapproval_id") or "").strip()
+        if hint_id:
+            try:
+                remote = fetch_mp_preapproval(hint_id)
+                if remote:
+                    preapproval_id = hint_id
+                    mp_status = remote.get("status", "unknown")
+                    upsert_subscription(email, preapproval_id, mp_status)
+                    updated_at = now_iso()
+            except Exception:
+                pass
+        if mp_status in ("none", "pending"):
+            remote = find_mp_preapproval_by_email(email)
+            if remote:
+                preapproval_id = remote.get("id")
+                mp_status = remote.get("status", "unknown")
+                upsert_subscription(email, preapproval_id, mp_status)
+                updated_at = now_iso()
 
     active = mp_status in ACTIVE_STATUSES
     return jsonify({

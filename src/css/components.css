@@ -1743,6 +1743,29 @@ html[data-presentation='on'] .genogram-node__name::after {
   }
 }
 
+.practitioner-onboarding .subscribe-pro-modal__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.practitioner-onboarding__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.practitioner-onboarding__hint {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: 0.82rem;
+  color: var(--danger, #b91c1c);
+}
+
+.practitioner-onboarding .subscribe-pro-modal__cta {
+  margin-top: 4px;
+}
+
 /* Workspace — menú Herramientas */
 .workspace-tools-menu {
   background: var(--bg-card);

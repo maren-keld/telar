@@ -191,6 +191,7 @@ export async function createProCheckout(email) {
 }
 
 const ACCESS_TOKEN_KEY = 'telar.subscriptionAccessToken';
+const PREAPPROVAL_ID_KEY = 'telar.subscriptionPreapprovalId';
 
 function subscriptionAccessToken() {
   try {
@@ -200,18 +201,31 @@ function subscriptionAccessToken() {
   }
 }
 
-function saveSubscriptionAccessToken(token) {
-  if (!token) return;
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
+function subscriptionPreapprovalId() {
+  try {
+    return localStorage.getItem(PREAPPROVAL_ID_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function saveSubscriptionCheckoutMeta(data) {
+  if (data?.access_token) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+  }
+  if (data?.preapproval_id) {
+    localStorage.setItem(PREAPPROVAL_ID_KEY, data.preapproval_id);
+  }
 }
 
 export async function fetchProStatus(email) {
   const base = getSubscriptionApiBase();
+  const preapprovalId = subscriptionPreapprovalId();
+  const qs = new URLSearchParams({ email });
+  if (preapprovalId) qs.set('preapproval_id', preapprovalId);
 
   if (shouldUseFetchForBase(base)) {
-    const res = await fetch(
-      `${base}/api/subscriptions/status?email=${encodeURIComponent(email)}`,
-    );
+    const res = await fetch(`${base}/api/subscriptions/status?${qs}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'No se pudo consultar la suscripción');
     return data;
@@ -401,12 +415,14 @@ export async function startProSubscription() {
     throw new Error('Configura tu email en Ajustes antes de suscribirte.');
   }
   const data = await createProCheckout(email);
-  saveSubscriptionAccessToken(data?.access_token);
+  saveSubscriptionCheckoutMeta(data);
   const url = checkoutUrlFromResponse(data);
   if (!url) throw new Error('Mercado Pago no devolvió enlace de pago');
   markCheckoutPending();
   await openExternalUrl(url);
 }
+
+const REVOKED_MP_STATUSES = new Set(['cancelled', 'paused', 'rejected', 'expired', 'inactive']);
 
 /**
  * @returns {Promise<{ nowPro: boolean, changed: boolean, revoked: boolean }>}
@@ -425,6 +441,11 @@ export async function syncProFromServer() {
       return { nowPro: true, changed: !wasPro, revoked: false };
     }
     if (data.active === false && wasPro) {
+      const st = String(data.status || 'none').toLowerCase();
+      // Sin fila en el servidor o MP aún pendiente: no quitar Pro local.
+      if (st === 'none' || st === 'pending' || !REVOKED_MP_STATUSES.has(st)) {
+        return { nowPro: wasPro, changed: false, revoked: false };
+      }
       saveProfile({ plan: 'free' });
       return { nowPro: false, changed: true, revoked: true };
     }
@@ -463,6 +484,7 @@ export function resetLocalSubscriptionState() {
   clearCheckoutPending();
   try {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(PREAPPROVAL_ID_KEY);
     localStorage.removeItem(LAST_SYNC_KEY);
     localStorage.removeItem(API_BASE_STORAGE_KEY);
     sessionStorage.removeItem(API_BASE_STORAGE_KEY);

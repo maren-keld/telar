@@ -61,7 +61,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
           Activar Pro (solo desarrollo, sin pago)
         </button>
-        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-verify" style="margin-top:8px" hidden>
+        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-verify" style="margin-top:8px">
           Verificar manualmente
         </button>
         <p class="subscribe-pro-modal__fine" id="subscribe-pro-pending" hidden>
