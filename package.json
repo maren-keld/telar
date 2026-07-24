@@ -4,12 +4,18 @@
   "description": "Consultorio clínico local con neurofeedback Muse 2 — Telar",
   "license": "AGPL-3.0-only",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "npm run test:frontend && npm run test:e2e",
+    "test:frontend": "node --test tests/frontend/*.test.js",
+    "test:e2e": "playwright test",
+    "test:api": "python3 -m pytest server/tests"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2"
   }
 }

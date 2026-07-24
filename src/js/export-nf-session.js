@@ -2,6 +2,13 @@ import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate } from './utils.js';
 
 const UTF8_BOM = '\uFEFF';
+const BAND_ORDER = ['Delta', 'Theta', 'Alpha', 'Beta'];
+const BAND_COLORS = {
+  Delta: [100, 116, 181],
+  Theta: [79, 143, 217],
+  Alpha: [75, 192, 168],
+  Beta: [230, 167, 23],
+};
 
 function csvEscape(value) {
   if (value === null || value === undefined) return '';
@@ -26,8 +33,42 @@ async function saveTextExport(filename, content) {
   URL.revokeObjectURL(a.href);
 }
 
+function drawPsdBars(doc, psdChannels, startY) {
+  const M = 18;
+  let y = startY;
+  const channels = Object.keys(psdChannels || {});
+  if (!channels.length) return y;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Potencia relativa por electrodo (%)', M, y);
+  y += 6;
+
+  const barW = 28;
+  const barMaxH = 14;
+  const groupW = 44;
+
+  channels.forEach((ch, ci) => {
+    const powers = psdChannels[ch] || {};
+    const gx = M + ci * groupW;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(ch, gx, y);
+    BAND_ORDER.forEach((band, bi) => {
+      const val = Number(powers[band]) || 0;
+      const h = Math.max(0.5, (val / 100) * barMaxH);
+      const [r, g, b] = BAND_COLORS[band];
+      doc.setFillColor(r, g, b);
+      doc.rect(gx + bi * 7, y + 2 + (barMaxH - h), 6, h, 'F');
+    });
+    y = Math.max(y, y + barMaxH + 4);
+  });
+  return y + 6;
+}
+
 export async function exportNfSessionCsv({ results, meta, sessionNotes, patientName, sessionNumber }) {
   if (!results) throw new Error('Sin resultados de neurofeedback para exportar.');
+  const spec = results.spectral || {};
   const row = {
     paciente: patientName || '',
     sesion: sessionNumber ?? '',
@@ -41,6 +82,9 @@ export async function exportNfSessionCsv({ results, meta, sessionNotes, patientN
     relajacion_pct: results.relaxation_pct ?? '',
     calma_seg: results.calm_seconds ?? '',
     atencion_seg: results.attention_seconds ?? '',
+    theta_beta_fp2: spec.theta_beta_fp2 ?? '',
+    alpha_asym_fp: spec.alpha_asym_fp ?? '',
+    artefacto_pct: spec.artifact_pct ?? '',
     notas: sessionNotes || '',
   };
   const cols = Object.keys(row);
@@ -77,6 +121,25 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
   line(`Calma: ${results.calm_pct ?? '—'}%`);
   line(`Atención: ${results.attentive_pct ?? '—'}%`);
   line(`Relajación: ${results.relaxation_pct ?? '—'}%`);
+
+  const spec = results.spectral || {};
+  if (spec.theta_beta_fp2 != null) {
+    y += 4;
+    line('Análisis espectral (orientativo)', { size: 11, style: 'bold' });
+    y += 2;
+    line(`Theta/Beta FP2: ${spec.theta_beta_fp2}`);
+    line(`Asimetría alpha FP1−FP2: ${spec.alpha_asym_fp ?? '—'} pp`);
+    if (spec.artifact_pct != null) line(`Ventanas con artefacto: ${spec.artifact_pct}%`);
+    if (spec.psd_channels && Object.keys(spec.psd_channels).length) {
+      y += 2;
+      y = drawPsdBars(doc, spec.psd_channels, y);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text('δ θ α β por columna', M, y);
+      y += 5;
+    }
+  }
+
   if (sessionNotes) {
     y += 4;
     line('Notas', { size: 11, style: 'bold' });

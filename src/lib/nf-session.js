@@ -13,87 +13,28 @@ import {
   setNfAudioProtocol,
   stopAudioFeedback,
 } from './nf-audio.js';
-import { NF_FEEDBACK_INTERVAL_MS, NF_FFT_SIZE, NF_LIVE_FEEDBACK_CHANNELS, NF_SAMPLE_RATE } from './nf-bands.js';
 import {
-  computeBandPercentages,
+  NF_ARTIFACT_P2P_UV,
+  NF_BAR_SMOOTH_ALPHA,
+  NF_FEEDBACK_INTERVAL_MS,
+  NF_LIVE_FFT_SIZE,
+  NF_LIVE_FEEDBACK_CHANNELS,
+  NF_SAMPLE_RATE,
+} from './nf-bands.js';
+import { getNfWarmupMs } from './nf-config.js';
+import { FFT } from './nf-fft.js';
+import {
   computeFeedbackMetrics,
+  detectArtifact,
   FeedbackEma,
-  hannWindow,
   LiveEegFilters,
-  attenuateHighFrequencySpectrum,
+  welchBandPowers,
 } from './nf-signal.js';
 
 const ELECTRODES = { TP9: 0, FP1: 1, FP2: 2, TP10: 3, AUX: 4 };
 /** Intervalo del loop readEEGTick (ms). */
 const EEG_TICK_MS = 4;
-/** Una fila cada N ticks (~4 ms) → ~16 ms, suficiente para análisis y IPC Tauri. */
-const RECORD_EVERY_N_TICKS = 4;
-const FFT_SIZE = NF_FFT_SIZE;
-
-class FFT {
-  constructor(bufferSize) {
-    this.bufferSize = bufferSize;
-    this.spectrum = new Float32Array(bufferSize / 2);
-    this.real = new Float32Array(bufferSize);
-    this.imag = new Float32Array(bufferSize);
-    this.reverseTable = new Uint32Array(bufferSize);
-    this.sinTable = new Float32Array(bufferSize);
-    this.cosTable = new Float32Array(bufferSize);
-    let limit = 1;
-    let bit = bufferSize >> 1;
-    this.reverseTable[0] = 0;
-    while (limit < bufferSize) {
-      for (let i = 0; i < limit; i++) this.reverseTable[i + limit] = this.reverseTable[i] + bit;
-      limit <<= 1;
-      bit >>= 1;
-    }
-    for (let i = 0; i < bufferSize; i++) {
-      if (i === 0) {
-        this.sinTable[0] = 0;
-        this.cosTable[0] = 1;
-      } else {
-        this.sinTable[i] = Math.sin(-Math.PI / i);
-        this.cosTable[i] = Math.cos(-Math.PI / i);
-      }
-    }
-  }
-
-  forward(buffer) {
-    const { real, imag, reverseTable, sinTable, cosTable, spectrum, bufferSize } = this;
-    for (let i = 0; i < bufferSize; i++) {
-      real[i] = buffer[reverseTable[i]];
-      imag[i] = 0;
-    }
-    let halfSize = 1;
-    while (halfSize < bufferSize) {
-      const phaseShiftStepReal = this.cosTable[halfSize];
-      const phaseShiftStepImag = this.sinTable[halfSize];
-      let currentPhaseShiftReal = 1.0;
-      let currentPhaseShiftImag = 0.0;
-      for (let fftStep = 0; fftStep < halfSize; fftStep++) {
-        for (let i = fftStep; i < bufferSize; i += halfSize << 1) {
-          const off = i + halfSize;
-          const tr = currentPhaseShiftReal * real[off] - currentPhaseShiftImag * imag[off];
-          const ti = currentPhaseShiftReal * imag[off] + currentPhaseShiftImag * real[off];
-          real[off] = real[i] - tr;
-          imag[off] = imag[i] - ti;
-          real[i] += tr;
-          imag[i] += ti;
-        }
-        const tmpReal = currentPhaseShiftReal;
-        currentPhaseShiftReal =
-          tmpReal * phaseShiftStepReal - currentPhaseShiftImag * phaseShiftStepImag;
-        currentPhaseShiftImag =
-          tmpReal * phaseShiftStepImag + currentPhaseShiftImag * phaseShiftStepReal;
-      }
-      halfSize <<= 1;
-    }
-    for (let i = 0; i < bufferSize / 2; i++) {
-      spectrum[i] = (2 * Math.hypot(real[i], imag[i])) / bufferSize;
-    }
-    return spectrum;
-  }
-}
+const FFT_SIZE = NF_LIVE_FFT_SIZE;
 
 export class NeurofeedbackSession {
   constructor() {
@@ -104,6 +45,12 @@ export class NeurofeedbackSession {
     this.protocol = 'relajacion';
     this.recording = false;
     this.recordedData = [];
+    /** @type {'idle'|'baseline'|'training'} */
+    this.sessionPhase = 'idle';
+    this._baselineSkipped = false;
+    this._sessionStartedAt = null;
+    this._trainingStartedAt = null;
+    this._liveTrace = [];
     this.eegFrequencyBuffer = { TP9: [], FP1: [], FP2: [], TP10: [] };
     this.liveFilters = {
       TP9: new LiveEegFilters(),
@@ -117,7 +64,12 @@ export class NeurofeedbackSession {
     this.voltageHistory = { TP9: [], FP1: [], FP2: [], TP10: [] };
     this.smoothedBars = [0, 0, 0, 0];
     this.feedbackEma = new FeedbackEma();
-    this.smoothAlpha = 0.28;
+    this._lastGoodLevel = 0.38;
+    this._artifactActive = false;
+    this._artifactKind = null;
+    /** Inicio calibración EMA al pulsar Grabar (NF-17). */
+    this._warmupStartedAt = null;
+    this._signalQualitySamples = [];
     this.onBandsUpdate = null;
     this.onDisconnected = null;
     this.onStatusChange = null;
@@ -178,8 +130,64 @@ export class NeurofeedbackSession {
 
   setProtocol(p) {
     this.protocol = p === 'atencion' ? 'atencion' : 'relajacion';
-    this.feedbackEma.reset();
     setNfAudioProtocol(this.protocol);
+  }
+
+  isWarmingUp() {
+    if (this.sessionPhase !== 'training' || !this.recording || !this._warmupStartedAt) return false;
+    return Date.now() - this._warmupStartedAt < getNfWarmupMs();
+  }
+
+  isInBaseline() {
+    return this.recording && this.sessionPhase === 'baseline';
+  }
+
+  getBaselineElapsedSec() {
+    if (!this.isInBaseline() || !this._sessionStartedAt) return 0;
+    return Math.floor((Date.now() - this._sessionStartedAt) / 1000);
+  }
+
+  _pushMarker(kind) {
+    this.recordedData.push(`__NF_MARKER__,${kind},${new Date().toISOString()}`);
+  }
+
+  _logLiveSample(percent, artifact) {
+    if (!this.recording || !this._sessionStartedAt) return;
+    const t = Date.now() - this._sessionStartedAt;
+    const last = this._liveTrace[this._liveTrace.length - 1];
+    if (last && t - last.t < 350) return;
+    this._liveTrace.push({
+      t,
+      pct: percent != null && !artifact ? Math.round(percent * 10) / 10 : null,
+      phase: this.sessionPhase,
+    });
+  }
+
+  getLiveTrace() {
+    return [...this._liveTrace];
+  }
+
+  getWarmupRemainingSec() {
+    if (!this.isWarmingUp()) return 0;
+    return Math.ceil((getNfWarmupMs() - (Date.now() - this._warmupStartedAt)) / 1000);
+  }
+
+  _updateSignalQuality(artifact) {
+    const now = Date.now();
+    const windowMs = 30_000;
+    this._signalQualitySamples.push({ t: now, artifact: Boolean(artifact) });
+    this._signalQualitySamples = this._signalQualitySamples.filter((s) => s.t >= now - windowMs);
+    const total = this._signalQualitySamples.length;
+    if (!total) {
+      return { level: 'unknown', artifactPct: 0 };
+    }
+    const artifactPct = Math.round(
+      (this._signalQualitySamples.filter((s) => s.artifact).length / total) * 100,
+    );
+    let level = 'good';
+    if (artifactPct >= 35) level = 'poor';
+    else if (artifactPct >= 15) level = 'fair';
+    return { level, artifactPct };
   }
 
   setElectrode(name, active) {
@@ -220,25 +228,94 @@ export class NeurofeedbackSession {
     this._setStatus('disconnected');
   }
 
-  updateNeurofeedback(spectrum) {
-    const filtered = attenuateHighFrequencySpectrum(spectrum, NF_SAMPLE_RATE);
-    const bars = computeBandPercentages(filtered, NF_SAMPLE_RATE);
+  updateNeurofeedback(bars) {
+    const feedbackChannels =
+      NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
+    const { artifact, kind } = detectArtifact(
+      this.eegFrequencyBuffer,
+      feedbackChannels,
+      bars,
+      NF_ARTIFACT_P2P_UV,
+      FFT_SIZE,
+    );
+    this._artifactActive = artifact;
+    this._artifactKind = kind;
+
+    const smoothAlpha = NF_BAR_SMOOTH_ALPHA;
     for (let i = 0; i < 4; i++) {
       this.smoothedBars[i] =
-        this.smoothedBars[i] * (1 - this.smoothAlpha) + bars[i] * this.smoothAlpha;
+        this.smoothedBars[i] * (1 - smoothAlpha) + bars[i] * smoothAlpha;
     }
     if (this.frequencyChart?.data?.datasets?.[0]) {
       this.frequencyChart.data.datasets[0].data = [...this.smoothedBars];
       this.frequencyChart.update();
     }
-    const { level, percent } = computeFeedbackMetrics(this.protocol, this.smoothedBars, this.feedbackEma);
-    this.onBandsUpdate?.({ bars: [...this.smoothedBars], level, percent });
-    applyAudioFeedback(level);
+
+    const warming = this.isWarmingUp();
+    const inBaseline = this.isInBaseline();
+    const training =
+      this.recording && this.sessionPhase === 'training' && !warming && !inBaseline;
+    const { level, percent } = computeFeedbackMetrics(
+      this.protocol,
+      this.smoothedBars,
+      this.feedbackEma,
+      { updateEma: this.recording && !artifact },
+    );
+
+    if (training && !artifact) {
+      this._lastGoodLevel = level;
+    }
+    const outLevel =
+      !this.recording || warming || inBaseline ? 0.38 : artifact ? this._lastGoodLevel : level;
+
+    const signalQuality = this._updateSignalQuality(artifact);
+    const showPct = training && !artifact ? percent : null;
+    this._logLiveSample(showPct, artifact);
+
+    this.onBandsUpdate?.({
+      bars: [...this.smoothedBars],
+      level: outLevel,
+      percent: showPct,
+      warming,
+      artifact,
+      artifactKind: kind,
+      recording: this.recording,
+      sessionPhase: this.sessionPhase,
+      baselineElapsedSec: this.getBaselineElapsedSec(),
+      warmupRemainingSec: this.getWarmupRemainingSec(),
+      signalQuality: signalQuality.level,
+      signalArtifactPct: signalQuality.artifactPct,
+    });
+
+    if (training) {
+      applyAudioFeedback(artifact ? this._lastGoodLevel : level);
+    }
   }
 
-  computeSpectrum256(arr) {
-    const windowed = hannWindow(arr);
-    return Array.from(this.fft.forward(windowed));
+  _welchForward(windowed) {
+    return this.fft.forward(windowed);
+  }
+
+  updateFrequencyGraph() {
+    const feedbackChannels =
+      NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
+    const bandSets = [];
+    for (const e of feedbackChannels) {
+      if (!this.activeElectrodes[e]) continue;
+      const buf = this.eegFrequencyBuffer[e];
+      if (buf.length >= FFT_SIZE) {
+        bandSets.push(
+          welchBandPowers(buf.slice(-FFT_SIZE), (w) => this._welchForward(w), NF_SAMPLE_RATE, FFT_SIZE),
+        );
+      }
+    }
+    if (!bandSets.length) return;
+    const avg = [0, 0, 0, 0];
+    for (const b of bandSets) {
+      for (let i = 0; i < 4; i++) avg[i] += b[i];
+    }
+    for (let i = 0; i < 4; i++) avg[i] /= bandSets.length;
+    this.updateNeurofeedback(avg);
   }
 
   readEEGTick() {
@@ -277,50 +354,30 @@ export class NeurofeedbackSession {
         if (!this.activeElectrodes[e] || vals[e] === undefined) continue;
         this._pushVoltageSample(e, vals[e]);
         this.eegFrequencyBuffer[e].push(vals[e]);
-        if (this.eegFrequencyBuffer[e].length > FFT_SIZE * 2) {
-          this.eegFrequencyBuffer[e] = this.eegFrequencyBuffer[e].slice(-FFT_SIZE * 2);
+        const maxBuf = FFT_SIZE * 2;
+        if (this.eegFrequencyBuffer[e].length > maxBuf) {
+          this.eegFrequencyBuffer[e] = this.eegFrequencyBuffer[e].slice(-maxBuf);
         }
       }
-    }
 
-    if (this.recording && maxLen > 0) {
-      this._recordTickCount = (this._recordTickCount ?? 0) + 1;
-      if (this._recordTickCount % RECORD_EVERY_N_TICKS === 0) {
-        const li = maxLen - 1;
+      if (this.recording) {
+        const seq = this._recordSeq ?? 0;
         const tMs =
-          (this._startedAt?.getTime() ?? Date.now()) +
-          (this._recordSeq ?? 0) * (EEG_TICK_MS * RECORD_EVERY_N_TICKS);
-        this._recordSeq = (this._recordSeq ?? 0) + 1;
+          (this._startedAt?.getTime() ?? Date.now()) + seq * (1000 / NF_SAMPLE_RATE);
+        this._recordSeq = seq + 1;
         const ts = new Date(tMs).toISOString();
         const cell = (e) => {
           if (!this.activeElectrodes[e]) return '';
-          const v = channels[e][li];
+          const v = vals[e];
           return v !== undefined ? String(v) : '';
         };
-        this.recordedData.push(
-          `${ts},${cell('TP9')},${cell('FP1')},${cell('FP2')},${cell('TP10')}`,
-        );
+        if (vals.TP9 !== undefined || vals.FP1 !== undefined || vals.FP2 !== undefined || vals.TP10 !== undefined) {
+          this.recordedData.push(
+            `${ts},${cell('TP9')},${cell('FP1')},${cell('FP2')},${cell('TP10')}`,
+          );
+        }
       }
     }
-  }
-
-  updateFrequencyGraph() {
-    const feedbackChannels =
-      NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
-    const spectra = [];
-    for (const e of feedbackChannels) {
-      if (!this.activeElectrodes[e]) continue;
-      const buf = this.eegFrequencyBuffer[e];
-      if (buf.length >= FFT_SIZE) {
-        spectra.push(this.computeSpectrum256(buf.slice(-FFT_SIZE)));
-      }
-    }
-    if (!spectra.length) return;
-    const L = spectra[0].length;
-    const avg = new Array(L).fill(0);
-    for (const s of spectra) for (let i = 0; i < L; i++) avg[i] += s[i];
-    for (let i = 0; i < L; i++) avg[i] /= spectra.length;
-    this.updateNeurofeedback(avg);
   }
 
   _wireMuseCallbacks() {
@@ -393,7 +450,8 @@ export class NeurofeedbackSession {
       this._isConnecting = false;
       this.connectError = null;
       this._setStatus('connected');
-      this.feedbackEma.reset();
+      this._lastGoodLevel = 0.38;
+      this._signalQualitySamples = [];
       if (isAudioFeedbackEnabled()) {
         playConnectedSound();
       }
@@ -476,6 +534,12 @@ export class NeurofeedbackSession {
       m.onDisconnected = () => {};
       await Promise.resolve(m.disconnect?.());
     }
+    this._warmupStartedAt = null;
+    this._signalQualitySamples = [];
+    this._artifactActive = false;
+    this._artifactKind = null;
+    this.sessionPhase = 'idle';
+    this._liveTrace = [];
     this._setStatus('disconnected');
     this._userInitiatedDisconnect = false;
   }
@@ -500,8 +564,8 @@ export class NeurofeedbackSession {
 
   startLoops() {
     this.stopLoops();
-    this._intervals.push(setInterval(() => this.readEEGTick(), 4));
-    this._intervals.push(setInterval(() => this.updateFrequencyGraph(), 150));
+    this._intervals.push(setInterval(() => this.readEEGTick(), EEG_TICK_MS));
+    this._intervals.push(setInterval(() => this.updateFrequencyGraph(), NF_FEEDBACK_INTERVAL_MS));
     this._intervals.push(setInterval(() => this.updateVoltageGraph(), 80));
   }
 
@@ -522,17 +586,48 @@ export class NeurofeedbackSession {
     return 'Sin dispositivo';
   }
 
-  startRecording() {
+  startRecording(opts = {}) {
+    const useBaseline = opts.withBaseline !== false;
     this.recordedData = [];
     this.recording = true;
     this._startedAt = new Date();
-    this._recordTickCount = 0;
     this._recordSeq = 0;
+    this._sessionStartedAt = Date.now();
+    this._trainingStartedAt = null;
+    this._warmupStartedAt = null;
+    this._baselineSkipped = false;
+    this._lastGoodLevel = 0.38;
+    this._liveTrace = [];
+    this.feedbackEma.reset();
+    stopAudioFeedback();
+    if (useBaseline) {
+      this.sessionPhase = 'baseline';
+    } else {
+      this.sessionPhase = 'training';
+      this._warmupStartedAt = Date.now();
+      this._trainingStartedAt = this._warmupStartedAt;
+    }
+  }
+
+  startTraining({ skipped = false } = {}) {
+    if (!this.recording || this.sessionPhase !== 'baseline') return;
+    this._pushMarker('baseline_end');
+    this.sessionPhase = 'training';
+    this._trainingStartedAt = Date.now();
+    this._warmupStartedAt = Date.now();
+    this._baselineSkipped = Boolean(skipped);
+    if (skipped) {
+      this.feedbackEma.reset();
+    }
+    stopAudioFeedback();
   }
 
   stopRecording() {
     this.recording = false;
+    this._warmupStartedAt = null;
     this._endedAt = new Date();
+    this.sessionPhase = 'idle';
+    stopAudioFeedback();
     return this.recordedData.join('@');
   }
 
@@ -549,6 +644,11 @@ export class NeurofeedbackSession {
       started_at: this._startedAt?.toISOString(),
       ended_at: this._endedAt?.toISOString(),
       duration_sec: dur,
+      baseline_skipped: this._baselineSkipped,
+      training_started_at: this._trainingStartedAt
+        ? new Date(this._trainingStartedAt).toISOString()
+        : null,
+      live_trace: this.getLiveTrace(),
     };
   }
 }

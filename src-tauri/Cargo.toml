@@ -37,6 +37,7 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", features = ["NSRunLoop", "NSDate", "NSString", "NSObjCRuntime"] }
 objc2-local-authentication = "0.3"
 block2 = "0.6"
+security-framework = "=3.6.0"
 
 [profile.release]
 panic = "abort"

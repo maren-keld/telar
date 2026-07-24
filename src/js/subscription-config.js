@@ -6,4 +6,4 @@
  */
 // Tras deploy en Render: 'https://telar-api.onrender.com' (./scripts/deploy-subscription-api.sh)
 // Vacío = la .app usa API local en 127.0.0.1:5001 (python app.py en server/)
-export const SUBSCRIPTION_API_PRODUCTION = '';
+export const SUBSCRIPTION_API_PRODUCTION = 'https://telar-api-aim8.onrender.com';

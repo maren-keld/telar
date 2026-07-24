@@ -1,16 +1,25 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
-import { NF_PROTOCOL_ELECTRODES, NF_PROTOCOL_PRESETS, NF_SUPPORTED_DEVICE, nfPreset } from '../../lib/nf-bands.js';
+import { NF_PROTOCOL_ELECTRODES, NF_PROTOCOL_PRESETS, NF_ORB_SMOOTH_LEVEL, NF_ORB_SMOOTH_PCT, NF_SUPPORTED_DEVICE, nfPreset } from '../../lib/nf-bands.js';
+import { getNfBaselineSec, getNfWarmupSec, NF_BASELINE_OPTIONS_SEC, NF_BASELINE_SKIP_CONFIRM_SEC, NF_WARMUP_OPTIONS_SEC, setNfBaselineSec, setNfWarmupSec } from '../../lib/nf-config.js';
 import { NeurofeedbackSession } from '../../lib/nf-session.js';
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled, setNfAudioProtocol } from '../../lib/nf-audio.js';
 import { analyzeSessionPython, saveNeurofeedbackRecording } from '../db.js';
-import { exportNfSessionCsv, exportNfSessionPdf } from '../export-nf-session.js';
 import { syncModuleReadableText } from '../readable-text.js';
-import { escapeHtml, formatDate, parseJsonSafe, toast } from '../utils.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
+import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { ICON_BATTERY, ICON_VOLUME_OFF, ICON_VOLUME_ON } from '../icons.js';
+import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
+import {
+  bindNfResultsTab,
+  destroyNfResultCharts,
+  nfErrorMessage,
+  parseAnalyzeOutput,
+  renderResults,
+  renderResultsError,
+  renderResultsLoading,
+  startAnalyzeProgress,
+} from './nf-results.js';
 
 export const NF_HELP_MESSAGE =
-  'Solo Muse 2. BLE nativo en macOS/Windows. Bienestar y autorregulación — no es dispositivo médico. Informa al paciente que la señal EEG se guarda cifrada en tu computador. Feedback en vivo: Delta, Theta, Alpha, Beta.';
+  'Solo Muse 2. BLE nativo en macOS/Windows. Bienestar y autorregulación — no es dispositivo médico. Al grabar: primero reposo / línea base (2–3 min), luego «Iniciar entrenamiento»; calibración EMA 60–120 s. Evita parpadear o tensar la mandíbula.';
 
 let nfSession = null;
 let frequencyChart = null;
@@ -21,6 +30,17 @@ let feedbackMode = 'visual';
 let visualTarget = 0;
 let visualDisplay = 0;
 let pctDisplay = 0;
+let feedbackStatus = {
+  warming: false,
+  artifact: false,
+  artifactKind: null,
+  warmupRemainingSec: 0,
+  recording: false,
+  sessionPhase: 'idle',
+  baselineElapsedSec: 0,
+  signalQuality: 'unknown',
+  signalArtifactPct: 0,
+};
 let orbAnimId = null;
 let orbHostRef = null;
 
@@ -94,6 +114,17 @@ function isSessionConnected() {
 function resetOrbFeedback() {
   visualTarget = 0;
   pctDisplay = 0;
+  feedbackStatus = {
+    warming: false,
+    artifact: false,
+    artifactKind: null,
+    warmupRemainingSec: 0,
+    recording: false,
+    sessionPhase: 'idle',
+    baselineElapsedSec: 0,
+    signalQuality: 'unknown',
+    signalArtifactPct: 0,
+  };
 }
 
 function paintVisualOrb(host, level, pct, { idle = false } = {}) {
@@ -135,11 +166,14 @@ function startOrbAnimation(host) {
     const protocol = nfSession?.protocol || 'relajacion';
     if (feedbackMode === 'visual') {
       if (connected) {
-        visualDisplay += (visualTarget - visualDisplay) * 0.055;
-        pctDisplay += (visualTarget - pctDisplay) * 0.07;
+        visualDisplay += (visualTarget - visualDisplay) * NF_ORB_SMOOTH_LEVEL;
+        pctDisplay += (visualTarget - pctDisplay) * NF_ORB_SMOOTH_PCT;
         const pct = Math.round(pctDisplay * 100);
         paintVisualOrb(host, visualDisplay, pct);
         updateFeedbackPct(host, pct, protocol);
+        updateFeedbackStatus(host, feedbackStatus);
+        updateBaselinePanel(host, feedbackStatus);
+        updateSignalQualityChip(host, feedbackStatus, connected);
       } else {
         const idlePulse = 0.38 + 0.07 * Math.sin(Date.now() / 1400);
         visualDisplay += (idlePulse - visualDisplay) * 0.045;
@@ -178,11 +212,97 @@ function stopOrbAnimation() {
   orbHostRef = null;
 }
 
+function updateBaselinePanel(host, { sessionPhase, baselineElapsedSec }) {
+  const panel = host.querySelector('#nf-baseline-panel');
+  const timer = host.querySelector('#nf-baseline-timer');
+  if (!panel) return;
+  const show = sessionPhase === 'baseline';
+  panel.hidden = !show;
+  if (timer && show) {
+    timer.textContent = formatDuration(baselineElapsedSec);
+    const target = getNfBaselineSec();
+    timer.title = `Objetivo ~${formatDuration(target)}`;
+  }
+}
+
+function updateFeedbackStatus(host, { warming, artifact, artifactKind, warmupRemainingSec, recording }) {
+  const el = host.querySelector('#nf-feedback-status');
+  if (!el) return;
+  if (!recording) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  if (warming && warmupRemainingSec > 0) {
+    el.hidden = false;
+    el.className = 'nf-feedback-status nf-feedback-status--warmup';
+    el.textContent = `Calibrando feedback… ~${warmupRemainingSec} s`;
+    return;
+  }
+  if (artifact) {
+    el.hidden = false;
+    el.className = 'nf-feedback-status nf-feedback-status--artifact';
+    el.textContent =
+      artifactKind === 'emg'
+        ? 'Tensión mandibular — suelta la mandíbula'
+        : 'Señal con artefacto — evita parpadear y movimientos bruscos';
+    return;
+  }
+  el.hidden = true;
+  el.textContent = '';
+}
+
+const NF_SIGNAL_QUALITY_LABEL = {
+  good: 'Buena',
+  fair: 'Regular',
+  poor: 'Mala',
+  unknown: '—',
+};
+
+function updateSignalQualityChip(host, { signalQuality, signalArtifactPct }, connected) {
+  const el = host.querySelector('#nf-signal-quality');
+  if (!el) return;
+  if (!connected) {
+    el.hidden = true;
+    return;
+  }
+  const level = signalQuality || 'unknown';
+  el.hidden = false;
+  el.className = `nf-signal-quality nf-signal-quality--${level}`;
+  const label = NF_SIGNAL_QUALITY_LABEL[level] || NF_SIGNAL_QUALITY_LABEL.unknown;
+  el.title = `Últimos 30 s: ${signalArtifactPct ?? 0}% con artefacto`;
+  el.innerHTML = `<span class="nf-signal-quality__dot" aria-hidden="true"></span><span class="nf-signal-quality__label">${label}</span>`;
+}
+
 function updateFeedbackPct(host, pct, protocol) {
   const pctEl = host.querySelector('#nf-visual-pct');
   const labelEl = host.querySelector('#nf-visual-pct-label');
   const hintEl = host.querySelector('#nf-visual-pct-hint');
   if (!pctEl) return;
+  if (!feedbackStatus.recording) {
+    pctEl.textContent = '—';
+    if (labelEl) labelEl.textContent = isSessionConnected() ? 'exploración' : 'sin señal';
+    if (hintEl) hintEl.textContent = isSessionConnected() ? 'graba para entrenar' : 'conecta el Muse';
+    return;
+  }
+  if (feedbackStatus.sessionPhase === 'baseline') {
+    pctEl.textContent = '…';
+    if (labelEl) labelEl.textContent = 'reposo';
+    if (hintEl) hintEl.textContent = 'línea base';
+    return;
+  }
+  if (feedbackStatus.warming) {
+    pctEl.textContent = '…';
+    if (labelEl) labelEl.textContent = 'calibrando';
+    if (hintEl) hintEl.textContent = 'línea base';
+    return;
+  }
+  if (feedbackStatus.artifact) {
+    pctEl.textContent = '—';
+    if (labelEl) labelEl.textContent = feedbackPctLabel(protocol);
+    if (hintEl) hintEl.textContent = 'mantén la postura';
+    return;
+  }
   pctEl.textContent = `${pct}%`;
   if (labelEl) labelEl.textContent = feedbackPctLabel(protocol);
   if (hintEl) hintEl.textContent = feedbackPctHint(protocol);
@@ -239,6 +359,7 @@ function _destroyCharts() {
     voltageChart.destroy();
     voltageChart = null;
   }
+  destroyNfResultCharts();
 }
 
 /** Detiene BLE, grabación y audio al salir del espacio de trabajo. */
@@ -294,6 +415,7 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
             <span id="nf-device-label" class="nf-device-name" hidden></span>
           </div>
           <div class="nf-row__right">
+            <span id="nf-signal-quality" class="nf-signal-quality" hidden title="Calidad de señal (últimos 30 s)"></span>
             <span id="nf-battery" class="nf-battery"></span>
             <button type="button" class="btn btn-primary nf-device__connect" id="nf-connect" title="Conectar o desconectar ${NF_SUPPORTED_DEVICE}">Conectar ${NF_SUPPORTED_DEVICE}</button>
           </div>
@@ -310,6 +432,20 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
             <span class="nf-advanced__chevron" id="nf-advanced-chevron" aria-hidden="true">▸</span>
           </summary>
           <div class="nf-advanced__body">
+            <p class="nf-field-label">Calibración al grabar</p>
+            <select class="nf-select" id="nf-warmup-sec" title="Duración de calibración EMA al iniciar grabación">
+              ${NF_WARMUP_OPTIONS_SEC.map(
+                (s) =>
+                  `<option value="${s}"${s === getNfWarmupSec() ? ' selected' : ''}>${s} s</option>`,
+              ).join('')}
+            </select>
+            <p class="nf-field-label">Reposo / línea base</p>
+            <select class="nf-select" id="nf-baseline-sec" title="Duración sugerida de reposo antes del entrenamiento">
+              ${NF_BASELINE_OPTIONS_SEC.map(
+                (s) =>
+                  `<option value="${s}"${s === getNfBaselineSec() ? ' selected' : ''}>${s} s (2–3 min)</option>`,
+              ).join('')}
+            </select>
             <p class="nf-field-label">Ubicación</p>
             <div class="nf-chips" id="nf-electrodes">
               ${['FP1', 'FP2', 'TP9', 'TP10']
@@ -342,6 +478,7 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
               <div class="nf-orb" id="nf-orb"></div>
             </div>
             <div class="nf-visual-meta">
+              <p class="nf-feedback-status" id="nf-feedback-status" hidden></p>
               <span class="nf-visual-pct" id="nf-visual-pct">0%</span>
               <span class="nf-visual-pct-label" id="nf-visual-pct-label">calma</span>
               <span class="nf-visual-pct-hint" id="nf-visual-pct-hint">alpha + theta</span>
@@ -354,6 +491,12 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
             <canvas id="nf-voltage-chart"></canvas>
           </div>
         </div>
+        <div class="nf-baseline-panel" id="nf-baseline-panel" hidden>
+          <p class="nf-baseline-panel__title">Reposo / línea base</p>
+          <p class="nf-baseline-panel__hint">Ojos cerrados, quieto. Cuando estés listo, inicia el entrenamiento.</p>
+          <span class="nf-baseline-panel__timer badge badge--info" id="nf-baseline-timer" aria-live="polite">0:00</span>
+          <button type="button" class="btn btn-primary" id="nf-start-training">Iniciar entrenamiento</button>
+        </div>
         <div class="nf-record-wrap">
           <span class="nf-record-timer badge badge--info" id="nf-record-timer" hidden aria-live="polite">0:00</span>
           <div class="nf-record" id="nf-record-wrap">
@@ -362,18 +505,19 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
         </div>
       </div>
       <div id="nf-tab-resultados" hidden>
-        ${renderResults(lastResults, lastMeta, saved.session_notes || '', Boolean(lastResults))}
+        ${renderResults(lastResults, lastMeta, saved.session_notes || '', Boolean(lastResults), saved.last_live_trace || [])}
       </div>
     </div>`;
 
   const exportCtx = {
     patientName: ctx.treatment?.patient_name || ctx.patientName,
     sessionNumber: ctx.sessionNumber,
+    treatmentId: ctx.treatment?.id,
   };
 
   initCharts(host);
   bindEvents(host, moduleRow, ctx.onSaved, initialProtocol, exportCtx);
-  bindResultsTab(host, moduleRow, exportCtx);
+  bindNfResultsTab(host, moduleRow, exportCtx, saved.last_live_trace || []);
 
   const obs = new MutationObserver(() => {
     if (!host.isConnected) {
@@ -387,184 +531,6 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
   });
   const watchTarget = host.parentElement?.parentElement ?? document.body;
   obs.observe(watchTarget, { childList: true });
-}
-
-function bindResultsTab(host, moduleRow, exportCtx = {}) {
-  const tab = host.querySelector('#nf-tab-resultados');
-  if (!tab) return;
-
-  tab.querySelectorAll('[data-nf-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.nfMode;
-      tab.querySelectorAll('[data-nf-mode]').forEach((b) => b.classList.toggle('active', b === btn));
-      tab.querySelectorAll('.nf-state-card__value').forEach((el) => {
-        el.textContent = mode === 'tiempo' ? el.dataset.time || '—' : el.dataset.pct || '—';
-      });
-      const sub = tab.querySelector('#nf-results-sub');
-      if (sub) sub.textContent = NF_RESULTS_SUB[mode] || NF_RESULTS_SUB.porcentaje;
-    });
-  });
-
-  const form = tab.querySelector('#nf-results-form');
-  if (form) {
-    const persistNotes = async () => {
-      const fd = collectFormData(form);
-      await syncModuleReadableText(
-        moduleRow,
-        { session_notes: fd.session_notes || '' },
-        moduleRow.status || 'completado',
-      );
-    };
-    bindAutoSave(form, persistNotes, workspaceAutoSaveStatus());
-  }
-
-  const getExportPayload = () => {
-    const data = parseJsonSafe(moduleRow.data, {});
-    return {
-      results: data.last_results,
-      meta: data.last_meta,
-      sessionNotes: form ? collectFormData(form).session_notes || data.session_notes || '' : data.session_notes || '',
-      patientName: exportCtx.patientName,
-      sessionNumber: exportCtx.sessionNumber,
-    };
-  };
-
-  tab.querySelector('#nf-export-csv')?.addEventListener('click', async () => {
-    try {
-      await exportNfSessionCsv(getExportPayload());
-      toast('CSV exportado');
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar CSV');
-    }
-  });
-
-  tab.querySelector('#nf-export-pdf')?.addEventListener('click', async () => {
-    try {
-      await exportNfSessionPdf(getExportPayload());
-      toast('PDF exportado');
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar PDF');
-    }
-  });
-}
-
-function renderResultsLoading(durationSec = 0) {
-  const est = Math.max(20, Math.ceil(durationSec * 1.5 + 12));
-  return `
-    <div class="nf-results nf-results--loading">
-      <p class="nf-results__loading-title">Analizando sesión…</p>
-      <p class="nf-results__loading-hint">Las sesiones largas pueden tardar uno o dos minutos.</p>
-      <div class="nf-analyze-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${est}" aria-valuenow="0">
-        <div class="nf-analyze-progress__bar" id="nf-analyze-bar"></div>
-      </div>
-      <p class="nf-analyze-eta" id="nf-analyze-eta">Tiempo estimado: ~${formatDuration(est)}</p>
-      <p class="nf-analyze-elapsed" id="nf-analyze-elapsed">Transcurrido: 0:00</p>
-    </div>`;
-}
-
-function startAnalyzeProgress(host, durationSec) {
-  const est = Math.max(20, Math.ceil(durationSec * 1.5 + 12));
-  const bar = host.querySelector('#nf-analyze-bar');
-  const etaEl = host.querySelector('#nf-analyze-eta');
-  const elapsedEl = host.querySelector('#nf-analyze-elapsed');
-  const progressEl = host.querySelector('.nf-analyze-progress');
-  const t0 = Date.now();
-  const tick = () => {
-    const elapsed = Math.floor((Date.now() - t0) / 1000);
-    const remaining = Math.max(0, est - elapsed);
-    const pct = Math.min(95, (elapsed / est) * 100);
-    if (bar) bar.style.width = `${pct}%`;
-    if (progressEl) progressEl.setAttribute('aria-valuenow', String(elapsed));
-    if (elapsedEl) elapsedEl.textContent = `Transcurrido: ${formatDuration(elapsed)}`;
-    if (etaEl) {
-      etaEl.textContent =
-        remaining > 0 ? `Faltan ~${formatDuration(remaining)} (estimado)` : 'Finalizando análisis…';
-    }
-  };
-  tick();
-  return setInterval(tick, 500);
-}
-
-function renderResultsError(message) {
-  return `<div class="nf-results"><p class="nf-results-empty nf-results-empty--error">${escapeHtml(message)}</p></div>`;
-}
-
-function nfErrorMessage(err) {
-  if (typeof err === 'string') return err;
-  return err?.message || String(err) || 'Error al analizar la sesión';
-}
-
-function displayProtocolLabel(meta) {
-  const raw = meta?.protocol || '';
-  if (/relajaci/i.test(raw)) return 'Calma';
-  return raw || nfPreset('relajacion').label;
-}
-
-const NF_RESULTS_SUB = {
-  porcentaje: 'Nivel promedio de cada estado durante la grabación.',
-  tiempo: 'Tiempo en que se mantuvo un nivel elevado de cada estado.',
-};
-
-function formatResultPct(value) {
-  if (value == null || Number.isNaN(Number(value))) return '—';
-  const n = Math.round(Number(value) * 10) / 10;
-  return `${n}%`;
-}
-
-function renderResults(results, meta, sessionNotes = '', showExport = false) {
-  if (!results) {
-    return '<p class="nf-results-empty">Graba una sesión y detén la grabación para ver los resultados aquí.</p>';
-  }
-  const calmPct = formatResultPct(results.calm_pct);
-  const attPct = formatResultPct(results.attentive_pct);
-  const calmTime = formatDuration(results.calm_seconds);
-  const attTime = formatDuration(results.attention_seconds);
-  const protocolLabel = displayProtocolLabel(meta);
-  const exportBlock = showExport
-    ? `<div class="nf-results__export">
-        <button type="button" class="btn btn-secondary btn-sm" id="nf-export-csv">Exportar CSV sesión</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="nf-export-pdf">Exportar PDF sesión</button>
-      </div>`
-    : '';
-  return `
-    <div class="nf-results">
-      <h3 class="nf-results__heading">Estado mental</h3>
-      <p class="nf-results__sub" id="nf-results-sub">${NF_RESULTS_SUB.porcentaje}</p>
-      <div class="nf-results__toggle" role="tablist">
-        <button type="button" class="nf-results__mode active" data-nf-mode="porcentaje">Porcentaje</button>
-        <button type="button" class="nf-results__mode" data-nf-mode="tiempo">En tiempo</button>
-      </div>
-      <div class="nf-results__cards" id="nf-results-cards">
-        <div class="nf-state-card nf-state-card--calm">
-          <h4 class="nf-state-card__value" data-pct="${escapeHtml(calmPct)}" data-time="${escapeHtml(calmTime)}">${escapeHtml(calmPct)}</h4>
-          <strong>Calma</strong>
-          <span class="nf-state-card__cat">Estado cognitivo-emocional</span>
-          <p>La mente se mantiene tranquila sin acelerarse ni entrar en rumiación. Indica regulación parasimpática y baja activación emocional.</p>
-        </div>
-        <div class="nf-state-card nf-state-card--attent">
-          <h4 class="nf-state-card__value" data-pct="${escapeHtml(attPct)}" data-time="${escapeHtml(attTime)}">${escapeHtml(attPct)}</h4>
-          <strong>Atención</strong>
-          <span class="nf-state-card__cat">Estado ejecutivo</span>
-          <p>Selección y mantenimiento de la información para una tarea. Indica atención estable con baja somnolencia y/o movimiento.</p>
-        </div>
-      </div>
-      <form id="nf-results-form" class="nf-results__notes-form">
-        <label class="nf-results__notes-label">
-          <span>Descripción de la sesión (opcional)</span>
-          <textarea name="session_notes" id="nf-session-notes" rows="3" placeholder="Descripción de la sesión (opcional)">${escapeHtml(sessionNotes)}</textarea>
-        </label>
-      </form>
-      <h3 class="nf-results__details-title">Detalles</h3>
-      <ul class="details-list nf-results__details">
-        <li><span>Dispositivo</span><span>${escapeHtml(meta?.device || 'Muse 2')}</span></li>
-        <li><span>Ubicaciones</span><span>${escapeHtml((meta?.locations || []).join(', ') || '—')}</span></li>
-        <li><span>Fecha de inicio</span><span>${formatDate(meta?.started_at)}</span></li>
-        <li><span>Fecha de finalización</span><span>${formatDate(meta?.ended_at)}</span></li>
-        <li><span>Duración de sesión</span><span>${formatDuration(meta?.duration_sec)}</span></li>
-        <li><span>Protocolo</span><span>${escapeHtml(protocolLabel)}</span></li>
-      </ul>
-      ${exportBlock}
-    </div>`;
 }
 
 function formatDuration(sec) {
@@ -664,6 +630,16 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
 
   bindAdvancedAccordion(host);
   syncFeedbackVisibility(host);
+
+  host.querySelector('#nf-warmup-sec')?.addEventListener('change', (e) => {
+    setNfWarmupSec(Number(e.target.value));
+    toast(`Calibración al grabar: ${e.target.value} s`);
+  });
+
+  host.querySelector('#nf-baseline-sec')?.addEventListener('change', (e) => {
+    setNfBaselineSec(Number(e.target.value));
+    toast(`Reposo sugerido: ${e.target.value} s`);
+  });
 
   const syncAudioToggle = () => {
     const btn = host.querySelector('#nf-audio-toggle');
@@ -778,9 +754,46 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     toast(msg || 'Error al conectar');
   };
 
-  nfSession.onBandsUpdate = ({ level }) => {
+  nfSession.onBandsUpdate = ({
+    level,
+    percent,
+    warming,
+    artifact,
+    artifactKind,
+    warmupRemainingSec,
+    recording,
+    sessionPhase,
+    baselineElapsedSec,
+    signalQuality,
+    signalArtifactPct,
+  }) => {
     if (nfSession.connectionStatus !== 'connected') return;
-    visualTarget = level;
+    feedbackStatus = {
+      warming: Boolean(warming),
+      artifact: Boolean(artifact),
+      artifactKind: artifactKind || null,
+      warmupRemainingSec: warmupRemainingSec ?? 0,
+      recording: Boolean(recording),
+      sessionPhase: sessionPhase || 'idle',
+      baselineElapsedSec: baselineElapsedSec ?? 0,
+      signalQuality: signalQuality ?? 'unknown',
+      signalArtifactPct: signalArtifactPct ?? 0,
+    };
+    if (!recording) {
+      visualTarget = 0.38;
+      return;
+    }
+    if (sessionPhase === 'baseline') {
+      visualTarget = 0.38;
+      return;
+    }
+    if (!warming && !artifact && percent != null) {
+      visualTarget = level;
+    } else if (!warming && artifact) {
+      visualTarget = level;
+    } else {
+      visualTarget = 0.38;
+    }
   };
 
   nfSession.setProtocol(initialProtocol);
@@ -794,6 +807,7 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     syncUi();
     if (status === 'disconnected') {
       resetOrbFeedback();
+      updateSignalQualityChip(host, feedbackStatus, false);
     }
   };
   nfSession.onBatteryUpdate = (pct) => {
@@ -839,9 +853,30 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
   const recordBtn = host.querySelector('#nf-record-btn');
   const recordWrap = host.querySelector('#nf-record-wrap');
   const recordTimerEl = host.querySelector('#nf-record-timer');
+  const startTrainingBtn = host.querySelector('#nf-start-training');
   let isRec = false;
   let recordTimerInterval = null;
   let recordStartedAt = 0;
+
+  const beginTraining = (skipped = false) => {
+    if (!nfSession.isInBaseline()) return;
+    nfSession.startTraining({ skipped });
+    host.querySelector('#nf-baseline-panel')?.setAttribute('hidden', '');
+    toast(skipped ? 'Entrenamiento sin línea base completa' : 'Entrenamiento iniciado');
+  };
+
+  startTrainingBtn?.addEventListener('click', () => {
+    const elapsed = nfSession.getBaselineElapsedSec();
+    if (elapsed < NF_BASELINE_SKIP_CONFIRM_SEC) {
+      const ok = window.confirm(
+        `Solo llevas ${formatDuration(elapsed)} de reposo. ¿Iniciar entrenamiento sin completar la línea base?`,
+      );
+      if (!ok) return;
+      beginTraining(true);
+      return;
+    }
+    beginTraining(false);
+  });
 
   const stopRecordTimer = () => {
     if (recordTimerInterval) {
@@ -863,7 +898,10 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
       return;
     }
     if (!isRec) {
-      nfSession.startRecording();
+      let allowed = false;
+      await requireProOrSubscribe({ onAllowed: () => { allowed = true; } });
+      if (!allowed) return;
+      nfSession.startRecording({ withBaseline: true });
       isRec = true;
       recordWrap.classList.add('recording');
       recordStartedAt = Date.now();
@@ -873,13 +911,20 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
       }
       recordTimerInterval = setInterval(tickRecordTimer, 1000);
       recordBtn.innerHTML = '<span class="dot"></span> Detener grabación';
+      updateBaselinePanel(host, { sessionPhase: 'baseline', baselineElapsedSec: 0 });
       return;
+    }
+
+    if (nfSession.isInBaseline()) {
+      const ok = window.confirm('Aún estás en reposo / línea base. ¿Detener la grabación?');
+      if (!ok) return;
     }
 
     const payload = nfSession.stopRecording();
     isRec = false;
     recordWrap.classList.remove('recording');
     stopRecordTimer();
+    host.querySelector('#nf-baseline-panel')?.setAttribute('hidden', '');
     recordBtn.innerHTML = '<span class="dot"></span> Grabar sesión';
 
     if (!payload || !payload.trim()) {
@@ -888,6 +933,8 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     }
 
     const meta = nfSession.getRecordingMeta();
+    const liveTrace = meta.live_trace || [];
+    const { live_trace: _lt, ...metaForDb } = meta;
     const resultadosEl = host.querySelector('#nf-tab-resultados');
     const sessionDur = meta.duration_sec || 0;
     recordBtn.disabled = true;
@@ -904,40 +951,35 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
         analyzeTimer = startAnalyzeProgress(host, sessionDur);
       }
 
-      const csv = String(await analyzeSessionPython(payload)).trim();
-      const parts = csv.split(',').map(Number);
-      if (parts.length < 7 || parts.some((n) => Number.isNaN(n))) {
-        throw new Error(`Respuesta inválida del analizador: ${csv.slice(0, 120)}`);
+      const rawOut = String(await analyzeSessionPython(payload)).trim();
+      const parsed = parseAnalyzeOutput(rawOut);
+      const core = [parsed.calm_seconds, parsed.calm_pct, parsed.attentive_pct];
+      if (core.some((n) => Number.isNaN(n))) {
+        throw new Error(`Respuesta inválida del analizador: ${rawOut.slice(0, 160)}`);
       }
-      const results = {
-        calm_seconds: parts[0],
-        attention_seconds: parts[1],
-        calm_level: parts[2],
-        attention_level: parts[3],
-        relaxation_pct: parts[4],
-        calm_pct: parts[5],
-        attentive_pct: parts[6],
-      };
+      const { post_series, spectral, ...results } = parsed;
+      const resultsStored = { ...results, post_series, spectral };
       await saveNeurofeedbackRecording(moduleRow.id, {
-        ...meta,
+        ...metaForDb,
         raw_data: payload,
-        results,
+        results: resultsStored,
       });
       const merged = await syncModuleReadableText(
         moduleRow,
-        { last_results: results, last_meta: meta },
+        { last_results: resultsStored, last_meta: metaForDb, last_live_trace: liveTrace },
         'completado',
       );
       moduleRow.data = JSON.stringify(merged);
       const prev = parseJsonSafe(moduleRow.data, {});
       if (!resultadosEl) throw new Error('Panel de resultados no encontrado');
       resultadosEl.innerHTML = renderResults(
-        results,
-        meta,
+        resultsStored,
+        metaForDb,
         prev.session_notes || '',
         true,
+        liveTrace,
       );
-      bindResultsTab(host, moduleRow, exportCtx);
+      bindNfResultsTab(host, moduleRow, exportCtx, liveTrace);
       switchToResultsTab(host);
       onSaved?.();
       toast('Sesión analizada — ver Resultados');

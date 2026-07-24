@@ -3,35 +3,104 @@ import { loadProfile, saveProfile } from './profile.js';
 import { getInvoke, isTauriApp, openExternalUrl } from './tauri-bridge.js';
 import { toast } from './utils.js';
 
-/** Solo `./scripts/dev.sh` (puerto 1420) — no confundir con Telar.app (tauri.localhost). */
-function isDevHotReload() {
-  const h = window.location?.hostname || '';
-  const p = window.location?.port || '';
-  return (h === '127.0.0.1' || h === 'localhost') && p === '1420';
+export const LOCAL_SUBSCRIPTION_API = 'http://127.0.0.1:5001';
+const API_BASE_STORAGE_KEY = 'telar.subscriptionApiBase';
+
+function productionApiBase() {
+  return (SUBSCRIPTION_API_PRODUCTION || '').replace(/\/$/, '');
+}
+
+function readStoredApiBase() {
+  try {
+    return (
+      sessionStorage.getItem(API_BASE_STORAGE_KEY) ||
+      localStorage.getItem(API_BASE_STORAGE_KEY) ||
+      ''
+    ).replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function subscriptionApiCandidates() {
+  const production = productionApiBase();
+  if (isLocalDevFrontend()) {
+    const primary = readStoredApiBase() || LOCAL_SUBSCRIPTION_API;
+    return primary === LOCAL_SUBSCRIPTION_API
+      ? [primary]
+      : [primary, LOCAL_SUBSCRIPTION_API];
+  }
+  return production ? [production] : [];
+}
+
+function rememberSubscriptionApiBase(base) {
+  try {
+    sessionStorage.setItem(API_BASE_STORAGE_KEY, base);
+    localStorage.setItem(API_BASE_STORAGE_KEY, base);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** URL de la mini-API de suscripciones (local en pruebas, Render en producción). */
 export function getSubscriptionApiBase() {
   const override = window.TELAR_SUBSCRIPTION_API;
   if (override) return String(override).replace(/\/$/, '');
-  if (isDevHotReload()) return 'http://127.0.0.1:5001';
-  if (SUBSCRIPTION_API_PRODUCTION) return SUBSCRIPTION_API_PRODUCTION.replace(/\/$/, '');
-  return 'http://127.0.0.1:5001';
+  if (isLocalDevFrontend()) {
+    return readStoredApiBase() || LOCAL_SUBSCRIPTION_API;
+  }
+  const production = productionApiBase();
+  if (production) return production;
+  const stored = readStoredApiBase();
+  if (stored && !isLocalApiBase(stored)) return stored;
+  throw new Error('La API de suscripciones de producción no está configurada.');
+}
+
+/** Quita URL local cacheada en la .app (evita quedar pegado a 127.0.0.1:5001). */
+export function clearStaleLocalSubscriptionApiCache() {
+  if (isLocalDevFrontend()) return;
+  try {
+    const stored = readStoredApiBase();
+    if (stored && isLocalApiBase(stored)) {
+      sessionStorage.removeItem(API_BASE_STORAGE_KEY);
+      localStorage.removeItem(API_BASE_STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Frontend servido por dev.sh/live-server — no la .app empaquetada.
+ * macOS empaquetado: tauri://localhost (protocol tauri:). Windows: http://tauri.localhost.
+ */
+export function isLocalDevFrontend() {
+  const proto = window.location?.protocol || '';
+  if (proto === 'tauri:') return false;
+  const h = window.location?.hostname || '';
+  const href = window.location?.href || '';
+  if (h === 'tauri.localhost' || h.endsWith('.tauri.localhost')) return false;
+  if (h === '127.0.0.1' || h === 'localhost') {
+    return !href.includes(':5001');
+  }
+  return false;
 }
 
 export function isLocalSubscriptionApi() {
-  return /127\.0\.0\.1|localhost/.test(getSubscriptionApiBase());
+  try {
+    return /127\.0\.0\.1|localhost/.test(getSubscriptionApiBase());
+  } catch {
+    return false;
+  }
 }
 
-export async function fetchSubscriptionHealth() {
-  const base = getSubscriptionApiBase();
-  if (isTauriApp()) {
-    return getInvoke()('subscription_health', { apiBase: base });
-  }
-  const res = await fetch(`${base}/api/health`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'API no disponible');
-  return data;
+function isLocalApiBase(base) {
+  return /127\.0\.0\.1:5001|localhost:5001/.test(String(base));
+}
+
+/** Tauri: fetch desde webview (CSP); Rust/ureq fallaba DNS en algunos Mac. */
+function shouldUseFetchForBase(_base) {
+  return true;
 }
 
 async function parseApiResponse(res) {
@@ -43,77 +112,143 @@ async function parseApiResponse(res) {
   }
 }
 
-export async function createProCheckout(email) {
-  const base = getSubscriptionApiBase();
-
-  if (isTauriApp()) {
-    return getInvoke()('subscription_checkout', { email, apiBase: base });
+function formatFetchError(err, base) {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/load failed|failed to fetch|networkerror/i.test(msg)) {
+    if (isLocalApiBase(base)) {
+      return `No se pudo conectar con la API (${base}). ¿Está corriendo «python app.py» en server/?`;
+    }
+    return `No se pudo conectar con la API (${base}). El servidor puede estar despertando; intenta de nuevo.`;
   }
+  return msg;
+}
 
+async function subscriptionFetch(base, path, { method = 'GET', body } = {}) {
+  const init = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) init.body = JSON.stringify(body);
   let res;
   try {
-    res = await fetch(`${base}/api/subscriptions/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-  } catch {
-    throw new Error(
-      `No se pudo conectar con la API (${base}). ¿Está corriendo «python app.py» en server/?`,
-    );
+    res = await fetch(`${base}${path}`, init);
+  } catch (err) {
+    throw new Error(formatFetchError(err, base));
   }
   const { data, text } = await parseApiResponse(res);
   if (!res.ok) {
-    throw new Error(data.error || text.slice(0, 120) || 'No se pudo iniciar el pago');
+    throw new Error(data.error || text.slice(0, 120) || 'Error en la API de suscripciones');
   }
   return data;
 }
 
-export async function activateProDevBypass() {
-  const profile = loadProfile();
-  const email = (profile.email || '').trim();
-  if (!email) {
-    throw new Error('Configura tu email en Ajustes antes de activar Pro.');
+export async function fetchSubscriptionHealth() {
+  const tryBase = async (base) => {
+    if (shouldUseFetchForBase(base)) {
+      let res;
+      try {
+        res = await fetch(`${base}/api/health`);
+      } catch (err) {
+        throw new Error(formatFetchError(err, base));
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'API no disponible');
+      return data;
+    }
+    return getInvoke()('subscription_health', { apiBase: base });
+  };
+
+  const candidates = subscriptionApiCandidates();
+  if (!candidates.length) {
+    throw new Error('La API de suscripciones de producción no está configurada.');
   }
+
+  let lastErr;
+  for (const base of candidates) {
+    try {
+      const health = await tryBase(base);
+      rememberSubscriptionApiBase(base);
+      return health;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+export async function createProCheckout(email) {
   const base = getSubscriptionApiBase();
-  if (isTauriApp()) {
-    return getInvoke()('subscription_dev_activate', { email, apiBase: base });
+
+  if (shouldUseFetchForBase(base)) {
+    return subscriptionFetch(base, '/api/subscriptions/checkout', {
+      method: 'POST',
+      body: { email, access_token: subscriptionAccessToken() },
+    });
   }
-  const res = await fetch(`${base}/api/subscriptions/dev-activate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+
+  return getInvoke()('subscription_checkout', {
+    email,
+    accessToken: subscriptionAccessToken(),
+    apiBase: base,
   });
-  const { data, text } = await parseApiResponse(res);
-  if (!res.ok) throw new Error(data.error || text.slice(0, 120) || 'No se pudo activar Pro');
-  return data;
 }
 
-export async function tryActivateProDevBypass() {
+const ACCESS_TOKEN_KEY = 'telar.subscriptionAccessToken';
+
+function subscriptionAccessToken() {
   try {
-    await activateProDevBypass();
-    saveProfile({ plan: 'pro' });
-    toast('Plan Profesional activo (desarrollo local, sin cobro).');
-    return true;
-  } catch (e) {
-    console.error('[subscription]', e);
-    toast(formatInvokeError(e));
-    return false;
+    return localStorage.getItem(ACCESS_TOKEN_KEY) || '';
+  } catch {
+    return '';
   }
+}
+
+function saveSubscriptionAccessToken(token) {
+  if (!token) return;
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
 }
 
 export async function fetchProStatus(email) {
   const base = getSubscriptionApiBase();
 
-  if (isTauriApp()) {
-    return getInvoke()('subscription_status', { email, apiBase: base });
+  if (shouldUseFetchForBase(base)) {
+    const res = await fetch(
+      `${base}/api/subscriptions/status?email=${encodeURIComponent(email)}`,
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'No se pudo consultar la suscripción');
+    return data;
   }
 
-  const q = encodeURIComponent(email);
-  const res = await fetch(`${base}/api/subscriptions/status?email=${q}`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'No se pudo consultar la suscripción');
-  return data;
+  const accessToken = subscriptionAccessToken();
+  return getInvoke()('subscription_status', { email, accessToken, apiBase: base });
+}
+
+/** Activa Pro en local sin pasarela (requiere SUBSCRIPTION_DEV_BYPASS=1 en server/.env). */
+export async function activateDevPro() {
+  const profile = loadProfile();
+  const email = (profile.email || '').trim();
+  if (!email) {
+    throw new Error('Configura tu email en Ajustes antes de activar Pro.');
+  }
+  const bases = [LOCAL_SUBSCRIPTION_API, getSubscriptionApiBase()].filter(
+    (b, i, arr) => b && arr.indexOf(b) === i,
+  );
+  let lastErr = new Error('Activación de desarrollo no disponible');
+  for (const base of bases) {
+    try {
+      const data = await subscriptionFetch(base, '/api/subscriptions/dev-activate', {
+        method: 'POST',
+        body: { email },
+      });
+      if (data.active) {
+        rememberSubscriptionApiBase(base);
+        saveProfile({ plan: 'pro' });
+        return data;
+      }
+      lastErr = new Error('Activación de desarrollo no disponible');
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+  throw lastErr;
 }
 
 function checkoutUrlFromResponse(data) {
@@ -131,9 +266,104 @@ function formatInvokeError(e) {
 }
 
 const LAST_SYNC_KEY = 'telar.subscriptionSyncLast';
+const PENDING_CHECKOUT_KEY = 'telar.subscriptionCheckoutPending';
+const CHECKOUT_POLL_MS = 4000;
+const CHECKOUT_POLL_MAX_MS = 15 * 60 * 1000;
+
+let checkoutWatchTimer = null;
+let checkoutWatchStartedAt = 0;
+let checkoutWatchCallback = null;
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
+}
+
+export function markCheckoutPending() {
+  try {
+    sessionStorage.setItem(PENDING_CHECKOUT_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearCheckoutPending() {
+  try {
+    sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isCheckoutPending() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_CHECKOUT_KEY);
+    if (!raw) return false;
+    const started = Number(raw);
+    if (!started || Date.now() - started > CHECKOUT_POLL_MAX_MS) {
+      clearCheckoutPending();
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function stopCheckoutWatch() {
+  if (checkoutWatchTimer) {
+    clearInterval(checkoutWatchTimer);
+    checkoutWatchTimer = null;
+  }
+  checkoutWatchCallback = null;
+}
+
+async function tryCompletePendingCheckout({ onActivated, quiet = false } = {}) {
+  if (!isCheckoutPending()) return false;
+  const { nowPro, changed } = await syncProFromServer();
+  if (nowPro) {
+    clearCheckoutPending();
+    stopCheckoutWatch();
+    if (changed && !quiet) toast('Plan Profesional activo');
+    onActivated?.();
+    window.dispatchEvent(new CustomEvent('telar:subscription-activated'));
+    return true;
+  }
+  return false;
+}
+
+/** Tras abrir Mercado Pago, consulta el servidor hasta confirmar el plan Pro. */
+export function startCheckoutWatch({ onActivated } = {}) {
+  markCheckoutPending();
+  checkoutWatchCallback = onActivated;
+  checkoutWatchStartedAt = Date.now();
+  if (checkoutWatchTimer) {
+    clearInterval(checkoutWatchTimer);
+    checkoutWatchTimer = null;
+  }
+
+  const tick = async () => {
+    if (Date.now() - checkoutWatchStartedAt > CHECKOUT_POLL_MAX_MS) {
+      stopCheckoutWatch();
+      clearCheckoutPending();
+      return;
+    }
+    await tryCompletePendingCheckout({ onActivated: checkoutWatchCallback, quiet: true });
+  };
+
+  tick();
+  checkoutWatchTimer = setInterval(tick, CHECKOUT_POLL_MS);
+}
+
+export function initSubscriptionCheckoutWatcher() {
+  window.addEventListener('focus', () => {
+    if (isCheckoutPending()) {
+      tryCompletePendingCheckout({ onActivated: checkoutWatchCallback });
+    }
+  });
+
+  if (isCheckoutPending()) {
+    startCheckoutWatch({ onActivated: checkoutWatchCallback });
+  }
 }
 
 /** Consulta estado Pro en el servidor como máximo 1 vez al día (email en Ajustes). */
@@ -171,8 +401,10 @@ export async function startProSubscription() {
     throw new Error('Configura tu email en Ajustes antes de suscribirte.');
   }
   const data = await createProCheckout(email);
+  saveSubscriptionAccessToken(data?.access_token);
   const url = checkoutUrlFromResponse(data);
   if (!url) throw new Error('Mercado Pago no devolvió enlace de pago');
+  markCheckoutPending();
   await openExternalUrl(url);
 }
 
@@ -203,15 +435,11 @@ export async function syncProFromServer() {
   }
 }
 
-export async function tryActivatePro() {
+export async function tryActivatePro({ onActivated } = {}) {
   try {
-    const health = await fetchSubscriptionHealth();
-    if (health.dev_bypass) {
-      await tryActivateProDevBypass();
-      return;
-    }
     await startProSubscription();
-    toast('Completa el pago en Mercado Pago. Luego «Verificar suscripción».');
+    startCheckoutWatch({ onActivated });
+    toast('Completa el pago en Mercado Pago. Telar se activará solo al volver.');
   } catch (e) {
     console.error('[subscription]', e);
     toast(formatInvokeError(e));
@@ -226,4 +454,20 @@ export async function verifyProSubscription() {
   }
   toast('Suscripción no activa aún. Si ya pagaste, espera unos minutos e intenta de nuevo.');
   return false;
+}
+
+/** Borra plan Pro y credenciales de checkout solo en este dispositivo (pruebas locales). */
+export function resetLocalSubscriptionState() {
+  saveProfile({ plan: 'free' });
+  stopCheckoutWatch();
+  clearCheckoutPending();
+  try {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(LAST_SYNC_KEY);
+    localStorage.removeItem(API_BASE_STORAGE_KEY);
+    sessionStorage.removeItem(API_BASE_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  return { plan: 'free' };
 }

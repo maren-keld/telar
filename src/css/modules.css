@@ -289,6 +289,41 @@
   font-size: 0.8rem;
 }
 
+.nf-signal-quality {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+}
+
+.nf-signal-quality__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.nf-signal-quality--good .nf-signal-quality__dot {
+  background: var(--success, #2ecc71);
+}
+
+.nf-signal-quality--fair .nf-signal-quality__dot {
+  background: #e6a817;
+}
+
+.nf-signal-quality--poor .nf-signal-quality__dot {
+  background: var(--danger, #e74c3c);
+}
+
+.nf-signal-quality--unknown .nf-signal-quality__dot {
+  background: var(--text-muted);
+}
+
 .nf-battery__icon {
   display: inline-flex;
   width: 16px;
@@ -1216,6 +1251,19 @@
   padding: 4px 0 8px 1.1em;
 }
 
+.nf-select {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
 .nf-feedback-output {
   display: flex;
   flex-direction: column;
@@ -1268,6 +1316,26 @@
 .nf-visual-pct-hint {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+.nf-feedback-status {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: center;
+  max-width: 14rem;
+}
+
+.nf-feedback-status--warmup {
+  color: var(--text-secondary);
+}
+
+.nf-feedback-status--artifact {
+  color: #c45c26;
+}
+
+html[data-theme='dark'] .nf-feedback-status--artifact {
+  color: #e8a06a;
 }
 
 .nf-orb-scene {
@@ -1365,6 +1433,69 @@
 
 .nf-chart-wrap canvas {
   max-height: 240px;
+}
+
+.nf-chart-wrap--correlation {
+  height: 200px;
+}
+
+.nf-baseline-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 4px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03));
+  text-align: center;
+}
+
+.nf-baseline-panel[hidden] {
+  display: none !important;
+}
+
+.nf-baseline-panel__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nf-baseline-panel__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 28rem;
+}
+
+.nf-baseline-panel__timer {
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-results__baseline {
+  margin: 20px 0 8px;
+}
+
+.nf-results__correlation {
+  margin: 24px 0 8px;
+}
+
+.nf-results__spectral {
+  margin: 20px 0 8px;
+}
+
+.nf-results__evolution {
+  margin: 24px 0 8px;
+}
+
+.nf-chart-wrap--evolution {
+  height: 200px;
+}
+
+.nf-results__disclaimer {
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .nf-record-wrap {
@@ -2520,6 +2651,36 @@ html[data-theme='dark'] .nf-state-card--attent {
 
 html[data-theme='dark'] .nf-state-card p {
   color: var(--text-secondary);
+}
+
+.nf-state-card--trained {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.nf-state-card--reference {
+  opacity: 0.82;
+}
+
+.nf-state-card--reference .nf-state-card__value {
+  font-size: 1.35rem;
+}
+
+.nf-state-card--reference p {
+  display: none;
+}
+
+.nf-state-card__role {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.nf-state-card--trained .nf-state-card__role {
+  color: var(--accent-dark, var(--accent));
 }
 
 #nf-results-cards,

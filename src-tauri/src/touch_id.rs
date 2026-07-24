@@ -109,12 +109,23 @@ pub fn authenticate_on_main_thread(_reason: &str) -> Result<(), String> {
     Err("Touch ID solo está disponible en macOS".to_string())
 }
 
-/// Clave de desbloqueo guardada en AppConfig (no usa Keychain del sistema → sin popup de login).
-pub fn has_stored_key(path: &Path) -> bool {
-    path.is_file() && fs::metadata(path).map(|m| m.len() > 0).unwrap_or(false)
+#[cfg(target_os = "macos")]
+const KEYCHAIN_SERVICE: &str = "cl.telar.app";
+#[cfg(target_os = "macos")]
+const KEYCHAIN_ACCOUNT: &str = "encrypted-database-key";
+
+/// Borra entradas heredadas del Keychain sin leerlas (nunca muestra UI).
+#[cfg(target_os = "macos")]
+pub fn purge_legacy_keychain() {
+    use security_framework::passwords::delete_generic_password;
+
+    let _ = delete_generic_password(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT);
 }
 
-pub fn save_db_key(path: &Path, key: &str) -> Result<(), String> {
+#[cfg(not(target_os = "macos"))]
+pub fn purge_legacy_keychain() {}
+
+fn write_key_file(path: &Path, key: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear carpeta: {e}"))?;
     }
@@ -127,14 +138,29 @@ pub fn save_db_key(path: &Path, key: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Touch ID debe estar registrado en Ajustes; la clave vive solo en AppConfig (0600).
+pub fn has_stored_key(path: &Path) -> bool {
+    path.is_file() && fs::metadata(path).map(|m| m.len() > 0).unwrap_or(false)
+}
+
+pub fn save_db_key(path: &Path, key: &str) -> Result<(), String> {
+    write_key_file(path, key)?;
+    purge_legacy_keychain();
+    Ok(())
+}
+
 pub fn load_db_key(path: &Path) -> Result<String, String> {
     if !has_stored_key(path) {
-        return Err("Touch ID no está registrado. Actívalo en Ajustes con tu PIN.".to_string());
+        return Err(
+            "Touch ID no está registrado en este dispositivo. Desbloquea con PIN y actívalo en Ajustes."
+                .to_string(),
+        );
     }
     let bytes = fs::read(path).map_err(|e| format!("No se pudo leer clave Touch ID: {e}"))?;
     String::from_utf8(bytes).map_err(|_| "Clave Touch ID corrupta".to_string())
 }
 
 pub fn clear_db_key(path: &Path) {
+    purge_legacy_keychain();
     let _ = fs::remove_file(path);
 }

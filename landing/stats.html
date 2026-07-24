@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Telar — Uso (privado)</title>
+  <link rel="stylesheet" href="css/style.css?v=20260724">
+  <style>
+    body { max-width: 520px; margin: 48px auto; padding: 0 20px; font-family: Inter, system-ui, sans-serif; }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; }
+    .muted { color: #64748b; font-size: 0.9rem; line-height: 1.5; }
+    .stat { font-size: 2.5rem; font-weight: 700; margin: 16px 0 4px; color: #2f6fed; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>Uso de Telar</h1>
+  <p class="muted">Página privada (no indexada). Muestra el contador anónimo de aperturas de la app.</p>
+  <p id="status" class="muted">Cargando…</p>
+  <div id="panel" hidden>
+    <p class="stat" id="total">—</p>
+    <p class="muted">Aperturas acumuladas (ping 1×/día/dispositivo si está activo)</p>
+    <p class="muted" id="updated"></p>
+    <p class="muted" id="note"></p>
+  </div>
+  <script>
+    const API = 'https://telar-api-aim8.onrender.com';
+    const params = new URLSearchParams(location.search);
+    const secret = params.get('secret') || '';
+    const status = document.getElementById('status');
+    const panel = document.getElementById('panel');
+
+    if (!secret) {
+      status.innerHTML = '<span class="err">Falta <code>?secret=TU_WEBHOOK_SECRET</code> en la URL.</span>';
+    } else {
+      fetch(`${API}/api/admin/usage?secret=${encodeURIComponent(secret)}`)
+        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+          if (!ok) {
+            status.innerHTML = `<span class="err">${j.error || 'No autorizado'}</span>`;
+            return;
+          }
+          status.hidden = true;
+          panel.hidden = false;
+          document.getElementById('total').textContent = String(j.usage_opens_total ?? '—');
+          document.getElementById('updated').textContent = j.updated_at
+            ? `Última actualización: ${j.updated_at}`
+            : '';
+          document.getElementById('note').textContent = j.note || '';
+        })
+        .catch((e) => {
+          status.innerHTML = `<span class="err">Error: ${e.message}</span>`;
+        });
+    }
+  </script>
+</body>
+</html>

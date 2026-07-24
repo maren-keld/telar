@@ -1,6 +1,7 @@
 import { MODULE_DEFS } from '../config.js';
 import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
 import { openCreateModuleModal } from './create-module-modal.js';
+import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { psychometricsFor } from '../module-psychometrics.js';
 import { moduleSearchBlob, tccHandoutDef, TCC_VARIABLES } from '../tcc-handout-defs.js';
 import {
@@ -162,20 +163,23 @@ export async function mountModuleSelector(host, ctx) {
     </div>`;
 
   host.querySelector('#btn-create-module')?.addEventListener('click', () => {
-    openCreateModuleModal({
-      onCreated: async ({ moduleType }) => {
-        await loadSelectorList({
-          treatmentId: ctx.treatmentId,
-          sessionId: ctx.sessionId,
-          selectorModuleId: ctx.selectorModuleId,
-          onNavigate: ctx.onNavigate,
-          refreshWorkspace: ctx.refreshWorkspace,
-          listEl: host.querySelector('#mod-selector-list'),
-          previewEl: host.querySelector('#mod-selector-preview'),
-          searchInput: host.querySelector('#mod-selector-search'),
-          selectType: moduleType,
-        });
-      },
+    requireProOrSubscribe({
+      onAllowed: () =>
+        openCreateModuleModal({
+          onCreated: async ({ moduleType }) => {
+            await loadSelectorList({
+              treatmentId: ctx.treatmentId,
+              sessionId: ctx.sessionId,
+              selectorModuleId: ctx.selectorModuleId,
+              onNavigate: ctx.onNavigate,
+              refreshWorkspace: ctx.refreshWorkspace,
+              listEl: host.querySelector('#mod-selector-list'),
+              previewEl: host.querySelector('#mod-selector-preview'),
+              searchInput: host.querySelector('#mod-selector-search'),
+              selectType: moduleType,
+            });
+          },
+        }),
     });
   });
 

@@ -1323,6 +1323,22 @@ html[data-theme='dark'] .badge--info {
   margin: 0;
 }
 
+.agenda-empty {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.agenda-empty__title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.agenda-empty__sub {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .reportes-table {
   width: 100%;
   border-collapse: collapse;

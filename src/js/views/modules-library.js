@@ -62,8 +62,11 @@ export async function renderModulesLibrary(container, { onNavigate }) {
   bindAppSidebar(container, { onNavigate });
 
   container.querySelector('#btn-create-module-lib')?.addEventListener('click', () => {
-    openCreateModuleModal({
-      onCreated: () => renderModulesLibrary(container, { onNavigate }),
+    requireProOrSubscribe({
+      onAllowed: () =>
+        openCreateModuleModal({
+          onCreated: () => renderModulesLibrary(container, { onNavigate }),
+        }),
     });
   });
 

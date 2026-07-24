@@ -14,7 +14,8 @@ import { teardownNeurofeedback } from './modules/neurofeedback.js';
 import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
-import { maybeSyncProFromServer } from './subscription.js';
+import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLocalSubscriptionApiCache } from './subscription.js';
+import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './components/practitioner-onboarding.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
@@ -108,6 +109,10 @@ async function render() {
       default:
         location.hash = '/agenda';
     }
+
+    if (view !== 'unlock' && needsPractitionerOnboarding()) {
+      openPractitionerOnboardingModal();
+    }
   } catch (err) {
     console.error(err);
     app.innerHTML = `
@@ -165,6 +170,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     stage('init:usagePing');
     safe('usagePing', maybeSendUsagePing);
     stage('init:subscriptionSync');
+    clearStaleLocalSubscriptionApiCache();
+    safe('subscriptionWatcher', initSubscriptionCheckoutWatcher);
     maybeSyncProFromServer().catch((err) => console.debug('[subscription-sync]', err?.message || err));
   }
 
