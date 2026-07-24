@@ -48,11 +48,11 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           ✓ Suscripción activa${proEmail ? ` · ${proEmail}` : ''}
         </p>
         <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-manage">
-          Gestionar suscripción en Mercado Pago
+          Cancelar o gestionar en Mercado Pago
         </button>
         <p class="subscribe-pro-modal__fine">
-          Desde tu cuenta de Mercado Pago puedes ver los pagos, cambiar el medio de pago o cancelar.
-          Si cancelas, Telar volverá a Free automáticamente en el próximo chequeo.
+          Abre tu cuenta de Mercado Pago para ver pagos, cambiar tarjeta o cancelar.
+          Si cancelas, Telar vuelve a Free en el próximo chequeo (al abrir la app).
         </p>
         ` : `
         <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">

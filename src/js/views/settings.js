@@ -266,7 +266,13 @@ export async function renderSettings(container, { onNavigate }) {
   });
 
   container.querySelector('#btn-settings-plan')?.addEventListener('click', () => {
-    openSubscribeProModal();
+    openSubscribeProModal({
+      onSubscribed: () => {
+        if (renderGen !== settingsRenderGen) return;
+        if (!isSettingsRoute()) return;
+        renderSettings(container, { onNavigate });
+      },
+    });
   });
 
   container.querySelector('[data-field="resetSubscription"]')?.addEventListener('click', async () => {
