@@ -267,11 +267,7 @@ def upsert_subscription(email: str, preapproval_id: str | None, status: str):
                 return
         conn.execute(
             """INSERT INTO subscriptions (email, mp_preapproval_id, status, updated_at)
-               VALUES (?, ?, ?, ?)
-               ON CONFLICT(email) DO UPDATE SET
-                 mp_preapproval_id = COALESCE(excluded.mp_preapproval_id, subscriptions.mp_preapproval_id),
-                 status = excluded.status,
-                 updated_at = excluded.updated_at""",
+               VALUES (?, ?, ?, ?)""",
             (email, preapproval_id, status, now_iso()),
         )
 
@@ -587,12 +583,18 @@ def admin_link_subscription():
     if not is_valid_payer_email(raw_email) or not preapproval_id:
         return jsonify({"error": "Faltan email o preapproval_id"}), 400
     email = normalize_payer_email(raw_email)
-    body = fetch_mp_preapproval(preapproval_id)
+    try:
+        body = fetch_mp_preapproval(preapproval_id)
+    except Exception as exc:
+        return jsonify({"error": f"No se pudo consultar Mercado Pago: {exc}"}), 502
     if not body:
         return jsonify({"error": "Preapproval no encontrada en Mercado Pago"}), 404
     mp_status = body.get("status", "unknown")
-    upsert_subscription(email, preapproval_id, mp_status)
-    return jsonify({"ok": True, "email": email, "status": mp_status})
+    try:
+        upsert_subscription(email, preapproval_id, mp_status)
+    except Exception as exc:
+        return jsonify({"error": f"No se pudo guardar la suscripción: {exc}"}), 500
+    return jsonify({"ok": True, "email": email, "status": mp_status, "active": mp_status in ACTIVE_STATUSES})
 
 
 @APP.route("/api/webhooks/mercadopago", methods=["GET", "POST"])
