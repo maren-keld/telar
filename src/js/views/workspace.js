@@ -279,9 +279,18 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   });
 
   const toolsOpts = {
+    treatmentId,
     onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
       toast('PDF exportado en Documentos/Telar/exportaciones');
+    },
+    onTemplateApplied: async () => {
+      await renderWorkspace(container, {
+        treatmentId,
+        sessionId: activeSessionId,
+        moduleId: activeModule?.id,
+        onNavigate,
+      });
     },
   };
 

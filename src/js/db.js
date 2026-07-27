@@ -268,6 +268,10 @@ export async function applyTreatmentTemplate(treatmentId, templateId) {
   const tpl = getTreatmentTemplate(templateId);
   if (!tpl) throw new Error('Plantilla no encontrada');
 
+  let sessionsCreated = 0;
+  let modulesAdded = 0;
+  let modulesSkipped = 0;
+
   let sessions = await getSessions(treatmentId);
   for (let i = 0; i < tpl.sessions.length; i++) {
     const spec = tpl.sessions[i];
@@ -276,14 +280,17 @@ export async function applyTreatmentTemplate(treatmentId, templateId) {
       sessionId = sessions[i].id;
     } else {
       sessionId = await addSession(treatmentId, { addSelector: false });
+      sessionsCreated += 1;
       sessions = await getSessions(treatmentId);
     }
     for (const modType of spec.modules) {
       if (modType === 'selector_modulo') continue;
       try {
         await addModuleToSession(sessionId, modType, treatmentId);
+        modulesAdded += 1;
       } catch {
-        /* duplicado en sesión o once-per-treatment */
+        /* duplicado en sesión o once-per-treatment — no se toca el contenido */
+        modulesSkipped += 1;
       }
     }
     const mods = await getSessionModules(sessionId);
@@ -295,6 +302,15 @@ export async function applyTreatmentTemplate(treatmentId, templateId) {
       }
     }
   }
+
+  return {
+    templateId,
+    label: tpl.label,
+    sessionCount: tpl.sessions.length,
+    sessionsCreated,
+    modulesAdded,
+    modulesSkipped,
+  };
 }
 
 export async function createTreatment(patientId, { templateId = null } = {}) {

@@ -4,6 +4,7 @@ import { SETTINGS_ICONS } from '../icons.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
+import { applyTemplateFromTools } from './treatment-templates-modal.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
 const LEFT_FOCUS_CSS_THRESHOLD = 90;
@@ -25,11 +26,21 @@ const TOOL_ICONS = {
   export: SETTINGS_ICONS.export,
   reference: SETTINGS_ICONS.backup,
   ai: SETTINGS_ICONS.ai,
+  templates: SETTINGS_ICONS.presentation,
 };
 
 function toolsItemsHtml() {
   return `
     <ul class="workspace-tools-tab__list">
+      <li>
+        <button type="button" class="workspace-tools-tab__item" data-action="templates">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.templates}</span>
+          <span class="workspace-tools-tab__text">
+            <strong>Plantillas de tratamiento</strong>
+            <small>TDAH 8 sesiones · TDAH + Neurofeedback · Trauma</small>
+          </span>
+        </button>
+      </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-pdf">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
@@ -60,7 +71,11 @@ function toolsItemsHtml() {
     </ul>`;
 }
 
-function bindToolsActions(root, { treatmentId, onExportPdf }) {
+function bindToolsActions(root, { treatmentId, onExportPdf, onTemplateApplied }) {
+  root.querySelector('[data-action="templates"]')?.addEventListener('click', () => {
+    void applyTemplateFromTools(treatmentId, { onApplied: onTemplateApplied });
+  });
+
   root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', () => {
     requireProOrSubscribe({
       onAllowed: async () => {

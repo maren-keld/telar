@@ -741,6 +741,115 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   line-height: 1.35;
 }
 
+/* Plantillas de tratamiento */
+.treatment-templates-modal {
+  width: min(520px, 94vw);
+  max-height: min(86vh, 720px);
+  overflow: auto;
+  padding: 20px 22px 24px;
+}
+
+.treatment-templates-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.treatment-templates-modal__intro {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.treatment-templates-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.treatment-templates-list__item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.treatment-templates-list__item:hover {
+  border-color: var(--accent);
+}
+
+.treatment-templates-list__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.treatment-templates-list__badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.treatment-templates-list__desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.treatment-templates-list__meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.treatment-templates-list__preview {
+  margin: 4px 4px 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.treatment-templates-list__preview summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.treatment-templates-list__preview ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.treatment-templates-list__preview li {
+  margin-bottom: 6px;
+}
+
+.treatment-templates-list__preview li span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  margin-top: 1px;
+}
+
 /* ─── AI Grid loader ─────────────────────────────────────────── */
 @keyframes ai-grid-idle {
   0%, 100% { opacity: 0.18; transform: scale(0.48); }

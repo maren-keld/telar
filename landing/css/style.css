@@ -240,6 +240,12 @@ a:hover {
   border: 1px solid #b8dfc8;
 }
 
+.badge-open {
+  background: #eef3ff;
+  color: #2a4a8a;
+  border: 1px solid #c5d4f5;
+}
+
 .hero h1 {
   font-size: clamp(2.1rem, 4.5vw, 2.9rem);
   font-weight: 400;
