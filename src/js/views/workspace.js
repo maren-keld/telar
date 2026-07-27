@@ -100,6 +100,17 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
           ${sessions.map((s) => sidebarSessionHtml(s, activeModule)).join('')}
           <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>
         </div>
+        <footer class="workspace-sidebar__footer">
+          <button type="button" class="workspace-sidebar-toggle" id="btn-sidebar-toggle"
+            title="Contraer o expandir sesiones" aria-label="Contraer o expandir sesiones">
+            <svg class="workspace-sidebar-toggle__icon workspace-sidebar-toggle__icon--collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 9l-3 3 3 3"/>
+            </svg>
+            <svg class="workspace-sidebar-toggle__icon workspace-sidebar-toggle__icon--expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M12 9l3 3-3 3"/>
+            </svg>
+          </button>
+        </footer>
       </aside>
 
       <main class="workspace-center" id="espaciocentral">

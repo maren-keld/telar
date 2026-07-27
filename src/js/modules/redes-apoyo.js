@@ -148,35 +148,82 @@ const GENO_TIERS = {
   Otro: 4,
 };
 
+function isSpouseRelation(relation) {
+  return relation === 'Pareja' || relation === 'Cónyuge';
+}
+
 function genogramTier(relation) {
   return GENO_TIERS[relation] ?? 4;
 }
 
-function layoutGenogramNodes(people) {
-  const tiers = [[], [], [], [], []];
-  people.forEach((p, i) => {
-    tiers[genogramTier(p.relation || 'Otro')].push({ ...p, idx: i });
+function placeRow(row, y, tier, placed, byKey, centerX = 200, gap = 72) {
+  const count = row.length;
+  if (!count) return;
+  const startX = centerX - ((count - 1) * gap) / 2;
+  row.forEach((p, col) => {
+    const x = count === 1 ? centerX : startX + col * gap;
+    const key = `p${p.idx}`;
+    placed.push({ ...p, x, y, key, tier });
+    byKey[key] = { x, y, tier, relation: p.relation };
   });
+}
 
+function layoutGenogramNodes(people) {
   const W = 400;
   const H = 300;
   const rowY = [36, 96, 156, 216, 268];
   const placed = [];
   const byKey = {};
 
-  tiers.forEach((row, tier) => {
-    const count = row.length;
-    const startX = W / 2 - ((count - 1) * 72) / 2;
-    row.forEach((p, col) => {
-      const x = count === 1 ? W / 2 : startX + col * 72;
-      const y = rowY[tier];
-      const key = `p${p.idx}`;
-      placed.push({ ...p, x, y, key, tier });
-      byKey[key] = { x, y, tier, relation: p.relation };
-    });
+  const spouses = [];
+  const siblings = [];
+  const parents = [];
+  const children = [];
+  const others = [[], []]; // tier 0 grandparents, tier 4 extended
+
+  people.forEach((p, i) => {
+    const item = { ...p, idx: i };
+    const rel = p.relation || 'Otro';
+    if (isSpouseRelation(rel)) spouses.push(item);
+    else if (rel === 'Hermano/a') siblings.push(item);
+    else if (rel === 'Madre' || rel === 'Padre' || rel === 'Tío/a') parents.push(item);
+    else if (rel === 'Hijo/a' || rel === 'Hija') children.push(item);
+    else if (genogramTier(rel) === 0) others[0].push(item);
+    else others[1].push(item);
   });
 
-  const patient = { x: W / 2, y: rowY[2], key: 'patient', tier: 2, name: 'Paciente', gender: 'f', relation: 'Paciente' };
+  placeRow(others[0], rowY[0], 0, placed, byKey);
+  placeRow(parents, rowY[1], 1, placed, byKey);
+
+  // Paciente en el centro; pareja a la derecha; hermanos a la izquierda (no en la barra marital).
+  const patientX = 200;
+  const patient = {
+    x: patientX,
+    y: rowY[2],
+    key: 'patient',
+    tier: 2,
+    name: 'Paciente',
+    gender: 'f',
+    relation: 'Paciente',
+  };
+
+  siblings.forEach((p, i) => {
+    const x = patientX - 72 * (siblings.length - i);
+    const key = `p${p.idx}`;
+    placed.push({ ...p, x, y: rowY[2], key, tier: 2 });
+    byKey[key] = { x, y: rowY[2], tier: 2, relation: p.relation };
+  });
+
+  spouses.forEach((p, i) => {
+    const x = patientX + 72 * (i + 1);
+    const key = `p${p.idx}`;
+    placed.push({ ...p, x, y: rowY[2], key, tier: 2 });
+    byKey[key] = { x, y: rowY[2], tier: 2, relation: p.relation };
+  });
+
+  placeRow(children, rowY[3], 3, placed, byKey, patientX);
+  placeRow(others[1], rowY[4], 4, placed, byKey);
+
   return { placed, patient, byKey, W, H, rowY };
 }
 
@@ -213,7 +260,7 @@ function genogramConnectors(placed, patient, byKey) {
   if (pareja) marriage(patient, pareja);
 
   if (hermanos.length && (madre || padre)) {
-    const anchor = madre || padre;
+    // Solo hermanos + paciente en la barra fraterna (pareja queda fuera).
     const xs = [patient.x, ...hermanos.map((h) => h.x)];
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);

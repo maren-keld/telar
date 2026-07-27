@@ -164,6 +164,12 @@ export function initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSid
   leftResizer.addEventListener('pointerdown', (e) => startResize(e, 'left'));
   rightResizer.addEventListener('pointerdown', (e) => startResize(e, 'right'));
 
+  const toggleBtn = leftSidebarEl.querySelector('#btn-sidebar-toggle');
+  toggleBtn?.addEventListener('click', () => {
+    const nextMode = isLeftSidebarFocusMode(leftWidth) ? 'full' : 'focus';
+    document.dispatchEvent(new CustomEvent('telar:workspace-mode', { detail: { mode: nextMode } }));
+  });
+
   // Escuchar cambios de modo (Focus / Full) desde patient menu o tools tab.
   if (window._telarWorkspaceModeHandler) {
     document.removeEventListener('telar:workspace-mode', window._telarWorkspaceModeHandler);

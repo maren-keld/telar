@@ -43,6 +43,7 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
   let items = [];
   let timer = null;
   let reqId = 0;
+  let suppressSuggest = false;
 
   const positionList = () => {
     const rect = input.getBoundingClientRect();
@@ -56,6 +57,7 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
   };
 
   const render = async () => {
+    if (suppressSuggest) return;
     const q = input.value.trim();
     if (q.length < 2) {
       hide();
@@ -68,7 +70,7 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
     if (q.length >= 3) {
       remote = await fetchNominatim(q);
     }
-    if (id !== reqId) return;
+    if (id !== reqId || suppressSuggest) return;
 
     const seen = new Set();
     items = [];
@@ -94,14 +96,19 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
   };
 
   const schedule = () => {
+    if (suppressSuggest) return;
     clearTimeout(timer);
     timer = setTimeout(() => {
       render();
     }, DEBOUNCE_MS);
   };
 
-  input.addEventListener('input', schedule);
+  input.addEventListener('input', () => {
+    suppressSuggest = false;
+    schedule();
+  });
   input.addEventListener('focus', () => {
+    if (suppressSuggest) return;
     if (input.value.trim().length >= 2) schedule();
   });
 
@@ -109,10 +116,14 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
     const btn = e.target.closest('[data-idx]');
     if (!btn) return;
     e.preventDefault();
+    clearTimeout(timer);
+    reqId += 1;
+    suppressSuggest = true;
     input.value = items[Number(btn.dataset.idx)] || '';
     hide();
-    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
     onSelect?.();
+    input.blur();
   });
 
   input.addEventListener('blur', () => {
