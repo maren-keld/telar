@@ -1,6 +1,147 @@
 /** Definiciones de módulos TCC (elaboración propia Telar). Usado por tcc-generic.js y readable-text. */
 
 export const TCC_HANDOUT_DEFS = {
+  tcc_abc: {
+    title: 'Modelo ABC (versión simple)',
+    intro:
+      'El modelo ABC explora pensamientos, emociones, conductas y creencias antes, durante y luego de una situación difícil.',
+    sections: [
+      {
+        key: 'activador',
+        title: 'Evento activador',
+        hint: '¿Cómo es el contexto antes de que esto suceda?',
+        rows: 4,
+      },
+      {
+        key: 'creencias',
+        title: 'Creencias',
+        hint: 'Pensamientos obvios y subyacentes sobre la situación, usted mismo y los demás.',
+        rows: 4,
+      },
+      {
+        key: 'consecuencias',
+        title: 'Consecuencias',
+        hint: 'Comportamiento, pensamientos y respuesta emocional.',
+        rows: 4,
+      },
+    ],
+    variables: ['Registro cognitivo', 'Activador–creencias–consecuencias', 'Conciencia situacional'],
+    searchTags: ['tcc', 'abc', 'cognitivo', 'activador', 'creencias', 'consecuencias'],
+  },
+  tcc_plan_seguridad: {
+    title: 'Plan de seguridad vital',
+    intro:
+      'Herramienta de apoyo clínico para identificar y gestionar situaciones de crisis y mantener un entorno seguro. La evaluación de riesgo vital es responsabilidad del profesional.',
+    sections: [
+      {
+        key: 'stress_situations',
+        title: '1. Situaciones que puedan generar estrés',
+        hint: 'Situaciones familiares, laborales u otras que generen estrés significativo.',
+        rows: 4,
+      },
+      {
+        key: 'relief_strategies',
+        title: '2. Estrategias que ayuden a aliviar el estrés',
+        hint: 'Ejercicio, meditación, hablar con amigos u otras técnicas de relajación.',
+        rows: 4,
+      },
+      {
+        key: 'distraction',
+        title: '3. Personas y situaciones que ayuden a distraerse',
+        hint: 'Personas o actividades que ayuden a distraerse y sentirse mejor.',
+        rows: 4,
+      },
+      {
+        key: 'suicide_contacts',
+        title: '4. Personas a contactar si necesitas hablar de ideación suicida',
+        hint: 'Nombres y contactos de personas de confianza.',
+        rows: 4,
+      },
+      {
+        key: 'crisis_services',
+        title: '5. Profesional o servicios de salud en caso de crisis',
+        hint: 'Servicios y profesionales con direcciones y teléfonos.',
+        rows: 4,
+      },
+      {
+        key: 'safe_environment',
+        title: '6. Indicaciones para un ambiente seguro',
+        hint: 'Cómo hacer el entorno más seguro y evitar situaciones de riesgo.',
+        rows: 4,
+      },
+    ],
+    variables: ['Regulación de crisis', 'Red de apoyo', 'Seguridad vital'],
+    searchTags: ['tcc', 'seguridad', 'crisis', 'suicidio', 'estrés'],
+  },
+  tcc_activacion: {
+    title: 'Activación conductual',
+    intro:
+      'El estado de ánimo refleja la disposición previa a ciertas actividades y puede fluctuar durante el día. Se recomienda incorporar al menos 3 actividades por semana con potencial de mejorar el ánimo.',
+    activityGroups: [
+      {
+        title: 'Actividades sugeridas',
+        items: [
+          'Limpie y ordene su hogar y/o lugar de trabajo: ordene y deshágase de cosas que no utilice o no considere útiles.',
+          'Cambie su contexto (mover muebles, estudiar o trabajar en un lugar distinto al habitual).',
+          'Mantenga un sueño reparador de 7–8 horas cada noche.',
+          'Retome actividades que ha dejado o deseado explorar (bailar, idioma, cocina, instrumento musical, etc.).',
+          'Realice ejercicio suave al menos tres veces por semana durante media hora (yoga, bicicleta, meditación, etc.).',
+          'Camine o siéntese al aire libre 20–30 minutos todos los días.',
+        ],
+      },
+    ],
+    sections: [
+      {
+        key: 'weekly_plan',
+        title: 'Actividades que incorporaré esta semana',
+        hint: 'Ej. caminar 20 min diarios, retomar cocina los miércoles…',
+        rows: 4,
+      },
+    ],
+    quiz: [
+      {
+        key: 'q0',
+        prompt: 'Me levanté en la mañana y siento que no quiero hacer nada. ¿Qué debería hacer?',
+        options: [
+          { v: 'a', label: 'Relajarme y hacer ejercicios de respiración.' },
+          { v: 'b', label: 'Continuar en la cama toda la mañana.' },
+          {
+            v: 'c',
+            label: 'Elegir rápidamente alguna de las actividades de activación conductual.',
+            correct: true,
+          },
+        ],
+      },
+      {
+        key: 'q1',
+        prompt:
+          'Los ejercicios de activación conductual deberían realizarse únicamente durante el proceso de psicoterapia:',
+        options: [
+          { v: 'a', label: 'Verdadero. Estos ejercicios no deben estar siempre en nuestra rutina.' },
+          {
+            v: 'b',
+            label: 'Falso. Es importante mantener al menos 3 de estas actividades en nuestra rutina.',
+            correct: true,
+          },
+        ],
+      },
+      {
+        key: 'q2',
+        prompt:
+          'Me siento con mucho ánimo, pero en la noche un poco nostálgico/a. Al día siguiente no me siento tan bien en la mañana, pero al anochecer me siento con mucho ánimo. Estos cambios se deben a:',
+        options: [
+          { v: 'a', label: 'Indicios de un cuadro depresivo.' },
+          {
+            v: 'b',
+            label: 'El estado de ánimo puede variar de manera normal durante el día.',
+            correct: true,
+          },
+        ],
+      },
+    ],
+    variables: ['Activación conductual', 'Regulación del ánimo', 'Rutinas funcionales'],
+    searchTags: ['tcc', 'activación', 'ánimo', 'rutina', 'conductual'],
+  },
   tcc_socratico: {
     title: 'Cuestionamiento socrático',
     intro:

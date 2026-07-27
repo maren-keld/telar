@@ -195,8 +195,52 @@
 
 .workspace-sidebar__footer {
   flex-shrink: 0;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.workspace-sidebar-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.workspace-sidebar-toggle__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.workspace-sidebar-toggle__icon--expand {
+  display: none;
+}
+
+#leftsidebar.workspace-sidebar--focus .workspace-sidebar__footer {
+  padding: 10px 0;
+  justify-content: center;
+  border-top: 1px solid var(--border);
+}
+
+#leftsidebar.workspace-sidebar--focus .workspace-sidebar-toggle__icon--collapse {
+  display: none;
+}
+
+#leftsidebar.workspace-sidebar--focus .workspace-sidebar-toggle__icon--expand {
+  display: block;
 }
 
 .workspace-add-session {

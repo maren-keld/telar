@@ -67,10 +67,9 @@ function itemRowHtml(idx, text, selected, opts) {
         ${opts.map((o) => {
           const checked =
             selected !== null && selected !== '' && Number(selected) === o.v ? 'checked' : '';
-          return `<label class="likert-opt gad7-opt" title="${escapeHtml(o.label)}">
+          return `<label class="likert-opt gad7-opt" title="${escapeHtml(o.label)}" aria-label="${escapeHtml(o.label)}">
             <input type="radio" name="q${idx}" value="${o.v}" ${checked} />
             <span class="likert-dot"></span>
-            <span class="gad7-opt__label">${escapeHtml(o.label)}</span>
           </label>`;
         }).join('')}
       </div>

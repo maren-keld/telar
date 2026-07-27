@@ -2034,17 +2034,9 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
 }
 
 .gad7-opt {
-  flex-direction: column;
-  gap: 4px;
   align-items: center;
-}
-
-.gad7-opt__label {
-  font-size: 0.62rem;
-  line-height: 1.2;
-  text-align: center;
-  color: var(--text-secondary);
-  max-width: 5.5rem;
+  justify-content: center;
+  min-height: 28px;
 }
 
 .gad7-score-pill.gad7-band--minimal { border-color: #a8d5ba; background: #edf7f0; }
@@ -2785,7 +2777,7 @@ html[data-theme='dark'] .nf-state-card p {
 
 .score-accordion__hint {
   margin: 0;
-  padding: 0 14px 8px;
+  padding: 6px 14px 8px;
   font-size: 0.72rem;
   color: var(--text-secondary);
 }

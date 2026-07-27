@@ -1141,12 +1141,18 @@ html[data-theme='dark'] .badge--info {
 }
 
 .toast {
-  background: var(--accent-dark);
+  background: #1a2b4a;
   color: #fff;
   padding: 12px 18px;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   box-shadow: var(--shadow-card);
+}
+
+html[data-theme='dark'] .toast {
+  background: #243554;
+  color: #e8eef8;
+  border: 1px solid var(--border);
 }
 
 .modal-backdrop {
