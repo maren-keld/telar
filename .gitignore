@@ -31,6 +31,7 @@ docs/
 
 # Contenido clínico propietario (open-core)
 /packs/
+/packs-src/
 /packs-private/
 /src/packs/clinical-shared/
 /src/packs/tdah-adulto/

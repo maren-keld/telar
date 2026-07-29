@@ -9,11 +9,12 @@ trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/packs" "$TMP/src/packs"
 for p in clinical-shared tdah-adulto trauma-regulacion; do
-  if [[ -d "$ROOT/packs/$p" ]]; then
-    cp -R "$ROOT/packs/$p" "$TMP/packs/$p"
-  elif [[ -d "$ROOT/src/packs/$p" ]]; then
-    cp -R "$ROOT/src/packs/$p" "$TMP/packs/$p"
-  fi
+  for src in "$ROOT/packs/$p" "$ROOT/packs-src/$p" "$ROOT/src/packs/$p"; do
+    if [[ -d "$src" ]]; then
+      cp -R "$src" "$TMP/packs/$p"
+      break
+    fi
+  done
 done
 cat > "$TMP/src/packs/index.json" <<'EOF'
 {"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}

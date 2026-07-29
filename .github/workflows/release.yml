@@ -109,7 +109,8 @@ jobs:
             ## Telar — app completa con packs clínicos
 
             - **macOS (Apple Silicon):** `Telar-macos.zip`
-            - **Windows 10/11:** `Telar-windows.exe`
+            - **Windows 10/11:** `Telar-windows.exe` (instalador NSIS)
+            - **Packs CI:** `telar-packs-bundle.tar.gz` (solo cadena de builds, no para usuarios)
             - Motor open source (AGPL): [código en GitHub](https://github.com/maren-keld/telar)
             - Packs clínicos incluidos en el instalador (no en el repo público)
           releaseDraft: true
