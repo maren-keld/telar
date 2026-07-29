@@ -21,9 +21,9 @@ echo '# Handouts clínicos en packs/ (instalador oficial). Ver packs/demo/.' > s
 
 # Módulos clínicos — quitar del motor (fallback legacy desactivado en build público)
 CLINICAL_MODULES=(
-  asrs ades bilateral-stimulation dass21 eed escala-animo escala-ansiedad escala-fer
+  asrs ades bilateral-stimulation dass21 eed escala-ansiedad escala-fer
   gad7 iesr pcl5 qols rosenberg sprint-ecl
-  tcc-abc tcc-activacion tcc-generic tcc-plan-seguridad
+  tcc-activacion tcc-plan-seguridad
 )
 for m in "${CLINICAL_MODULES[@]}"; do
   rm -f "src/js/modules/${m}.js"
@@ -90,6 +90,6 @@ export function getTreatmentTemplate(id) {
 export const TREATMENT_TEMPLATES = {};
 EOF
 
-"$ROOT/scripts/prepare-public-repo.sh" --verify-only 2>/dev/null || true
+"$ROOT/scripts/prepare-public-repo.sh" || true
 echo ""
 echo "Listo. Revisa git diff antes de commit público."

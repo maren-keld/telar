@@ -56,6 +56,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller numpy scipy
 
+      - name: Restore clinical packs (release full)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}"
+          BUNDLE="dist/telar-packs-bundle.tar.gz"
+          mkdir -p dist packs src/packs
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release download "$TAG" --repo "${{ github.repository }}" -p "telar-packs-bundle.tar.gz" -D dist || true
+          fi
+          if [[ -f "$BUNDLE" ]]; then
+            tar -xzf "$BUNDLE" -C .
+            echo "→ Packs clínicos restaurados desde release asset"
+          elif [[ -d packs/clinical-shared ]]; then
+            echo "→ Packs presentes en checkout (dev)"
+          else
+            echo "⚠ Sin packs clínicos — build solo con demo pack"
+            cp src/packs/index.public.json src/packs/index.json 2>/dev/null || true
+          fi
+          if [[ -d packs/clinical-shared || -d src/packs/clinical-shared ]]; then
+            for p in clinical-shared tdah-adulto trauma-regulacion; do
+              if [[ -d "packs/$p" && ! -d "src/packs/$p" ]]; then
+                cp -R "packs/$p" "src/packs/$p"
+              fi
+            done
+            echo '{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}' > src/packs/index.json
+          fi
+
       - name: Build sidecar
         shell: bash
         run: ./scripts/build-sidecar.sh
@@ -71,10 +100,12 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}
           releaseName: Telar ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}
           releaseBody: |
-            ## Descargas
+            ## Telar — app completa con packs clínicos
+
             - **macOS (Apple Silicon):** `Telar-macos.zip`
-            - **Windows:** `Telar-windows.exe`
-            - **Auto-actualización:** `latest.json` + bundles firmados (Tauri updater)
+            - **Windows 10/11:** `Telar-windows.exe`
+            - Motor open source (AGPL): [código en GitHub](https://github.com/maren-keld/telar)
+            - Packs clínicos incluidos en el instalador (no en el repo público)
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: false

@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "id": "demo",
+  "version": "1.0.0",
+  "label": "Demo",
+  "description": "Escala subjetiva y módulo ABC de ejemplo para compilar el motor open source.",
+  "entry": "register.js"
+}
