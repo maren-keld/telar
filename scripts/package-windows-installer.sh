@@ -3,11 +3,21 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CARGO_TARGET="${CARGO_TARGET_DIR:-$ROOT/src-tauri/target}"
-NSIS_DIR="$CARGO_TARGET/release/bundle/nsis"
+
+# CI usa --target x86_64-pc-windows-msvc → bundle bajo target/<triple>/release/…
+NSIS_DIR=""
+for candidate in \
+  "$CARGO_TARGET/x86_64-pc-windows-msvc/release/bundle/nsis" \
+  "$CARGO_TARGET/release/bundle/nsis"; do
+  if [[ -d "$candidate" ]]; then
+    NSIS_DIR="$candidate"
+    break
+  fi
+done
 OUT="$ROOT/dist/Telar-windows.exe"
 
-if [[ ! -d "$NSIS_DIR" ]]; then
-  echo "Error: no existe $NSIS_DIR — compila en Windows con: ./scripts/build-app.sh"
+if [[ -z "$NSIS_DIR" ]]; then
+  echo "Error: no se encontró bundle/nsis en $CARGO_TARGET — compila en Windows con: ./scripts/build-app.sh"
   exit 1
 fi
 
