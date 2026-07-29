@@ -10,12 +10,10 @@ import {
 } from '../subscription.js';
 
 const PRO_FEATURES = [
-  'Grabar sesiones de Neurofeedback',
-  'Compartir programas de tratamiento',
-  'Comprar e instalar nuevos módulos',
-  'Adjuntar documentos de referencia al espacio de trabajo',
-  'Ver mapa de geolocalización de pacientes',
-  'Acceso a actualizaciones y funciones experimentales',
+  'Pacientes ilimitados',
+  'Exportación',
+  'Neurofeedback completo',
+  'Módulos',
 ];
 
 const MP_SUBSCRIPTIONS_URL = 'https://www.mercadopago.cl/subscriptions';
@@ -37,7 +35,8 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           <button type="button" class="modal-close" aria-label="Cerrar">×</button>
         </header>
         <p class="subscribe-pro-modal__intro">
-          Apoya el desarrollo de <strong>Telar</strong> y desbloquea funciones avanzadas del consultorio:
+          En Free puedes usar Telar con hasta <strong>3 pacientes activos</strong>.
+          El Plan Profesional desbloquea:
         </p>
         <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite" ${pro ? 'hidden' : ''}>Comprobando servidor de pagos…</p>
         <ul class="subscribe-pro-features">

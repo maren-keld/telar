@@ -4,6 +4,7 @@ import { openEditFieldModal } from '../components/edit-field-modal.js';
 import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
 import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
+import { FREE_ACTIVE_PATIENT_LIMIT, getActivePatientUsage } from '../plan-limits.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
 import { syncProFromServer, resetLocalSubscriptionState, isLocalDevFrontend } from '../subscription.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
@@ -104,6 +105,17 @@ export async function renderSettings(container, { onNavigate }) {
 
   const isLinux = navigator.platform.toLowerCase().includes('linux');
   const locale = getLocale();
+  let planUsageSub = isProUser()
+    ? 'Suscripción activa · pacientes ilimitados'
+    : `Gratis · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
+  try {
+    const usage = await getActivePatientUsage();
+    planUsageSub = usage.pro
+      ? `Suscripción activa · ${usage.count} pacientes activos`
+      : `Gratis · ${usage.count}/${usage.limit} pacientes activos`;
+  } catch {
+    /* DB aún no disponible */
+  }
   const touchIdRow = touchIdAvailable
     ? row({
         icon: SETTINGS_ICONS.touchId,
@@ -152,7 +164,7 @@ export async function renderSettings(container, { onNavigate }) {
             <span class="settings-plan__badge">${isProUser() ? 'Pro' : 'Free'}</span>
             <span class="settings-plan__text">
               <span class="settings-plan__label">Plan Profesional — Telar</span>
-              <span class="settings-plan__sub">${isProUser() ? 'Suscripción activa' : 'Gratis'} · ${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')}</span>
+              <span class="settings-plan__sub">${escapeHtml(planUsageSub)} · ${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')}</span>
             </span>
             <span class="settings-row__chevron">›</span>
           </div>

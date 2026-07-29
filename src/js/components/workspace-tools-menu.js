@@ -46,7 +46,7 @@ function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
             <strong>Exportar programa PDF</strong>
-            <small>Resumen del tratamiento para el paciente o supervisión</small>
+            <small>Resumen del tratamiento para el paciente o supervisión${isProUser() ? '' : ' · Plan Profesional'}</small>
           </span>
         </button>
       </li>
@@ -55,7 +55,7 @@ function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.reference}</span>
           <span class="workspace-tools-tab__text">
             <strong>Documentos de referencia</strong>
-            <small>Adjuntar guías, protocolos o material clínico${isProUser() ? '' : ' · Plan Profesional'}</small>
+            <small>Adjuntar guías, protocolos o material clínico</small>
           </span>
         </button>
       </li>
@@ -89,9 +89,7 @@ function bindToolsActions(root, { treatmentId, onExportPdf, onTemplateApplied })
   });
 
   root.querySelector('[data-action="reference-docs"]')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: () => openReferenceDocumentsModal({ treatmentId }),
-    });
+    openReferenceDocumentsModal({ treatmentId });
   });
 
   root.querySelector('[data-action="ai-program"]')?.addEventListener('click', () => {

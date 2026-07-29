@@ -5,6 +5,7 @@ import {
   getSessionsWithModules,
   updateTreatmentStatus,
 } from '../db.js';
+import { requireActivePatientSlot } from '../plan-limits.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { escapeHtml, toast } from '../utils.js';
 
@@ -90,6 +91,10 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     btn.addEventListener('click', async () => {
       const status = btn.dataset.status;
       if (status === currentStatus) return;
+      if (status === 'en_tratamiento' && currentStatus !== 'en_tratamiento') {
+        const allowed = await requireActivePatientSlot({ patientId: treatment.patient_id });
+        if (!allowed) return;
+      }
       currentStatus = status;
       root.querySelectorAll('[data-status]').forEach((b) => {
         const active = b.dataset.status === status;
@@ -103,6 +108,8 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
 
   // Nuevo tratamiento
   root.querySelector('#workspace-menu-new-treatment')?.addEventListener('click', async () => {
+    const allowed = await requireActivePatientSlot({ patientId: treatment.patient_id });
+    if (!allowed) return;
     try {
       const newId = await createTreatment(treatment.patient_id);
       await copyModuleDataBetweenTreatments(treatment.id, newId, ['registro_inicial', 'motivo_consulta']);

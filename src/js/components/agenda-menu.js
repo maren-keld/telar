@@ -1,5 +1,6 @@
 import { TREATMENT_STATUS, TREATMENT_TAG_DEFS } from '../config.js';
 import { listConvenios, updateTreatmentConvenio, updateTreatmentStatus, updateTreatmentTags } from '../db.js';
+import { requireActivePatientSlot } from '../plan-limits.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 
 export async function openAgendaCardMenu(anchorEl, row, { onUpdated }) {
@@ -56,6 +57,10 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated }) {
     const status = root.querySelector('#menu-status').value;
     const newTags = [...root.querySelectorAll('#menu-tags input:checked')].map((i) => i.value);
     const convenioVal = root.querySelector('#menu-convenio')?.value || '';
+    if (status === 'en_tratamiento' && row.status !== 'en_tratamiento') {
+      const allowed = await requireActivePatientSlot({ patientId: row.patient_id });
+      if (!allowed) return;
+    }
     await updateTreatmentStatus(row.treatment_id, status);
     await updateTreatmentTags(row.treatment_id, newTags);
     await updateTreatmentConvenio(row.treatment_id, convenioVal || null);

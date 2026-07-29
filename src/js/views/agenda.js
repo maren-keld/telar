@@ -3,6 +3,7 @@ import { openAgendaCardMenu } from '../components/agenda-menu.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { createTreatment, getAgendaGroups, upsertPatient } from '../db.js';
 import { openTreatmentWorkspace } from '../navigate.js';
+import { requireActivePatientSlot } from '../plan-limits.js';
 import { toast } from '../utils.js';
 import { escapeHtml } from '../utils.js';
 
@@ -119,6 +120,8 @@ export async function renderAgenda(container, { search = '', onNavigate }) {
   bindAppSidebar(container, { onNavigate });
 
   container.querySelector('#btn-add-treatment')?.addEventListener('click', async () => {
+    const allowed = await requireActivePatientSlot();
+    if (!allowed) return;
     try {
       const patientId = await upsertPatient({
         name: 'Paciente sin nombre',

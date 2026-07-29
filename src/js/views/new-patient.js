@@ -1,5 +1,6 @@
 import { createTreatment, upsertPatient } from '../db.js';
 import { openTreatmentWorkspace } from '../navigate.js';
+import { requireActivePatientSlot } from '../plan-limits.js';
 import { listTreatmentTemplates } from '../treatment-templates.js';
 import { escapeHtml, toast } from '../utils.js';
 
@@ -40,6 +41,8 @@ export function renderNewPatient(container, { onNavigate }) {
 
   container.querySelector('#form-new-patient')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const allowed = await requireActivePatientSlot();
+    if (!allowed) return;
     const fd = new FormData(e.target);
     const patientId = await upsertPatient({
       name: fd.get('name'),

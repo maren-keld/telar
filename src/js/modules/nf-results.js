@@ -1,5 +1,6 @@
 import { bindAutoSave, collectFormData } from '../autobind.js';
 import { nfPreset } from '../../lib/nf-bands.js';
+import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
 import { getSessionsWithModules } from '../db.js';
 import { exportNfSessionCsv, exportNfSessionPdf } from '../export-nf-session.js';
 import { syncModuleReadableText } from '../readable-text.js';
@@ -65,22 +66,30 @@ export function bindNfResultsTab(host, moduleRow, exportCtx = {}, liveTrace = []
     };
   };
 
-  tab.querySelector('#nf-export-csv')?.addEventListener('click', async () => {
-    try {
-      await exportNfSessionCsv(getExportPayload());
-      toast('CSV exportado');
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar CSV');
-    }
+  tab.querySelector('#nf-export-csv')?.addEventListener('click', () => {
+    requireProOrSubscribe({
+      onAllowed: async () => {
+        try {
+          await exportNfSessionCsv(getExportPayload());
+          toast('CSV exportado');
+        } catch (e) {
+          toast(e.message || 'No se pudo exportar CSV');
+        }
+      },
+    });
   });
 
-  tab.querySelector('#nf-export-pdf')?.addEventListener('click', async () => {
-    try {
-      await exportNfSessionPdf(getExportPayload());
-      toast('PDF exportado');
-    } catch (e) {
-      toast(e.message || 'No se pudo exportar PDF');
-    }
+  tab.querySelector('#nf-export-pdf')?.addEventListener('click', () => {
+    requireProOrSubscribe({
+      onAllowed: async () => {
+        try {
+          await exportNfSessionPdf(getExportPayload());
+          toast('PDF exportado');
+        } catch (e) {
+          toast(e.message || 'No se pudo exportar PDF');
+        }
+      },
+    });
   });
 }
 
