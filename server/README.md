@@ -1,6 +1,6 @@
 # API de suscripciones — Plan Profesional
 
-Backend mínimo para cobrar **$15.000 CLP/mes** con **Mercado Pago** (Chile).
+Backend mínimo para cobrar **$19.990 CLP/mes** con **Mercado Pago** (Chile).
 
 ## Qué necesitas de Mercado Pago
 
@@ -80,4 +80,4 @@ La app abre el checkout en el navegador y, al volver, puede consultar el estado 
 - [ ] `BACKEND_URL` y webhook HTTPS configurados
 - [ ] Probar un pago de prueba con tarjetas de test MP
 - [ ] Política de cancelación visible en la landing
-- [ ] Actualizar precio en modal si cambia (hoy: 15.000 CLP)
+- [ ] Actualizar precio en modal si cambia (hoy: 19.990 CLP)

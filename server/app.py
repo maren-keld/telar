@@ -34,7 +34,7 @@ MP_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001").rstrip("/")
 FRONTEND_RETURN_URL = os.environ.get("FRONTEND_RETURN_URL", f"{BACKEND_URL}/gracias")
 MP_PUBLIC_BACK_URL = os.environ.get("MP_PUBLIC_BACK_URL", "").strip()
-PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "15000"))
+PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "19990"))
 PLAN_REASON = os.environ.get("MP_PLAN_REASON", "Plan Profesional — Telar")
 MP_PREAPPROVAL_PLAN_ID = os.environ.get("MP_PREAPPROVAL_PLAN_ID", "").strip()
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "") or os.environ.get("MP_WEBHOOK_SECRET", "")
@@ -157,7 +157,7 @@ def subscription_sandbox_status() -> dict:
         hint = (
             "Suscripciones: el token TEST de la app usa tu cuenta real como vendedor (ID "
             f"{me.get('id')}). Con comprador test, MP puede rechazar el pago. "
-            "Opciones: (1) credenciales de producción + pago real $15.000, o "
+            "Opciones: (1) credenciales de producción + pago real $19.990, o "
             "(2) comprador test + ventana privada e intentar igual."
         )
     return {

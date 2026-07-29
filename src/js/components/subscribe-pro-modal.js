@@ -55,7 +55,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </p>
         ` : `
         <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">
-          Suscribirse — $15.000 CLP/mes
+          Suscribirse — $19.990 CLP/mes
         </button>
         <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
           Activar Pro (solo desarrollo, sin pago)

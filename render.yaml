@@ -15,7 +15,7 @@ services:
       - key: WEBHOOK_SECRET
         generateValue: true
       - key: PLAN_AMOUNT_CLP
-        value: "15000"
+        value: "19990"
       - key: PYTHON_VERSION
         value: "3.12.0"
       - key: BACKEND_URL
