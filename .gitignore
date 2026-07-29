@@ -2,6 +2,7 @@ node_modules/
 dist/*
 !dist/.gitkeep
 !dist/README.txt
+exportaciones/
 target/
 src-tauri/target/
 src-tauri/binaries/*
