@@ -29,6 +29,89 @@ for m in "${CLINICAL_MODULES[@]}"; do
   rm -f "src/js/modules/${m}.js"
 done
 
+# index.js público — solo módulos core + demo (sin imports a packs clínicos borrados)
+cat > src/js/modules/index.js <<'EOF'
+/**
+ * Registry dinámico de renderers — motor público (pack demo + core).
+ */
+import { getRenderer, hasModuleType } from '../pack-registry.js';
+import { isCustomQuestionnaireType, renderCustomQuestionnaire } from './custom-questionnaire.js';
+import { renderMotivoConsulta } from './motivo-consulta.js';
+import { renderRegistroInicial } from './registro-inicial.js';
+import { renderRedesApoyo } from './redes-apoyo.js';
+import { renderDiagnostico } from './diagnostico.js';
+import { renderEscalaAnimo } from './escala-animo.js';
+import { renderTccAbc } from './tcc-abc.js';
+import { renderTccGeneric } from './tcc-generic.js';
+import { renderSelectorModulo } from './selector-modulo.js';
+
+const LEGACY_RENDERERS = {
+  selector_modulo: renderSelectorModulo,
+  registro_inicial: renderRegistroInicial,
+  motivo_consulta: renderMotivoConsulta,
+  redes_apoyo: renderRedesApoyo,
+  diagnostico: renderDiagnostico,
+  escala_animo: renderEscalaAnimo,
+  tcc_abc: renderTccAbc,
+  tcc_socratico: renderTccGeneric,
+  tcc_flexibilidad: renderTccGeneric,
+  tcc_probabilidades: renderTccGeneric,
+  tcc_sesgos: renderTccGeneric,
+  tcc_autoconceptos: renderTccGeneric,
+  tcc_preocupaciones: renderTccGeneric,
+  tcc_gratitud: renderTccGeneric,
+  tcc_estres: renderTccGeneric,
+};
+
+function resolveRenderer(moduleType) {
+  const fromPack = getRenderer(moduleType);
+  if (fromPack) return fromPack;
+  return LEGACY_RENDERERS[moduleType] || null;
+}
+
+export async function renderModule(host, moduleRow, ctx = {}) {
+  if (isCustomQuestionnaireType(moduleRow.module_type)) {
+    await renderCustomQuestionnaire(host, moduleRow, ctx);
+    return;
+  }
+  const fn = resolveRenderer(moduleRow.module_type);
+  if (!fn) {
+    host.innerHTML = `<div class="card"><p>Módulo «${moduleRow.module_type}» aún no implementado en esta versión.</p></div>`;
+    return;
+  }
+  await fn(host, moduleRow, ctx);
+}
+
+export function isModuleTypeAvailable(moduleType) {
+  if (isCustomQuestionnaireType(moduleType)) return true;
+  return hasModuleType(moduleType) || Boolean(LEGACY_RENDERERS[moduleType]);
+}
+
+export function teardownBilateralStimulation() {}
+EOF
+
+python3 <<'PY'
+from pathlib import Path
+p = Path("tests/frontend/pack-registry.test.js")
+t = p.read_text()
+t = t.replace("  assert.ok(defs.neurofeedback);\n", "  assert.ok(defs.registro_inicial);\n")
+# avoid duplicate assert
+t = t.replace("  assert.ok(defs.registro_inicial);\n  assert.ok(defs.registro_inicial);\n", "  assert.ok(defs.registro_inicial);\n")
+p.write_text(t)
+PY
+
+# module-selector: sin bilateral (pack clínico)
+python3 <<'PY'
+from pathlib import Path
+p = Path("src/js/components/module-selector.js")
+t = p.read_text()
+t = t.replace(
+    "    id: 'intervencion',\n    label: 'Intervención',\n    types: ['bilateral_stimulation'],\n  },",
+    "",
+)
+p.write_text(t)
+PY
+
 # Legacy clinical data en motor — vaciar (packs demo los proveen)
 cat > src/js/tcc-handout-defs.js <<'EOF'
 /** Stub público — handouts clínicos en packs propietarios / instalador oficial. */
@@ -90,6 +173,9 @@ export function getTreatmentTemplate(id) {
 export const TREATMENT_TEMPLATES = {};
 EOF
 
-"$ROOT/scripts/prepare-public-repo.sh" || true
+"$ROOT/scripts/strip-motor-extras-for-public.sh"
+
+"$ROOT/scripts/prepare-public-repo.sh"
+
 echo ""
 echo "Listo. Revisa git diff antes de commit público."

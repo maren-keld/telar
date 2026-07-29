@@ -51,6 +51,38 @@ if [[ ! -f src/packs/index.public.json ]]; then
   FAIL=1
 fi
 
+echo "==> Verificando motor público sin NF / suscripciones / backend Pro"
+PUBLIC_FORBIDDEN=(
+  src/js/modules/neurofeedback.js
+  server/app.py
+  src-tauri/src/muse_ble.rs
+  src-tauri/src/subscription_api.rs
+  landing/neurofeedback.html
+  render.yaml
+)
+for f in "${PUBLIC_FORBIDDEN[@]}"; do
+  if [[ -f "$f" ]]; then
+    echo "FAIL: archivo no debe estar en repo público: $f"
+    echo "      Ejecuta ./scripts/strip-clinical-for-public.sh"
+    FAIL=1
+  fi
+done
+
+if [[ -f src/js/subscription-config.js ]] && grep -q 'onrender.com' src/js/subscription-config.js 2>/dev/null; then
+  echo "FAIL: subscription-config.js expone URL de API de producción"
+  FAIL=1
+fi
+
+if [[ -f src/js/subscription.js ]] && ! grep -q 'Stub repo público' src/js/subscription.js 2>/dev/null; then
+  echo "FAIL: subscription.js debe ser stub en repo público"
+  FAIL=1
+fi
+
+if [[ -f src/js/components/subscribe-pro-modal.js ]] && grep -q 'mercadopago' src/js/components/subscribe-pro-modal.js 2>/dev/null; then
+  echo "FAIL: subscribe-pro-modal.js completo en repo público (debe ser stub)"
+  FAIL=1
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then
   echo ""
   echo "prepare-public-repo: FALLÓ"

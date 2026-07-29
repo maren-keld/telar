@@ -27,7 +27,6 @@ test('getModuleDefs merges core and pack modules', async () => {
   const { getModuleDefs } = await import('../../src/js/config.js');
   const defs = getModuleDefs();
   assert.ok(defs.registro_inicial);
-  assert.ok(defs.neurofeedback);
   assert.equal(defs.asrs?.label, 'ASRS');
 });
 

@@ -4,33 +4,32 @@ App de escritorio (macOS y Windows) para gestión clínica local. Los datos del 
 
 **Sitio:** [telarapp.cl](https://telarapp.cl) · **Licencia motor:** [AGPL-3.0](LICENSE)
 
-## Motor open source vs contenido clínico
+## Qué hay en este repositorio (motor open source)
 
-Este repositorio contiene el **motor Telar** bajo licencia AGPL-3.0: workspace clínico, base de datos cifrada, neurofeedback con Muse 2, suscripciones Free/Pro y exportación.
+Este repo contiene el **motor Telar** bajo AGPL-3.0: workspace clínico, base de datos cifrada y pack demo mínimo.
 
-El **contenido clínico** (packs: escalas validadas ASRS/GAD-7/PCL-5, handouts TCC, plantillas de 8 sesiones) se distribuye por separado:
+**No incluye** (solo en [instaladores oficiales](https://github.com/maren-keld/telar/releases)):
 
-- **Instalador oficial** en [GitHub Releases](https://github.com/maren-keld/telar/releases) — app completa con todos los packs
-- **Licencia Pro** / telarapp.cl para uso clínico completo
-
-El repo incluye un **pack demo** mínimo (`src/packs/demo/`: escala subjetiva + módulo ABC) para compilar y probar el motor sin contenido propietario.
+- Packs clínicos (TDAH, trauma, escalas validadas, handouts TCC)
+- Neurofeedback con Muse 2
+- Suscripciones Demo/Pro y exportación PDF de programas
+- Backend de pagos
 
 ## Descargar app completa
 
-Instaladores con packs clínicos: [GitHub Releases](https://github.com/maren-keld/telar/releases).
+[GitHub Releases](https://github.com/maren-keld/telar/releases) — macOS y Windows con todo lo anterior.
 
-## Desarrollo
+## Desarrollo del motor
 
 ```bash
 npm install
-npm run dev          # Tauri dev (carga packs desde src/packs/)
-npm run test         # tests frontend + e2e
-./scripts/build-app.sh              # build motor + packs presentes
-./scripts/build-release-full.sh     # release con packs propietarios
+npm run dev
+npm run test
+./scripts/build-app.sh
 ```
 
-Packs propietarios van en `packs/` (gitignored) o `src/packs/clinical-shared/` etc. Ver `docs/OPEN-CORE.md` (interno).
+Pack demo: `src/packs/demo/` (escala subjetiva + ABC).
 
 ## Privacidad
 
-Política de datos en [telarapp.cl/privacidad](https://telarapp.cl/privacidad.html).
+[telarapp.cl/privacidad](https://telarapp.cl/privacidad.html)

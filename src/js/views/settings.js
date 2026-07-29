@@ -1,12 +1,9 @@
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { openEditFieldModal } from '../components/edit-field-modal.js';
-import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
 import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
-import { FREE_ACTIVE_PATIENT_LIMIT, getActivePatientUsage } from '../plan-limits.js';
-import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
-import { syncProFromServer, resetLocalSubscriptionState, isLocalDevFrontend } from '../subscription.js';
+import { applyPresentationMode, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
 import { appVersionLabel } from '../app-version.js';
 import { escapeHtml, toast } from '../utils.js';
@@ -37,7 +34,6 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'wipeData',
   'checkUpdate',
   'aiAssistant',
-  'resetSubscription',
 ]);
 
 function openLanguagePicker(onPick) {
@@ -106,17 +102,6 @@ export async function renderSettings(container, { onNavigate }) {
 
   const isLinux = navigator.platform.toLowerCase().includes('linux');
   const locale = getLocale();
-  let planUsageSub = isProUser()
-    ? 'Suscripción activa · pacientes ilimitados'
-    : `Demo · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
-  try {
-    const usage = await getActivePatientUsage();
-    planUsageSub = usage.pro
-      ? `Suscripción activa · ${usage.count} pacientes activos`
-      : `Demo · ${usage.count}/${usage.limit} pacientes activos`;
-  } catch {
-    /* DB aún no disponible */
-  }
   const touchIdRow = touchIdAvailable
     ? row({
         icon: SETTINGS_ICONS.touchId,
@@ -160,28 +145,6 @@ export async function renderSettings(container, { onNavigate }) {
             toggleOn: profile.darkMode,
           })}
         </div>
-        <button type="button" class="settings-card settings-card--plan" id="btn-settings-plan">
-          <div class="settings-plan">
-            <span class="settings-plan__badge">${isProUser() ? 'Pro' : 'Demo'}</span>
-            <span class="settings-plan__text">
-              <span class="settings-plan__label">Plan Profesional — Telar</span>
-              <span class="settings-plan__sub">${escapeHtml(planUsageSub)} · ${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')}</span>
-            </span>
-            <span class="settings-row__chevron">›</span>
-          </div>
-        </button>
-        ${
-          isLocalDevFrontend()
-            ? `<div class="settings-card">
-          ${row({
-            icon: SETTINGS_ICONS.resetPlan,
-            title: 'Restablecer plan (pruebas)',
-            subtitle: 'Vuelve a Demo en este dispositivo para probar checkout de nuevo',
-            dataField: 'resetSubscription',
-          })}
-        </div>`
-            : ''
-        }
         <div class="settings-card">
           ${row({
             icon: SETTINGS_ICONS.presentation,
@@ -273,45 +236,8 @@ export async function renderSettings(container, { onNavigate }) {
 
   bindAppSidebar(container, { onNavigate });
 
-  syncProFromServer().then(({ changed, revoked }) => {
-    if (renderGen !== settingsRenderGen) return;
-    if (!isSettingsRoute()) return;
-    if (!changed) return;
-    if (revoked) {
-      toast(
-        t(
-          'settings.proRevoked',
-          'La suscripción Profesional no está activa. Algunas funciones quedaron limitadas.',
-        ),
-      );
-    }
-    renderSettings(container, { onNavigate });
-  });
 
-  container.querySelector('#btn-settings-plan')?.addEventListener('click', () => {
-    openSubscribeProModal({
-      onSubscribed: () => {
-        if (renderGen !== settingsRenderGen) return;
-        if (!isSettingsRoute()) return;
-        renderSettings(container, { onNavigate });
-      },
-    });
-  });
 
-  container.querySelector('[data-field="resetSubscription"]')?.addEventListener('click', async () => {
-    const ok = await openConfirmModal({
-      title: '¿Restablecer plan local?',
-      message:
-        'Telar volverá a Demo solo en este Mac. No cancela tu suscripción en Mercado Pago. ' +
-        'Úsalo para probar el checkout otra vez.',
-      confirmLabel: 'Restablecer',
-      cancelLabel: 'Cancelar',
-    });
-    if (!ok) return;
-    resetLocalSubscriptionState();
-    toast('Plan restablecido a Demo en este dispositivo');
-    renderSettings(container, { onNavigate });
-  });
 
   container.querySelector('[data-field="locale"]')?.addEventListener('click', () => {
     openLanguagePicker((code) => {
@@ -494,10 +420,6 @@ export async function renderSettings(container, { onNavigate }) {
 
   // TODO(E2E-backup): implementar upload cifrado cuando exista backend
   container.querySelector('[data-field="backupCloud"]')?.addEventListener('click', () => {
-    if (!isProUser()) {
-      openSubscribeProModal();
-      return;
-    }
     toast('Respaldo en la nube — próximamente. Usa respaldo local mientras tanto.');
   });
 
