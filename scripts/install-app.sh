@@ -13,5 +13,6 @@ fi
 rm -rf "$DEST"
 rm -rf "/Applications/Psicoterapia Lab.app" "/Applications/Psicoterapia LAB.app" 2>/dev/null || true
 cp -R "$SRC" "$DEST"
+"$ROOT/scripts/apply-macos-entitlements.sh" "$DEST"
 echo "✓ Instalado: $DEST"
 echo "  (Se eliminó la copia antigua «Psicoterapia Lab» si existía en Aplicaciones)"

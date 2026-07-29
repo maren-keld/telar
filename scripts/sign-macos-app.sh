@@ -44,7 +44,7 @@ sign_binary() {
       --entitlements "$ENTITLEMENTS" \
       --sign "$IDENTITY" "$target"
   else
-    codesign --force --sign - "$target"
+    codesign --force --sign - --entitlements "$ENTITLEMENTS" "$target"
   fi
 }
 
@@ -60,7 +60,7 @@ if [[ -n "$IDENTITY" ]]; then
     --sign "$IDENTITY" "$APP"
 else
   echo "⚠ Sin certificado Developer ID — firma ad-hoc (Gatekeeper seguirá avisando en otros Mac)"
-  codesign --force --deep --sign - "$APP"
+  codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP"
 fi
 
 codesign --verify --deep --strict --verbose=2 "$APP"

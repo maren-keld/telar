@@ -34,14 +34,16 @@ async function fetchJson(url) {
 
 async function discoverPackIds(base) {
   const ids = new Set();
-  for (const id of KNOWN_PACK_ORDER) {
-    try {
-      const res = await fetch(`${base}${id}/pack.json`, { method: 'HEAD', cache: 'no-store' });
-      if (res.ok) ids.add(id);
-    } catch {
-      /* skip */
-    }
-  }
+  await Promise.all(
+    KNOWN_PACK_ORDER.map(async (id) => {
+      try {
+        const res = await fetch(`${base}${id}/pack.json`, { method: 'HEAD', cache: 'no-store' });
+        if (res.ok) ids.add(id);
+      } catch {
+        /* skip */
+      }
+    }),
+  );
   try {
     const index = await fetchJson(`${base}index.json`);
     for (const id of index.packs || []) ids.add(id);

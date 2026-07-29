@@ -1,4 +1,6 @@
 import { t } from '../i18n.js';
+import { isProUser } from '../profile.js';
+import { ICON_PRO } from '../icons.js';
 
 const ICONS = {
   agenda: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
@@ -41,8 +43,14 @@ export function renderAppSidebar(activeNav = 'agenda') {
       </button>`;
   }).join('');
 
+  const proBadge = isProUser()
+    ? `<div class="sidebar-pro" title="Plan Profesional activo">
+        <span class="sidebar-pro__icon" aria-hidden="true">${ICON_PRO}</span>
+        <span class="sidebar-pro__label">Pro</span>
+      </div>`
+    : '';
 
-  return `<nav class="sidebar"><div class="sidebar-nav">${items}</div></nav>`;
+  return `<nav class="sidebar"><div class="sidebar-nav">${items}</div>${proBadge}</nav>`;
 }
 
 export function bindAppSidebar(container, { onNavigate }) {

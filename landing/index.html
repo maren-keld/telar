@@ -37,7 +37,10 @@
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="neurofeedback.html">Neurofeedback</a>
         <a href="#funciones">Funciones</a>
+        <a href="#demo">Demo</a>
+        <a href="#planes">Planes</a>
         <a href="#requisitos">Requisitos</a>
         <a href="#instalar">Instalar</a>
         <a href="#contacto">Contacto</a>
@@ -91,6 +94,18 @@
       </div>
     </section>
 
+    <section id="demo" class="demo-section">
+      <div class="container">
+        <div class="demo-card" data-demo-status="pending">
+          <div>
+            <p class="section-label">Demo de 60 segundos</p>
+            <h2 class="section-title">Recorrido breve en preparación</h2>
+            <p>Estamos preparando un video corto con el flujo real: abrir un caso, aplicar una escala y revisar la evolución. Mientras tanto, puedes solicitar una demostración breve.</p>
+          </div>
+          <a href="https://wa.me/56933913074?text=Hola%2C%20quiero%20ver%20una%20demo%20breve%20de%20Telar" class="btn btn-secondary" target="_blank" rel="noopener">Solicitar demostración</a>
+        </div>
+      </div>
+    </section>
 
     <section id="funciones">
       <div class="container">
@@ -137,10 +152,60 @@
             <h3>Informes</h3>
             <p>Exporta handouts TCC desde cada módulo. El programa de tratamiento en PDF requiere Plan Profesional.</p>
           </article>
+          <article class="feature-card feature-card--shot">
+            <div>
+              <div class="feature-eyebrow">Capacidad opcional</div>
+              <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0M4 13v5a2 2 0 0 0 2 2h2v-8H4ZM20 13v5a2 2 0 0 1-2 2h-2v-8h4Z"/><path d="M10 5.3V3M14 5.3V3"/></svg></div>
+              <h3>Neurofeedback con Muse 2</h3>
+              <p>Entrenamiento en vivo dentro de la sesión (incluido en Demo). Grabar, analizar y exportar sesiones requiere Plan Profesional.</p>
+              <p class="feature-link"><a href="neurofeedback.html">Ver guía de Neurofeedback →</a></p>
+            </div>
+            <img
+              class="feature-shot"
+              src="assets/telar-neurofeedback.png"
+              alt="Módulo opcional de Neurofeedback en Telar con Muse 2 conectado y protocolo Calma activo"
+              width="1318"
+              height="1246"
+              loading="lazy"
+              decoding="async"
+            >
+          </article>
         </div>
       </div>
     </section>
 
+    <section id="planes" class="pricing-section">
+      <div class="container">
+        <p class="section-label">Planes</p>
+        <h2 class="section-title">Demo para probar · Pro para tu consulta</h2>
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <h3>Demo</h3>
+            <p class="pricing-price">$0</p>
+            <ul class="pricing-list">
+              <li>Hasta <strong>3 pacientes activos</strong></li>
+              <li>Construye programas de psicoterapia</li>
+              <li>Todos los packs clínicos (TDAH, trauma, ansiedad)</li>
+              <li>Haz sesiones de Neurofeedback con tus pacientes</li>
+            </ul>
+          </div>
+          <div class="pricing-card featured">
+            <h3>Pro — $19.990 CLP/mes</h3>
+            <p class="pricing-desc">Suscripción mensual</p>
+            <ul class="pricing-list">
+              <li>Pacientes activos <strong>ilimitados</strong></li>
+              <li>Construye programas de psicoterapia</li>
+              <li>Todos los packs clínicos (TDAH, trauma, ansiedad)</li>
+              <li>Haz sesiones de Neurofeedback con tus pacientes</li>
+              <li>Acceso a curso de Neurofeedback y mentoría</li>
+              <li>Respaldo encriptado en la nube <em>(próximamente)</em></li>
+              <li>Cancela cuando quieras</li>
+            </ul>
+            <a href="#contacto" class="btn btn-primary">Contacto / suscripción</a>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section id="requisitos">
       <div class="container">
@@ -157,7 +222,8 @@
                 <span><strong>macOS</strong> (Apple Silicon o Intel)</span>
               </div>
             </div>
-            <p class="req-platform-note">Internet no es necesario para el día a día clínico. Solo para recibir actualizaciones si las activas.</p>
+            <p class="req-platform-note">Internet no es necesario para el día a día clínico. Solo para verificar suscripción Pro o recibir actualizaciones si las activas.</p>
+            <p class="req-platform-note"><strong>Muse 2 (opcional):</strong> Solo para Neurofeedback. Banda <strong>Interaxon Muse 2</strong> con Bluetooth; no es equipamiento diagnóstico. <a href="neurofeedback.html#muse">Más información</a>.</p>
           </div>
         </div>
       </div>
@@ -167,26 +233,29 @@
       <div class="container">
         <p class="section-label">Instalación</p>
         <h2 class="section-title">Cómo instalar</h2>
-        <p class="section-lead">Descarga la app completa desde <a href="https://github.com/maren-keld/telar/releases/latest" target="_blank" rel="noopener">GitHub Releases</a>.</p>
+        <p class="section-lead">Los instaladores están en <a href="https://github.com/maren-keld/telar/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> (app lista para usar, con packs clínicos). El <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">repositorio</a> es solo el código del motor (AGPL-3.0).</p>
         <div class="install-platforms">
           <div class="install-steps">
             <h3>macOS</h3>
+            <p class="install-note install-note--warn"><strong>Si macOS dice «Telar not opened» / «No se abrió Telar»:</strong> no uses <em>Mover a la Papelera</em>. Cierra el diálogo, ve a la carpeta donde descomprimiste el .zip, <strong>clic derecho en Telar.app → Abrir</strong> y confirma. Solo la primera vez.</p>
             <ol>
               <li>Descarga <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip"><strong>Telar-macos.zip</strong></a> y descomprímelo.</li>
               <li>Arrastra <strong>Telar.app</strong> a Aplicaciones.</li>
-              <li>La primera vez: <strong>clic derecho → Abrir</strong>.</li>
+              <li>La primera vez: <strong>clic derecho → Abrir</strong> (no doble clic).</li>
               <li>Si macOS bloquea: <strong>Ajustes del Sistema → Privacidad y seguridad → Abrir de todas formas</strong>.</li>
               <li>Configura tu PIN y, si tu Mac lo permite, Touch ID.</li>
             </ol>
+            <p class="install-note">Para quitar la advertencia sin pasos manuales hace falta notarización Apple (Apple Developer Program, ~USD 99/año). En beta, clic derecho → Abrir es normal para apps independientes.</p>
           </div>
           <div class="install-steps">
             <h3>Windows 10/11</h3>
+            <p class="install-note install-note--warn"><strong>Si SmartScreen aparece:</strong> <strong>Más información → Ejecutar de todas formas</strong>. Es normal en apps sin certificado de editor (beta).</p>
             <ol>
               <li>Descarga <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-windows.exe"><strong>Telar-windows.exe</strong></a>.</li>
-              <li>Si SmartScreen aparece: <strong>Más información → Ejecutar de todas formas</strong>.</li>
               <li>Completa el asistente y abre Telar desde el menú Inicio.</li>
               <li>Configura tu PIN de 6 dígitos.</li>
             </ol>
+            <p class="install-note">Quitar SmartScreen del todo requiere certificado de firma de código (~USD 189/año). Microsoft Store no es gratis ni instantáneo. Para beta, «Ejecutar de todas formas» es la vía estándar.</p>
           </div>
         </div>
       </div>
@@ -215,6 +284,7 @@
       <div class="footer-links">
         <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+        <a href="neurofeedback.html">Neurofeedback</a>
         <a href="privacidad.html">Privacidad</a>
       </div>
     </div>

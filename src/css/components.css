@@ -301,36 +301,45 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 .pinbox-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   width: 100%;
-  justify-content: space-between;
+  max-width: 360px;
+  margin-inline: auto;
+  justify-content: center;
 }
 
 .pinbox {
-  flex: 1;
-  min-width: 0;
-  max-width: 52px;
-  height: 40px;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 48px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  background: var(--bg-input);
   color: var(--text-primary);
-  font-size: 20px;
+  font-size: 1.35rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-align: center;
   outline: none;
-  box-shadow: 0 10px 22px rgba(16, 24, 40, 0.06);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  box-shadow: none;
+  padding: 0;
+  -webkit-text-security: disc;
+  text-security: disc;
+  caret-color: var(--accent);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .pinbox:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(15, 35, 71, 0.18);
+  box-shadow: 0 0 0 3px rgba(15, 35, 71, 0.12);
 }
 
-.pinbox:active {
-  transform: scale(0.99);
+.unlock-card .field__label {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 .unlock-page {

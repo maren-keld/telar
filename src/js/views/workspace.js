@@ -13,6 +13,7 @@ import {
   getTreatment,
 } from '../db.js';
 import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
+import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
 import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
@@ -221,6 +222,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   bindModuleScrollSpy(container);
 
   container.querySelector('[data-back]')?.addEventListener('click', () => {
+    teardownNeurofeedback();
     teardownBilateralStimulation();
     onNavigate({ view: 'agenda' });
   });
@@ -323,6 +325,12 @@ function setActiveModuleHighlight(container, moduleId) {
   if (!moduleId) return;
   container.querySelectorAll('.module-link').forEach((link) => {
     link.classList.toggle('active', link.dataset.moduleId === String(moduleId));
+  });
+  container.querySelectorAll('.session-block').forEach((block) => {
+    const hasActive = Boolean(
+      block.querySelector(`.module-link[data-module-id="${moduleId}"].active`),
+    );
+    block.classList.toggle('session-block--active', hasActive);
   });
   container.querySelectorAll('.center-module-card').forEach((card) => {
     card.classList.toggle('center-module-card--active', card.id === `module-${moduleId}`);
@@ -447,7 +455,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
       const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
 
-      if (handout || deletable || swappable) {
+      if (handout || deletable || mod.module_type === 'neurofeedback' || swappable) {
         const actions = document.createElement('div');
         actions.className = 'module-card-actions';
 
@@ -475,6 +483,19 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
           actions.appendChild(swapBtn);
         }
 
+        if (mod.module_type === 'neurofeedback') {
+          const helpBtn = document.createElement('button');
+          helpBtn.type = 'button';
+          helpBtn.className = 'module-help-btn';
+          helpBtn.title = 'Ayuda neurofeedback';
+          helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
+          helpBtn.textContent = '?';
+          helpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toast(NF_HELP_MESSAGE);
+          });
+          actions.appendChild(helpBtn);
+        }
 
         if (handout) {
           const printBtn = document.createElement('button');
@@ -600,7 +621,7 @@ function sidebarSessionHtml(session, activeModule) {
     .join('');
 
   return `
-    <section class="session-block${startCollapsed ? ' session-block--collapsed' : ''}" data-session-id="${session.id}">
+    <section class="session-block${startCollapsed ? ' session-block--collapsed' : ''}${activeInSession ? ' session-block--active' : ''}" data-session-id="${session.id}">
       <button type="button" class="session-block__title" data-session-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
         <span class="session-block__chevron" aria-hidden="true">▾</span>
         ${escapeHtml(t('workspace.session'))} ${session.number}

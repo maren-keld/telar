@@ -1056,6 +1056,27 @@ section {
   color: var(--text);
 }
 
+.install-note {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+}
+
+.install-note--warn {
+  background: #fff6d6;
+  border-color: #e6c84a;
+  color: var(--text);
+}
+
+.install-note--warn strong {
+  color: var(--text);
+}
+
 /* CTA */
 .cta-section {
   padding: 5rem 0;

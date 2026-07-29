@@ -286,19 +286,49 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.8rem;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.nf-device-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.nf-device-status[hidden] {
+  display: none !important;
+}
+
+.nf-device-status__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nf-device-status__item + .nf-device-status__item::before {
+  content: '·';
+  margin: 0 6px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .nf-signal-quality {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  background: none;
 }
 
 .nf-signal-quality__dot {
@@ -1439,6 +1469,39 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   height: 200px;
 }
 
+.nf-baseline-orb-timer {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-baseline-orb-timer[hidden] {
+  display: none !important;
+}
+
+.nf-baseline-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 4px;
+  text-align: center;
+}
+
+.nf-baseline-action[hidden] {
+  display: none !important;
+}
+
+.nf-baseline-action__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 28rem;
+}
+
 .nf-baseline-panel {
   display: flex;
   flex-direction: column;
@@ -1478,7 +1541,28 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
 }
 
 .nf-results__correlation {
-  margin: 24px 0 8px;
+  margin: 16px 0 24px;
+}
+
+.nf-results__correlation--full {
+  width: 100%;
+}
+
+.nf-chart-wrap--live {
+  width: 100%;
+  height: 260px;
+  position: relative;
+}
+
+.nf-chart-wrap--live canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none;
+}
+
+.nf-state-card--explain p,
+.nf-state-card--reference.nf-state-card--explain p {
+  display: block;
 }
 
 .nf-results__spectral {
@@ -1496,6 +1580,10 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
 .nf-results__disclaimer {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.nf-record-wrap[hidden] {
+  display: none !important;
 }
 
 .nf-record-wrap {
@@ -1567,6 +1655,7 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   color: var(--accent);
 }
 
+/* .module-link.active base styles — sidebar overrides above */
 .module-link.active {
   color: var(--accent);
   font-weight: 700;
@@ -1617,9 +1706,31 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
 }
 
 .workspace-sidebar .module-link {
-  padding: 4px 0 4px 10px;
+  padding: 4px 8px 4px 10px;
+  margin: 0 -8px;
   font-size: 13px;
   line-height: 1.4;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s ease, box-shadow 0.12s ease, color 0.12s ease;
+}
+
+.workspace-sidebar .module-link.active {
+  color: var(--accent-dark);
+  font-weight: 700;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 60%, transparent);
+}
+
+.workspace-sidebar .session-block--active .session-block__title {
+  color: var(--accent-dark);
+  font-weight: 700;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 60%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+  width: calc(100% + 16px);
 }
 
 .workspace-sidebar .btn-add-module,
@@ -2562,6 +2673,22 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   margin: 0 0 14px;
   color: var(--text-secondary);
   font-size: 0.875rem;
+}
+
+.nf-results__avg {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.nf-results__heading--secondary {
+  margin-top: 24px;
+}
+
+.nf-state-card--explain .nf-state-card__title {
+  display: block;
+  margin: 4px 0 2px;
+  font-size: 1rem;
 }
 
 .nf-results__toggle {

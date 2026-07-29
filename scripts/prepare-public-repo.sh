@@ -83,6 +83,17 @@ if [[ -f src/js/components/subscribe-pro-modal.js ]] && grep -q 'mercadopago' sr
   FAIL=1
 fi
 
+if [[ -f src/js/components/subscribe-pro-modal.js ]] && ! grep -q 'Stub repo público' src/js/components/subscribe-pro-modal.js 2>/dev/null; then
+  echo "FAIL: subscribe-pro-modal.js debe ser stub en repo público"
+  FAIL=1
+fi
+
+if [[ -f src-tauri/src/lib.rs ]] && grep -qE 'mod (muse_ble|subscription_api|usage_ping)|analyze_neurofeedback_session|muse_ble::|subscription_api::|usage_ping::|run_sidecar|resolve_python_(binary|script)' src-tauri/src/lib.rs 2>/dev/null; then
+  echo "FAIL: lib.rs aún referencia neurofeedback, BLE Muse o suscripciones"
+  echo "      Ejecuta ./scripts/strip-clinical-for-public.sh"
+  FAIL=1
+fi
+
 if [[ "$FAIL" -ne 0 ]]; then
   echo ""
   echo "prepare-public-repo: FALLÓ"

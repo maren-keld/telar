@@ -1,12 +1,18 @@
+use std::io::Write;
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
 use serde::Deserialize;
 
 mod ai_api;
+mod muse_ble;
 mod secure_db;
+mod subscription_api;
 mod touch_id;
+mod usage_ping;
 
 use tauri::Manager;
+use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 #[cfg(desktop)]
@@ -154,6 +160,115 @@ async fn save_data_export(
     Ok(exports.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+async fn analyze_neurofeedback_session(
+    app: tauri::AppHandle,
+    text_data: String,
+) -> Result<String, String> {
+    if text_data.trim().is_empty() {
+        return Err("Sin datos grabados".into());
+    }
+    match run_sidecar(&app, &text_data).await {
+        Ok(out) => Ok(out),
+        Err(sidecar_err) => run_python_script(&text_data).map_err(|py_err| {
+            if py_err.contains("No se encontró el analizador") {
+                sidecar_err
+            } else {
+                format!("{sidecar_err} (fallback: {py_err})")
+            }
+        }),
+    }
+}
+
+async fn run_sidecar(app: &tauri::AppHandle, text_data: &str) -> Result<String, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("No se pudo resolver caché: {e}"))?;
+    std::fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("No se pudo crear caché: {e}"))?;
+    let tmp = cache_dir.join(format!(
+        "nf-{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    std::fs::write(&tmp, text_data.as_bytes())
+        .map_err(|e| format!("No se pudo escribir datos temporales: {e}"))?;
+    let path_arg = tmp.to_string_lossy().to_string();
+
+    let sidecar = app
+        .shell()
+        .sidecar("analyze_session")
+        .map_err(|e| format!("Sidecar no disponible: {e}"))?;
+
+    let (mut rx, _child) = sidecar
+        .args(["--file", &path_arg])
+        .spawn()
+        .map_err(|e| format!("No se pudo iniciar sidecar: {e}"))?;
+
+    let mut stdout = String::new();
+    let mut stderr = String::new();
+    let mut exit_ok = false;
+
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(line) => stdout.push_str(&String::from_utf8_lossy(&line)),
+            CommandEvent::Stderr(line) => stderr.push_str(&String::from_utf8_lossy(&line)),
+            CommandEvent::Terminated(payload) => {
+                exit_ok = payload.code == Some(0);
+            }
+            _ => {}
+        }
+    }
+
+    let _ = std::fs::remove_file(&tmp);
+
+    if !exit_ok {
+        return Err(format!(
+            "Análisis falló: {}",
+            if stderr.is_empty() { &stdout } else { &stderr }
+        ));
+    }
+
+    let out = stdout.trim().to_string();
+    if out.is_empty() {
+        return Err("Sidecar no devolvió datos".to_string());
+    }
+    Ok(out)
+}
+
+fn run_python_script(text_data: &str) -> Result<String, String> {
+    let script = resolve_python_script()?;
+    let python = resolve_python_binary();
+
+    let mut child = Command::new(&python)
+        .arg(&script)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("No se pudo ejecutar Python ({python}): {e}"))?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(text_data.as_bytes())
+            .map_err(|e| format!("Error escribiendo datos a Python: {e}"))?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("Error esperando análisis: {e}"))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Análisis falló: {err}"));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 // --- DB cifrada (PIN) ---
 use secure_db::{
     backup_encrypted_db, db_execute, db_lock, db_select, db_status, db_unlock, db_unlock_touch_id,
@@ -174,6 +289,47 @@ async fn db_backup_encrypted(app: tauri::AppHandle) -> Result<String, String> {
     Ok(path)
 }
 
+fn resolve_python_binary() -> String {
+    if let Ok(p) = std::env::var("TELAR_PYTHON") {
+        return p;
+    }
+    for candidate in ["python3", "python"] {
+        if Command::new(candidate)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+        {
+            return candidate.to_string();
+        }
+    }
+    "python3".to_string()
+}
+
+fn resolve_python_script() -> Result<PathBuf, String> {
+    if let Ok(p) = std::env::var("TELAR_ANALYZE_SCRIPT") {
+        let path = PathBuf::from(p);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    let candidates = [
+        PathBuf::from("python/analyze_session.py"),
+        PathBuf::from("../python/analyze_session.py"),
+    ];
+
+    for c in candidates {
+        if c.exists() {
+            return Ok(c.canonicalize().unwrap_or(c));
+        }
+    }
+
+    Err("No se encontró el analizador. Ejecuta: ./scripts/build-sidecar.sh".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -182,6 +338,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             check_app_update,
             install_app_update,
+            analyze_neurofeedback_session,
+            muse_ble::muse_connect,
+            muse_ble::muse_disconnect,
+            muse_ble::muse_is_native_available,
             db_status,
             db_unlock,
             db_unlock_touch_id,
@@ -199,6 +359,10 @@ pub fn run() {
             db_wipe_all_data,
             db_backup_encrypted,
             ai_api::ai_chat_completion,
+            subscription_api::subscription_checkout,
+            subscription_api::subscription_health,
+            subscription_api::subscription_status,
+            usage_ping::usage_ping,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

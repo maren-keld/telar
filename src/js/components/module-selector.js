@@ -22,6 +22,11 @@ const CATEGORIES = [
     types: ['registro_inicial', 'motivo_consulta', 'redes_apoyo', 'diagnostico'],
   },
   {
+    id: 'intervencion',
+    label: 'Intervención',
+    types: ['neurofeedback', 'bilateral_stimulation'],
+  },
+  {
     id: 'tcc',
     label: 'Psicoeducación',
     types: [

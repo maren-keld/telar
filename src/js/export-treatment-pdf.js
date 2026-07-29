@@ -1,6 +1,6 @@
 import { TREATMENT_STATUS } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
-import { getSessionsWithModules, getTreatment } from './db.js';
+import { getSessionsWithModules, getTreatment, getTreatmentReport } from './db.js';
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
 import { buildReadableText } from './readable-text.js';
 import { loadProfile } from './profile.js';
@@ -143,6 +143,7 @@ export async function exportTreatmentPdf(treatmentId) {
   if (!treatment) throw new Error('Tratamiento no encontrado');
 
   const sessions = await getSessionsWithModules(treatmentId);
+  const nfRecordings = await getTreatmentReport(treatmentId);
   const profile = loadProfile();
   const patient = patientFromSessions(sessions);
   const statusLabel = TREATMENT_STATUS[treatment.status]?.label || treatment.status || '—';
@@ -262,6 +263,26 @@ export async function exportTreatmentPdf(treatmentId) {
     y += 2;
   }
 
+  if (nfRecordings.length) {
+    y += 4;
+    y = ensurePdfSpace(doc, y, 20);
+    y = pdfText(doc, 'Resultados neurofeedback', MARGIN, y, { size: 12, style: 'bold' });
+    y += 4;
+    for (const r of nfRecordings) {
+      y = ensurePdfSpace(doc, y, 12);
+      const res = parseJsonSafe(r.results_json, {});
+      const line = [
+        `Sesión ${r.session_number}`,
+        r.protocol,
+        formatDate(r.started_at),
+        res.relaxation_pct != null ? `Relajación ${res.relaxation_pct}%` : null,
+        res.calm_pct != null ? `Calma ${res.calm_pct}%` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      y = pdfText(doc, line, MARGIN + 4, y, { size: 9 });
+    }
+  }
 
   const safeName = (treatment.patient_name || 'paciente').replace(/[^\w\s-áéíóúñ]/gi, '').trim();
   const filename = `programa-tratamiento-${safeName || 'paciente'}.pdf`;

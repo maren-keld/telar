@@ -4,7 +4,7 @@ export function pinBoxesHtml(id, label) {
   const boxes = Array.from({ length: 6 })
     .map(
       (_, i) =>
-        `<input class="pinbox" data-pin="${id}" data-idx="${i}" inputmode="numeric" maxlength="1" autocomplete="off" />`,
+        `<input class="pinbox" type="password" inputmode="numeric" pattern="[0-9]*" data-pin="${id}" data-idx="${i}" maxlength="1" autocomplete="off" aria-label="Dígito ${i + 1} de 6" />`,
     )
     .join('');
 
@@ -40,9 +40,20 @@ export function bindPinBoxes(root, id) {
   const clampDigit = (v) => (/\d/.test(v) ? v : '');
 
   inputs.forEach((el, idx) => {
-    el.addEventListener('input', () => {
-      el.value = clampDigit((el.value || '').slice(-1));
+    const advance = () => {
       if (el.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+    };
+
+    el.addEventListener('input', () => {
+      const digit = clampDigit((el.value || '').replace(/\D/g, '').slice(-1));
+      el.value = digit;
+      if (digit) advance();
+    });
+
+    el.addEventListener('keyup', () => {
+      if (el.value && idx < inputs.length - 1 && document.activeElement === el) {
+        advance();
+      }
     });
 
     el.addEventListener('keydown', (ev) => {

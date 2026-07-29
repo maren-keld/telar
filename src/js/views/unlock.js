@@ -1,6 +1,6 @@
 import { bindPinBoxes, focusFirstEmpty, isValidPin, pinBoxesHtml, readPin } from '../components/pin-input.js';
 import { BUILD_STAMP_LABEL } from '../build-info.js';
-import { APP_RELEASE_LABEL, appVersionLabel } from '../app-version.js';
+import { appVersionLabel } from '../app-version.js';
 import { ICON_FINGERPRINT, ICON_LOCK } from '../icons.js';
 import { loadProfile } from '../profile.js';
 import { getInvoke } from '../tauri-bridge.js';
@@ -16,7 +16,6 @@ export async function renderUnlock(host, { onNavigate }) {
             <img src="assets/telar-icon.png" width="72" height="72" alt="" />
           </div>
           <h1 class="initial-screen__title">Telar</h1>
-          <p class="initial-screen__release">${APP_RELEASE_LABEL}</p>
         </header>
         <p class="initial-screen__sub">Preparando desbloqueo…</p>
       </div>
@@ -47,7 +46,6 @@ export async function renderUnlock(host, { onNavigate }) {
             <img src="assets/telar-icon.png" width="72" height="72" alt="" />
           </div>
           <h1 class="initial-screen__title">Telar</h1>
-          <p class="initial-screen__release">${APP_RELEASE_LABEL}</p>
         </header>
         <p class="initial-screen__sub" id="unlockSub">${subtitle}</p>
 

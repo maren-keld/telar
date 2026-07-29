@@ -67,6 +67,12 @@ jobs:
           if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release download "$TAG" --repo "${{ github.repository }}" -p "telar-packs-bundle.tar.gz" -D dist || true
           fi
+          if [[ ! -f "$BUNDLE" ]]; then
+            PREV="$(gh release list --repo "${{ github.repository }}" --limit 5 --json tagName -q '.[].tagName' | grep -v "^${TAG}$" | head -1 || true)"
+            if [[ -n "$PREV" ]]; then
+              gh release download "$PREV" --repo "${{ github.repository }}" -p "telar-packs-bundle.tar.gz" -D dist || true
+            fi
+          fi
           if [[ -f "$BUNDLE" ]]; then
             tar -xzf "$BUNDLE" -C .
             echo "→ Packs clínicos restaurados desde release asset"

@@ -11,6 +11,7 @@ import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
 import { initLocaleFromProfile } from './i18n.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
+import { teardownNeurofeedback } from './modules/neurofeedback.js';
 import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
@@ -51,6 +52,7 @@ async function render() {
   const onNavigate = navigate;
 
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
+    teardownNeurofeedback();
     teardownBilateralStimulation();
   }
   lastRenderedView = view;
@@ -70,6 +72,11 @@ async function render() {
       }
     }
     window.__telarStage = `render:view(${view})`;
+
+    if (view !== 'unlock' && window.__telarPacksReady) {
+      window.__telarStage = `render:await_packs(${view})`;
+      await window.__telarPacksReady;
+    }
 
     switch (view) {
       case 'agenda':
@@ -174,12 +181,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     maybeSyncProFromServer().catch((err) => console.debug('[subscription-sync]', err?.message || err));
   }
 
+  // Packs en segundo plano — no bloquear PIN / unlock (Windows first boot puede tardar).
   stage('init:packs');
-  try {
-    await loadPacks();
-  } catch (err) {
+  const packsReady = loadPacks().catch((err) => {
     console.warn('[packs] load failed, using legacy fallback:', err?.message || err);
-  }
+  });
+  window.__telarPacksReady = packsReady;
 
   if (!location.hash) {
     if (isTauriApp()) {

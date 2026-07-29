@@ -1,5 +1,5 @@
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
-import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats } from '../db.js';
+import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats, getTreatmentReport } from '../db.js';
 import { escapeHtml, formatDate, parseJsonSafe } from '../utils.js';
 
 const PIE_COLORS = [
@@ -137,7 +137,37 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
   const chartLabels = dash.new_patients_by_month.map((m) => formatMonth(m.ym));
   const chartValues = dash.new_patients_by_month.map((m) => m.count);
 
-  const extraHtml = '';
+  let extraHtml = '';
+  if (treatmentId) {
+    const recordings = await getTreatmentReport(treatmentId);
+    extraHtml = `
+      <section class="reportes-section">
+        <div class="card reportes-chart-card">
+          <h2 class="reportes-section__title">Neurofeedback — este tratamiento</h2>
+          ${
+            recordings.length
+              ? `<table class="reportes-table">
+          <thead><tr><th>Sesión</th><th>Protocolo</th><th>Fecha</th><th>Resultados</th></tr></thead>
+          <tbody>
+          ${recordings
+            .map((r) => {
+              const res = parseJsonSafe(r.results_json, {});
+              const relPct = escapeHtml(String(res.relaxation_pct ?? '—'));
+              const calmPct = escapeHtml(String(res.calm_pct ?? '—'));
+              return `<tr>
+                <td>${escapeHtml(String(r.session_number))}</td>
+                <td>${escapeHtml(r.protocol || '—')}</td>
+                <td>${formatDate(r.started_at)}</td>
+                <td>${relPct}% relaj · ${calmPct}% calma</td>
+              </tr>`;
+            })
+            .join('')}
+          </tbody></table>`
+              : '<p class="reportes-empty">Sin grabaciones de neurofeedback en este tratamiento.</p>'
+          }
+        </div>
+      </section>`;
+  }
 
   container.innerHTML = `
     ${renderAppSidebar('reportes')}

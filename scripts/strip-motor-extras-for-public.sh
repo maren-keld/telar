@@ -93,23 +93,71 @@ PY
 python3 <<'PY'
 from pathlib import Path
 import re
+import sys
 
-p = Path("src-tauri/src/lib.rs")
-t = p.read_text()
+LIB = Path("src-tauri/src/lib.rs")
+FORBIDDEN = (
+    "mod muse_ble;",
+    "mod subscription_api;",
+    "mod usage_ping;",
+    "analyze_neurofeedback_session",
+    "run_sidecar",
+    "run_python_script",
+    "resolve_python_binary",
+    "resolve_python_script",
+    "muse_ble::",
+    "subscription_api::",
+    "usage_ping::",
+    "CommandEvent",
+)
+
+def remove_balanced_block(text: str, start: int) -> str:
+    brace = text.find("{", start)
+    if brace == -1:
+        return text
+    depth = 0
+    for i in range(brace, len(text)):
+        ch = text[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                while end < len(text) and text[end] in "\r\n":
+                    end += 1
+                return text[:start] + text[end:]
+    raise RuntimeError(f"bloque sin cerrar en lib.rs cerca de: {text[start:start + 80]!r}")
+
+def remove_fn(text: str, name: str, *, command: bool = False) -> str:
+    patterns = []
+    if command:
+        patterns.extend(
+            (
+                rf"#\[tauri::command\]\n(?:#\[[^\]]+\]\n)?async fn {name}\(",
+                rf"#\[tauri::command\]\n(?:#\[[^\]]+\]\n)?fn {name}\(",
+            )
+        )
+    patterns.extend((rf"async fn {name}\(", rf"fn {name}\("))
+    for pat in patterns:
+        m = re.search(pat, text)
+        if m:
+            return remove_balanced_block(text, m.start())
+    return text
+
+t = LIB.read_text()
 for mod in ("muse_ble", "subscription_api", "usage_ping"):
-    t = re.sub(rf"mod {mod};\n", "", t)
-t = re.sub(
-    r"#\[tauri::command\]\nasync fn analyze_neurofeedback_session.*?\n\}\n\nasync fn run_sidecar.*?\n\}\n\nfn run_python_script.*?\n\}\n\n",
-    "",
-    t,
-    flags=re.DOTALL,
-)
-t = re.sub(
-    r"\nfn resolve_python_binary\(\) -> String \{.*?\n\}\n\nfn resolve_python_script\(\) -> Result<PathBuf, String> \{.*?\n\}\n\n",
-    "\n",
-    t,
-    flags=re.DOTALL,
-)
+    t = re.sub(rf"^mod {mod};\n", "", t, flags=re.M)
+
+for fn, is_cmd in (
+    ("analyze_neurofeedback_session", True),
+    ("run_sidecar", False),
+    ("run_python_script", False),
+    ("resolve_python_binary", False),
+    ("resolve_python_script", False),
+):
+    t = remove_fn(t, fn, command=is_cmd)
+
 for cmd in (
     "analyze_neurofeedback_session",
     "muse_ble::muse_connect",
@@ -120,11 +168,19 @@ for cmd in (
     "subscription_api::subscription_status",
     "usage_ping::usage_ping",
 ):
-    t = re.sub(rf"            {re.escape(cmd)},\n", "", t)
+    t = re.sub(rf"^[ \t]*{re.escape(cmd)},\n", "", t, flags=re.M)
+
 t = t.replace("use tauri_plugin_shell::process::CommandEvent;\n", "")
-t = re.sub(r"use std::io::Write;\n", "", t)
-t = re.sub(r"use std::process::\{Command, Stdio\};\n", "", t)
-p.write_text(t)
+t = re.sub(r"^use std::io::Write;\n", "", t, flags=re.M)
+t = re.sub(r"^use std::process::\{Command, Stdio\};\n", "", t, flags=re.M)
+t = re.sub(r"\n{3,}", "\n\n", t)
+
+left = [needle for needle in FORBIDDEN if needle in t]
+if left:
+    print("FAIL: lib.rs aún contiene referencias NF/BLE/suscripciones:", ", ".join(left))
+    sys.exit(1)
+
+LIB.write_text(t)
 PY
 
 # Cargo.toml — sin deps BLE

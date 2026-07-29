@@ -120,9 +120,14 @@ export async function renderAgenda(container, { search = '', onNavigate }) {
   bindAppSidebar(container, { onNavigate });
 
   container.querySelector('#btn-add-treatment')?.addEventListener('click', async () => {
-    const allowed = await requireActivePatientSlot();
-    if (!allowed) return;
+    const btn = container.querySelector('#btn-add-treatment');
+    if (btn?.disabled) return;
+    btn.disabled = true;
+    const labelPrev = btn.textContent;
+    btn.textContent = 'Creando…';
     try {
+      const allowed = await requireActivePatientSlot();
+      if (!allowed) return;
       const patientId = await upsertPatient({
         name: 'Paciente sin nombre',
         id_number: '',
@@ -134,6 +139,9 @@ export async function renderAgenda(container, { search = '', onNavigate }) {
       await openTreatmentWorkspace(treatmentId, onNavigate);
     } catch (err) {
       toast(err.message || 'No se pudo crear el tratamiento');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = labelPrev;
     }
   });
 }

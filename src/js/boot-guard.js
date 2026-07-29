@@ -14,7 +14,7 @@
       '<p class="boot-splash__hint">' +
       String(msg || '').replace(/</g, '&lt;') +
       '</p>' +
-      '<p class="boot-splash__hint">Cierra con Cmd+Q y vuelve a abrir Telar. Si persiste, comparte este mensaje.</p>' +
+      '<p class="boot-splash__hint">Cierra la app (Mac: Cmd+Q · Windows: Alt+F4) y vuelve a abrir Telar. Si persiste, comparte este mensaje.</p>' +
       '</div>';
   }
 
@@ -31,7 +31,7 @@
     show('Error al iniciar', (r && r.message) || String(r || 'Promesa rechazada'));
   });
 
-  // Watchdog: si tras 8 s sigue el splash inicial, algo se colgó.
+  // Watchdog: primer arranque (packs + Tauri) puede tardar en Windows.
   window.setTimeout(function () {
     if (window.__telarBooted) return;
     var splash = document.getElementById('boot-splash');
@@ -41,5 +41,5 @@
         'Etapa: ' + (window.__telarStage || 'desconocida') + '. No se completó el arranque.',
       );
     }
-  }, 8000);
+  }, 25000);
 })();

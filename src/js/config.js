@@ -33,6 +33,11 @@ export const CORE_MODULE_DEFS = {
     category: 'conceptualizacion',
     description: 'Problemas, indicadores y objetivos por tratamiento.',
   },
+  neurofeedback: {
+    label: 'Neurofeedback',
+    category: 'intervencion',
+    description: 'Sesión en vivo con Muse, FFT y análisis local.',
+  },
 };
 
 /** Core + packs cargados. Usar en lugar de MODULE_DEFS estático. */

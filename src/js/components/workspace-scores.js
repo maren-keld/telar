@@ -273,7 +273,7 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
         accordionHtml(
           'chart-nf',
           'Neurofeedback',
-          'En tiempo — porcentaje en la grabación',
+          'Evolución por sesión (promedio de grabación)',
           `<div class="score-chart-wrap"><canvas id="chart-nf-time" height="160"></canvas></div>`,
           !sections.length,
         ),

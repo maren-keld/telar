@@ -11,6 +11,7 @@ CANONICAL="$ROOT/dist/Telar.app"
 STAMP_FILE="$ROOT/dist/.build-stamp"
 
 echo "→ Sidecar Python…"
+"$ROOT/scripts/build-sidecar.sh"
 
 if [[ -f "$ROOT/app-icon.png" ]]; then
   echo "→ Iconos…"
@@ -56,6 +57,10 @@ date "+%a %e %b %H:%M" | tr '[:upper:]' '[:lower:]' | sed 's/  / /g;s/^ //' > "$
 # Evitar dos iconos en Finder dentro del proyecto: quitar copia en target tras publicar en dist/
 rm -rf "$BUILT"
 "$ROOT/scripts/cleanup-duplicate-apps.sh"
+
+echo "→ Entitlements macOS (Bluetooth, etc.)…"
+chmod +x "$ROOT/scripts/apply-macos-entitlements.sh"
+"$ROOT/scripts/apply-macos-entitlements.sh" "$CANONICAL"
 
 if [[ "${SIGN_MACOS:-}" == "1" ]]; then
   echo "→ Firma / notarización macOS…"
