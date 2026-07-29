@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from '../config.js';
+import { getModuleDef } from '../config.js';
 import { addSession, getSessions, getTreatment } from '../db.js';
 import { escapeHtml } from '../utils.js';
 
@@ -74,5 +74,5 @@ export async function renderTreatment(container, { treatmentId, onNavigate }) {
 }
 
 export function moduleLabel(type) {
-  return MODULE_DEFS[type]?.label || type;
+  return getModuleDef(type)?.label || type;
 }

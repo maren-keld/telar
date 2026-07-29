@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from '../config.js';
+import { getModuleDefs } from '../config.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openCreateModuleModal } from '../components/create-module-modal.js';
 import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
@@ -18,7 +18,7 @@ function moduleTile(type, def) {
 
 export async function renderModulesLibrary(container, { onNavigate }) {
   const customMods = listCustomModules();
-  const builtins = Object.entries(MODULE_DEFS).filter(([t]) => t !== 'selector_modulo');
+  const builtins = Object.entries(getModuleDefs()).filter(([t]) => t !== 'selector_modulo');
 
   container.innerHTML = `
     ${renderAppSidebar('modules')}

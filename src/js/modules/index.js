@@ -1,3 +1,10 @@
+/**
+ * Registry dinámico de renderers + fallback legacy (transición open-core).
+ */
+import { getRenderer, hasModuleType } from '../pack-registry.js';
+import { isCustomQuestionnaireType, renderCustomQuestionnaire } from './custom-questionnaire.js';
+
+// Fallback legacy — imports estáticos mientras packs no cubren todo
 import { renderMotivoConsulta } from './motivo-consulta.js';
 import { renderNeurofeedback } from './neurofeedback.js';
 import { renderRegistroInicial } from './registro-inicial.js';
@@ -22,9 +29,8 @@ import { renderTccPlanSeguridad } from './tcc-plan-seguridad.js';
 import { renderTccActivacion } from './tcc-activacion.js';
 import { renderTccGeneric } from './tcc-generic.js';
 import { renderSelectorModulo } from './selector-modulo.js';
-import { isCustomQuestionnaireType, renderCustomQuestionnaire } from './custom-questionnaire.js';
 
-const RENDERERS = {
+const LEGACY_RENDERERS = {
   selector_modulo: renderSelectorModulo,
   registro_inicial: renderRegistroInicial,
   motivo_consulta: renderMotivoConsulta,
@@ -58,17 +64,28 @@ const RENDERERS = {
   diagnostico: renderDiagnostico,
 };
 
+function resolveRenderer(moduleType) {
+  const fromPack = getRenderer(moduleType);
+  if (fromPack) return fromPack;
+  return LEGACY_RENDERERS[moduleType] || null;
+}
+
 export async function renderModule(host, moduleRow, ctx = {}) {
   if (isCustomQuestionnaireType(moduleRow.module_type)) {
     await renderCustomQuestionnaire(host, moduleRow, ctx);
     return;
   }
-  const fn = RENDERERS[moduleRow.module_type];
+  const fn = resolveRenderer(moduleRow.module_type);
   if (!fn) {
     host.innerHTML = `<div class="card"><p>Módulo «${moduleRow.module_type}» aún no implementado en esta versión.</p></div>`;
     return;
   }
   await fn(host, moduleRow, ctx);
+}
+
+export function isModuleTypeAvailable(moduleType) {
+  if (isCustomQuestionnaireType(moduleType)) return true;
+  return hasModuleType(moduleType) || Boolean(LEGACY_RENDERERS[moduleType]);
 }
 
 export { teardownBilateralStimulation };

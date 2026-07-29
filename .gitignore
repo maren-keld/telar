@@ -28,3 +28,12 @@ playwright-report/
 .cursor/
 CLAUDE.md
 docs/
+
+# Contenido clínico propietario (open-core)
+packs/
+packs-private/
+src/packs/clinical-shared/
+src/packs/tdah-adulto/
+src/packs/trauma-regulacion/
+!src/packs/demo/
+!src/packs/index.public.json

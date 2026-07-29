@@ -914,6 +914,22 @@ section {
   margin-bottom: 1.25rem;
 }
 
+.pricing-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.pricing-footnote {
+  max-width: 40rem;
+  margin: 1.75rem auto 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.55;
+}
+
 .pricing-list {
   list-style: none;
   padding: 0;

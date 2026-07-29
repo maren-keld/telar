@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from './config.js';
+import { getModuleDef } from './config.js';
 import { formatTccHandoutReadable } from './tcc-handout-defs.js';
 import { saveModuleData } from './db.js';
 import { asrsSummary } from './asrs-scoring.js';
@@ -334,7 +334,7 @@ export async function syncModuleReadableText(moduleRow, payload, status) {
   const prev = parseJsonSafe(moduleRow.data, {});
   const merged = { ...prev, ...payload };
   const readable = buildReadableText(moduleRow.module_type, merged);
-  const label = MODULE_DEFS[moduleRow.module_type]?.label || moduleRow.module_type;
+  const label = getModuleDef(moduleRow.module_type)?.label || moduleRow.module_type;
   const header = `# ${label}\n`;
   merged.readable_text = readable ? `${header}${readable}` : header;
   await saveModuleData(moduleRow.id, merged, status || moduleRow.status || 'pendiente');

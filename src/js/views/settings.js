@@ -32,6 +32,7 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'usagePing',
   'locale',
   'backupDb',
+  'backupCloud',
   'exportData',
   'wipeData',
   'checkUpdate',
@@ -107,12 +108,12 @@ export async function renderSettings(container, { onNavigate }) {
   const locale = getLocale();
   let planUsageSub = isProUser()
     ? 'Suscripción activa · pacientes ilimitados'
-    : `Gratis · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
+    : `Demo · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
   try {
     const usage = await getActivePatientUsage();
     planUsageSub = usage.pro
       ? `Suscripción activa · ${usage.count} pacientes activos`
-      : `Gratis · ${usage.count}/${usage.limit} pacientes activos`;
+      : `Demo · ${usage.count}/${usage.limit} pacientes activos`;
   } catch {
     /* DB aún no disponible */
   }
@@ -161,7 +162,7 @@ export async function renderSettings(container, { onNavigate }) {
         </div>
         <button type="button" class="settings-card settings-card--plan" id="btn-settings-plan">
           <div class="settings-plan">
-            <span class="settings-plan__badge">${isProUser() ? 'Pro' : 'Free'}</span>
+            <span class="settings-plan__badge">${isProUser() ? 'Pro' : 'Demo'}</span>
             <span class="settings-plan__text">
               <span class="settings-plan__label">Plan Profesional — Telar</span>
               <span class="settings-plan__sub">${escapeHtml(planUsageSub)} · ${escapeHtml(profile.email?.trim() || 'Configura tu email arriba')}</span>
@@ -175,7 +176,7 @@ export async function renderSettings(container, { onNavigate }) {
           ${row({
             icon: SETTINGS_ICONS.resetPlan,
             title: 'Restablecer plan (pruebas)',
-            subtitle: 'Vuelve a Free en este dispositivo para probar checkout de nuevo',
+            subtitle: 'Vuelve a Demo en este dispositivo para probar checkout de nuevo',
             dataField: 'resetSubscription',
           })}
         </div>`
@@ -229,6 +230,12 @@ export async function renderSettings(container, { onNavigate }) {
             title: t('settings.backup'),
             subtitle: t('settings.backupSub'),
             dataField: 'backupDb',
+          })}
+          ${row({
+            icon: SETTINGS_ICONS.backup,
+            title: 'Respaldo en la nube',
+            subtitle: 'Cifrado end-to-end — próximamente (Plan Profesional)',
+            dataField: 'backupCloud',
           })}
           ${row({
             icon: SETTINGS_ICONS.export,
@@ -295,14 +302,14 @@ export async function renderSettings(container, { onNavigate }) {
     const ok = await openConfirmModal({
       title: '¿Restablecer plan local?',
       message:
-        'Telar volverá a Free solo en este Mac. No cancela tu suscripción en Mercado Pago. ' +
+        'Telar volverá a Demo solo en este Mac. No cancela tu suscripción en Mercado Pago. ' +
         'Úsalo para probar el checkout otra vez.',
       confirmLabel: 'Restablecer',
       cancelLabel: 'Cancelar',
     });
     if (!ok) return;
     resetLocalSubscriptionState();
-    toast('Plan restablecido a Free en este dispositivo');
+    toast('Plan restablecido a Demo en este dispositivo');
     renderSettings(container, { onNavigate });
   });
 
@@ -483,6 +490,15 @@ export async function renderSettings(container, { onNavigate }) {
     } finally {
       btn?.removeAttribute('disabled');
     }
+  });
+
+  // TODO(E2E-backup): implementar upload cifrado cuando exista backend
+  container.querySelector('[data-field="backupCloud"]')?.addEventListener('click', () => {
+    if (!isProUser()) {
+      openSubscribeProModal();
+      return;
+    }
+    toast('Respaldo en la nube — próximamente. Usa respaldo local mientras tanto.');
   });
 
   container.querySelector('[data-field="exportData"]')?.addEventListener('click', async () => {

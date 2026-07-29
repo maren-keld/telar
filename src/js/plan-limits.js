@@ -1,8 +1,9 @@
 /**
- * Límites del plan Free vs Pro.
+ * Límites del plan Demo vs Pro.
  *
- * Free: hasta FREE_ACTIVE_PATIENT_LIMIT pacientes con ≥1 tratamiento "en_tratamiento".
- * Pro: pacientes ilimitados; además exportación, NF completo y módulos (otros gates).
+ * Demo: hasta FREE_ACTIVE_PATIENT_LIMIT pacientes distintos con ≥1 tratamiento
+ *        en estado "en_tratamiento" (archivados, completados o en pausa no cuentan).
+ * Pro: pacientes ilimitados; grabación/export NF y export PDF de programa (otros gates).
  */
 import { openSubscribeProModal } from './components/subscribe-pro-modal.js';
 import { query } from './db.js';
@@ -40,7 +41,7 @@ export async function getActivePatientUsage() {
 }
 
 /**
- * ¿Crear / reactivar un paciente activo supera el tope Free?
+ * ¿Crear / reactivar un paciente activo supera el tope Demo?
  * @param {{ patientId?: number|null }} opts - Si el paciente ya está activo, no consume cupo nuevo.
  */
 export async function wouldExceedActivePatientLimit({ patientId = null } = {}) {
@@ -51,7 +52,7 @@ export async function wouldExceedActivePatientLimit({ patientId = null } = {}) {
 }
 
 /**
- * Bloquea creación/reactivación si Free está al tope. Abre modal Pro.
+ * Bloquea creación/reactivación si Demo está al tope. Abre modal Pro.
  * @returns {Promise<boolean>} true si puede continuar
  */
 export async function requireActivePatientSlot({ patientId = null, onAllowed } = {}) {

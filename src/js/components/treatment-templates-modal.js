@@ -1,11 +1,11 @@
 import { applyTreatmentTemplate } from '../db.js';
-import { MODULE_DEFS } from '../config.js';
+import { getModuleDef } from '../config.js';
 import { listTreatmentTemplates } from '../treatment-templates.js';
 import { escapeHtml, toast } from '../utils.js';
 import { openConfirmModal } from './confirm-modal.js';
 
 function moduleLabel(type) {
-  return MODULE_DEFS[type]?.label || type;
+  return getModuleDef(type)?.label || type;
 }
 
 function sessionPreviewHtml(tpl) {

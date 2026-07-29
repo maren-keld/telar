@@ -10,10 +10,11 @@ import {
 } from '../subscription.js';
 
 const PRO_FEATURES = [
-  'Pacientes ilimitados',
-  'Exportación',
-  'Neurofeedback completo',
-  'Módulos',
+  'Pacientes activos ilimitados',
+  'Grabar sesiones de Neurofeedback y exportar CSV/PDF',
+  'Exportar programa de tratamiento (PDF)',
+  'Acceso a curso de Neurofeedback y mentoría',
+  'Respaldo cifrado en la nube (próximamente)',
 ];
 
 const MP_SUBSCRIPTIONS_URL = 'https://www.mercadopago.cl/subscriptions';
@@ -35,7 +36,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           <button type="button" class="modal-close" aria-label="Cerrar">×</button>
         </header>
         <p class="subscribe-pro-modal__intro">
-          En Free puedes usar Telar con hasta <strong>3 pacientes activos</strong>.
+          En Demo tienes todos los packs clínicos, Neurofeedback en vivo y hasta <strong>3 pacientes activos</strong> (archivados o en pausa no cuentan).
           El Plan Profesional desbloquea:
         </p>
         <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite" ${pro ? 'hidden' : ''}>Comprobando servidor de pagos…</p>
@@ -51,7 +52,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </button>
         <p class="subscribe-pro-modal__fine">
           Abre tu cuenta de Mercado Pago para ver pagos, cambiar tarjeta o cancelar.
-          Si cancelas, Telar vuelve a Free en el próximo chequeo (al abrir la app).
+          Si cancelas, Telar vuelve a Demo en el próximo chequeo (al abrir la app).
         </p>
         ` : `
         <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">

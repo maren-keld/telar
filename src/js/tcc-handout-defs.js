@@ -1,6 +1,7 @@
-/** Definiciones de módulos TCC (elaboración propia Telar). Usado por tcc-generic.js y readable-text. */
+/** Definiciones TCC — packs registran vía pack-registry; fallback legacy embebido. */
+import { getHandoutDef, getSearchExtra, getTccVariables } from './pack-registry.js';
 
-export const TCC_HANDOUT_DEFS = {
+const LEGACY_TCC_HANDOUT_DEFS = {
   tcc_abc: {
     title: 'Modelo ABC (versión simple)',
     intro:
@@ -489,8 +490,11 @@ export const TCC_HANDOUT_DEFS = {
 };
 
 export function tccHandoutDef(moduleType) {
-  return TCC_HANDOUT_DEFS[moduleType] || null;
+  return getHandoutDef(moduleType) || LEGACY_TCC_HANDOUT_DEFS[moduleType] || null;
 }
+
+/** @deprecated — usar tccHandoutDef() */
+export const TCC_HANDOUT_DEFS = LEGACY_TCC_HANDOUT_DEFS;
 
 export function formatTccHandoutReadable(moduleType, data) {
   const def = tccHandoutDef(moduleType);
@@ -524,13 +528,20 @@ export function formatTccHandoutReadable(moduleType, data) {
   return parts.join('\n\n');
 }
 
-export const TCC_VARIABLES = {
+const LEGACY_TCC_VARIABLES = {
   tcc_abc: ['Registro cognitivo', 'Activador–creencias–consecuencias', 'Conciencia situacional'],
   tcc_plan_seguridad: ['Regulación de crisis', 'Red de apoyo', 'Seguridad vital'],
   tcc_activacion: ['Activación conductual', 'Regulación del ánimo', 'Rutinas funcionales'],
 };
 
-const MODULE_SEARCH_EXTRA = {
+export function tccVariablesFor(type) {
+  return getTccVariables(type) || LEGACY_TCC_VARIABLES[type] || null;
+}
+
+/** @deprecated — usar tccVariablesFor() */
+export const TCC_VARIABLES = LEGACY_TCC_VARIABLES;
+
+const LEGACY_MODULE_SEARCH_EXTRA = {
   tcc_abc: 'abc cognitivo activador creencias consecuencias',
   tcc_plan_seguridad: 'seguridad vital crisis suicidio estrés',
   tcc_activacion: 'activación conductual ánimo rutina',
@@ -551,7 +562,7 @@ export function moduleSearchBlob(type, def, psych) {
     def?.category,
     psych?.authors,
     psych?.learnMore,
-    MODULE_SEARCH_EXTRA[type],
+    getSearchExtra(type) || LEGACY_MODULE_SEARCH_EXTRA[type],
     ...tags,
   ];
   return chunks.filter(Boolean).join(' ').toLowerCase();

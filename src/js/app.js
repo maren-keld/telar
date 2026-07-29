@@ -1,3 +1,4 @@
+import { loadPacks } from './pack-loader.js';
 import { renderAgenda } from './views/agenda.js';
 import { renderNewPatient } from './views/new-patient.js';
 import { renderReportes } from './views/reportes.js';
@@ -173,6 +174,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     clearStaleLocalSubscriptionApiCache();
     safe('subscriptionWatcher', initSubscriptionCheckoutWatcher);
     maybeSyncProFromServer().catch((err) => console.debug('[subscription-sync]', err?.message || err));
+  }
+
+  stage('init:packs');
+  try {
+    await loadPacks();
+  } catch (err) {
+    console.warn('[packs] load failed, using legacy fallback:', err?.message || err);
   }
 
   if (!location.hash) {

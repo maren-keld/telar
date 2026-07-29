@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from './config.js';
+import { getModuleDef, getModuleDefs } from './config.js';
 import { moduleLabelI18n } from './i18n.js';
 import { loadProfile, saveProfile } from './profile.js';
 
@@ -46,7 +46,8 @@ export function deleteCustomModule(id) {
 }
 
 export function resolveModuleDef(moduleType) {
-  if (MODULE_DEFS[moduleType]) return MODULE_DEFS[moduleType];
+  const defs = getModuleDefs();
+  if (defs[moduleType]) return defs[moduleType];
   const custom = getCustomModuleByType(moduleType);
   if (custom) {
     return {

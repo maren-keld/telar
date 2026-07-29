@@ -1,4 +1,4 @@
-import { MODULE_DEFS } from './config.js';
+import { getModuleDef } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { buildReadableText } from './readable-text.js';
 import { asrsSummary } from './asrs-scoring.js';
@@ -67,7 +67,7 @@ export function psychometricSeries(sessions, type) {
 }
 
 export function psychometricChartMeta(type) {
-  const def = MODULE_DEFS[type];
+  const def = getModuleDef(type);
   return {
     title: def?.label || type,
     yMax:

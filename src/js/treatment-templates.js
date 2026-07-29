@@ -1,11 +1,8 @@
-/** Plantillas de programa prearmadas — foco TDAH / trauma.
- *
- * Las plantillas TDAH son de 8 sesiones: evaluación → psicoeducación/TCC →
- * seguimiento → reevaluación. La variante + NF intercalá neurofeedback.
- * Aplicar una plantilla solo AÑADE sesiones/módulos; no borra ni vacía contenido.
- */
+/** Plantillas de programa — motor delega a pack-registry; fallback legacy embebido. */
+import { listPrograms, getProgram as getPackProgram } from './pack-registry.js';
 
-export const TREATMENT_TEMPLATES = {
+/** Fallback si ningún pack cargó programas (dev sin packs / transición). */
+const LEGACY_TREATMENT_TEMPLATES = {
   tdah_8: {
     id: 'tdah_8',
     label: 'TDAH adulto (8 sesiones)',
@@ -61,9 +58,10 @@ export const TREATMENT_TEMPLATES = {
   },
 };
 
-/** Orden: TDAH primero, luego NF, luego trauma. */
 export function listTreatmentTemplates() {
-  return Object.values(TREATMENT_TEMPLATES).sort((a, b) => {
+  const fromPacks = listPrograms();
+  if (fromPacks.length) return fromPacks;
+  return Object.values(LEGACY_TREATMENT_TEMPLATES).sort((a, b) => {
     if (a.featured && !b.featured) return -1;
     if (!a.featured && b.featured) return 1;
     return a.label.localeCompare(b.label, 'es');
@@ -71,5 +69,10 @@ export function listTreatmentTemplates() {
 }
 
 export function getTreatmentTemplate(id) {
-  return TREATMENT_TEMPLATES[id] || null;
+  const fromPack = getPackProgram(id);
+  if (fromPack) return fromPack;
+  return LEGACY_TREATMENT_TEMPLATES[id] || null;
 }
+
+/** @deprecated — usar listTreatmentTemplates() */
+export const TREATMENT_TEMPLATES = LEGACY_TREATMENT_TEMPLATES;

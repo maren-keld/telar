@@ -1,4 +1,3 @@
-import { MODULE_DEFS } from '../config.js';
 import { moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';

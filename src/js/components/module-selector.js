@@ -1,9 +1,9 @@
-import { MODULE_DEFS } from '../config.js';
+import { getModuleDefs } from '../config.js';
 import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
 import { openCreateModuleModal } from './create-module-modal.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { psychometricsFor } from '../module-psychometrics.js';
-import { moduleSearchBlob, tccHandoutDef, TCC_VARIABLES } from '../tcc-handout-defs.js';
+import { moduleSearchBlob, tccHandoutDef, tccVariablesFor } from '../tcc-handout-defs.js';
 import {
   canDeleteModule,
   deleteSessionModule,
@@ -73,7 +73,7 @@ function searchTextForType(type, def, psych, customTitle) {
 
 function variablesRow(type) {
   const handout = tccHandoutDef(type);
-  const vars = handout?.variables || TCC_VARIABLES[type];
+  const vars = handout?.variables || tccVariablesFor(type);
   if (!vars?.length) return '';
   return `
     <div class="mod-info-row">
@@ -207,7 +207,7 @@ async function loadSelectorList(ctx) {
   );
   const inTreatment = new Set();
   const oncePerTreatmentBlocked = {};
-  for (const [type, def] of Object.entries(MODULE_DEFS)) {
+  for (const [type, def] of Object.entries(getModuleDefs())) {
     if (type === 'selector_modulo') continue;
     const used = await treatmentHasModuleType(ctx.treatmentId, type);
     if (used) inTreatment.add(type);
@@ -243,7 +243,10 @@ async function loadSelectorList(ctx) {
   listEl.innerHTML =
     customCategoryHtml +
     CATEGORIES.map((cat) => {
-      const items = cat.types
+      const available = getModuleDefs();
+      const types = cat.types.filter((type) => available[type]);
+      if (!types.length) return '';
+      const items = types
         .map((type) => {
           const def = resolveModuleDef(type) || { label: type, description: '' };
           const psych = psychometricsFor(type);

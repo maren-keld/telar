@@ -1,6 +1,7 @@
-/** Metadatos psicométricos para el selector de módulos (Chile / uso clínico). */
+/** Metadatos psicométricos — packs + fallback legacy. */
+import { getPsychometric } from './pack-registry.js';
 
-export const MODULE_PSYCHOMETRICS = {
+const LEGACY_MODULE_PSYCHOMETRICS = {
   dass21: {
     authors: 'Lovibond & Lovibond (1995)',
     ageRange: 'Desde 12 años',
@@ -193,5 +194,8 @@ export const MODULE_PSYCHOMETRICS = {
 };
 
 export function psychometricsFor(type) {
-  return MODULE_PSYCHOMETRICS[type] || null;
+  return getPsychometric(type) || LEGACY_MODULE_PSYCHOMETRICS[type] || null;
 }
+
+/** @deprecated */
+export const MODULE_PSYCHOMETRICS = LEGACY_MODULE_PSYCHOMETRICS;
