@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipo — Telar</title>
+  <meta name="description" content="Quienes hacemos Telar: psicología clínica, desarrollo de software y contacto con colegas.">
+  <link rel="canonical" href="https://telarapp.cl/equipo">
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..400&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260730d">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="brand">
+        <img src="assets/icon.png" alt="" width="36" height="36">
+        Telar
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="index.html#funciones">Funciones</a>
+        <a href="index.html#requisitos">Requisitos</a>
+        <a href="index.html#instalar">Instalar</a>
+        <a href="index.html#contacto">Contacto</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="page-hero">
+      <div class="container">
+        <p class="section-label">Equipo</p>
+        <h1>Quienes hacemos Telar</h1>
+        <p class="page-hero-lead">Una app clínica hecha por psicólogos, para psicólogos — con desarrollo local en Chile y contacto directo con quienes la usan.</p>
+      </div>
+    </section>
+
+    <section class="team-section">
+      <div class="container">
+        <div class="team-grid">
+          <article class="team-card">
+            <img
+              class="team-photo"
+              src="assets/team-felipe.png"
+              alt="Felipe"
+              width="150"
+              height="150"
+              loading="eager"
+              decoding="async"
+            >
+            <div class="team-card-body">
+              <h2>Felipe</h2>
+              <p class="team-role">Psicólogo clínico y desarrollador</p>
+              <p class="team-bio">Diseña los packs clínicos, el flujo de sesión y el motor de Telar. Trabaja casos de TDAH, trauma y ansiedad en consulta privada.</p>
+            </div>
+          </article>
+
+          <article class="team-card">
+            <img
+              class="team-photo"
+              src="assets/team-debbie.png"
+              alt="Debbie"
+              width="150"
+              height="150"
+              loading="eager"
+              decoding="async"
+            >
+            <div class="team-card-body">
+              <h2>Debbie</h2>
+              <p class="team-role">Outreach y ventas</p>
+              <p class="team-bio">Primer contacto con colegas interesados en Telar, demos, suscripción Pro y coordinación del curso de Neurofeedback.</p>
+              <p class="team-contact"><a href="tel:+56920509726">+56 9 2050 9726</a> · <a href="https://wa.me/56920509726" target="_blank" rel="noopener">WhatsApp</a></p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>Telar</strong><br>
+        Hecho en Chile · 2026
+      </div>
+      <div class="footer-links">
+        <a href="index.html">Inicio</a>
+        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+        <a href="privacidad.html">Privacidad</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const navToggle = document.getElementById('nav-toggle');
+    const navLinks = document.getElementById('nav-links');
+
+    function setMenu(open) {
+      navLinks.classList.toggle('open', open);
+      navToggle.setAttribute('aria-expanded', String(open));
+      navToggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    navToggle.addEventListener('click', () => {
+      setMenu(navToggle.getAttribute('aria-expanded') !== 'true');
+    });
+    navLinks.addEventListener('click', (event) => {
+      if (event.target.closest('a')) setMenu(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setMenu(false);
+    });
+  </script>
+</body>
+</html>

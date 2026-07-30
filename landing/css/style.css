@@ -1154,6 +1154,77 @@ section {
   color: var(--accent);
 }
 
+/* Team */
+.team-section {
+  padding: 0 0 4rem;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.team-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-card);
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: start;
+}
+
+.team-photo {
+  display: block;
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  object-position: center top;
+  filter: grayscale(100%);
+}
+
+.team-card-body {
+  padding: 1.25rem 1.5rem;
+}
+
+.team-card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.team-role {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.team-bio {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.team-contact {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.team-contact a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.team-contact a:hover {
+  text-decoration: underline;
+}
+
 /* Mobile nav toggle */
 .nav-toggle {
   display: none;
@@ -1198,6 +1269,14 @@ section {
   .feature-card--shot .feature-shot {
     max-width: 400px;
     margin: 0 auto;
+  }
+
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-card {
+    grid-template-columns: 150px 1fr;
   }
 
   .nav-links {
