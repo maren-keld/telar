@@ -11,7 +11,6 @@ CANONICAL="$ROOT/dist/Telar.app"
 STAMP_FILE="$ROOT/dist/.build-stamp"
 
 echo "→ Sidecar Python…"
-"$ROOT/scripts/build-sidecar.sh"
 
 if [[ -f "$ROOT/app-icon.png" ]]; then
   echo "→ Iconos…"

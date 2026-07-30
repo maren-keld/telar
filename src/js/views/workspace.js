@@ -13,7 +13,6 @@ import {
   getTreatment,
 } from '../db.js';
 import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
-import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
 import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
@@ -222,7 +221,6 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   bindModuleScrollSpy(container);
 
   container.querySelector('[data-back]')?.addEventListener('click', () => {
-    teardownNeurofeedback();
     teardownBilateralStimulation();
     onNavigate({ view: 'agenda' });
   });
@@ -455,7 +453,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
       const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
 
-      if (handout || deletable || mod.module_type === 'neurofeedback' || swappable) {
+      if (handout || deletable || swappable) {
         const actions = document.createElement('div');
         actions.className = 'module-card-actions';
 
@@ -483,19 +481,6 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
           actions.appendChild(swapBtn);
         }
 
-        if (mod.module_type === 'neurofeedback') {
-          const helpBtn = document.createElement('button');
-          helpBtn.type = 'button';
-          helpBtn.className = 'module-help-btn';
-          helpBtn.title = 'Ayuda neurofeedback';
-          helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
-          helpBtn.textContent = '?';
-          helpBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toast(NF_HELP_MESSAGE);
-          });
-          actions.appendChild(helpBtn);
-        }
 
         if (handout) {
           const printBtn = document.createElement('button');

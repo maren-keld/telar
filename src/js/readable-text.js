@@ -151,22 +151,6 @@ function formatSprintEcl(d) {
     .join('\n');
 }
 
-function formatNeurofeedback(d) {
-  const meta = d.last_meta || {};
-  const res = d.last_results || {};
-  const notes = d.session_notes?.trim();
-  return [
-    meta.protocol ? `Protocolo: ${meta.protocol}` : null,
-    meta.device ? `Dispositivo: ${meta.device}` : null,
-    meta.duration_sec != null ? `Duración: ${meta.duration_sec} s` : null,
-    res.calm_pct != null ? `Calma: ${res.calm_pct}%` : null,
-    res.attentive_pct != null ? `Atención: ${res.attentive_pct}%` : null,
-    res.relaxation_pct != null ? `Relajación: ${res.relaxation_pct}%` : null,
-    notes ? `Notas: ${notes}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
 
 function formatAdes(d) {
   const s = adesSummary(d);
@@ -279,8 +263,6 @@ export function buildReadableText(moduleType, data) {
     }
     case 'diagnostico':
       return formatDiagnostico(d);
-    case 'neurofeedback':
-      return formatNeurofeedback(d);
     case 'bilateral_stimulation':
       return formatBilateral(d);
     case 'tcc_abc':
