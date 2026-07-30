@@ -30,6 +30,8 @@ npm run test
 
 Pack demo: `src/packs/demo/` (escala subjetiva + ABC).
 
+Mantenedores (open core vs app completa, releases, rama `dev-full`): [`scripts/OPEN-CORE.md`](scripts/OPEN-CORE.md).
+
 ## Privacidad
 
 [telarapp.cl/privacidad](https://telarapp.cl/privacidad.html)
