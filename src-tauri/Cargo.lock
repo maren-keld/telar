@@ -4076,7 +4076,7 @@ dependencies = [
 
 [[package]]
 name = "telar"
-version = "0.1.0-beta.4"
+version = "0.1.0-beta.6"
 dependencies = [
  "argon2",
  "base64 0.22.1",

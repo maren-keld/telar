@@ -1,4 +1,5 @@
 /** Preferencias de asistente IA (AI-1). Modelo local se descarga aparte, no va en el .app. */
+import { BUNDLED_MISTRAL_API_KEY } from './ai-secrets.js';
 
 export const AI_MODES = {
   api: {
@@ -93,7 +94,7 @@ export const AI_DEFAULTS = {
   aiApiProvider: 'mistral',
   aiApiBase: 'https://api.mistral.ai/v1',
   aiApiModel: 'mistral-small-latest',
-  aiApiKey: '',
+  aiApiKey: BUNDLED_MISTRAL_API_KEY || '',
 };
 
 export function aiModeLabel(mode) {

@@ -27,8 +27,17 @@ cat > src/packs/index.json <<'EOF'
 {"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}
 EOF
 
+echo "==> Clave Mistral embebida (release comercial)"
+chmod +x "$ROOT/scripts/write-ai-secrets.sh"
+"$ROOT/scripts/write-ai-secrets.sh"
+
+if ! grep -q 'clinical-shared' src/packs/index.json; then
+  echo "Error: index.json de release debe listar packs clínicos"
+  exit 1
+fi
+
 echo "==> Build app"
-"$ROOT/scripts/build-app.sh"
+TELAR_RELEASE_FULL=1 "$ROOT/scripts/build-app.sh"
 
 echo ""
 echo "Release full listo. Packs clínicos embebidos en src/packs/."

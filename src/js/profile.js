@@ -81,7 +81,7 @@ export function wipeProfileData() {
       aiApiProvider: aiApiProvider || AI_DEFAULTS.aiApiProvider,
       aiApiBase: aiApiBase || AI_DEFAULTS.aiApiBase,
       aiApiModel: aiApiModel || AI_DEFAULTS.aiApiModel,
-      aiApiKey: aiApiKey || '',
+      aiApiKey: aiApiKey || AI_DEFAULTS.aiApiKey || '',
     }),
   );
 }

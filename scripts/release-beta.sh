@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Release beta: bundle de packs → tag (dispara CI) → draft en GitHub con bundle.
+# Release app comercial desde dev-full: tag → CI Mac + Windows.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+BRANCH="$(git branch --show-current)"
+if [[ "$BRANCH" != "dev-full" ]]; then
+  echo "Error: ejecuta desde la rama dev-full (app comercial completa). Actual: $BRANCH"
+  exit 1
+fi
 
 VERSION="$(node -p "require('./package.json').version")"
 TAG="v${VERSION}"
@@ -10,28 +16,28 @@ REPO="${GITHUB_REPO:-maren-keld/telar}"
 GH_EMAIL="${GIT_AUTHOR_EMAIL:-47905566+maren-keld@users.noreply.github.com}"
 GH_NAME="${GIT_AUTHOR_NAME:-maren-keld}"
 
-echo "→ Versión: $VERSION ($TAG)"
+echo "→ Versión: $VERSION ($TAG) · rama dev-full"
 
 if git rev-parse "$TAG" >/dev/null 2>&1 || git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-  echo "Error: el tag $TAG ya existe. Sube la versión en package.json / tauri.conf.json / Cargo.toml / app-version.js"
+  echo "Error: el tag $TAG ya existe."
   exit 1
 fi
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "Error: hay cambios sin commitear. Revisa git status y commitea antes de release."
+  echo "Error: hay cambios sin commitear."
   exit 1
 fi
-
-echo "→ Push main…"
-git push origin main
 
 echo "→ Empaquetando packs clínicos para CI…"
 "$ROOT/scripts/pack-packs-for-ci.sh"
 
+echo "→ Push dev-full…"
+git push -u origin dev-full
+
 NOTES="$(cat <<EOF
 ## Telar ${TAG}
 
-App completa con packs clínicos, neurofeedback Muse 2 y planes Free/Pro.
+App completa con packs clínicos, neurofeedback Muse 2, IA Mistral y planes Free/Pro.
 
 ### Descargas
 - **macOS (Apple Silicon):** \`Telar-macos.zip\`
