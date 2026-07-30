@@ -377,6 +377,15 @@
   gap: 8px;
 }
 
+.center-module-card:has(.tcc-module) .module-card-actions {
+  left: 24px;
+  right: auto;
+}
+
+.center-module-card:has(.tcc-module) .center-module-card__body > .card {
+  padding-top: 48px;
+}
+
 
 .module-help-btn {
   position: static;
