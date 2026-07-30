@@ -47,6 +47,14 @@ function applyDownloadButtons() {
   const target = getDownloadTarget();
 
   document.querySelectorAll('[data-download]').forEach((button) => {
+    const hideIfOther = button.hasAttribute('data-download-hide-other');
+
+    if (hideIfOther && target.platform === 'other') {
+      button.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
     button.href = target.href;
     const label = button.querySelector('.btn-label');
     if (label) {

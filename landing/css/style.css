@@ -243,6 +243,13 @@ a:hover {
   color: var(--text);
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
 .hero-sidebar {
   display: flex;
   flex-direction: column;
@@ -1324,6 +1331,10 @@ section {
   font-size: 1.15rem;
 }
 
+.install-download {
+  margin-bottom: 1rem;
+}
+
 .install-steps ol {
   margin: 0;
   padding-left: 1.25rem;
@@ -1538,6 +1549,10 @@ section {
     margin-bottom: 0;
   }
 
+  .hero-actions {
+    margin-top: 1.5rem;
+  }
+
   .hero-sidebar {
     padding: 2rem 1.5rem;
   }
@@ -1700,6 +1715,10 @@ section {
   }
 
   .cta-actions .btn {
+    width: 100%;
+  }
+
+  .hero-actions .btn {
     width: 100%;
   }
 
