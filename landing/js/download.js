@@ -48,7 +48,12 @@ function applyDownloadButtons() {
 
   document.querySelectorAll('[data-download]').forEach((button) => {
     button.href = target.href;
-    button.textContent = target.label;
+    const label = button.querySelector('.btn-label');
+    if (label) {
+      label.textContent = target.label;
+    } else {
+      button.textContent = target.label;
+    }
     button.dataset.platform = target.platform;
     button.removeAttribute('download');
   });
