@@ -3,7 +3,7 @@
   font-weight: 600;
   font-family: var(--font-display);
   letter-spacing: 0;
-  margin: 0 0 20px;
+  margin: 10px 0 20px;
 }
 
 .birth-date-row {
@@ -851,6 +851,11 @@
 .module-selector-head {
   flex-shrink: 0;
   padding-right: 0;
+  padding-top: 2px;
+}
+
+.module-selector-title-row #btn-create-module {
+  margin-top: 2px;
 }
 
 .module-selector-head__text {
@@ -1848,7 +1853,7 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.8125rem;
   font-family: inherit;
   gap: 10px;
 }
@@ -3435,7 +3440,7 @@ html[data-theme='dark'] .score-accordion__hint .dass-sev--extreme {
 
 /* TCC handouts (HANDOUT-1) */
 .tcc-module .module-title {
-  margin: 0 0 12px;
+  margin: 10px 0 12px;
 }
 
 .tcc-intro {

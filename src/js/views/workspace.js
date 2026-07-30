@@ -81,6 +81,17 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
 
+  if (
+    await tryFastModuleNavigation(container, {
+      treatmentId,
+      sessionId: activeSessionId,
+      moduleId: activeModule?.id,
+      activeModule,
+    })
+  ) {
+    return;
+  }
+
   // Guardar scroll de notas antes del re-render para no perder posición.
   const savedNotesScroll = container.querySelector('#notes-list')?.scrollTop ?? 0;
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
@@ -252,8 +263,6 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         sessionId: link.dataset.sessionId,
         moduleId: mid,
       });
-      const modType = link.dataset.moduleType;
-      scrollToModule(container, mid);
     });
   });
 
@@ -317,6 +326,25 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
       await notesApi.focusNotasTab();
     },
   });
+
+  container.dataset.workspaceTreatmentId = String(treatmentId);
+  container.dataset.workspaceModuleId = activeModule ? String(activeModule.id) : '';
+}
+
+async function tryFastModuleNavigation(container, { treatmentId, sessionId, moduleId, activeModule }) {
+  if (!moduleId || !activeModule) return false;
+  if (container.dataset.workspaceTreatmentId !== String(treatmentId)) return false;
+  if (!container.querySelector('#workspace-layout')) return false;
+  if (!container.querySelector(`#module-${moduleId}`)) return false;
+
+  container.dataset.workspaceModuleId = String(moduleId);
+  if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
+
+  bindSessionCollapse(container, activeModule);
+  setActiveModuleHighlight(container, moduleId);
+  scrollToModule(container, moduleId, { force: true });
+  scrollSidebarToModule(container, moduleId);
+  return true;
 }
 
 function setActiveModuleHighlight(container, moduleId) {
