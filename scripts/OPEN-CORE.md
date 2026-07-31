@@ -11,7 +11,7 @@ Los packs clínicos viven en `packs/` o `packs-src/` (gitignored). Antes de un r
 ./scripts/build-release-full.sh  # embebe packs en el .app
 ```
 
-Respalda `packs/` y `secrets/mistral-api.key` fuera del Mac (iCloud, Time Machine).
+Respalda `packs/` y `secrets/mistral-api.key` fuera del Mac (copia externa o Time Machine).
 
 ## Publicar release (Mac + Windows)
 
@@ -26,9 +26,7 @@ Assets: `Telar-macos.zip`, `Telar-windows.exe`, `telar-packs-bundle.tar.gz`.
 
 ## Landing (telarapp.cl)
 
-```bash
-./scripts/sync-landing-icloud.sh
-```
+Carpeta estática `landing/` (incluye `vercel.json`). Publica con tu flujo habitual (p. ej. Vercel conectado al repo o deploy manual del directorio).
 
 ## API suscripciones (Render)
 
