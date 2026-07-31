@@ -2,7 +2,7 @@ import { loadProfile, saveProfile } from './profile.js';
 
 const STRINGS = {
   es: {
-    'nav.agenda': 'Agenda',
+    'nav.agenda': 'Tratamientos',
     'nav.reportes': 'Estadísticas',
     'nav.goals': 'Objetivos',
     'nav.modules': 'Módulos',
@@ -47,7 +47,7 @@ const STRINGS = {
     'workspace.addSession': '+ Agregar sesión',
     'workspace.addModule': '+ Agregar módulo',
     'workspace.exportProgram': 'Exportar programa',
-    'workspace.backAgenda': 'Volver a agenda',
+    'workspace.backAgenda': 'Volver a tratamientos',
     'workspace.noModules': 'Sin módulos',
     'module.gad7.label': 'GAD-7 — Ansiedad generalizada',
     'gad7.title': 'GAD-7 — Ansiedad generalizada',
@@ -127,7 +127,7 @@ const STRINGS = {
     'toast.langChanged': 'Idioma actualizado',
   },
   en: {
-    'nav.agenda': 'Schedule',
+    'nav.agenda': 'Treatments',
     'nav.reportes': 'Statistics',
     'nav.goals': 'Goals',
     'nav.modules': 'Modules',
@@ -172,7 +172,7 @@ const STRINGS = {
     'workspace.addSession': '+ Add session',
     'workspace.addModule': '+ Add module',
     'workspace.exportProgram': 'Export program',
-    'workspace.backAgenda': 'Back to schedule',
+    'workspace.backAgenda': 'Back to treatments',
     'workspace.noModules': 'No modules',
     'module.gad7.label': 'GAD-7 — Generalized anxiety',
     'gad7.title': 'GAD-7 — Generalized anxiety',

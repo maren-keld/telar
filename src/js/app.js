@@ -11,6 +11,7 @@ import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
 import { initLocaleFromProfile } from './i18n.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
+import { teardownNeurofeedback } from './modules/neurofeedback.js';
 import { teardownBilateralStimulation } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
@@ -51,6 +52,7 @@ async function render() {
   const onNavigate = navigate;
 
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
+    teardownNeurofeedback();
     teardownBilateralStimulation();
   }
   lastRenderedView = view;

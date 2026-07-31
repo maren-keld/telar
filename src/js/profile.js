@@ -67,7 +67,7 @@ export function initThemeFromProfile() {
 
 /** Borra datos del profesional y módulos custom; conserva preferencias de interfaz y Touch ID. */
 export function wipeProfileData() {
-  const { darkMode, useTouchId, locale, aiMode, aiLocalModel, aiApiProvider, aiApiBase, aiApiModel, aiApiKey } =
+  const { darkMode, useTouchId, locale, aiMode, aiLocalModel, aiApiProvider, aiApiBase, aiApiModel, aiApiKey, aiApiConsentAt } =
     loadProfile();
   localStorage.setItem(
     STORAGE_KEY,
@@ -82,6 +82,7 @@ export function wipeProfileData() {
       aiApiBase: aiApiBase || AI_DEFAULTS.aiApiBase,
       aiApiModel: aiApiModel || AI_DEFAULTS.aiApiModel,
       aiApiKey: aiApiKey || '',
+      aiApiConsentAt: aiApiConsentAt || '',
     }),
   );
 }

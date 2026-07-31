@@ -24,7 +24,7 @@ const CATEGORIES = [
   {
     id: 'intervencion',
     label: 'Intervención',
-    types: ['bilateral_stimulation'],
+    types: ['neurofeedback', 'bilateral_stimulation'],
   },
   {
     id: 'tcc',

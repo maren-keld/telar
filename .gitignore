@@ -14,6 +14,8 @@ build/
 .env
 .env.*
 !.env.example
+secrets/
+src/js/ai-secrets.js
 server/.venv/
 __pycache__/
 *.pyc

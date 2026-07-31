@@ -27,6 +27,7 @@ import { loadProfile } from '../profile.js';
 import { escapeHtml, practitionerInitials, toast } from '../utils.js';
 import { resolveAiConfig } from '../ai-config.js';
 import { chatCompletion } from '../ai-client.js';
+import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
@@ -248,6 +249,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       await new Promise(r => requestAnimationFrame(r));
       try {
         const context = await buildCaseContextText(treatmentId);
+        await confirmClinicalAiSend({
+          contextText: context,
+          purpose: `Consulta IA: «${q.slice(0, 80)}${q.length > 80 ? '…' : ''}»`,
+        });
         const { text } = await chatCompletion({
           messages: [
             {
@@ -270,10 +275,14 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         resetInput();
         await refreshList({ scrollBottom: true });
       } catch (err) {
+        const msg = err?.message || 'Error al consultar la IA.';
+        if (/cancelado/i.test(msg)) {
+          return;
+        }
         await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'yellow',
-          content: err.message || 'Error al consultar la IA.',
+          content: msg,
           authorInitials: 'IA',
           sourceLabel: q,
         });
@@ -370,7 +379,10 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
       await renderSections();
       toast('Perfil actualizado según el análisis de IA');
     } catch (err) {
-      toast(err.message || 'No se pudo analizar el perfil');
+      const msg = err?.message || 'No se pudo analizar el perfil';
+      if (!/cancelado/i.test(msg)) {
+        toast(msg);
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = prev;
@@ -448,6 +460,11 @@ async function analyzeProfileWithAi(treatmentId) {
   const lists = Object.fromEntries(
     PERFIL_SECTIONS.map((s) => [s.id === 'riesgos' ? 'debilidades' : s.id, sortLabels(defaultsFor(s.id))]),
   );
+
+  await confirmClinicalAiSend({
+    contextText: `${context}\n\n---\nListas de perfil disponibles para marcar:\nRecursos: ${lists.fortalezas.join(', ')}\nDefensas: ${lists.defensas.join(', ')}\nDebilidades: ${lists.debilidades.join(', ')}`,
+    purpose: 'Análisis de perfil clínico con IA',
+  });
 
   const { text } = await chatCompletion({
     messages: [

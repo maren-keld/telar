@@ -305,6 +305,79 @@
   color: var(--text-secondary);
 }
 
+.ai-consent-notice {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid #c44d2a;
+  background: rgba(224, 122, 74, 0.08);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.ai-consent-notice--inline {
+  margin-bottom: 12px;
+}
+
+.ai-consent-notice__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.ai-consent-notice__list {
+  margin: 6px 0 10px 1.1rem;
+  padding: 0;
+}
+
+.ai-consent-notice__legal {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.ai-consent-notice__accepted {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  color: var(--success, #2e7d32);
+}
+
+.ai-consent-notice__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.ai-consent-notice__check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.ai-preview-modal {
+  width: min(640px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.ai-preview-modal__purpose {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+}
+
+.ai-preview-modal__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 180px;
+}
+
 .settings-card--plan {
   padding: 16px 18px;
   width: 100%;

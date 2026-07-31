@@ -1,36 +1,27 @@
 # Telar
 
-App de escritorio (macOS y Windows) para gestión clínica local. Los datos del consultorio se guardan **cifrados en tu equipo**.
+App de escritorio (macOS y Windows) para gestión clínica local: programas por sesiones, escalas longitudinales, handouts TCC, neurofeedback Muse 2 y planes Demo/Pro.
 
-**Sitio:** [telarapp.cl](https://telarapp.cl) · **Licencia motor:** [AGPL-3.0](LICENSE)
+**Sitio:** [telarapp.cl](https://telarapp.cl) · **Licencia:** [AGPL-3.0](LICENSE)
 
-## Qué hay en este repositorio (motor open source)
+## Descargar
 
-Este repo contiene el **motor Telar** bajo AGPL-3.0: workspace clínico, base de datos cifrada y pack demo mínimo.
+[GitHub Releases](https://github.com/maren-keld/telar/releases) — instaladores macOS y Windows.
 
-**No incluye** (solo en [instaladores oficiales](https://github.com/maren-keld/telar/releases)):
-
-- Packs clínicos (TDAH, trauma, escalas validadas, handouts TCC)
-- Neurofeedback con Muse 2
-- Suscripciones Demo/Pro y exportación PDF de programas
-- Backend de pagos
-
-## Descargar app completa
-
-[GitHub Releases](https://github.com/maren-keld/telar/releases) — macOS y Windows con todo lo anterior.
-
-## Desarrollo del motor
+## Desarrollo
 
 ```bash
 npm install
-npm run dev
+npm run dev          # requiere packs en packs/ o packs-src/ (ver abajo)
 npm run test
-./scripts/build-app.sh
+./scripts/build-release-full.sh   # release con packs clínicos embebidos
 ```
 
-Pack demo: `src/packs/demo/` (escala subjetiva + ABC).
+Los **packs clínicos** (`clinical-shared`, `tdah-adulto`, `trauma-regulacion`) no están en git — copia `packs/` o `packs-src/` desde tu respaldo local antes de compilar la app completa.
 
-Mantenedores (open core vs app completa, releases, rama `dev-full`): [`scripts/OPEN-CORE.md`](scripts/OPEN-CORE.md).
+Pack demo incluido en repo: `src/packs/demo/`.
+
+Mantenedores (releases, landing, suscripciones): [`scripts/OPEN-CORE.md`](scripts/OPEN-CORE.md).
 
 ## Privacidad
 

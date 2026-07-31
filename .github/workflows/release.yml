@@ -91,6 +91,14 @@ jobs:
             echo '{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}' > src/packs/index.json
           fi
 
+      - name: Embed Mistral API key (app comercial)
+        shell: bash
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          chmod +x ./scripts/write-ai-secrets.sh
+          ./scripts/write-ai-secrets.sh
+
       - name: Build sidecar
         shell: bash
         run: ./scripts/build-sidecar.sh

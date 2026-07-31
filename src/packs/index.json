@@ -1,3 +1,1 @@
-{
-  "packs": ["demo"]
-}
+{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}

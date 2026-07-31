@@ -1,5 +1,6 @@
 import { getModuleDef } from '../config.js';
 import { addSession, getSessions, getTreatment } from '../db.js';
+import { t } from '../i18n.js';
 import { escapeHtml } from '../utils.js';
 
 export async function renderTreatment(container, { treatmentId, onNavigate }) {
@@ -17,7 +18,7 @@ export async function renderTreatment(container, { treatmentId, onNavigate }) {
           Telar
           <small>Programa de tratamiento</small>
         </div>
-        <button class="nav-item nav-item--row" data-back>← Agenda</button>
+        <button class="nav-item nav-item--row" data-back>← ${escapeHtml(t('nav.agenda'))}</button>
         <button class="nav-item nav-item--row active">Sesiones</button>
         <button class="nav-item nav-item--row" data-nav="reportes-trat">Resultados</button>
       </aside>

@@ -6,16 +6,42 @@ import {
   AI_MODES,
   getApiPreset,
 } from '../ai-config.js';
+import { getApiTransferNotice, hasAiApiConsent } from '../ai-consent.js';
 import { testAiConnection } from '../ai-client.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { isTauriApp } from '../tauri-bridge.js';
-import { escapeHtml, toast } from '../utils.js';
+import { escapeHtml, formatDate, toast } from '../utils.js';
 
 function panelVisibility(mode) {
   return {
     local: mode === 'local' ? '' : 'hidden',
     api: mode === 'api' ? '' : 'hidden',
   };
+}
+
+function apiConsentBlockHtml(profile, providerId) {
+  const notice = getApiTransferNotice({ ...profile, aiApiProvider: providerId });
+  const accepted = hasAiApiConsent(profile);
+  const acceptedLine = accepted
+    ? `<p class="ai-consent-notice__accepted">Consentimiento registrado el ${escapeHtml(formatDate(profile.aiApiConsentAt))}.</p>`
+    : '';
+
+  return `
+    <div class="ai-consent-notice" id="ai-api-consent-notice">
+      <p class="ai-consent-notice__title">Transferencia internacional de datos sensibles</p>
+      <p>Al usar <strong>API externa</strong>, Telar envía contexto clínico desde tu equipo hacia un tercero. Telar no almacena esos envíos.</p>
+      <p><strong>Proveedor:</strong> ${escapeHtml(notice.provider)} · <strong>Servidores:</strong> ${escapeHtml(notice.serverCountry)}</p>
+      <p><strong>Datos que pueden enviarse:</strong></p>
+      <ul class="ai-consent-notice__list">
+        ${notice.dataSent.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+      </ul>
+      <p class="ai-consent-notice__legal">${escapeHtml(notice.legalNote)}</p>
+      ${acceptedLine}
+      <label class="ai-consent-notice__check" id="ai-api-consent-label" ${accepted ? 'hidden' : ''}>
+        <input type="checkbox" id="ai-api-consent" name="aiApiConsent" />
+        <span>He leído este aviso y asumo la responsabilidad del tratamiento de datos sensibles de mis pacientes al usar una API externa.</span>
+      </label>
+    </div>`;
 }
 
 function presetOptionsHtml(selectedId) {
@@ -65,8 +91,8 @@ export function openAiSettingsModal({ onSaved } = {}) {
       <div class="modal-card settings-ai-modal" role="dialog" aria-labelledby="ai-settings-title">
         <h2 id="ai-settings-title" class="modal-card__title">Asistente IA</h2>
         <p class="settings-ai-modal__intro">
-          Por defecto Telar sugiere <strong>Mistral AI (UE)</strong>: empresa europea con GDPR.
-          Los datos clínicos no se envían a Telarapp.cl; solo al proveedor que configures.
+          Por defecto la IA está <strong>desactivada</strong>. Si activas API externa, el contexto clínico sale de tu equipo
+          hacia el proveedor que configures — nunca hacia Telarapp.cl. Antes de cada consulta podrás revisar el contexto exacto.
         </p>
         <form id="ai-settings-form" class="settings-ai-form">
           <fieldset class="settings-ai-modes">
@@ -106,6 +132,7 @@ export function openAiSettingsModal({ onSaved } = {}) {
           </div>
 
           <div id="ai-panel-api" class="settings-ai-panel" ${vis.api}>
+            ${apiConsentBlockHtml(profile, providerId)}
             <label class="settings-ai-form__label" for="ai-api-provider">Proveedor</label>
             <select id="ai-api-provider" name="aiApiProvider" class="input">
               ${presetOptionsHtml(providerId)}
@@ -159,6 +186,27 @@ export function openAiSettingsModal({ onSaved } = {}) {
   const baseInput = root.querySelector('#ai-api-base');
   const keyHint = root.querySelector('#ai-key-hint');
   const presetDesc = root.querySelector('#ai-preset-desc');
+  const consentNotice = root.querySelector('#ai-api-consent-notice');
+
+  const refreshConsentNotice = (pid) => {
+    if (!consentNotice) return;
+    const draft = {
+      ...loadProfile(),
+      aiApiProvider: pid,
+      aiApiBase: baseInput?.value?.trim() || getApiPreset(pid).baseUrl,
+    };
+    consentNotice.outerHTML = apiConsentBlockHtml(draft, pid);
+    syncConsentUi();
+  };
+
+  const syncConsentUi = () => {
+    const selected = form.querySelector('input[name="aiMode"]:checked')?.value || 'off';
+    const accepted = hasAiApiConsent(loadProfile());
+    const box = root.querySelector('#ai-api-consent');
+    const label = root.querySelector('#ai-api-consent-label');
+    if (label) label.hidden = accepted || selected !== 'api';
+    if (box && accepted) box.checked = true;
+  };
 
   const applyPreset = (pid, keepCustomModel = false) => {
     const p = getApiPreset(pid);
@@ -194,10 +242,14 @@ export function openAiSettingsModal({ onSaved } = {}) {
 
   providerSelect?.addEventListener('change', () => {
     applyPreset(providerSelect.value);
+    refreshConsentNotice(providerSelect.value);
   });
 
   form.querySelectorAll('input[name="aiMode"]').forEach((r) => {
-    r.addEventListener('change', syncPanels);
+    r.addEventListener('change', () => {
+      syncPanels();
+      syncConsentUi();
+    });
   });
 
   root.querySelector('[data-cancel]')?.addEventListener('click', close);
@@ -282,9 +334,22 @@ export function openAiSettingsModal({ onSaved } = {}) {
         return;
       }
       if (presetOnSave.keyRequired && !patch.aiApiKey) {
-        toast('Mistral requiere clave API (console.mistral.ai) o elige Ollama local');
+        toast('Indica la clave API o elige Ollama local en localhost');
         return;
       }
+      const profileNow = loadProfile();
+      const needsConsent = !hasAiApiConsent(profileNow);
+      const consentBox = root.querySelector('#ai-api-consent');
+      if (needsConsent && !consentBox?.checked) {
+        toast('Debes aceptar el aviso de transferencia de datos para guardar el modo API');
+        consentNotice?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      if (needsConsent) {
+        patch.aiApiConsentAt = new Date().toISOString();
+      }
+    } else if (aiMode === 'off' || aiMode === 'local') {
+      // Conservar fecha de consentimiento por si vuelve a activar API.
     }
     saveProfile(patch);
     close();

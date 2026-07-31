@@ -1,11 +1,11 @@
 /** Preferencias de asistente IA (AI-1). Modelo local se descarga aparte, no va en el .app. */
+import { BUNDLED_MISTRAL_API_KEY } from './ai-secrets.js';
 
 export const AI_MODES = {
-  api: {
-    id: 'api',
-    label: 'API externa (recomendado)',
-    description:
-      'Proveedor compatible OpenAI. Por defecto Mistral (UE, GDPR). Solo se envía el contexto que autorices.',
+  off: {
+    id: 'off',
+    label: 'Desactivado (predeterminado)',
+    description: 'Sin asistente IA. Ningún dato clínico sale del equipo por IA.',
   },
   local: {
     id: 'local',
@@ -13,22 +13,24 @@ export const AI_MODES = {
     description:
       'Ollama sidecar en Telar. El modelo se descarga aparte a Application Support (~2–5 GB). Los datos no salen del dispositivo.',
   },
-  off: {
-    id: 'off',
-    label: 'Desactivado',
-    description: 'Sin asistente IA en el consultorio.',
+  api: {
+    id: 'api',
+    label: 'API externa',
+    description:
+      'Proveedor compatible OpenAI (p. ej. Mistral, UE). Requiere consentimiento explícito: el contexto clínico sale de tu equipo.',
   },
 };
 
-/** Orden en UI: API primero (privacy-first externo). */
-export const AI_MODE_ORDER = ['api', 'local', 'off'];
+/** Orden en UI: desactivado primero (privacidad por defecto). */
+export const AI_MODE_ORDER = ['off', 'local', 'api'];
 
 /** Presets API — OpenAI-compatible. Mistral EU como default privacy-focused. */
 export const AI_API_PRESETS = {
   mistral: {
     id: 'mistral',
-    label: 'Mistral AI (UE — privacidad)',
-    description: 'Empresa europea (Francia), GDPR. Buen equilibrio calidad/privacidad en nube.',
+    label: 'Mistral AI (UE)',
+    description: 'Empresa europea con servidores en Francia. Requiere clave API propia.',
+    serverCountry: 'Francia (Unión Europea)',
     baseUrl: 'https://api.mistral.ai/v1',
     defaultModel: 'mistral-small-latest',
     models: ['mistral-small-latest', 'open-mistral-nemo', 'mistral-large-latest'],
@@ -41,6 +43,7 @@ export const AI_API_PRESETS = {
     label: 'Ollama en este Mac (sin nube)',
     description:
       'Si ya tienes Ollama.app instalado. Datos 100 % locales; compatible OpenAI en localhost.',
+    serverCountry: 'Este equipo (localhost)',
     baseUrl: 'http://127.0.0.1:11434/v1',
     defaultModel: 'mistral',
     models: ['mistral', 'llama3.2', 'qwen2.5', 'gemma2'],
@@ -51,6 +54,7 @@ export const AI_API_PRESETS = {
     id: 'custom',
     label: 'Personalizado',
     description: 'OpenAI, Azure, LiteLLM, OpenRouter u otro gateway privado.',
+    serverCountry: 'Según el proveedor que configures',
     baseUrl: '',
     defaultModel: '',
     models: [],
@@ -88,12 +92,12 @@ export const AI_LOCAL_MODELS = [
 ];
 
 export const AI_DEFAULTS = {
-  aiMode: 'api',
+  aiMode: 'off',
   aiLocalModel: 'qwen2.5-3b-instruct-q4',
   aiApiProvider: 'mistral',
   aiApiBase: 'https://api.mistral.ai/v1',
   aiApiModel: 'mistral-small-latest',
-  aiApiKey: '',
+  aiApiKey: BUNDLED_MISTRAL_API_KEY || '',
 };
 
 export function aiModeLabel(mode) {

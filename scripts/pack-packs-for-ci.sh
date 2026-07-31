@@ -15,6 +15,9 @@ for p in clinical-shared tdah-adulto trauma-regulacion; do
       break
     fi
   done
+  if [[ "$p" != "clinical-shared" ]]; then
+    rm -rf "$TMP/packs/$p/handouts"
+  fi
 done
 cat > "$TMP/src/packs/index.json" <<'EOF'
 {"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}

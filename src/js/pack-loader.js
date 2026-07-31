@@ -37,7 +37,8 @@ async function discoverPackIds(base) {
   await Promise.all(
     KNOWN_PACK_ORDER.map(async (id) => {
       try {
-        const res = await fetch(`${base}${id}/pack.json`, { method: 'HEAD', cache: 'no-store' });
+        // GET (no HEAD): el protocolo de assets embebidos en Tauri no siempre soporta HEAD.
+        const res = await fetch(`${base}${id}/pack.json`, { cache: 'no-store' });
         if (res.ok) ids.add(id);
       } catch {
         /* skip */
