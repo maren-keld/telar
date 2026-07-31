@@ -390,6 +390,12 @@ a:hover {
   border-color: var(--success);
 }
 
+.badge-law {
+  background: transparent;
+  color: var(--blue);
+  border-color: var(--blue);
+}
+
 .badge-open {
   background: transparent;
   color: var(--blue);
@@ -1126,6 +1132,14 @@ section {
 /* Pricing */
 .pricing-section {
   background: var(--bg);
+}
+
+.pricing-intro {
+  max-width: 52rem;
+  margin: 0 0 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
 .pricing-grid {

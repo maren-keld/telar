@@ -4,15 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacidad — Telar</title>
-  <link rel="stylesheet" href="css/style.css?v=20260724" />
+  <link rel="stylesheet" href="css/style.css?v=20260731b" />
 </head>
 <body>
   <main class="container" style="max-width:720px;padding:48px 24px 80px">
     <h1>Privacidad y datos</h1>
-    <p>Telar guarda la información clínica <strong>únicamente en el dispositivo del profesional</strong>. No enviamos fichas de pacientes a servidores propios.</p>
+
+    <h2>Almacenamiento local</h2>
+    <p>Telar guarda la información clínica <strong>en el dispositivo del profesional</strong>. No enviamos fichas de pacientes a servidores propios de Telar.</p>
     <p>La base de datos local está cifrada. Puedes exportar o eliminar tus datos desde <strong>Ajustes</strong> en la aplicación.</p>
-    <p>Internet se usa solo si activas el Plan Profesional (verificación de suscripción con el proveedor de pagos), si descargas una actualización de la app, o si mantienes activo el <strong>contador anónimo de uso</strong> (solo versión de app, 1× al día, sin IP ni datos clínicos; activado por defecto, desactivable en Ajustes).</p>
+
+    <h2>Asistente de IA (opcional)</h2>
+    <p>Por defecto la IA está <strong>desactivada</strong>. Si la activas:</p>
+    <ul>
+      <li><strong>IA local (Ollama):</strong> el contexto clínico se procesa en tu equipo; no sale a internet (requiere descargar un modelo de ~2–5 GB).</li>
+      <li><strong>API externa (p. ej. Mistral):</strong> Telar envía contexto clínico (nombre del paciente, escalas, módulos, notas y tu pregunta) al proveedor que configures, cuyos servidores pueden estar fuera de Chile. Antes de cada envío puedes revisar el texto exacto. Debes aceptar un aviso explícito la primera vez. La responsabilidad del tratamiento de datos sensibles recae en el profesional, conforme a la Ley 19.628.</li>
+    </ul>
+    <p>Telar no almacena en sus servidores los envíos que hagas a proveedores de IA.</p>
+
+    <h2>Conexiones a internet</h2>
+    <p>Internet se usa solo si activas el Plan Profesional (verificación de suscripción con el proveedor de pagos), si descargas una actualización de la app, si configuras una API de IA externa, o si mantienes activo el <strong>contador anónimo de uso</strong> (solo versión de app, 1× al día, sin IP ni datos clínicos; activado por defecto, desactivable en Ajustes).</p>
+
+    <h2>Neurofeedback</h2>
     <p>La señal EEG de Neurofeedback se guarda cifrada solo en el computador del profesional; informa al paciente antes de grabar.</p>
+
     <p><a href="index.html">← Volver</a></p>
   </main>
 </body>
