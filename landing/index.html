@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Telar — Seguimiento clínico estructurado para psicólogos</title>
-  <meta name="description" content="Programas por sesiones, 13 escalas con puntuación automática, handouts TCC y neurofeedback con Muse 2. App de escritorio local y cifrada para macOS y Windows.">
+  <title>Telar — App clínica para psicólogos | TDAH, trauma, neurofeedback</title>
+  <meta name="description" content="App de escritorio para psicólogos: programas por sesiones, 13 escalas con scoring automático (ASRS, PCL-5, GAD-7), packs TDAH y trauma, estimulación bilateral EMDR-adjacent y neurofeedback Muse 2. Datos cifrados en tu equipo.">
   <link rel="canonical" href="https://telarapp.cl/">
-  <meta property="og:title" content="Telar — Seguimiento clínico estructurado para psicólogos">
-  <meta property="og:description" content="Programas por sesiones, 13 escalas longitudinales con scoring automático, handouts TCC y neurofeedback con Muse 2. App local y cifrada.">
+  <meta property="og:title" content="Telar — Seguimiento clínico para psicólogos | TDAH, trauma, neurofeedback">
+  <meta property="og:description" content="Escalas longitudinales, packs TDAH y trauma, estimulación bilateral EMDR-adjacent y neurofeedback Muse 2. App local y cifrada para macOS y Windows.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CL">
   <meta property="og:url" content="https://telarapp.cl/">
@@ -16,9 +16,97 @@
   <meta property="og:image:height" content="1524">
   <meta property="og:image:alt" content="Telar mostrando una escala GAD-7 con puntuación automática y neurofeedback Muse 2 en sesión clínica">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Telar — Seguimiento clínico estructurado para psicólogos">
-  <meta name="twitter:description" content="Escalas longitudinales, neurofeedback Muse 2 y programas por sesiones en una app local y cifrada.">
+  <meta name="twitter:title" content="Telar — App clínica para psicólogos | TDAH, trauma, neurofeedback">
+  <meta name="twitter:description" content="13 escalas con scoring automático, packs TDAH y trauma, EMDR-adjacent, evaluación longitudinal y neurofeedback en consulta. App local y cifrada.">
   <meta name="twitter:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "Telar",
+        "url": "https://telarapp.cl/",
+        "inLanguage": "es-CL",
+        "description": "Aplicación de escritorio para seguimiento clínico estructurado en psicología: TDAH, trauma, evaluación con escalas longitudinales y neurofeedback."
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Telar",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "macOS, Windows",
+        "url": "https://telarapp.cl/",
+        "downloadUrl": "https://github.com/maren-keld/telar/releases/latest",
+        "inLanguage": "es-CL",
+        "description": "Programas de psicoterapia por sesiones con 13 escalas con puntuación automática, packs TDAH y trauma, estimulación bilateral EMDR-adjacent y neurofeedback Muse 2. Datos clínicos cifrados localmente.",
+        "audience": {
+          "@type": "Audience",
+          "audienceType": "Psicólogos clínicos",
+          "geographicArea": { "@type": "Country", "name": "Chile" }
+        },
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Plan Demo",
+            "price": "0",
+            "priceCurrency": "CLP",
+            "description": "Hasta 8 pacientes activos, neurofeedback en vivo"
+          },
+          {
+            "@type": "Offer",
+            "name": "Plan Pro",
+            "price": "19990",
+            "priceCurrency": "CLP",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "19990",
+              "priceCurrency": "CLP",
+              "billingDuration": "P1M"
+            },
+            "description": "Pacientes ilimitados, curso de neurofeedback, respaldo en nube"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "¿Para qué psicólogos es Telar?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Telar está pensado para psicólogos que trabajan TDAH adulto, trauma y TEPT, regulación emocional, estimulación bilateral EMDR-adjacent, evaluación neuropsicológica con escalas longitudinales y neurofeedback en consulta. No sustituye formación clínica ni juicio profesional."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Telar incluye un protocolo EMDR completo?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Telar incluye un módulo de estimulación bilateral visual integrado al registro clínico, descrito como EMDR-adjacent. No sustituye el protocolo de ocho fases, la formación ni la supervisión en EMDR."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Sirve Telar para evaluación neuropsicológica?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Telar apoya tamizaje y seguimiento longitudinal con 13 escalas validadas (ASRS, GAD-7, PCL-5, IES-R, DASS-21, ADES, entre otras) con puntuación automática y curvas de evolución. No reemplaza una batería neuropsicológica completa ni interpretación especializada."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Cómo funciona la IA en Telar?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "La IA está desactivada por defecto. Si la activas, puedes usar tu propia clave API (p. ej. Mistral) u Ollama local para organizar notas a partir del contexto clínico registrado. Los datos no pasan por servidores de Telar."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,7 +160,7 @@
         </div>
       </div>
       <aside class="hero-sidebar">
-        <p class="hero-mission">Crea programas de psicoterapia con 13 escalas con puntuación automática (ASRS, GAD-7, PCL-5, IES-R, DASS-21) y 11 módulos de psicoeducación — da un salto al futuro incorporando neurofeedback. Los datos se guardan encriptados en tu computadora. La IA es opcional y bajo tu control.</p>
+        <p class="hero-mission">Crea programas de psicoterapia con escalas con puntuación automática (ASRS, GAD-7, PCL-5, IES-R, DASS-21, etc.), módulos de psicoeducación y material de trabajo clínico. Da un salto al futuro incorporando Neurofeedback. Los datos se guardan encriptados en tu computadora. La IA es opcional y bajo tu control.</p>
         <div class="hero-badges">
           <span class="badge badge-chile">Desarrollado en Latam</span>
           <span class="badge badge-encrypted">Datos clínicos cifrados localmente</span>
@@ -112,7 +200,7 @@
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
         <h2 class="section-title">Lo que Telar te devuelve.</h2>
-        <p class="section-lead">No es una ficha más bonita. Es una prestación nueva que puedes cobrar, horas que dejas de perder puntuando a mano y una historia clínica que no se pierde.</p>
+        <p class="section-lead">Pensado para psicólogos en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>EMDR-adjacent</strong>, <strong>evaluación neuropsicológica</strong> con escalas longitudinales y <strong>neurofeedback</strong>. No es una ficha más bonita: es una prestación nueva que puedes cobrar, horas que dejas de perder puntuando a mano y una historia clínica que no se pierde.</p>
 
         <div class="value-grid">
           <article class="value-card">
@@ -140,11 +228,9 @@
             <p class="value-kicker">Respaldo</p>
             <p class="value-figure">En tu equipo</p>
             <h3>La ficha es tuya y no viaja</h3>
-            <p>Base de datos cifrada con PIN en tu propio computador, sin servidores de terceros mirando datos de salud. Exportable cuando quieras, en formatos que puedes abrir sin Telar.</p>
+            <p>Respaldo encriptado diario en tu nube personal para mantener los datos de tus pacientes seguros.</p>
           </article>
         </div>
-
-        <p class="value-honest"><strong>Telar no te consigue pacientes ni te emite boletas.</strong> Es lo que pasa dentro de la sesión: el programa, las escalas, la evolución y el material entre sesiones. <a href="precio.html">Ver la cuenta completa y los planes →</a></p>
       </div>
     </section>
 
@@ -192,22 +278,22 @@
           <article class="feature-card">
             <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m3 7 6-4 6 5 6-5"/></svg></div>
             <h3>13 escalas con puntuación automática</h3>
-            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base, más 11 handouts TCC y estimulación bilateral (25 módulos). Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
+            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 11 módulos de material de trabajo clínico y estimulación bilateral (25 módulos). Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/><path d="m8 9 1 1 2-2"/></svg></div>
-            <h3>Handouts TCC compartidos</h3>
+            <h3>Material de trabajo clínico</h3>
             <p>11 materiales de psicoeducación y práctica entre sesiones (modelo ABC, activación conductual, plan de seguridad, etc.) incluidos en el pack base — exportables a PDF.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon blue"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/></svg></div>
             <h3>Pack TDAH adulto</h3>
-            <p>Plantilla de 8 sesiones + escalas ASRS, GAD-7 y ADES. No incluye handouts exclusivos: comparte los materiales TCC del pack base.</p>
+            <p>Plantilla de 8 sesiones + escalas ASRS, GAD-7 y ADES. No incluye handouts exclusivos: comparte los materiales TCC del pack base. <a href="blog/tdah-adulto.html">Ver plantilla de sesiones →</a></p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7z"/><path d="M8 12h8M12 8v8"/></svg></div>
             <h3>Pack trauma y regulación</h3>
-            <p>Plantilla de sesiones + PCL-5, IES-R, SPRINT-E-CL y estimulación bilateral. Mismos handouts TCC del pack base — lo distinto son las escalas y la estructura de sesiones.</p>
+            <p>Plantilla de sesiones + PCL-5, IES-R, SPRINT-E-CL y estimulación bilateral EMDR-adjacent. Mismos handouts TCC del pack base — lo distinto son las escalas y la estructura de sesiones. <a href="blog/trauma-herramientas.html">Ver flujo por fases →</a></p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
@@ -240,7 +326,7 @@
               <li>Hasta <strong>8 pacientes activos</strong></li>
               <li>Programas de psicoterapia por sesiones</li>
               <li>Packs clínicos (TDAH, trauma, ansiedad)</li>
-              <li>Neurofeedback en vivo con Muse 2</li>
+              <li>Neurofeedback en vivo</li>
               <li>Escalas con puntuación automática</li>
               <li>IA opcional (BYOK / Ollama local)</li>
               <li>Respaldo manual local</li>
@@ -255,9 +341,9 @@
               <li>IA opcional (BYOK / Ollama local)</li>
               <li><strong>Exportar programa de tratamiento en PDF</strong></li>
               <li><strong>Grabar, analizar y exportar sesiones de neurofeedback</strong></li>
-              <li><a href="neurofeedback.html">Curso de neurofeedback y mentoría</a> incluidos</li>
-              <li>Respaldo en la nube cifrado <em>(próximamente)</em></li>
-              <li>Cancela cuando quieras</li>
+              <li><a href="neurofeedback.html"><strong>Curso de neurofeedback y mentoría</strong></a> incluidos</li>
+              <li><strong>Respaldo encriptado en tu nube</strong></li>
+              <li>Cancela tu plan cuando quieras</li>
             </ul>
             <a href="#contacto" class="btn btn-primary">Contacto / suscripción</a>
           </div>
@@ -319,6 +405,35 @@
             </ol>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section id="faq" class="nf-faq-section">
+      <div class="container">
+        <p class="section-label">Preguntas frecuentes</p>
+        <h2 class="section-title">Telar en contexto clínico</h2>
+        <dl class="nf-faq">
+          <div class="nf-faq-item">
+            <dt>¿Para qué psicólogos es Telar?</dt>
+            <dd>Para quienes trabajan <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, regulación emocional, <strong>estimulación bilateral EMDR-adjacent</strong>, <strong>evaluación neuropsicológica</strong> con escalas longitudinales y <strong>neurofeedback</strong> en consulta. Telar organiza el registro y el seguimiento; no sustituye formación clínica ni juicio profesional.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>¿Telar incluye un protocolo EMDR completo?</dt>
+            <dd><strong>No.</strong> Incluye un módulo de estimulación bilateral visual integrado al registro, descrito como EMDR-adjacent. No reemplaza el protocolo de ocho fases, la formación ni la supervisión en EMDR. Si haces EMDR, es un generador de estímulo bilateral en tu ficha; si no, puede usarse como ejercicio de regulación en estabilización, con ese encuadre.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>¿Sirve para evaluación neuropsicológica?</dt>
+            <dd>Telar apoya <strong>tamizaje y seguimiento longitudinal</strong> con 13 escalas validadas (ASRS, GAD-7, PCL-5, IES-R, DASS-21, ADES, entre otras) con puntuación automática y curvas de evolución sesión a sesión. <strong>No reemplaza</strong> una batería neuropsicológica completa ni la interpretación especializada.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>¿Qué escalas clínicas incluye?</dt>
+            <dd>13 escalas en el pack base: ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más. Todas con scoring automático y registro longitudinal dentro del programa de tratamiento.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>¿Cómo funciona la IA?</dt>
+            <dd>Está <strong>desactivada por defecto</strong>. Si la activas, puedes usar tu propia clave API (p. ej. Mistral, ~USD 2–8/mes según uso) u <strong>Ollama local</strong> para organizar notas a partir del contexto clínico. Los datos no pasan por servidores de Telar. Ver <a href="privacidad.html">privacidad</a>.</dd>
+          </div>
+        </dl>
       </div>
     </section>
 

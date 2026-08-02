@@ -1,0 +1,46 @@
+# Telar
+
+> Telar es una aplicación de escritorio (macOS y Windows) para psicólogos clínicos en Chile y Latam. Organiza programas de psicoterapia por sesiones, aplica escalas con puntuación automática, material de trabajo clínico y neurofeedback opcional con banda Muse 2. Los datos clínicos se guardan cifrados en el equipo del profesional.
+
+## Para quién es
+
+Psicólogos interesados en:
+
+- TDAH en adultos (pack con plantilla de 8 sesiones, ASRS, GAD-7, ADES)
+- Trauma y TEPT (PCL-5, IES-R, SPRINT-E-CL, plan de seguridad)
+- Estimulación bilateral EMDR-adjacent (no sustituye protocolo EMDR completo ni formación)
+- Evaluación neuropsicológica y seguimiento longitudinal con 13 escalas con scoring automático
+- Neurofeedback en consulta (biofeedback EEG 2 canales, complemento psicoeducativo; no equipamiento diagnóstico)
+
+## Qué incluye
+
+- 13 escalas con puntuación automática: ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER, entre otras
+- 11 módulos de material de trabajo clínico (psicoeducación TCC, plan de seguridad, etc.)
+- Estimulación bilateral visual integrada al registro clínico
+- Neurofeedback con Muse 2: sesiones en vivo (Demo); grabación, análisis y export (Plan Pro)
+- IA opcional desactivada por defecto: BYOK (p. ej. Mistral) u Ollama local
+- Respaldo encriptado en nube personal del profesional (Plan Pro)
+
+## Planes
+
+- Demo: $0 CLP, hasta 8 pacientes activos
+- Plan Pro: $19.990 CLP/mes, pacientes ilimitados, curso de neurofeedback incluido
+
+## Páginas principales
+
+- Inicio: https://telarapp.cl/
+- Neurofeedback: https://telarapp.cl/neurofeedback
+- Precio: https://telarapp.cl/precio
+- Blog: https://telarapp.cl/blog
+- TDAH adulto: https://telarapp.cl/blog/tdah-adulto
+- Trauma y herramientas: https://telarapp.cl/blog/trauma-herramientas
+- Privacidad: https://telarapp.cl/privacidad
+
+## Límites importantes
+
+Telar no diagnostica, no prescribe ni sustituye el juicio profesional. No es un protocolo EMDR completo. El neurofeedback es complemento psicoeducativo, no evaluación neuropsicológica ni tratamiento médico. Desarrollado en Chile; uso bajo Ley 19.628 de protección de datos personales.
+
+## Contacto
+
+- WhatsApp: +56 9 2050 9726
+- Descargas: https://github.com/maren-keld/telar/releases/latest
