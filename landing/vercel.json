@@ -1,4 +1,16 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/tdah-adulto",
+      "destination": "/blog/tdah-adulto",
+      "permanent": true
+    },
+    {
+      "source": "/trauma-herramientas",
+      "destination": "/blog/trauma-herramientas",
+      "permanent": true
+    }
+  ]
 }
