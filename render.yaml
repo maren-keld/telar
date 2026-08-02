@@ -12,6 +12,11 @@ services:
     envVars:
       - key: MP_ACCESS_TOKEN
         sync: false
+      # Postgres gestionado (Neon). Sin esto se usa SQLite en disco efímero y
+      # los contadores del funnel se pierden en cada reinicio del servicio.
+      # Usa el host con -pooler para no abrir una conexión nueva por request.
+      - key: DATABASE_URL
+        sync: false
       - key: WEBHOOK_SECRET
         generateValue: true
       - key: PLAN_AMOUNT_CLP

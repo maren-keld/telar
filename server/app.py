@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -42,6 +43,12 @@ MP_PREAPPROVAL_PLAN_ID = os.environ.get("MP_PREAPPROVAL_PLAN_ID", "").strip()
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "") or os.environ.get("MP_WEBHOOK_SECRET", "")
 DEV_PRO_EMAIL = os.environ.get("DEV_PRO_EMAIL", "").strip().lower()
 DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "subscriptions.db"))
+
+# Postgres si hay DATABASE_URL (producción: Neon); SQLite si no (desarrollo y
+# tests). El plan free de Render tiene disco efímero, así que sin Postgres los
+# contadores se pierden en cada reinicio.
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
 _plan_cache: dict | None = None
@@ -80,17 +87,76 @@ def dev_bypass_allows(email: str) -> bool:
     return normalize_payer_email(email).lower() == normalize_payer_email(DEV_PRO_EMAIL).lower()
 
 
+class _Conn:
+    """Conexión unificada SQLite/Postgres.
+
+    El código de arriba escribe SQL con `?` como placeholder y lee las filas
+    por nombre de columna, sin saber qué motor hay debajo. Al salir del `with`
+    se hace commit (o rollback si hubo excepción) y se cierra: SQLite por sí
+    solo no cierra la conexión y las iba dejando abiertas.
+    """
+
+    def __init__(self, raw, is_postgres):
+        self._raw = raw
+        self._is_postgres = is_postgres
+
+    def execute(self, sql, params=()):
+        if self._is_postgres:
+            cur = self._raw.cursor()
+            cur.execute(sql.replace("?", "%s"), params)
+            return cur
+        return self._raw.execute(sql, params)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type is None:
+                self._raw.commit()
+            else:
+                self._raw.rollback()
+        finally:
+            self._raw.close()
+        return False
+
+
 def db():
+    if USE_POSTGRES:
+        import psycopg
+        from psycopg.rows import dict_row
+
+        return _Conn(psycopg.connect(DATABASE_URL, row_factory=dict_row), True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    return _Conn(conn, False)
 
 
-def init_db():
+def init_db(attempts: int = 3, delay: float = 2.0):
+    """Crea el esquema, reintentando si la base aún no responde.
+
+    Se llama al importar el módulo, así que una excepción acá mata al worker de
+    gunicorn y el servicio entra en bucle de reinicio. Neon suspende el cómputo
+    cuando no hay tráfico y la primera conexión después de dormir puede fallar,
+    de modo que un reintento corto evita caídas por algo que se resuelve solo.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            _create_schema()
+            return
+        except Exception:
+            if attempt == attempts:
+                raise
+            time.sleep(delay * attempt)
+
+
+def _create_schema():
+    # Único punto donde los dialectos difieren de verdad.
+    autoincrement = "SERIAL PRIMARY KEY" if USE_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
     with db() as conn:
         conn.execute(
-            """CREATE TABLE IF NOT EXISTS subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+            f"""CREATE TABLE IF NOT EXISTS subscriptions (
+                id {autoincrement},
                 email TEXT NOT NULL,
                 mp_preapproval_id TEXT,
                 status TEXT NOT NULL DEFAULT 'pending',
@@ -106,7 +172,9 @@ def init_db():
             )"""
         )
         conn.execute(
-            "INSERT OR IGNORE INTO usage_opens (id, total, updated_at) VALUES (1, 0, ?)",
+            # ON CONFLICT DO NOTHING es portable; INSERT OR IGNORE es solo SQLite.
+            "INSERT INTO usage_opens (id, total, updated_at) VALUES (1, 0, ?) "
+            "ON CONFLICT (id) DO NOTHING",
             (now_iso(),),
         )
         conn.execute(
@@ -151,8 +219,9 @@ def record_event(name: str) -> bool:
             if distinct >= MAX_DISTINCT_EVENTS:
                 return False
         conn.execute(
+            # count debe ir calificado: Postgres lo rechaza sin la tabla delante.
             """INSERT INTO landing_events (day, name, count) VALUES (?, ?, 1)
-               ON CONFLICT(day, name) DO UPDATE SET count = count + 1""",
+               ON CONFLICT(day, name) DO UPDATE SET count = landing_events.count + 1""",
             (day, name),
         )
     return True
@@ -679,12 +748,18 @@ def status():
             except Exception:
                 pass
         if mp_status in ("none", "pending"):
-            remote = find_mp_preapproval_by_email(email)
-            if remote:
-                preapproval_id = remote.get("id")
-                mp_status = remote.get("status", "unknown")
-                upsert_subscription(email, preapproval_id, mp_status)
-                updated_at = now_iso()
+            # Sin esta guarda un fallo de MP devuelve 500. El cliente trata
+            # "none" como "no sé" y conserva el plan local, pero un 500 lo deja
+            # sin respuesta; degradar es mejor que romper.
+            try:
+                remote = find_mp_preapproval_by_email(email)
+                if remote:
+                    preapproval_id = remote.get("id")
+                    mp_status = remote.get("status", "unknown")
+                    upsert_subscription(email, preapproval_id, mp_status)
+                    updated_at = now_iso()
+            except Exception:
+                pass
 
     active = mp_status in ACTIVE_STATUSES
     return jsonify({

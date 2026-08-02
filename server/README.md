@@ -97,10 +97,47 @@ El dashboard vive en `landing/stats.html?secret=TU_WEBHOOK_SECRET` (página con
 > para que `stats.html` pueda leer `/api/admin/funnel`. Ya viene en el valor por
 > defecto; si lo defines a mano en Render, no lo omitas.
 
-> **Persistencia:** en el plan free de Render el filesystem es efímero y no admite
-> disco persistente, así que `subscriptions.db` (suscripciones **y** contadores) se
-> pierde en cada deploy o reinicio. Para conservar histórico hace falta un disco
-> persistente (plan de pago) o mover la base a Postgres gestionado.
+## Base de datos
+
+| `DATABASE_URL` | Motor | Cuándo |
+|----------------|-------|--------|
+| definida | Postgres | Producción |
+| vacía | SQLite en `SUBSCRIPTION_DB_PATH` | Desarrollo y tests |
+
+El código escribe SQL con `?` como placeholder y `_Conn` lo traduce; el único
+lugar donde los dialectos difieren es el `AUTOINCREMENT` de `_create_schema()`.
+
+### Por qué Postgres
+
+En el plan free de Render el filesystem es efímero y **el servicio se duerme tras
+~15 minutos sin tráfico**, volviendo como contenedor nuevo. Con SQLite eso borra
+la base cada vez que hay un hueco de tráfico, así que los contadores del funnel
+nunca acumulan más que unas horas.
+
+Las suscripciones toleraban ese borrado (Mercado Pago es la fuente de verdad y
+`status()` reconstruye la fila), pero los contadores no tienen de dónde
+recuperarse: sin Postgres, se pierden y ya.
+
+### Configurar Neon
+
+1. Crea un proyecto en [Neon](https://neon.tech) (capa gratuita).
+2. Copia la cadena de conexión y pégala en `DATABASE_URL` en Render.
+3. Usa el host **con `-pooler`** (pgbouncer): cada request abre su propia
+   conexión y el pooler evita agotar el límite de la capa gratuita.
+
+Las tablas se crean solas al arrancar. `init_db()` reintenta 3 veces porque Neon
+suspende el cómputo cuando no hay tráfico y la primera conexión tras dormir puede
+fallar; sin reintento, esa falla mataría al worker de gunicorn al importar.
+
+### Tests
+
+```bash
+cd server && pytest                      # solo SQLite
+TEST_DATABASE_URL=postgresql://… pytest  # SQLite y Postgres
+```
+
+Cada test corre una vez por motor. Sin `TEST_DATABASE_URL` la variante Postgres
+se omite en vez de fallar.
 
 ## Checklist antes de cobrar en producción
 

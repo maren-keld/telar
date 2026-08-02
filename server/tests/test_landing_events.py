@@ -8,15 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import app as api_module
 
 
-@pytest.fixture()
-def api(tmp_path, monkeypatch):
-    monkeypatch.setattr(api_module, "DB_PATH", tmp_path / "events.db")
-    monkeypatch.setattr(api_module, "WEBHOOK_SECRET", "secreto-de-prueba")
-    api_module.init_db()
-    api_module.APP.config.update(TESTING=True)
-    return api_module.APP.test_client()
-
-
 def post_event(api, name):
     return api.post("/api/events", json={"name": name})
 

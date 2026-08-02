@@ -573,10 +573,7 @@
         '<code>js/track.js</code> publicado. Si ya lo desplegaste y sigue vacío tras varias visitas, revisa que ' +
         '<code>ALLOWED_ORIGINS</code> en el servidor incluya <code>https://telarapp.cl</code>.';
     } else {
-      warn.hidden = false;
-      warn.innerHTML = '<strong>Ojo con la persistencia.</strong> El servicio corre en Render con plan free y sin disco ' +
-        'persistente, así que la base SQLite se borra en cada deploy o reinicio. Estos números miden desde el último ' +
-        'reinicio, no desde siempre.';
+      warn.hidden = true;
     }
   }
 
