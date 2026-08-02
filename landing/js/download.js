@@ -12,8 +12,14 @@ function detectPlatform() {
   const ua = navigator.userAgent || '';
   const platform = navigator.userAgentData?.platform || navigator.platform || '';
   const p = `${ua} ${platform}`.toLowerCase();
+
+  // Telar es solo de escritorio: al móvil no se le ofrece un instalador que no puede abrir.
+  // iPadOS 13+ se anuncia como «Macintosh»; se distingue por el soporte táctil.
+  const isIpadOS = /mac/.test(p) && (navigator.maxTouchPoints || 0) > 1;
+  if (/iphone|ipad|ipod|android/.test(p) || isIpadOS) return 'mobile';
+
   if (/win/.test(p)) return 'windows';
-  if (/mac|iphone|ipad|ipod/.test(p)) return 'mac';
+  if (/mac/.test(p)) return 'mac';
   return 'other';
 }
 
@@ -33,6 +39,14 @@ function getDownloadTarget() {
       href: DOWNLOAD_URLS.windows,
       label: 'Descargar para Windows',
       platform: 'windows',
+    };
+  }
+
+  if (platform === 'mobile') {
+    return {
+      href: DOWNLOAD_URLS.all,
+      label: 'Ver descargas (para computador)',
+      platform: 'mobile',
     };
   }
 

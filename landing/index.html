@@ -111,36 +111,34 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260731e">
+  <link rel="stylesheet" href="css/style.css?v=20260802b">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="nav">
     <div class="nav-inner">
-      <a href="#" class="brand">
+      <a href="index.html" class="brand">
         <img src="assets/icon.png" alt="" width="28" height="28">
         Telar
       </a>
       <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
-        <a href="#valor">Valor</a>
-        <span class="nav-divider" aria-hidden="true"></span>
         <a href="#funciones">Funciones</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="modules/index.html">Módulos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="neurofeedback.html">Neurofeedback</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="blog/index.html">Blog</a>
         <span class="nav-divider" aria-hidden="true"></span>
-        <a href="#demo">Demo</a>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <a href="#planes">Planes</a>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <a href="#instalar">Instalar</a>
+        <a href="precio.html">Precio</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="#contacto">Contacto</a>
       </nav>
       <div class="nav-actions">
-        <a id="btn-download-nav" data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-nav">
+        <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-nav">
           <span class="btn-label">Descargar Telar</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
@@ -169,7 +167,7 @@
         <div class="hero-featured">
           <p class="hero-featured-label">DESTACADO</p>
           <a href="neurofeedback.html#curso" class="hero-featured-card">
-            <img src="assets/muse-headband-hero.png" alt="Curso de Neurofeedback con banda Muse 2" width="80" height="76" loading="lazy">
+            <img src="assets/muse-headband-hero.png" alt="Curso de Neurofeedback con banda Muse 2" width="1024" height="768" loading="lazy">
             <div>
               <strong>Curso de Neurofeedback para ansiedad</strong>
               <span>Online todo el año · incluido gratis en la suscripción al Plan Pro</span>
@@ -200,14 +198,14 @@
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
         <h2 class="section-title">Lo que Telar te devuelve.</h2>
-        <p class="section-lead">Pensado para psicólogos que trabajan en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>estimulación bilateral</strong>, <strong>evaluación neuropsicológica</strong> con escalas longitudinales y <strong>Neurofeedback</strong>. Telar ofrece nuevas prestaciones, ahorrar tiempo y potenciar tu análisis clínico.</p>
+        <p class="section-lead">Pensado para psicólogos que trabajan en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>estimulación bilateral</strong>, <strong>evaluación neuropsicológica</strong> con escalas longitudinales y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>. Telar ofrece nuevas prestaciones, ahorrar tiempo y potenciar tu análisis clínico.</p>
 
         <div class="value-grid">
           <article class="value-card">
             <p class="value-kicker">Ingresos</p>
             <p class="value-figure">$50.000</p>
             <h3>Una prestación nueva que sí puedes cobrar</h3>
-            <p>Es el honorario de referencia de una sesión de neurofeedback en Chile. Con el protocolo del curso incluido en el Plan Pro, agregas una línea de servicio que hoy no ofreces. Tú defines tu tarifa.</p>
+            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en Chile. Con el protocolo del curso incluido en el Plan Pro, agregas una línea de servicio que hoy no ofreces. Tú defines tu tarifa.</p>
           </article>
 
           <article class="value-card">
@@ -234,18 +232,6 @@
       </div>
     </section>
 
-    <section id="demo" class="demo-section">
-      <div class="container">
-        <div class="demo-card" data-demo-status="pending">
-          <div>
-            <p class="section-label">Demo de 60 segundos</p>
-            <h2 class="section-title">Recorrido breve en preparación</h2>
-            <p>Estamos preparando un video corto con el flujo real: abrir un caso, aplicar una escala y revisar la evolución. Mientras tanto, puedes solicitar una demostración breve.</p>
-          </div>
-          <a href="https://wa.me/56920509726?text=Hola%2C%20quiero%20ver%20una%20demo%20breve%20de%20Telar" class="btn btn-secondary" target="_blank" rel="noopener">Solicitar demostración</a>
-        </div>
-      </div>
-    </section>
 
     <section id="funciones">
       <div class="container">
@@ -277,12 +263,12 @@
           </article>
           <article class="feature-card">
             <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m3 7 6-4 6 5 6-5"/></svg></div>
-            <h3>13 escalas con puntuación automática</h3>
-            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 11 módulos de material de trabajo clínico y estimulación bilateral (25 módulos). Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
+            <h3><a href="modules/index.html#cat-pruebas">13 escalas con puntuación automática</a></h3>
+            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 11 módulos de material de trabajo clínico y estimulación bilateral. El <a href="modules/index.html">catálogo completo suma 33 módulos</a> entre todos los packs. Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/><path d="m8 9 1 1 2-2"/></svg></div>
-            <h3>Material de trabajo clínico</h3>
+            <h3><a href="modules/index.html#cat-tcc">Material de trabajo clínico</a></h3>
             <p>11 materiales de psicoeducación y práctica entre sesiones (modelo ABC, activación conductual, plan de seguridad, etc.) incluidos en el pack base — exportables a PDF.</p>
           </article>
           <article class="feature-card">
@@ -292,7 +278,7 @@
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7z"/><path d="M8 12h8M12 8v8"/></svg></div>
-            <h3>Pack trauma y regulación</h3>
+            <h3><a href="modules/index.html#cat-pruebas">Pack trauma y regulación</a></h3>
             <p>Plantilla de sesiones + PCL-5, IES-R, SPRINT-E-CL y estimulación bilateral EMDR-adjacent. Mismos handouts TCC del pack base — lo distinto son las escalas y la estructura de sesiones. <a href="blog/trauma-herramientas.html">Ver flujo por fases →</a></p>
           </article>
           <article class="feature-card">
@@ -317,7 +303,7 @@
     <section id="planes" class="pricing-section">
       <div class="container">
         <p class="section-label">Planes</p>
-        <p class="pricing-intro">La IA no diferencia planes: en ambos es opcional y traes tu propia clave API u Ollama. El Pro desbloquea capacidad clínica y operativa a escala.</p>
+        <h2 class="section-title">Demo gratis o Plan Profesional.</h2>
         <div class="pricing-grid">
           <div class="pricing-card">
             <h3>Demo</h3>
@@ -337,11 +323,11 @@
             <ul class="pricing-list">
               <li>Pacientes activos <strong>ilimitados</strong></li>
               <li>Todo lo del Demo</li>
-              <li>IA opcional (BYOK / Ollama local)</li>
+              <li><a href="neurofeedback.html"><strong>Curso de neurofeedback y mentoría</strong></a> incluidos</li>
               <li><strong>Exportar programa de tratamiento en PDF</strong></li>
               <li><strong>Grabar, analizar y exportar sesiones de neurofeedback</strong></li>
-              <li><a href="neurofeedback.html"><strong>Curso de neurofeedback y mentoría</strong></a> incluidos</li>
               <li><strong>Respaldo automático diario encriptado en tu nube</strong></li>
+              <li>IA opcional (BYOK / Ollama local)</li>
               <li>Cancela tu plan cuando quieras</li>
             </ul>
             <a href="#contacto" class="btn btn-primary">Contacto / suscripción</a>
@@ -353,6 +339,7 @@
     <section id="requisitos">
       <div class="container">
         <p class="section-label">Requisitos</p>
+        <h2 class="section-title">Qué necesitas para usar Telar.</h2>
         <div class="req-grid">
           <div class="req-card">
             <div class="req-card-main">
@@ -454,43 +441,27 @@
     <div class="container footer-grid">
       <div>
         <strong>Telar</strong><br>
+        Software open-core · Datos clínicos 100 % locales<br>
         Hecho en Chile · 2026
       </div>
-      <div class="footer-links">
-        <a href="tel:+56920509726">+56 9 2050 9726</a>
-        <a href="https://wa.me/56920509726" target="_blank" rel="noopener">WhatsApp</a>
-        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+      <nav class="footer-links" aria-label="Enlaces del pie">
+        <a href="index.html">Inicio</a>
+        <a href="modules/index.html">Módulos</a>
         <a href="neurofeedback.html">Neurofeedback</a>
         <a href="precio.html">Precio</a>
         <a href="blog/index.html">Blog</a>
         <a href="equipo.html">Equipo</a>
         <a href="privacidad.html">Privacidad</a>
-      </div>
+        <a href="tel:+56920509726">+56 9 2050 9726</a>
+        <a href="https://wa.me/56920509726" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+      </nav>
     </div>
   </footer>
 
-  <script src="js/download.js?v=20260731"></script>
-  <script src="js/track.js?v=20260802"></script>
-  <script>
-    const navToggle = document.getElementById('nav-toggle');
-    const navLinks = document.getElementById('nav-links');
-
-    function setMenu(open) {
-      navLinks.classList.toggle('open', open);
-      navToggle.setAttribute('aria-expanded', String(open));
-      navToggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
-    }
-
-    navToggle.addEventListener('click', () => {
-      setMenu(navToggle.getAttribute('aria-expanded') !== 'true');
-    });
-    navLinks.addEventListener('click', (event) => {
-      if (event.target.closest('a')) setMenu(false);
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') setMenu(false);
-    });
-  </script>
+  <script src="js/download.js?v=20260802b"></script>
+  <script src="js/track.js?v=20260802b"></script>
+  <script src="js/nav.js?v=20260802b"></script>
 </body>
 </html>

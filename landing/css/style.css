@@ -798,6 +798,37 @@ section {
   padding: 3rem 0 2rem;
 }
 
+/* Páginas de texto legal: columna angosta y legible (privacidad). */
+.legal-page {
+  padding: 3rem 0 4rem;
+}
+
+.legal-page .container {
+  width: min(100% - 3rem, 44rem);
+}
+
+.legal-page h1 {
+  font-size: clamp(1.85rem, 4vw, 2.5rem);
+  margin: 0 0 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.legal-page h2 {
+  margin: 2.25rem 0 0.75rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+}
+
+.legal-page p,
+.legal-page li {
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.legal-page li + li {
+  margin-top: 0.6rem;
+}
+
 .page-hero h1 {
   font-size: clamp(1.85rem, 4vw, 2.5rem);
   margin: 0 0 1rem;
@@ -1124,6 +1155,15 @@ section {
 .feature-card h3 {
   margin: 0 0 0.5rem;
   font-size: 1rem;
+}
+
+.feature-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.feature-card h3 a:hover {
+  text-decoration: underline;
 }
 
 .feature-card p {
@@ -1597,11 +1637,15 @@ section {
 
 .footer-links {
   display: flex;
-  gap: 1.5rem;
+  gap: 0.5rem 1.5rem;
   flex-wrap: wrap;
 }
 
+/* min-height 24px: objetivo táctil mínimo de WCAG 2.2 (2.5.8). */
 .footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--text-secondary);
   text-decoration: none;
 }
@@ -2173,4 +2217,165 @@ section {
 
 .post-hero .page-hero-lead {
   max-width: none;
+}
+
+/* --- Módulos clínicos (catálogo landing) --- */
+.modules-index {
+  padding-bottom: 3rem;
+}
+
+.module-category-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.module-category-nav a {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  background: var(--bg-card);
+}
+
+.module-category-nav a:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.modules-category {
+  margin-bottom: 2.5rem;
+}
+
+.modules-category .section-title {
+  font-size: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.module-card {
+  display: block;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.module-card:hover {
+  border-color: var(--text-muted);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.module-card h3 {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.module-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.module-breadcrumb {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.module-breadcrumb a {
+  color: var(--text-secondary);
+}
+
+.module-badge {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg-muted, #f3f4f6);
+  color: var(--text-secondary);
+}
+
+.module-detail-body {
+  max-width: 42rem;
+}
+
+.section-title--sm {
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+}
+
+.module-psych {
+  margin: 1.25rem 0 0;
+}
+
+.module-psych-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  margin-bottom: 0.65rem;
+}
+
+.module-psych-item dt {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.module-psych-item dd {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.module-learn-more {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--accent, #2563eb);
+  background: var(--bg-muted, #f8fafc);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.module-variables {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.module-extra-link {
+  margin: 1.25rem 0 0;
+}
+
+.module-footer-note {
+  margin: 2rem 0 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.55;
 }

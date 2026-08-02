@@ -12,7 +12,8 @@
     "test": "npm run test:frontend && npm run test:e2e",
     "test:frontend": "node --test tests/frontend/*.test.js",
     "test:e2e": "playwright test",
-    "test:api": "python3 -m pytest server/tests"
+    "test:api": "python3 -m pytest server/tests",
+    "generate:landing-modules": "node scripts/generate-landing-modules.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
