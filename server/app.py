@@ -506,6 +506,10 @@ def health():
         "mp_configured": bool(MP_TOKEN),
         "mp_test_mode": MP_TOKEN.startswith("TEST-"),
         "plan_amount_clp": PLAN_AMOUNT,
+        # Sin esto no hay forma de saber desde fuera si DATABASE_URL quedó activa
+        # o si el servicio siguió cayendo al SQLite efímero de Render.
+        "db_backend": "postgres" if USE_POSTGRES else "sqlite",
+        "panel_enabled": bool(PANEL_PASSWORD),
         "return_url": FRONTEND_RETURN_URL,
         "dev_bypass": dev_bypass_enabled(),
         "usage_opens_total": usage_total,
