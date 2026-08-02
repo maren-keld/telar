@@ -21,6 +21,9 @@ services:
         generateValue: true
       - key: PLAN_AMOUNT_CLP
         value: "19990"
+      # Contraseña del panel privado telarapp.cl/panel. Sin ella el panel queda apagado.
+      - key: PANEL_PASSWORD
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
       - key: BACKEND_URL

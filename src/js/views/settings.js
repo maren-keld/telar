@@ -4,6 +4,16 @@ import { openEditFieldModal } from '../components/edit-field-modal.js';
 import { openSubscribeProModal } from '../components/subscribe-pro-modal.js';
 import { aiSettingsSummary } from '../ai-config.js';
 import { exportAllUserData } from '../export-user-data.js';
+import { exportIcs } from '../export-ics.js';
+import { listScheduledSessions } from '../db.js';
+import { addDays, toLocalISO } from '../agenda-utils.js';
+import {
+  bindCloudBackupInfoLink,
+  fetchCloudBackupState,
+  handleCloudBackupManage,
+  handleCloudBackupToggleChange,
+  isCloudBackupEnabled,
+} from '../cloud-backup.js';
 import { FREE_ACTIVE_PATIENT_LIMIT, getActivePatientUsage } from '../plan-limits.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
 import { syncProFromServer, resetLocalSubscriptionState, isLocalDevFrontend } from '../subscription.js';
@@ -19,8 +29,8 @@ import { SETTINGS_ICONS } from '../icons.js';
 let settingsRenderGen = 0;
 
 function isSettingsRoute() {
-  const path = (location.hash.slice(1) || '/agenda').split('?')[0];
-  const view = path.split('/').filter(Boolean)[0] || 'agenda';
+  const path = (location.hash.slice(1) || '/treatments').split('?')[0];
+  const view = path.split('/').filter(Boolean)[0] || 'treatments';
   return view === 'settings';
 }
 
@@ -31,7 +41,6 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'presentationMode',
   'usagePing',
   'locale',
-  'backupDb',
   'backupCloud',
   'exportData',
   'wipeData',
@@ -117,6 +126,45 @@ export async function renderSettings(container, { onNavigate }) {
   } catch {
     /* DB aún no disponible */
   }
+
+  let cloudBackupState = {
+    status: 'idle',
+    subtitle: t('settings.cloudBackupPro'),
+    hasIdentity: false,
+    destDir: '',
+    enabled: false,
+    folderStatus: null,
+  };
+  if (isTauriApp()) {
+    try {
+      cloudBackupState = await fetchCloudBackupState();
+      if (!isProUser()) {
+        cloudBackupState = {
+          ...cloudBackupState,
+          status: 'idle',
+          subtitle: t('settings.cloudBackupPro'),
+          enabled: false,
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const cloudBackupEnabled = isProUser() && isCloudBackupEnabled();
+  const cloudBackupShowManage = ['active', 'error', 'folder_missing', 'backing_up'].includes(
+    cloudBackupState.status,
+  );
+
+  const cloudBackupStatusClass =
+    cloudBackupState.status === 'error'
+      ? ' settings-row--danger'
+      : cloudBackupState.status === 'backing_up'
+        ? ' settings-row--disabled'
+        : cloudBackupState.localOnly
+          ? ' settings-cloud-backup-row--local'
+          : '';
+
   const touchIdRow = touchIdAvailable
     ? row({
         icon: SETTINGS_ICONS.touchId,
@@ -220,28 +268,41 @@ export async function renderSettings(container, { onNavigate }) {
             title: t('settings.usagePing', 'Contador anónimo de uso'),
             subtitle: profile.usagePingOptOut
               ? t('settings.usagePingOff', 'Desactivado — no se envía ningún ping')
-              : t('settings.usagePingOn', 'Activo (predeterminado) — solo versión de app 1×/día; anónimo, sin IP ni datos clínicos'),
+              : t('settings.usagePingOn', 'Activo (predeterminado) — id aleatorio del equipo, versión, sistema y plan mientras la app está abierta. Sin IP, sin datos clínicos, sin tu email.'),
             dataField: 'usagePing',
             action: 'toggle',
             toggleOn: !profile.usagePingOptOut,
           })}
-          ${row({
-            icon: SETTINGS_ICONS.backup,
-            title: t('settings.backup'),
-            subtitle: t('settings.backupSub'),
-            dataField: 'backupDb',
-          })}
-          ${row({
-            icon: SETTINGS_ICONS.backup,
-            title: 'Respaldo en la nube',
-            subtitle: 'Cifrado end-to-end — próximamente (Plan Profesional)',
-            dataField: 'backupCloud',
-          })}
+          <div class="settings-row settings-row--static settings-cloud-backup-row${cloudBackupStatusClass}${cloudBackupState.status === 'backing_up' ? ' settings-row--disabled' : ''}">
+            <span class="settings-row__icon" aria-hidden="true">${SETTINGS_ICONS.backup}</span>
+            <span class="settings-row__text">
+              <span class="settings-row__title">${escapeHtml(t('settings.cloudBackup'))}</span>
+              <span class="settings-row__sub settings-row__sub--wrap">${escapeHtml(cloudBackupState.subtitle)}</span>
+              <span class="settings-cloud-backup-meta">
+                <button type="button" class="settings-inline-link" data-cloud-backup-info>${escapeHtml(t('settings.cloudBackupHowItWorks'))}</button>
+                ${
+                  cloudBackupShowManage
+                    ? `<button type="button" class="settings-inline-link settings-inline-link--manage" data-cloud-backup-manage>${escapeHtml(t('settings.cloudBackupManage'))}</button>`
+                    : ''
+                }
+              </span>
+            </span>
+            <label class="settings-toggle${!isProUser() ? ' settings-toggle--disabled' : ''}">
+              <input type="checkbox" data-toggle="backupCloud" ${cloudBackupEnabled ? 'checked' : ''}${!isProUser() ? ' disabled' : ''} />
+              <span class="settings-toggle__track"></span>
+            </label>
+          </div>
           ${row({
             icon: SETTINGS_ICONS.export,
             title: t('settings.export'),
             subtitle: t('settings.exportSub'),
             dataField: 'exportData',
+          })}
+          ${row({
+            icon: SETTINGS_ICONS.export,
+            title: t('settings.exportIcs'),
+            subtitle: t('settings.exportIcsSub'),
+            dataField: 'exportIcs',
           })}
           ${row({
             icon: SETTINGS_ICONS.wipe,
@@ -472,33 +533,23 @@ export async function renderSettings(container, { onNavigate }) {
     }
   });
 
-  container.querySelector('[data-field="backupDb"]')?.addEventListener('click', async () => {
-    if (!isTauriApp()) {
-      toast('Disponible solo en la app de escritorio');
-      return;
-    }
-    const btn = container.querySelector('[data-field="backupDb"]');
-    btn?.setAttribute('disabled', 'true');
-    toast('Creando respaldo…');
-    try {
-      const path = await getInvoke()('db_backup_encrypted');
-      toast('Respaldo guardado. Carpeta abierta en Finder.');
-      console.info('Respaldo:', path);
-    } catch (err) {
-      console.error(err);
-      toast(err?.message || String(err));
-    } finally {
-      btn?.removeAttribute('disabled');
-    }
+  bindCloudBackupInfoLink(container);
+
+  container.querySelector('[data-toggle="backupCloud"]')?.addEventListener('change', async (e) => {
+    const input = e.target;
+    const wantedOn = input.checked;
+    input.disabled = true;
+    const ok = await handleCloudBackupToggleChange(wantedOn, cloudBackupState, {
+      onChanged: () => renderSettings(container, { onNavigate }),
+    });
+    input.disabled = false;
+    if (!ok) input.checked = !wantedOn;
   });
 
-  // TODO(E2E-backup): implementar upload cifrado cuando exista backend
-  container.querySelector('[data-field="backupCloud"]')?.addEventListener('click', () => {
-    if (!isProUser()) {
-      openSubscribeProModal();
-      return;
-    }
-    toast('Respaldo en la nube — próximamente. Usa respaldo local mientras tanto.');
+  container.querySelector('[data-cloud-backup-manage]')?.addEventListener('click', async () => {
+    await handleCloudBackupManage(cloudBackupState, {
+      onChanged: () => renderSettings(container, { onNavigate }),
+    });
   });
 
   container.querySelector('[data-field="exportData"]')?.addEventListener('click', async () => {
@@ -516,6 +567,29 @@ export async function renderSettings(container, { onNavigate }) {
     } catch (err) {
       console.error(err);
       toast(err?.message || String(err));
+    } finally {
+      btn?.removeAttribute('disabled');
+    }
+  });
+
+  container.querySelector('[data-field="exportIcs"]')?.addEventListener('click', async () => {
+    if (!isTauriApp()) {
+      toast('Disponible solo en la app de escritorio');
+      return;
+    }
+    const btn = container.querySelector('[data-field="exportIcs"]');
+    btn?.setAttribute('disabled', 'true');
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = addDays(start, 365);
+      const from = toLocalISO(start);
+      const to = toLocalISO(end);
+      const sessions = await listScheduledSessions({ from, to });
+      await exportIcs({ from, to, sessions });
+      toast('Calendario .ics exportado');
+    } catch (err) {
+      toast(err?.message || 'No se pudo exportar');
     } finally {
       btn?.removeAttribute('disabled');
     }
@@ -562,7 +636,7 @@ export async function renderSettings(container, { onNavigate }) {
       wipeProfileData();
       applyPresentationMode(false);
       toast('Todos tus datos han sido eliminados de este dispositivo. Tu PIN sigue activo.');
-      onNavigate({ view: 'agenda' });
+      onNavigate({ view: 'treatments' });
     } catch (err) {
       console.error(err);
       toast(err?.message || String(err));

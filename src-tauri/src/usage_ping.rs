@@ -19,19 +19,19 @@ fn handle_ping_response(result: Result<ureq::Response, ureq::Error>, base: &str)
     }
 }
 
-/// Ping anónimo de apertura: solo versión de app; el servidor incrementa contador sin registrar IP.
+/// Latido anónimo: id de dispositivo aleatorio, versión, plataforma y plan.
+/// Sin datos clínicos ni identificadores del profesional; el servidor no guarda IP.
 #[tauri::command]
-pub fn usage_ping(api_base: String, app_version: String) -> Result<Value, String> {
+pub fn usage_ping(api_base: String, payload: Value) -> Result<Value, String> {
     let base = api_base.trim().trim_end_matches('/');
     if base.is_empty() {
         return Err("Falta apiBase".into());
     }
     let url = format!("{base}/api/usage/ping");
+    // Render free duerme tras 15 min; el arranque en frío puede tardar ~30 s.
     let result = ureq::post(&url)
-        .timeout(std::time::Duration::from_secs(4))
+        .timeout(std::time::Duration::from_secs(20))
         .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({
-            "app_version": app_version.trim(),
-        }));
+        .send_json(payload);
     handle_ping_response(result, base)
 }

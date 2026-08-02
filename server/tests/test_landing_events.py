@@ -119,7 +119,15 @@ def test_days_parameter_is_clamped(api):
 
 
 def test_funnel_still_reports_app_usage_counter(api):
-    api.post("/api/usage/ping", json={"app_version": "0.1.0"})
-    api.post("/api/usage/ping", json={"app_version": "0.1.0"})
+    # El contador acumula aperturas, no latidos: solo reason="open" suma.
+    for device in ("device-a", "device-b"):
+        api.post("/api/usage/ping", json={
+            "device_id": device, "app_version": "0.1.0", "reason": "open",
+        })
+    api.post("/api/usage/ping", json={"device_id": "device-a", "reason": "heartbeat"})
 
     assert funnel(api).json["usage_opens_total"] == 2
+
+
+def test_usage_ping_requires_device_id(api):
+    assert api.post("/api/usage/ping", json={"app_version": "0.1.0"}).status_code == 400

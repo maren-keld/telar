@@ -3,6 +3,11 @@
   "trailingSlash": false,
   "redirects": [
     {
+      "source": "/modules.html",
+      "destination": "/modules",
+      "permanent": true
+    },
+    {
       "source": "/tdah-adulto",
       "destination": "/blog/tdah-adulto",
       "permanent": true
@@ -11,6 +16,28 @@
       "source": "/trauma-herramientas",
       "destination": "/blog/trauma-herramientas",
       "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/panel",
+      "destination": "https://telar-api-aim8.onrender.com/panel"
+    },
+    {
+      "source": "/panel/login",
+      "destination": "https://telar-api-aim8.onrender.com/panel/login"
+    },
+    {
+      "source": "/api/admin/live",
+      "destination": "https://telar-api-aim8.onrender.com/api/admin/live"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/panel(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
     }
   ]
 }

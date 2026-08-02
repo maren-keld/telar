@@ -4,6 +4,8 @@ Mercado Pago (Chile) · preapproval mensual en CLP.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import re
 import sqlite3
@@ -50,6 +52,11 @@ DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "s
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
+# Panel privado /panel — sin esta variable el panel queda apagado (falla cerrado).
+PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
+PANEL_COOKIE = "telar_panel"
+ONLINE_WINDOW_MIN = int(os.environ.get("PANEL_ONLINE_WINDOW_MIN", "3"))
+
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
 _plan_cache: dict | None = None
 
@@ -69,6 +76,10 @@ FUNNEL_STEPS = [
 ]
 DEFAULT_FUNNEL_DAYS = 30
 MAX_FUNNEL_DAYS = 365
+
+
+def clean_field(value, limit: int) -> str:
+    return str(value or "").strip()[:limit]
 
 
 def dev_bypass_enabled() -> bool:
@@ -186,6 +197,27 @@ def _create_schema():
             )"""
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_events_day ON landing_events(day)")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS devices (
+                device_id TEXT PRIMARY KEY,
+                first_seen TEXT NOT NULL,
+                last_seen TEXT NOT NULL,
+                app_version TEXT,
+                platform TEXT,
+                plan TEXT,
+                active INTEGER NOT NULL DEFAULT 0,
+                opens INTEGER NOT NULL DEFAULT 0,
+                pings INTEGER NOT NULL DEFAULT 0
+            )"""
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_devices_last_seen ON devices(last_seen)")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS device_days (
+                device_id TEXT NOT NULL,
+                day TEXT NOT NULL,
+                PRIMARY KEY (device_id, day)
+            )"""
+        )
 
 
 def mp_sdk():
@@ -313,10 +345,12 @@ def resolve_mp_plan(sdk, back_url: str) -> tuple[dict | None, str | None]:
         res = sdk.plan().get(MP_PREAPPROVAL_PLAN_ID)
         if res.get("status") == 200:
             plan = res["response"]
-            if not collector_id or plan.get("collector_id") == collector_id:
+            recurring = plan.get("auto_recurring") or {}
+            amount_ok = int(recurring.get("transaction_amount") or 0) == PLAN_AMOUNT
+            if amount_ok and (not collector_id or plan.get("collector_id") == collector_id):
                 _plan_cache = plan
                 return _plan_cache, None
-        return None, f"No se encontró el plan {MP_PREAPPROVAL_PLAN_ID} para este vendedor"
+        # Plan configurado con monto distinto o inválido — buscar/crear uno de $PLAN_AMOUNT CLP
 
     res = sdk.plan().search({"limit": 30})
     for item in (res.get("response") or {}).get("results") or []:
@@ -471,6 +505,7 @@ def health():
         "ok": True,
         "mp_configured": bool(MP_TOKEN),
         "mp_test_mode": MP_TOKEN.startswith("TEST-"),
+        "plan_amount_clp": PLAN_AMOUNT,
         "return_url": FRONTEND_RETURN_URL,
         "dev_bypass": dev_bypass_enabled(),
         "usage_opens_total": usage_total,
@@ -480,22 +515,73 @@ def health():
 
 @APP.post("/api/usage/ping")
 def usage_ping():
-    """Contador anónimo de aperturas. No registra IP ni identificadores de usuario."""
+    """Latido anónimo por dispositivo. No registra IP ni identificadores del profesional."""
     data = request.get_json(silent=True) or {}
-    app_version = (data.get("app_version") or "unknown").strip()[:32]
+    device_id = clean_field(data.get("device_id"), 64)
+    if not device_id:
+        return jsonify({"error": "Falta device_id"}), 400
+
+    app_version = clean_field(data.get("app_version"), 32) or "unknown"
+    platform = clean_field(data.get("platform"), 16) or "other"
+    plan = "pro" if clean_field(data.get("plan"), 8) == "pro" else "demo"
+    reason = clean_field(data.get("reason"), 16) or "heartbeat"
+    active = 1 if data.get("active") else 0
+    ts = now_iso()
+
     with db() as conn:
         conn.execute(
-            "UPDATE usage_opens SET total = total + 1, updated_at = ? WHERE id = 1",
-            (now_iso(),),
+            """INSERT INTO devices (device_id, first_seen, last_seen, app_version, platform,
+                                    plan, active, opens, pings)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+               ON CONFLICT(device_id) DO UPDATE SET
+                 last_seen   = excluded.last_seen,
+                 app_version = excluded.app_version,
+                 platform    = excluded.platform,
+                 plan        = excluded.plan,
+                 active      = excluded.active,
+                 opens       = devices.opens + excluded.opens,
+                 pings       = devices.pings + 1""",
+            (device_id, ts, ts, app_version, platform, plan, active,
+             1 if reason == "open" else 0),
         )
-        row = conn.execute("SELECT total, updated_at FROM usage_opens WHERE id = 1").fetchone()
-    return jsonify({"ok": True, "total": row["total"] if row else None, "app_version": app_version})
+        conn.execute(
+            # ON CONFLICT DO NOTHING es portable; INSERT OR IGNORE es solo SQLite.
+            "INSERT INTO device_days (device_id, day) VALUES (?, ?) "
+            "ON CONFLICT (device_id, day) DO NOTHING",
+            (device_id, ts[:10]),
+        )
+        if reason == "open":
+            conn.execute(
+                "UPDATE usage_opens SET total = total + 1, updated_at = ? WHERE id = 1",
+                (ts,),
+            )
+
+    return jsonify({"ok": True})
+
+
+def panel_token() -> str:
+    """Token derivado de la contraseña — nunca viaja la contraseña en la cookie."""
+    if not PANEL_PASSWORD:
+        return ""
+    return hmac.new(PANEL_PASSWORD.encode(), b"telar-panel-v1", hashlib.sha256).hexdigest()
+
+
+def panel_authorized() -> bool:
+    expected = panel_token()
+    if not expected:
+        return False
+    provided = request.cookies.get(PANEL_COOKIE, "") or request.args.get("token", "")
+    if provided and hmac.compare_digest(provided, expected):
+        return True
+    # Atajo para curl: ?secret=<contraseña>
+    secret = request.args.get("secret", "")
+    return bool(secret) and hmac.compare_digest(secret, PANEL_PASSWORD)
 
 
 @APP.get("/api/admin/usage")
 def admin_usage():
-    """Estadísticas anónimas de uso (solo propietario, requiere WEBHOOK_SECRET)."""
-    if not WEBHOOK_SECRET or request.args.get("secret", "") != WEBHOOK_SECRET:
+    """Compatibilidad: contador acumulado de aperturas."""
+    if not WEBHOOK_SECRET or not hmac.compare_digest(request.args.get("secret", ""), WEBHOOK_SECRET):
         return jsonify({"error": "No autorizado"}), 401
     with db() as conn:
         row = conn.execute("SELECT total, updated_at FROM usage_opens WHERE id = 1").fetchone()
@@ -503,7 +589,6 @@ def admin_usage():
         "ok": True,
         "usage_opens_total": row["total"] if row else 0,
         "updated_at": row["updated_at"] if row else None,
-        "note": "Contador acumulado de aperturas de app (1 ping/día/dispositivo si está activo). No mide usuarios simultáneos.",
     })
 
 
@@ -593,6 +678,239 @@ def admin_funnel():
             "por sesión del navegador; los eventos view:/cta: cuentan cada ocurrencia."
         ),
     })
+
+
+@APP.get("/api/admin/live")
+def admin_live():
+    """Estado en vivo para el panel privado: quién está usando Telar ahora."""
+    if not panel_authorized():
+        return jsonify({"error": "No autorizado"}), 401
+
+    now = datetime.now(timezone.utc)
+    online_cut = (now - timedelta(minutes=ONLINE_WINDOW_MIN)).isoformat()
+    today = now.date().isoformat()
+    since_14 = (now - timedelta(days=13)).date().isoformat()
+
+    with db() as conn:
+        devices = [dict(r) for r in conn.execute(
+            """SELECT device_id, first_seen, last_seen, app_version, platform, plan, active,
+                      opens, pings,
+                      (SELECT COUNT(*) FROM device_days d WHERE d.device_id = devices.device_id)
+                        AS active_days
+               FROM devices ORDER BY last_seen DESC LIMIT 200"""
+        ).fetchall()]
+        daily = [dict(r) for r in conn.execute(
+            """SELECT day, COUNT(*) AS devices FROM device_days
+               WHERE day >= ? GROUP BY day ORDER BY day""",
+            (since_14,),
+        ).fetchall()]
+        subs = [dict(r) for r in conn.execute(
+            "SELECT email, status, updated_at FROM subscriptions ORDER BY id DESC LIMIT 50"
+        ).fetchall()]
+
+    for d in devices:
+        d["online"] = d["last_seen"] >= online_cut
+        d["short_id"] = d["device_id"][:8]
+
+    online = [d for d in devices if d["online"]]
+    today_devices = sum(1 for d in devices if d["last_seen"][:10] == today)
+    returning = sum(1 for d in devices if d["active_days"] >= 2)
+
+    return jsonify({
+        "ok": True,
+        "generated_at": now.isoformat(),
+        "online_window_min": ONLINE_WINDOW_MIN,
+        "totals": {
+            "online_now": len(online),
+            "devices_today": today_devices,
+            "devices_total": len(devices),
+            "returning": returning,
+            "pro": sum(1 for d in devices if d["plan"] == "pro"),
+        },
+        "devices": devices,
+        "daily": daily,
+        "subscriptions": subs,
+    })
+
+
+PANEL_CSS = """
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin:0; font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#0e1116; color:#e6edf3; }
+.wrap { max-width:1080px; margin:0 auto; padding:32px 20px 64px; }
+h1 { font-size:20px; margin:0; letter-spacing:-.01em; }
+.sub { color:#8b949e; font-size:13px; margin:4px 0 0; }
+.top { display:flex; justify-content:space-between; align-items:baseline; gap:16px;
+  flex-wrap:wrap; margin-bottom:28px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+.tile { background:#161b22; border:1px solid #262c36; border-radius:10px; padding:16px 18px; }
+.tile b { display:block; font-size:30px; font-weight:650; letter-spacing:-.02em; }
+.tile span { color:#8b949e; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+.tile.live b { color:#3fb950; }
+.tile.live.zero b { color:#6e7681; }
+h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:#8b949e;
+  margin:36px 0 12px; font-weight:600; }
+.card { background:#161b22; border:1px solid #262c36; border-radius:10px; overflow:hidden; }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
+th { text-align:left; padding:10px 14px; color:#8b949e; font-weight:500; font-size:11px;
+  text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #262c36; }
+td { padding:11px 14px; border-bottom:1px solid #1c222b; }
+tr:last-child td { border-bottom:none; }
+code { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5d6ff; }
+.dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#30363d;
+  margin-right:7px; vertical-align:middle; }
+.dot.on { background:#3fb950; box-shadow:0 0 0 3px rgba(63,185,80,.16); }
+.pill { font-size:11px; padding:2px 7px; border-radius:20px; border:1px solid #30363d;
+  color:#8b949e; }
+.pill.pro { color:#d29922; border-color:#4a3d16; background:#241d08; }
+.pill.ok { color:#3fb950; border-color:#1c4428; background:#0f2417; }
+.bars { display:flex; align-items:flex-end; gap:5px; height:90px; padding:16px 18px 0; }
+.bars div { flex:1; background:#1f6feb; border-radius:3px 3px 0 0; min-height:2px;
+  position:relative; }
+.bars div:hover { background:#388bfd; }
+.blabels { display:flex; gap:5px; padding:6px 18px 16px; }
+.blabels span { flex:1; text-align:center; font-size:10px; color:#6e7681; }
+.empty { padding:36px 18px; text-align:center; color:#6e7681; font-size:13px; }
+.err { color:#f85149; }
+form { max-width:320px; margin:14vh auto; padding:0 20px; }
+input { width:100%; padding:11px 13px; border-radius:8px; border:1px solid #30363d;
+  background:#0d1117; color:#e6edf3; font-size:15px; margin:14px 0; }
+button { width:100%; padding:11px; border-radius:8px; border:0; background:#238636;
+  color:#fff; font-size:15px; font-weight:500; cursor:pointer; }
+button:hover { background:#2ea043; }
+"""
+
+
+def panel_login_page(error: str = "") -> str:
+    msg = f'<p class="sub err">{error}</p>' if error else ""
+    return f"""<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Telar · panel</title><style>{PANEL_CSS}</style></head><body>
+<form method="post" action="/panel/login">
+  <h1>Telar · panel</h1>
+  <p class="sub">Uso en vivo. Acceso privado.</p>
+  {msg}
+  <input type="password" name="password" placeholder="Contraseña" autofocus required>
+  <button type="submit">Entrar</button>
+</form></body></html>"""
+
+
+PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Telar · panel</title><style>__CSS__</style></head><body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>Telar · panel</h1><p class="sub" id="stamp">Cargando…</p></div>
+    <p class="sub">Se actualiza solo cada 20 s</p>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <h2>Dispositivos activos por día (14 días)</h2>
+  <div class="card" id="chart"></div>
+  <h2>Dispositivos</h2>
+  <div class="card scroll" id="devices"></div>
+  <h2>Suscripciones</h2>
+  <div class="card scroll" id="subs"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+function ago(iso) {
+  const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (secs < 60) return 'ahora';
+  if (secs < 3600) return Math.floor(secs / 60) + ' min';
+  if (secs < 86400) return Math.floor(secs / 3600) + ' h';
+  return Math.floor(secs / 86400) + ' d';
+}
+
+function tile(label, value, cls) {
+  return `<div class="tile ${cls || ''} ${value === 0 ? 'zero' : ''}">
+    <b>${value}</b><span>${label}</span></div>`;
+}
+
+function render(d) {
+  const t = d.totals;
+  $('stamp').textContent = 'Actualizado ' + new Date(d.generated_at)
+    .toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    + ' · en línea = visto hace <' + d.online_window_min + ' min';
+
+  $('tiles').innerHTML =
+      tile('En línea ahora', t.online_now, 'live')
+    + tile('Activos hoy', t.devices_today)
+    + tile('Dispositivos totales', t.devices_total)
+    + tile('Volvieron (2+ días)', t.returning)
+    + tile('En plan Pro', t.pro);
+
+  const max = Math.max(1, ...d.daily.map((r) => r.devices));
+  $('chart').innerHTML = d.daily.length
+    ? `<div class="bars">${d.daily.map((r) =>
+        `<div style="height:${(r.devices / max) * 100}%" title="${r.day}: ${r.devices}"></div>`
+      ).join('')}</div><div class="blabels">${d.daily.map((r) =>
+        `<span>${r.day.slice(8)}</span>`).join('')}</div>`
+    : '<p class="empty">Sin datos todavía.</p>';
+
+  $('devices').innerHTML = d.devices.length
+    ? `<table><thead><tr><th>Dispositivo</th><th>Plan</th><th>Versión</th><th>SO</th>
+       <th>Días activos</th><th>Aperturas</th><th>Primera vez</th><th>Visto</th></tr></thead>
+       <tbody>${d.devices.map((x) => `<tr>
+        <td><span class="dot ${x.online ? 'on' : ''}"></span><code>${esc(x.short_id)}</code></td>
+        <td><span class="pill ${x.plan === 'pro' ? 'pro' : ''}">${esc(x.plan)}</span></td>
+        <td>${esc(x.app_version)}</td><td>${esc(x.platform)}</td>
+        <td>${x.active_days}</td><td>${x.opens}</td>
+        <td>${new Date(x.first_seen).toLocaleDateString('es-CL')}</td>
+        <td>${ago(x.last_seen)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="empty">Ningún dispositivo ha hecho ping todavía.</p>';
+
+  $('subs').innerHTML = d.subscriptions.length
+    ? `<table><thead><tr><th>Email</th><th>Estado</th><th>Actualizado</th></tr></thead>
+       <tbody>${d.subscriptions.map((s) => `<tr><td>${esc(s.email)}</td>
+        <td><span class="pill ${['authorized','active'].includes(s.status) ? 'ok' : ''}">${esc(s.status)}</span></td>
+        <td>${ago(s.updated_at)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="empty">Sin suscripciones registradas.</p>';
+}
+
+async function load() {
+  try {
+    const res = await fetch('/api/admin/live', { credentials: 'same-origin' });
+    if (res.status === 401) { location.reload(); return; }
+    render(await res.json());
+  } catch (e) {
+    $('stamp').innerHTML = '<span class="err">Sin conexión con la API.</span>';
+  }
+}
+load();
+setInterval(load, 20000);
+</script></body></html>""".replace("__CSS__", PANEL_CSS)
+
+
+@APP.post("/panel/login")
+def panel_login():
+    if not PANEL_PASSWORD:
+        return "Panel deshabilitado: falta PANEL_PASSWORD en el servidor.", 503
+    if not hmac.compare_digest(request.form.get("password", ""), PANEL_PASSWORD):
+        return panel_login_page("Contraseña incorrecta."), 401
+    resp = APP.make_response(("", 302))
+    resp.headers["Location"] = "/panel"
+    https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+    resp.set_cookie(
+        PANEL_COOKIE, panel_token(),
+        max_age=60 * 60 * 24 * 30, httponly=True, secure=https, samesite="Lax",
+    )
+    return resp
+
+
+@APP.get("/panel")
+def panel():
+    if not PANEL_PASSWORD:
+        return "Panel deshabilitado: falta PANEL_PASSWORD en el servidor.", 503
+    if not panel_authorized():
+        return panel_login_page(), 401
+    return PANEL_HTML
 
 
 @APP.get("/gracias")

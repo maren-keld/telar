@@ -4,12 +4,54 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacidad y datos clínicos — Telar</title>
-  <meta name="description" content="Cómo Telar protege los datos clínicos: almacenamiento local cifrado, IA opcional con BYOK u Ollama, respaldo en nube del profesional. Ley 19.628 Chile.">
+  <meta name="description" content="Cómo Telar protege los datos clínicos: almacenamiento local cifrado, IA opcional con BYOK u Ollama, respaldo automático a una carpeta del profesional. Ley 19.628 Chile.">
   <link rel="canonical" href="https://telarapp.cl/privacidad">
-  <link rel="stylesheet" href="css/style.css?v=20260731b" />
+  <meta property="og:title" content="Privacidad y datos clínicos — Telar">
+  <meta property="og:description" content="Almacenamiento local cifrado, IA opcional y desactivada por defecto, y respaldo automático a una carpeta que elige el profesional.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:url" content="https://telarapp.cl/privacidad">
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260802b">
 </head>
 <body>
-  <main class="container" style="max-width:720px;padding:48px 24px 80px">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand">
+        <img src="assets/icon.png" alt="" width="28" height="28">
+        Telar
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="index.html#funciones">Funciones</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="modules/index.html">Módulos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="neurofeedback.html">Neurofeedback</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="blog/index.html">Blog</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="precio.html">Precio</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="index.html#contacto">Contacto</a>
+      </nav>
+      <div class="nav-actions">
+        <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-nav">
+          <span class="btn-label">Descargar Telar</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" class="legal-page">
+    <div class="container">
     <h1>Privacidad y datos</h1>
 
     <h2>Almacenamiento local</h2>
@@ -25,7 +67,11 @@
     <p>Telar no almacena en sus servidores los envíos que hagas a proveedores de IA.</p>
 
     <h2>Conexiones a internet</h2>
-    <p>Internet se usa solo si activas el Plan Profesional (verificación de suscripción con el proveedor de pagos), si descargas una actualización de la app, si configuras una API de IA externa, o si mantienes activo el <strong>contador anónimo de uso</strong> (solo versión de app, 1× al día, sin IP ni datos clínicos; activado por defecto, desactivable en Ajustes).</p>
+    <p>Internet se usa solo si activas el Plan Profesional (verificación de suscripción con el proveedor de pagos), si descargas una actualización de la app, si configuras una API de IA externa, o si mantienes activo el <strong>contador anónimo de uso</strong>. Ese contador envía, mientras la app está abierta, un identificador aleatorio del equipo (creado en tu computador, sin relación con tu nombre ni con tus pacientes), la versión de Telar, el sistema operativo y el plan. Sirve solo para saber cuántas personas están usando la app. No envía IP, ni datos clínicos, ni tu email. Viene activado por defecto y se apaga por completo en Ajustes.</p>
+
+    <h2>Respaldo automático</h2>
+    <p>En el Plan Profesional, Telar guarda una vez al día una copia cifrada de tu base de datos en <strong>una carpeta de tu computador que tú eliges</strong>. Telar no aloja esa copia: si eliges una carpeta sincronizada (Google Drive, Dropbox, OneDrive, iCloud), es tu propio servicio el que la sube, y si eliges cualquier otra, el respaldo no sale del equipo.</p>
+    <p>El archivo se cifra con <strong>age</strong> antes de escribirse, con una clave de recuperación que se te entrega una sola vez y que solo tú conservas. Ni Telar ni el proveedor de tu nube pueden abrirlo. Si pierdes esa clave, los respaldos no se pueden recuperar.</p>
 
     <h2>Analítica de este sitio web</h2>
     <p>Este sitio mide cuántas visitas recibe y qué secciones se usan, <strong>sin cookies, sin registrar tu dirección IP y sin identificadores de visitante</strong>. Lo único que se guarda es un contador por día y por tipo de evento (por ejemplo: “una visita a la página de precio”), del que no es posible reconstruir quién eres ni qué recorrido hiciste.</p>
@@ -34,8 +80,11 @@
     <h2>Neurofeedback</h2>
     <p>La señal EEG de Neurofeedback se guarda cifrada solo en el computador del profesional; informa al paciente antes de grabar.</p>
 
-    <p><a href="index.html">← Volver</a></p>
+    <p><a href="index.html">← Volver al inicio</a></p>
+    </div>
   </main>
-  <script src="js/track.js?v=20260802"></script>
+  <script src="js/download.js?v=20260802b"></script>
+  <script src="js/track.js?v=20260802b"></script>
+  <script src="js/nav.js?v=20260802b"></script>
 </body>
 </html>
