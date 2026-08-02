@@ -23,6 +23,7 @@
       "allow": [{ "name": "analyze_session", "sidecar": true }]
     },
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "dialog:default"
   ]
 }

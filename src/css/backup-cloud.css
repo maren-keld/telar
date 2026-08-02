@@ -1,0 +1,218 @@
+
+/* ——— Respaldo automático ——— */
+.settings-row__sub--wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.45;
+}
+
+.settings-cloud-backup-row .settings-row__text {
+  gap: 4px;
+}
+
+/* Carpeta local: el respaldo existe pero no sale del computador. */
+.settings-cloud-backup-row--local .settings-row__sub {
+  color: var(--warning-text, #8a5a00);
+}
+
+[data-theme="dark"] .settings-cloud-backup-row--local .settings-row__sub {
+  color: var(--warning-text, #e0b055);
+}
+
+.settings-cloud-backup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+
+.settings-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--accent, #2f6fed);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.settings-inline-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.settings-inline-link--manage {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.settings-inline-link--manage:hover {
+  color: var(--accent, #2f6fed);
+}
+
+.settings-toggle--disabled {
+  opacity: 0.45;
+}
+
+.backup-info-modal__content {
+  max-height: min(78vh, 640px);
+  overflow-y: auto;
+}
+
+.backup-info-section {
+  margin-bottom: 16px;
+}
+
+.backup-info-section__title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.backup-info-section__body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.backup-info-section__body--muted {
+  font-size: 0.85rem;
+}
+
+.backup-info-warning {
+  margin: 20px 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 2px solid #b45309;
+  background: rgba(180, 83, 9, 0.12);
+}
+
+[data-theme='dark'] .backup-info-warning {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: #fbbf24;
+}
+
+.backup-info-warning__lead {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.backup-recovery-modal {
+  width: min(640px, 92vw);
+  max-width: 640px;
+  padding: 28px 32px 24px;
+}
+
+.backup-recovery-modal__head {
+  margin-bottom: 8px;
+}
+
+.backup-recovery-modal__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.backup-recovery-modal__title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.backup-recovery-modal__intro {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.backup-recovery-key-box {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-subtle, #f4f4f5);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+[data-theme='dark'] .backup-recovery-key-box {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.backup-recovery-key-box__code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.backup-recovery-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 560px) {
+  .backup-recovery-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.backup-recovery-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.backup-recovery-confirm input {
+  margin-top: 3px;
+}
+
+.backup-recovery-modal__cta {
+  margin-top: 4px;
+}
+
+.backup-recovery-input {
+  width: 100%;
+  min-height: 88px;
+  margin-bottom: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.cloud-backup-actions-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.cloud-backup-actions-modal__path {
+  margin: 0 0 16px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.cloud-backup-actions-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
