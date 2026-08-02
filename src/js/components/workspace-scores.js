@@ -1,5 +1,9 @@
 import { getSessionsWithModules } from '../db.js';
-import { psychometricChartMeta, psychometricSeries } from '../psychometric-summary.js';
+import {
+  psychometricChartMeta,
+  psychometricChartTypes,
+  psychometricSeries,
+} from '../psychometric-summary.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 
 const DASS_STRESS_BANDS = [
@@ -281,7 +285,7 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     }
   }
 
-  for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
+  for (const psychType of psychometricChartTypes()) {
     if (!types.has(psychType)) continue;
     const meta = psychometricChartMeta(psychType);
     const series = psychometricSeries(sessions, psychType);
@@ -421,7 +425,7 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
       paintNfChart(listEl, 'chart-nf-time', calm, att);
     }
 
-    for (const psychType of ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades']) {
+    for (const psychType of psychometricChartTypes()) {
       if (!types.has(psychType)) continue;
       const meta = psychometricChartMeta(psychType);
       paintSimpleLine(listEl, `chart-${psychType}`, psychometricSeries(sessions, psychType), meta.yMax, meta.color);

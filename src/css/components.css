@@ -744,9 +744,29 @@ input[type='date']::-webkit-calendar-picker-indicator {
 .patient-menu-mode-btn--active,
 .tools-mode-btn--active {
   background: var(--accent);
-  color: #fff;
+  color: var(--btn-primary-fg, #fff);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input-sm {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  height: 36px;
 }
 
 /* Toggle switch (dark mode) */
@@ -1089,9 +1109,10 @@ html[data-theme='dark'] .badge--info {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 0.85rem;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, color 0.15s;
 }
 
 .segmented button:hover {
@@ -1109,6 +1130,17 @@ html[data-theme='dark'] .badge--info {
   border-color: var(--accent);
   color: var(--accent-dark);
   font-weight: 600;
+}
+
+html[data-theme='dark'] .segmented button:not(.active) {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+html[data-theme='dark'] .segmented button.active {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-input));
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .tags-input {
@@ -1331,6 +1363,36 @@ html[data-theme='dark'] .toast {
 .reportes-section__title {
   margin: 0 0 12px;
   font-size: 1rem;
+}
+
+.reportes-section__head .reportes-section__title {
+  margin: 0;
+}
+
+.reportes-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.reportes-cobros__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reportes-cobros__month {
+  font-weight: 600;
+  text-transform: capitalize;
+  min-width: 140px;
+  text-align: center;
+}
+
+.reportes-cobros__panel {
+  padding: 16px;
 }
 
 .reportes-empty {

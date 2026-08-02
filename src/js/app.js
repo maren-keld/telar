@@ -1,5 +1,6 @@
 import { loadPacks } from './pack-loader.js';
 import { renderAgenda } from './views/agenda.js';
+import { renderTreatments } from './views/treatments.js';
 import { renderNewPatient } from './views/new-patient.js';
 import { renderReportes } from './views/reportes.js';
 import { renderSettings } from './views/settings.js';
@@ -17,13 +18,14 @@ import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
 import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLocalSubscriptionApiCache } from './subscription.js';
 import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './components/practitioner-onboarding.js';
+import { scheduleAutoCloudBackup } from './cloud-backup.js';
 import { toast } from './utils.js';
 
 const app = document.getElementById('app');
 let lastRenderedView = '';
 
 function parseRoute() {
-  const hash = location.hash.slice(1) || '/agenda';
+  const hash = location.hash.slice(1) || '/treatments';
   const [path, query] = hash.split('?');
   const params = Object.fromEntries(new URLSearchParams(query || ''));
   const parts = path.split('/').filter(Boolean);
@@ -32,23 +34,36 @@ function parseRoute() {
 
 function navigate(patch) {
   const { parts, params } = parseRoute();
-  const view = patch.view || parts[0] || 'agenda';
+  const view = patch.view || parts[0] || 'treatments';
   const next = new URLSearchParams();
   const q = patch.search !== undefined ? patch.search : params.q;
   const t = patch.treatmentId !== undefined ? patch.treatmentId : params.t;
   const s = patch.sessionId !== undefined ? patch.sessionId : params.s;
   const m = patch.moduleId !== undefined ? patch.moduleId : params.m;
+  const tab = patch.tab !== undefined ? patch.tab : params.tab;
+  const d = patch.date !== undefined ? patch.date : params.d;
+  const billingFilter = patch.billingFilter !== undefined ? patch.billingFilter : params.bf;
   if (q) next.set('q', q);
   if (t) next.set('t', t);
   if (s) next.set('s', s);
   if (m) next.set('m', m);
+  if (tab) next.set('tab', tab);
+  if (d) next.set('d', d);
+  if (billingFilter) next.set('bf', billingFilter);
   const qs = next.toString();
   location.hash = `/${view}${qs ? `?${qs}` : ''}`;
 }
 
 async function render() {
   const { parts, params } = parseRoute();
-  const view = parts[0] || 'agenda';
+  let view = parts[0] || 'treatments';
+
+  // Redirigir búsqueda heredada de la antigua vista agenda → treatments
+  if (view === 'agenda' && params.q) {
+    location.hash = `/treatments?${new URLSearchParams({ q: params.q }).toString()}`;
+    return;
+  }
+
   const onNavigate = navigate;
 
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
@@ -80,11 +95,19 @@ async function render() {
 
     switch (view) {
       case 'agenda':
-        await renderAgenda(app, { search: params.q || '', onNavigate });
+        await renderAgenda(app, {
+          tab: params.tab || '',
+          date: params.d || '',
+          sessionId: params.s || '',
+          onNavigate,
+        });
+        break;
+      case 'treatments':
+        await renderTreatments(app, { search: params.q || '', onNavigate });
         break;
       case 'treatment':
         if (params.t) await openTreatmentWorkspace(params.t, onNavigate);
-        else location.hash = '/agenda';
+        else location.hash = '/treatments';
         break;
       case 'workspace':
         await renderWorkspace(app, {
@@ -95,7 +118,12 @@ async function render() {
         });
         break;
       case 'reportes':
-        await renderReportes(app, { treatmentId: params.t, onNavigate });
+        await renderReportes(app, {
+          treatmentId: params.t,
+          date: params.d || '',
+          billingFilter: params.bf || 'todos',
+          onNavigate,
+        });
         break;
       case 'new-patient':
         renderNewPatient(app, { onNavigate });
@@ -113,11 +141,15 @@ async function render() {
         await renderUnlock(app, { onNavigate });
         break;
       default:
-        location.hash = '/agenda';
+        location.hash = '/treatments';
     }
 
     if (view !== 'unlock' && needsPractitionerOnboarding()) {
       openPractitionerOnboardingModal();
+    }
+
+    if (view !== 'unlock') {
+      scheduleAutoCloudBackup();
     }
   } catch (err) {
     console.error(err);
@@ -193,12 +225,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       try {
         stage('db_status(boot)');
         const st = await getInvoke()('db_status');
-        location.hash = st.unlocked ? '/agenda' : '/unlock';
+        location.hash = st.unlocked ? '/treatments' : '/unlock';
       } catch {
         location.hash = '/unlock';
       }
     } else {
-      location.hash = '/agenda';
+      location.hash = '/treatments';
     }
   }
 

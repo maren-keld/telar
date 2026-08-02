@@ -30,6 +30,16 @@ test('getModuleDefs merges core and pack modules', async () => {
   assert.equal(defs.asrs?.label, 'ASRS');
 });
 
+test('getModuleDefs includes legacy clinical modules without packs', async () => {
+  const registry = await import('../../src/js/pack-registry.js');
+  registry.resetRegistry();
+  const { getModuleDefs } = await import('../../src/js/config.js');
+  const defs = getModuleDefs();
+  assert.ok(defs.gad7?.label);
+  assert.ok(defs.tcc_abc?.label);
+  assert.ok(defs.bilateral_stimulation?.label);
+});
+
 test('treatment templates prefer pack programs over legacy', async () => {
   const registry = await import('../../src/js/pack-registry.js');
   registry.resetRegistry();

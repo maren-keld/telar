@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use serde::Deserialize;
 
 mod ai_api;
+mod backup;
 mod muse_ble;
 mod secure_db;
 mod subscription_api;
@@ -161,6 +162,31 @@ async fn save_data_export(
 }
 
 #[tauri::command]
+async fn save_calendar_export(
+    app: tauri::AppHandle,
+    filename: String,
+    content: String,
+    reveal: bool,
+) -> Result<String, String> {
+    let dir = app
+        .path()
+        .document_dir()
+        .map_err(|e| format!("No se pudo resolver carpeta Documentos: {e}"))?;
+    let calendar_dir = dir.join("Telar").join("calendario");
+    std::fs::create_dir_all(&calendar_dir)
+        .map_err(|e| format!("No se pudo crear carpeta de calendario: {e}"))?;
+    let path = calendar_dir.join(&filename);
+    std::fs::write(&path, content.as_bytes())
+        .map_err(|e| format!("No se pudo guardar calendario: {e}"))?;
+    if reveal {
+        app.shell()
+            .open(calendar_dir.to_string_lossy().to_string(), None)
+            .map_err(|e| format!("No se pudo abrir la carpeta de calendario: {e}"))?;
+    }
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 async fn analyze_neurofeedback_session(
     app: tauri::AppHandle,
     text_data: String,
@@ -269,25 +295,71 @@ fn run_python_script(text_data: &str) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-// --- DB cifrada (PIN) ---
-use secure_db::{
-    backup_encrypted_db, db_execute, db_lock, db_select, db_status, db_unlock, db_unlock_touch_id,
-    db_wipe_all_data, touch_id_available, touch_id_clear_stored_key, touch_id_has_stored_key,
-    touch_id_prompt, touch_id_register_pin,
+use backup::{
+    cloud_backup_folder_status, create_cloud_backup, has_backup_identity, import_backup_identity,
+    preview_cloud_restore, purge_legacy_keychain_identity, restore_cloud_backup, setup_backup_identity,
+    BackupCreateResult, BackupRestorePreview, CloudBackupFolderStatus,
 };
 
 #[tauri::command]
-async fn db_backup_encrypted(app: tauri::AppHandle) -> Result<String, String> {
-    let path = backup_encrypted_db(&app)?;
-    let parent = PathBuf::from(&path)
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or(path.clone());
-    app.shell()
-        .open(parent, None)
-        .map_err(|e| format!("Respaldo creado pero no se pudo abrir la carpeta: {e}"))?;
-    Ok(path)
+fn cloud_backup_setup_identity(app: tauri::AppHandle) -> Result<String, String> {
+    setup_backup_identity(&app)
 }
+
+#[tauri::command]
+fn cloud_backup_import_identity(app: tauri::AppHandle, recovery_key: String) -> Result<(), String> {
+    import_backup_identity(&app, &recovery_key)
+}
+
+#[tauri::command]
+fn cloud_backup_has_identity(app: tauri::AppHandle) -> bool {
+    has_backup_identity(&app)
+}
+
+#[tauri::command]
+fn cloud_backup_create(app: tauri::AppHandle, dest_dir: String) -> Result<BackupCreateResult, String> {
+    create_cloud_backup(&app, PathBuf::from(dest_dir).as_path())
+}
+
+#[tauri::command]
+fn cloud_backup_preview(
+    app: tauri::AppHandle,
+    backup_path: String,
+    recovery_key: Option<String>,
+) -> Result<BackupRestorePreview, String> {
+    preview_cloud_restore(
+        Some(&app),
+        PathBuf::from(backup_path).as_path(),
+        recovery_key.as_deref(),
+    )
+}
+
+#[tauri::command]
+fn cloud_backup_restore(
+    app: tauri::AppHandle,
+    backup_path: String,
+    pin: String,
+    recovery_key: Option<String>,
+) -> Result<(), String> {
+    restore_cloud_backup(
+        &app,
+        PathBuf::from(backup_path).as_path(),
+        recovery_key.as_deref(),
+        &pin,
+    )
+}
+
+#[tauri::command]
+fn cloud_backup_folder_status_cmd(dest_dir: String) -> CloudBackupFolderStatus {
+    cloud_backup_folder_status(PathBuf::from(dest_dir).as_path())
+}
+
+// --- DB cifrada (PIN) ---
+use secure_db::{
+    db_execute, db_lock, db_select, db_status, db_unlock, db_unlock_touch_id, db_wipe_all_data,
+    touch_id_available, touch_id_clear_stored_key, touch_id_has_stored_key, touch_id_prompt,
+    touch_id_register_pin,
+};
 
 fn resolve_python_binary() -> String {
     if let Ok(p) = std::env::var("TELAR_PYTHON") {
@@ -335,6 +407,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             check_app_update,
             install_app_update,
@@ -356,8 +429,15 @@ pub fn run() {
             open_external_url,
             open_pdf_export,
             save_data_export,
+            save_calendar_export,
             db_wipe_all_data,
-            db_backup_encrypted,
+            cloud_backup_setup_identity,
+            cloud_backup_import_identity,
+            cloud_backup_has_identity,
+            cloud_backup_create,
+            cloud_backup_preview,
+            cloud_backup_restore,
+            cloud_backup_folder_status_cmd,
             ai_api::ai_chat_completion,
             subscription_api::subscription_checkout,
             subscription_api::subscription_health,
@@ -367,6 +447,8 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             touch_id::purge_legacy_keychain();
+            // Entrada heredada en Keychain: borrarla sin leer evita el popup al abrir Ajustes.
+            purge_legacy_keychain_identity();
 
             #[cfg(desktop)]
             {

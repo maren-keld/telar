@@ -27,6 +27,7 @@ const TOOL_ICONS = {
   reference: SETTINGS_ICONS.backup,
   ai: SETTINGS_ICONS.ai,
   templates: SETTINGS_ICONS.presentation,
+  supervision: SETTINGS_ICONS.supervision,
 };
 
 function toolsItemsHtml() {
@@ -51,6 +52,15 @@ function toolsItemsHtml() {
         </button>
       </li>
       <li>
+        <button type="button" class="workspace-tools-tab__item" data-action="export-case">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
+          <span class="workspace-tools-tab__text">
+            <strong>Presentación de caso</strong>
+            <small>PDF anonimizado para supervisión — sin nombre ni RUT</small>
+          </span>
+        </button>
+      </li>
+      <li>
         <button type="button" class="workspace-tools-tab__item" data-action="reference-docs">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.reference}</span>
           <span class="workspace-tools-tab__text">
@@ -71,7 +81,7 @@ function toolsItemsHtml() {
     </ul>`;
 }
 
-function bindToolsActions(root, { treatmentId, onExportPdf, onTemplateApplied }) {
+function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresentation, onTemplateApplied }) {
   root.querySelector('[data-action="templates"]')?.addEventListener('click', () => {
     void applyTemplateFromTools(treatmentId, { onApplied: onTemplateApplied });
   });
@@ -86,6 +96,16 @@ function bindToolsActions(root, { treatmentId, onExportPdf, onTemplateApplied })
         }
       },
     });
+  });
+
+  // Sin gate Pro a propósito: este PDF circula hacia el supervisor y es el canal
+  // por el que Telar se muestra solo. Cobrarlo cerraría esa puerta.
+  root.querySelector('[data-action="export-case"]')?.addEventListener('click', async () => {
+    try {
+      await onExportCasePresentation();
+    } catch (e) {
+      toast(e.message || 'No se pudo generar la presentación');
+    }
   });
 
   root.querySelector('[data-action="reference-docs"]')?.addEventListener('click', () => {

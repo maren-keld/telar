@@ -5,6 +5,7 @@ const renderers = new Map();
 const handoutDefs = new Map();
 const programs = new Map();
 const psychometrics = new Map();
+const scorers = new Map();
 const loadedPacks = new Map();
 const packSearchExtra = new Map();
 const tccVariables = new Map();
@@ -60,6 +61,38 @@ export function registerPsychometrics(defs, { packId } = {}) {
   for (const [type, meta] of Object.entries(defs)) {
     registerPsychometric(type, meta, { packId });
   }
+}
+
+/**
+ * Scorer de escala aportado por un pack.
+ * @typedef {object} PackScorer
+ * @property {(data: object) => number|null} total   Puntaje para la serie longitudinal.
+ * @property {(data: object) => string} [readable]   Texto plano para PDF / contexto IA.
+ * @property {number} [yMax]                         Techo del gráfico.
+ * @property {string} [color]                        Color de la línea.
+ * @property {boolean} [chart]                       false = fuera de los gráficos del workspace.
+ */
+
+/** @param {string} type @param {PackScorer} scorer */
+export function registerScorer(type, scorer, { packId } = {}) {
+  if (!type || !scorer || typeof scorer.total !== 'function') return;
+  scorers.set(type, { ...scorer, packId });
+}
+
+export function registerScorers(defs, { packId } = {}) {
+  if (!defs || typeof defs !== 'object') return;
+  for (const [type, scorer] of Object.entries(defs)) {
+    registerScorer(type, scorer, { packId });
+  }
+}
+
+/** @returns {PackScorer | null} */
+export function getScorer(type) {
+  return scorers.get(type) || null;
+}
+
+export function listScorerTypes() {
+  return [...scorers.keys()];
 }
 
 export function registerSearchExtra(type, blob) {
@@ -140,6 +173,7 @@ export function resetRegistry() {
   handoutDefs.clear();
   programs.clear();
   psychometrics.clear();
+  scorers.clear();
   loadedPacks.clear();
   packSearchExtra.clear();
   tccVariables.clear();

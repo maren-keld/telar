@@ -15,7 +15,13 @@ import {
 } from './pack-registry.js';
 
 const PACK_SCHEMA = 1;
-const KNOWN_PACK_ORDER = ['clinical-shared', 'tdah-adulto', 'trauma-regulacion', 'demo'];
+const KNOWN_PACK_ORDER = [
+  'clinical-shared',
+  'tdah-adulto',
+  'trauma-regulacion',
+  'ansiedad-depresion',
+  'demo',
+];
 
 /** @type {Promise<void> | null} */
 let loadPromise = null;

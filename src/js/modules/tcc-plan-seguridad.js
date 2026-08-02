@@ -41,7 +41,12 @@ export async function renderTccPlanSeguridad(host, moduleRow) {
 
   host.innerHTML = `
     <div class="card tcc-module">
-      <h2 class="module-title">Plan de seguridad vital</h2>
+      <div class="module-card-head">
+        <div>
+          <h2 class="module-title" style="margin:0">Plan de seguridad vital</h2>
+          <p class="module-card-head__sub">Material TCC Telar — elaboración propia</p>
+        </div>
+      </div>
       <p class="tcc-intro">
         Este módulo ayuda a identificar y gestionar situaciones de crisis y a mantenerse seguro/a. Es una herramienta
         importante para cualquier persona que pueda estar en riesgo de suicidio o que experimente momentos de gran estrés.

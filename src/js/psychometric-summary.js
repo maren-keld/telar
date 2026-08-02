@@ -6,9 +6,31 @@ import { pcl5Summary } from './pcl5-scoring.js';
 import { sprintSummary } from './sprint-scoring.js';
 import { iesrSummary } from './iesr-scoring.js';
 import { adesSummary } from './ades-scoring.js';
+import { getScorer, listScorerTypes } from './pack-registry.js';
 import { parseJsonSafe } from './utils.js';
 
-const PSYCH_TYPES = ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades', 'dass21'];
+const LEGACY_PSYCH_TYPES = ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades', 'dass21'];
+const LEGACY_CHART_TYPES = ['asrs', 'gad7', 'pcl5', 'sprint_ecl', 'iesr', 'ades'];
+
+function withPackTypes(base, { chartsOnly = false } = {}) {
+  const out = [...base];
+  for (const type of listScorerTypes()) {
+    if (out.includes(type)) continue;
+    if (chartsOnly && getScorer(type)?.chart === false) continue;
+    out.push(type);
+  }
+  return out;
+}
+
+/** Escalas con resumen textual (legacy + packs cargados). */
+export function psychometricTypes() {
+  return withPackTypes(LEGACY_PSYCH_TYPES);
+}
+
+/** Escalas con curva longitudinal en el workspace (legacy + packs cargados). */
+export function psychometricChartTypes() {
+  return withPackTypes(LEGACY_CHART_TYPES, { chartsOnly: true });
+}
 
 function latestPsychByType(sessions, type) {
   for (let i = sessions.length - 1; i >= 0; i--) {
@@ -26,7 +48,7 @@ function latestPsychByType(sessions, type) {
 /** Bloque resumen psicométrico TDAH/trauma para PDF o export IA. */
 export function buildPsychometricSummaryBlock(sessions) {
   const lines = [];
-  for (const type of PSYCH_TYPES) {
+  for (const type of psychometricTypes()) {
     const entry = latestPsychByType(sessions, type);
     if (!entry) continue;
     lines.push(`${entry.label} (sesión ${entry.sessionNumber})\n${entry.text}`);
@@ -41,6 +63,15 @@ export function psychometricSeries(sessions, type) {
     const mod = s.modules.find((m) => m.module_type === type);
     if (!mod) return;
     const data = parseJsonSafe(mod.data, {});
+
+    // Los packs traen su propio scorer; el pack decide qué cuenta como "respondido".
+    const scorer = getScorer(type);
+    if (scorer) {
+      const packValue = scorer.total(data);
+      if (packValue != null) points.push({ label: `S${s.number}`, value: packValue });
+      return;
+    }
+
     const answers = data.answers || [];
     if (!answers.some((v) => v !== null && v !== '')) return;
 
@@ -68,6 +99,14 @@ export function psychometricSeries(sessions, type) {
 
 export function psychometricChartMeta(type) {
   const def = getModuleDef(type);
+  const scorer = getScorer(type);
+  if (scorer) {
+    return {
+      title: def?.label || type,
+      yMax: scorer.yMax ?? 100,
+      color: scorer.color || '#2f6fed',
+    };
+  }
   return {
     title: def?.label || type,
     yMax:

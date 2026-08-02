@@ -1,4 +1,5 @@
 import { isProUser, loadProfile } from '../profile.js';
+import { SUBSCRIPTION_PRICE_CLP, formatSubscriptionPriceCLP } from '../subscription-config.js';
 import { openExternalUrl } from '../tauri-bridge.js';
 import {
   activateDevPro,
@@ -14,7 +15,7 @@ const PRO_FEATURES = [
   'Grabar sesiones de Neurofeedback y exportar CSV/PDF',
   'Exportar programa de tratamiento (PDF)',
   'Acceso a curso de Neurofeedback y mentoría',
-  'Respaldo cifrado en la nube (próximamente)',
+  'Respaldo cifrado en la nube (carpeta sincronizada)',
 ];
 
 const MP_SUBSCRIPTIONS_URL = 'https://www.mercadopago.cl/subscriptions';
@@ -56,7 +57,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </p>
         ` : `
         <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">
-          Suscribirse — $19.990 CLP/mes
+          Suscribirse — ${formatSubscriptionPriceCLP(SUBSCRIPTION_PRICE_CLP)}
         </button>
         <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
           Activar Pro (solo desarrollo, sin pago)

@@ -336,10 +336,8 @@
 }
 
 .module-card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  position: relative;
+  display: block;
   margin-bottom: 12px;
   /* Espacio para hasta 3 iconos de acción (swap + print/help + delete) */
   padding-right: 116px;
@@ -352,9 +350,11 @@
 }
 
 .module-card-head__badge {
+  position: absolute;
+  top: 0;
+  right: 116px;
   flex-shrink: 0;
-  margin-top: 0;
-  align-self: flex-start;
+  margin: 0;
 }
 
 .center-module-card__body > .card:not(.module-scroll),
@@ -377,13 +377,11 @@
   gap: 8px;
 }
 
-.center-module-card:has(.tcc-module) .module-card-actions {
-  left: 24px;
-  right: auto;
-}
-
-.center-module-card:has(.tcc-module) .center-module-card__body > .card {
-  padding-top: 48px;
+/* Espacio para iconos de acción cuando el encabezado no usa .module-card-head */
+.center-module-card__body > .card > .module-title:first-child,
+.center-module-card__body > .card > .dx-head,
+.center-module-card__body > .nf-panel .nf-header {
+  padding-right: 116px;
 }
 
 

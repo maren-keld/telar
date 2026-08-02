@@ -152,6 +152,25 @@ export async function saveModuleData(moduleId, data, status = 'completado') {
   );
 }
 
+export async function listPatients() {
+  return query(`SELECT id, name FROM patients ORDER BY name COLLATE NOCASE ASC`);
+}
+
+/** Crea paciente (si hace falta), tratamiento nuevo y agenda la primera sesión. */
+export async function createAgendaAppointment({ patientId = null, patientName = '', scheduledAt, durationMin = 50 }) {
+  let pid = patientId ? Number(patientId) : null;
+  if (!pid) {
+    const name = (patientName || '').trim() || 'Paciente sin nombre';
+    pid = await upsertPatient({ name });
+  }
+  const treatmentId = await createTreatment(pid);
+  const sessions = await getSessions(treatmentId);
+  const sessionId = sessions[0]?.id;
+  if (!sessionId) throw new Error('No se pudo crear la sesión');
+  await scheduleSession(sessionId, { scheduledAt, durationMin });
+  return { treatmentId, sessionId, patientId: pid };
+}
+
 export async function upsertPatient(patient) {
   if (patient.id) {
     await execute(
@@ -761,4 +780,118 @@ export async function setSpaceCheck(treatmentId, category, label, checked) {
      ON CONFLICT(treatment_id, category, label) DO UPDATE SET checked = excluded.checked, updated_at = datetime('now')`,
     [treatmentId, category, label, checked ? 1 : 0],
   );
+}
+
+const SESSION_SCHEDULE_JOIN = `
+  FROM sessions s
+  JOIN treatments t ON t.id = s.treatment_id
+  JOIN patients p ON p.id = t.patient_id
+`;
+
+function mapScheduledRow(row) {
+  return {
+    ...row,
+    patient_name: row.patient_name,
+    treatment_id: row.treatment_id,
+    treatment_number: row.treatment_number,
+    session_number: row.number,
+  };
+}
+
+export async function listScheduledSessions({ from, to }) {
+  const rows = await query(
+    `SELECT s.*, t.id AS treatment_id, t.number AS treatment_number,
+            p.name AS patient_name
+     ${SESSION_SCHEDULE_JOIN}
+     WHERE s.scheduled_at IS NOT NULL
+       AND s.scheduled_at >= ?
+       AND s.scheduled_at < ?
+     ORDER BY s.scheduled_at`,
+    [from, to],
+  );
+  return rows.map(mapScheduledRow);
+}
+
+export async function getDaySessions(dateISO) {
+  const from = `${dateISO}T00:00`;
+  const to = `${dateISO}T23:59`;
+  return listScheduledSessions({ from, to });
+}
+
+export async function scheduleSession(sessionId, { scheduledAt, durationMin }) {
+  await execute(
+    `UPDATE sessions SET scheduled_at = ?, duration_min = ? WHERE id = ?`,
+    [scheduledAt, durationMin ?? 50, sessionId],
+  );
+}
+
+export async function unscheduleSession(sessionId) {
+  await execute(`UPDATE sessions SET scheduled_at = NULL WHERE id = ?`, [sessionId]);
+}
+
+export async function setSessionAttendance(sessionId, attendance) {
+  await execute(`UPDATE sessions SET attendance = ? WHERE id = ?`, [attendance, sessionId]);
+}
+
+export async function setSessionBilling(sessionId, { feeAmount, paymentStatus, paymentMethod, receiptNumber }) {
+  const [existing] = await query(`SELECT paid_at FROM sessions WHERE id = ?`, [sessionId]);
+  let paidAt = existing?.paid_at || null;
+  if (paymentStatus === 'pagado' && !paidAt) {
+    paidAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  } else if (paymentStatus === 'por_pagar') {
+    paidAt = null;
+  }
+  await execute(
+    `UPDATE sessions SET fee_amount = ?, payment_status = ?, payment_method = ?,
+     receipt_number = ?, paid_at = ? WHERE id = ?`,
+    [feeAmount ?? 0, paymentStatus, paymentMethod ?? '', receiptNumber ?? '', paidAt, sessionId],
+  );
+}
+
+export async function getBillingRows({ from, to, status }) {
+  let sql = `
+    SELECT s.id, s.scheduled_at, s.fee_amount, s.payment_status, s.payment_method,
+           s.receipt_number, s.paid_at, s.number AS session_number,
+           t.id AS treatment_id, t.number AS treatment_number,
+           p.name AS patient_name
+    ${SESSION_SCHEDULE_JOIN}
+    WHERE s.scheduled_at IS NOT NULL
+      AND s.scheduled_at >= ?
+      AND s.scheduled_at < ?`;
+  const params = [from, to];
+  if (status && status !== 'todos') {
+    sql += ` AND s.payment_status = ?`;
+    params.push(status);
+  }
+  sql += ` ORDER BY s.scheduled_at`;
+  return query(sql, params);
+}
+
+export async function getBillingSummary({ from, to }) {
+  const { summarizeBillingRows } = await import('./billing-utils.js');
+  const rows = await getBillingRows({ from, to, status: 'todos' });
+  return summarizeBillingRows(rows);
+}
+
+export async function getUnscheduledSessions() {
+  const rows = await query(
+    `SELECT s.*, t.id AS treatment_id, t.number AS treatment_number,
+            p.name AS patient_name
+     ${SESSION_SCHEDULE_JOIN}
+     WHERE s.scheduled_at IS NULL
+       AND t.status = 'en_tratamiento'
+     ORDER BY t.created_at DESC, s.number`,
+  );
+  return rows.map(mapScheduledRow);
+}
+
+export async function getSessionById(sessionId) {
+  const [row] = await query(
+    `SELECT s.*, t.id AS treatment_id, t.number AS treatment_number,
+            p.name AS patient_name
+     ${SESSION_SCHEDULE_JOIN}
+     WHERE s.id = ?`,
+    [sessionId],
+  );
+  return row ? mapScheduledRow(row) : null;
 }

@@ -30,6 +30,7 @@ import { chatCompletion } from '../ai-client.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
+import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
 import { ICON_PALETTE } from '../icons.js';
 
@@ -104,11 +105,19 @@ const PERFIL_CROSS_REFS = {
 export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   let refreshList = async () => {};
   let activeTab = 'notas';
+  try {
+    if (localStorage.getItem(DEMO_FOCUS_SCORES_KEY) === String(treatmentId)) {
+      localStorage.removeItem(DEMO_FOCUS_SCORES_KEY);
+      activeTab = 'puntajes';
+    }
+  } catch {
+    /* ignore */
+  }
   const profile = loadProfile();
   const defaultInitials = practitionerInitials(profile.name);
 
   container.innerHTML = `
-    <div class="space-tools" data-active-tab="notas">
+    <div class="space-tools" data-active-tab="${activeTab}">
       <nav class="space-tools__tabs2" role="tablist">
         ${[
           ['notas', 'Notas'],
@@ -118,7 +127,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         ]
           .map(
             ([id, label]) =>
-              `<button type="button" class="space-tab2${id === 'notas' ? ' active' : ''}" data-tab="${id}" title="${escapeHtml(label)}"><span>${escapeHtml(label)}</span></button>`,
+              `<button type="button" class="space-tab2${id === activeTab ? ' active' : ''}" data-tab="${id}" title="${escapeHtml(label)}"><span>${escapeHtml(label)}</span></button>`,
           )
           .join('')}
       </nav>
@@ -126,7 +135,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <div class="notes-scroll" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
-        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica">+ Nota</button>
+        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
         <div class="ai-dock__input-row">

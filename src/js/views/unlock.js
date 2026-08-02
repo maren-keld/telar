@@ -5,6 +5,9 @@ import { ICON_FINGERPRINT, ICON_LOCK } from '../icons.js';
 import { loadProfile } from '../profile.js';
 import { getInvoke } from '../tauri-bridge.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
+import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
+import { scheduleAutoCloudBackup } from '../cloud-backup.js';
+import { openTreatmentWorkspace } from '../navigate.js';
 import { toast, escapeHtml } from '../utils.js';
 
 export async function renderUnlock(host, { onNavigate }) {
@@ -143,8 +146,22 @@ export async function renderUnlock(host, { onNavigate }) {
     try {
       const rememberTouchId = Boolean(touchAvailable && profile.useTouchId);
       await invoke('db_unlock', { pin: p1, remember_touch_id: rememberTouchId });
-      hint.textContent = '';
-      onNavigate({ view: 'agenda' });
+      if (status.needs_setup) {
+        hint.textContent = 'Preparando caso de ejemplo…';
+        if (window.__telarPacksReady) await window.__telarPacksReady;
+        const demoTreatmentId = await seedDemoCaseIfNeeded({ firstSetup: true });
+        hint.textContent = '';
+        if (demoTreatmentId) {
+          toast('Caso de ejemplo listo — revisa las curvas en la pestaña Puntajes.');
+          scheduleAutoCloudBackup();
+          await openTreatmentWorkspace(demoTreatmentId, onNavigate);
+          return;
+        }
+      } else {
+        hint.textContent = '';
+      }
+      scheduleAutoCloudBackup();
+      onNavigate({ view: 'treatments' });
     } catch (e) {
       console.error(e);
       hint.textContent = '';
@@ -172,7 +189,8 @@ export async function renderUnlock(host, { onNavigate }) {
     try {
       await invoke('db_unlock_touch_id');
       hint.textContent = '';
-      onNavigate({ view: 'agenda' });
+      scheduleAutoCloudBackup();
+      onNavigate({ view: 'treatments' });
     } catch (e) {
       console.error(e);
       hint.textContent = '';

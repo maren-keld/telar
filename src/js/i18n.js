@@ -2,7 +2,8 @@ import { loadProfile, saveProfile } from './profile.js';
 
 const STRINGS = {
   es: {
-    'nav.agenda': 'Tratamientos',
+    'nav.agenda': 'Agenda',
+    'nav.treatments': 'Tratamientos',
     'nav.reportes': 'Estadísticas',
     'nav.goals': 'Objetivos',
     'nav.modules': 'Módulos',
@@ -34,10 +35,93 @@ const STRINGS = {
     'settings.usagePingOff': 'Desactivado — no se envía ningún ping',
     'settings.usagePingEnabled': 'Contador anónimo activado',
     'settings.usagePingDisabled': 'Contador anónimo desactivado',
-    'settings.backup': 'Respaldar base de datos',
-    'settings.backupSub': 'Copia telar.enc.db cifrada a Documentos/Telar/respaldos',
+    'settings.cloudBackup': 'Respaldo automático',
+    'settings.cloudBackupPro': 'Plan Profesional — cifrado end-to-end en la carpeta que elijas',
+    'settings.cloudBackupNotConfigured': 'Activa el interruptor para elegir carpeta y crear la primera copia',
+    'settings.cloudBackupDisabled': 'Desactivado — no se crean respaldos automáticos',
+    'settings.cloudBackupTurnedOn': 'Respaldo automático activado',
+    'settings.cloudBackupTurnedOff': 'Respaldo automático desactivado',
+    'settings.cloudBackupManage': 'Gestionar',
+    'settings.cloudBackupBackingUp': 'Respaldando…',
+    'settings.cloudBackupFolderMissing': 'Carpeta no accesible — usa Gestionar para elegir otra',
+    'settings.cloudBackupActive': 'Último respaldo: {when} · {size}',
+    'settings.cloudBackupActivePath': '{path} · archivos telar-respaldo-*.age (cifrados, visibles en Finder)',
+    'settings.cloudBackupActiveDetail': '{path} · {file} · {when} · {size}',
+    'settings.cloudBackupActiveEmpty': 'Activo — aún sin archivos .age en la carpeta',
+    'settings.cloudBackupDesktopOnly': 'Disponible solo en la app de escritorio (Plan Pro)',
+    'settings.cloudBackupHowItWorks': '¿Cómo funciona?',
+    'settings.cloudBackupNow': 'Respaldar ahora',
+    'settings.cloudBackupRestoreFromFile': 'Restaurar desde archivo…',
+    'settings.cloudBackupChangeFolder': 'Cambiar carpeta',
+    'settings.cloudBackupPickFolder': 'Elige la carpeta de respaldo (Drive, Dropbox, iCloud…)',
+    'settings.cloudBackupNotSyncedTitle': 'Esta carpeta no sale de tu computador',
+    'settings.cloudBackupNotSyncedMessage':
+      'La carpeta que elegiste no se sincroniza con ninguna nube: los respaldos quedarán en este mismo disco. Si el computador falla o se pierde, también se pierden las copias.\n\nPara que salgan del computador, elige una carpeta dentro de Google Drive, Dropbox, OneDrive o iCloud.',
+    'settings.cloudBackupNotSyncedPickOther': 'Elegir otra carpeta',
+    'settings.cloudBackupNotSyncedUseAnyway': 'Usar esta igual',
+    'settings.cloudBackupLocalOnlyWarn': 'Carpeta local — los respaldos no salen de este computador',
+    'settings.cloudBackupPickRestore': 'Elige un archivo telar-respaldo-.age',
+    'settings.cloudBackupFolderRequired': 'Debes elegir una carpeta de respaldo.',
+    'settings.cloudBackupFolderUpdated': 'Carpeta de respaldo actualizada.',
+    'settings.cloudBackupNeedKeyConfirm': 'Debes confirmar que guardaste la clave de recuperación.',
+    'settings.cloudBackupFirstOk': 'Respaldo activado y primera copia guardada.',
+    'settings.cloudBackupOk': 'Respaldo guardado en tu carpeta.',
+    'settings.cloudBackupNoChanges': 'Sin cambios desde el último respaldo.',
+    'settings.cloudBackupGotIt': 'Entendido',
+    'settings.cloudBackupInfoTitle': 'Respaldo automático',
+    'settings.cloudBackupInfoWhatTitle': 'Qué hace.',
+    'settings.cloudBackupInfoWhat':
+      'Cada día, Telar guarda una copia cifrada de tu consultorio en una carpeta de tu computador que tú eliges. En ella verás archivos telar-respaldo-YYYY-MM-DD.age — texto ilegible sin tu clave. Telar conserva las 7 copias más recientes. Si pierdes el computador, instalas Telar en uno nuevo y restauras todo.',
+    'settings.cloudBackupInfoWhereTitle': 'Telar no guarda nada en internet.',
+    'settings.cloudBackupInfoWhere':
+      'La copia se escribe en tu disco, no en servidores de Telar. Si eliges una carpeta de Google Drive, Dropbox, OneDrive o iCloud, tu propia nube la sincroniza y así el respaldo sobrevive a un computador perdido o robado. Si eliges cualquier otra carpeta, las copias no salen de este equipo.',
+    'settings.cloudBackupInfoPrivacyTitle': 'Nadie más puede leerlo.',
+    'settings.cloudBackupInfoPrivacy':
+      'La copia se cifra con age antes de salir de Telar. En la carpeta —y en tu nube, si la sincronizas— solo queda ese archivo .age indescifrable. Ni Telar, ni Google, ni Dropbox pueden abrirlo.',
+    'settings.cloudBackupInfoKeyTitle': 'Tu clave de recuperación.',
+    'settings.cloudBackupInfoKey':
+      'Al activarlo te entregamos una clave única. Es la única forma de abrir tus respaldos. Guárdala fuera del computador — impresa, o en tu gestor de contraseñas.',
+    'settings.cloudBackupInfoWarn':
+      'Si pierdes esa clave, los respaldos no se pueden recuperar. No hay forma de reponerla: esa es exactamente la razón por la que nadie más puede leer tus datos.',
+    'settings.cloudBackupInfoExportNote':
+      'Esto no reemplaza exportar tus datos. El respaldo sirve para restaurar Telar. Si quieres tus datos en Excel o PDF, usa Exportar mis datos.',
+    'settings.cloudBackupRecoverySheet': 'Clave de recuperación',
+    'settings.cloudBackupRecoveryTitle': 'Guarda tu clave de recuperación',
+    'settings.cloudBackupRecoveryIntro':
+      'Esta clave se muestra una sola vez. Es la única forma de abrir tus respaldos si cambias de computador.',
+    'settings.cloudBackupCopyKey': 'Copiar clave',
+    'settings.cloudBackupDownloadKey': 'Descargar .txt',
+    'settings.cloudBackupPrintPdf': 'Hoja de recuperación (PDF)',
+    'settings.cloudBackupPdfReady': 'PDF guardado en Documentos/Telar/exportaciones',
+    'settings.cloudBackupPdfFailed': 'No se pudo generar el PDF',
+    'settings.cloudBackupRecoveryPdfTitle': 'Telar — Hoja de recuperacion',
+    'settings.cloudBackupRecoveryPdfSubtitle': 'Clave de recuperacion del respaldo automatico',
+    'settings.cloudBackupRecoveryPdfIntro':
+      'Guarde este documento fuera de su computador. Sin esta clave no podra abrir sus archivos telar-respaldo-.age en un equipo nuevo.',
+    'settings.cloudBackupRecoveryPdfRage':
+      'Descifrado independiente: puede usar la herramienta open-source «rage» (formato age) para abrir sus respaldos aunque Telar deje de existir.',
+    'settings.cloudBackupRecoveryPdfWarn':
+      'ATENCION: Si pierde esta clave, los respaldos NO se pueden recuperar. Telar no puede reponerla.',
+    'settings.cloudBackupRecoveryPdfSteps':
+      'Pasos para restaurar: instale Telar, elija Restaurar desde archivo, seleccione su .age e ingrese esta clave cuando se solicite.',
+    'settings.cloudBackupRecoveryPdfGenerated': 'Generado',
+    'settings.cloudBackupRecoveryAck': 'Guardé la clave en un lugar seguro fuera de este computador',
+    'settings.cloudBackupContinue': 'Continuar',
+    'settings.cloudBackupCopied': 'Clave copiada al portapapeles',
+    'settings.cloudBackupCopyFailed': 'No se pudo copiar — selecciona y copia manualmente',
+    'settings.cloudBackupRestoreTitle': '¿Restaurar respaldo?',
+    'settings.cloudBackupRestoreConfirm':
+      'Tienes {localPatients} paciente(s) en este Telar. El respaldo del {backupDate} contiene {backupPatients} paciente(s). Se creará un respaldo local automático antes de sobrescribir.',
+    'settings.cloudBackupRestoreAction': 'Restaurar',
+    'settings.cloudBackupRestorePin': 'Ingresa tu PIN para instalar el respaldo',
+    'settings.cloudBackupRestoreOk': 'Respaldo restaurado. Tus datos están listos.',
+    'settings.cloudBackupRecoveryPromptTitle': 'Clave de recuperación',
+    'settings.cloudBackupRecoveryPrompt':
+      'Pega la clave AGE-SECRET-KEY-… que guardaste al activar el respaldo (o la que descargaste en .txt/PDF).',
     'settings.export': 'Descargar mis datos',
     'settings.exportSub': 'Exportar pacientes, sesiones y perfil en CSV (carpeta en Documentos)',
+    'settings.exportIcs': 'Exportar calendario (.ics)',
+    'settings.exportIcsSub': 'Horarios anonimizados (código TL-XXXX). Se guarda en Documentos/Telar/calendario/',
     'settings.wipe': 'Eliminar todos mis datos',
     'settings.wipeSub': 'Borra pacientes, tratamientos, notas y perfil. No se puede deshacer',
     'settings.version': 'Versión',
@@ -127,7 +211,8 @@ const STRINGS = {
     'toast.langChanged': 'Idioma actualizado',
   },
   en: {
-    'nav.agenda': 'Treatments',
+    'nav.agenda': 'Schedule',
+    'nav.treatments': 'Treatments',
     'nav.reportes': 'Statistics',
     'nav.goals': 'Goals',
     'nav.modules': 'Modules',
@@ -159,10 +244,93 @@ const STRINGS = {
     'settings.usagePingOff': 'Off — no ping sent',
     'settings.usagePingEnabled': 'Anonymous counter enabled',
     'settings.usagePingDisabled': 'Anonymous counter disabled',
-    'settings.backup': 'Back up database',
-    'settings.backupSub': 'Copy encrypted telar.enc.db to Documents/Telar/backups',
+    'settings.cloudBackup': 'Automatic backup',
+    'settings.cloudBackupPro': 'Professional plan — end-to-end encrypted in the folder you choose',
+    'settings.cloudBackupNotConfigured': 'Turn on the switch to pick a folder and create the first copy',
+    'settings.cloudBackupDisabled': 'Off — no automatic backups are created',
+    'settings.cloudBackupTurnedOn': 'Automatic backup enabled',
+    'settings.cloudBackupTurnedOff': 'Automatic backup disabled',
+    'settings.cloudBackupManage': 'Manage',
+    'settings.cloudBackupBackingUp': 'Backing up…',
+    'settings.cloudBackupFolderMissing': 'Folder not accessible — use Manage to pick another',
+    'settings.cloudBackupActive': 'Last backup: {when} · {size}',
+    'settings.cloudBackupActivePath': '{path} · telar-respaldo-*.age files (encrypted, visible in Finder)',
+    'settings.cloudBackupActiveDetail': '{path} · {file} · {when} · {size}',
+    'settings.cloudBackupActiveEmpty': 'Active — no .age files in the folder yet',
+    'settings.cloudBackupDesktopOnly': 'Desktop app only (Pro plan)',
+    'settings.cloudBackupHowItWorks': 'How does it work?',
+    'settings.cloudBackupNow': 'Back up now',
+    'settings.cloudBackupRestoreFromFile': 'Restore from file…',
+    'settings.cloudBackupChangeFolder': 'Change folder',
+    'settings.cloudBackupPickFolder': 'Choose backup folder (Drive, Dropbox, iCloud…)',
+    'settings.cloudBackupNotSyncedTitle': 'This folder never leaves your computer',
+    'settings.cloudBackupNotSyncedMessage':
+      'The folder you picked does not sync to any cloud: backups will stay on this same disk. If the computer fails or is lost, the copies are lost too.\n\nTo get them off this machine, pick a folder inside Google Drive, Dropbox, OneDrive, or iCloud.',
+    'settings.cloudBackupNotSyncedPickOther': 'Pick another folder',
+    'settings.cloudBackupNotSyncedUseAnyway': 'Use it anyway',
+    'settings.cloudBackupLocalOnlyWarn': 'Local folder — backups stay on this computer',
+    'settings.cloudBackupPickRestore': 'Choose a telar-respaldo-.age file',
+    'settings.cloudBackupFolderRequired': 'You must choose a backup folder.',
+    'settings.cloudBackupFolderUpdated': 'Backup folder updated.',
+    'settings.cloudBackupNeedKeyConfirm': 'You must confirm you saved the recovery key.',
+    'settings.cloudBackupFirstOk': 'Backup enabled and first copy saved.',
+    'settings.cloudBackupOk': 'Backup saved to your folder.',
+    'settings.cloudBackupNoChanges': 'No changes since the last backup.',
+    'settings.cloudBackupGotIt': 'Got it',
+    'settings.cloudBackupInfoTitle': 'Automatic backup',
+    'settings.cloudBackupInfoWhatTitle': 'What it does.',
+    'settings.cloudBackupInfoWhat':
+      'Each day, Telar saves an encrypted copy of your practice to a folder on your computer that you choose. You will see telar-respaldo-YYYY-MM-DD.age files — unreadable without your key. Telar keeps the 7 most recent copies. If you lose your computer, install Telar on a new one and restore everything.',
+    'settings.cloudBackupInfoWhereTitle': 'Telar stores nothing on the internet.',
+    'settings.cloudBackupInfoWhere':
+      'The copy is written to your disk, not to Telar servers. If you pick a folder inside Google Drive, Dropbox, OneDrive, or iCloud, your own cloud syncs it, so the backup survives a lost or stolen computer. Pick any other folder and the copies never leave this machine.',
+    'settings.cloudBackupInfoPrivacyTitle': 'Nobody else can read it.',
+    'settings.cloudBackupInfoPrivacy':
+      'The copy is encrypted with age before it leaves Telar. The folder — and your cloud, if you sync it — only holds that unreadable .age file. Not Telar, not Google, not Dropbox can open it.',
+    'settings.cloudBackupInfoKeyTitle': 'Your recovery key.',
+    'settings.cloudBackupInfoKey':
+      'When you enable it, we give you a unique key. It is the only way to open your backups. Store it off this computer — printed or in a password manager.',
+    'settings.cloudBackupInfoWarn':
+      'If you lose that key, backups cannot be recovered. There is no way to replace it — that is exactly why nobody else can read your data.',
+    'settings.cloudBackupInfoExportNote':
+      'This does not replace exporting your data. Backup is for restoring Telar. For Excel or PDF, use Download my data.',
+    'settings.cloudBackupRecoverySheet': 'Recovery key',
+    'settings.cloudBackupRecoveryTitle': 'Save your recovery key',
+    'settings.cloudBackupRecoveryIntro':
+      'This key is shown once. It is the only way to open your backups on a new computer.',
+    'settings.cloudBackupCopyKey': 'Copy key',
+    'settings.cloudBackupDownloadKey': 'Download .txt',
+    'settings.cloudBackupPrintPdf': 'Recovery sheet (PDF)',
+    'settings.cloudBackupPdfReady': 'PDF saved to Documents/Telar/exportaciones',
+    'settings.cloudBackupPdfFailed': 'Could not generate PDF',
+    'settings.cloudBackupRecoveryPdfTitle': 'Telar — Recovery sheet',
+    'settings.cloudBackupRecoveryPdfSubtitle': 'Automatic backup recovery key',
+    'settings.cloudBackupRecoveryPdfIntro':
+      'Store this document off your computer. Without this key you cannot open your telar-respaldo-.age files on a new device.',
+    'settings.cloudBackupRecoveryPdfRage':
+      'Independent decryption: use the open-source «rage» tool (age format) to open your backups even if Telar no longer exists.',
+    'settings.cloudBackupRecoveryPdfWarn':
+      'WARNING: If you lose this key, backups CANNOT be recovered. Telar cannot replace it.',
+    'settings.cloudBackupRecoveryPdfSteps':
+      'To restore: install Telar, choose Restore from file, select your .age file, and enter this key when prompted.',
+    'settings.cloudBackupRecoveryPdfGenerated': 'Generated',
+    'settings.cloudBackupRecoveryAck': 'I saved the key somewhere safe off this computer',
+    'settings.cloudBackupContinue': 'Continue',
+    'settings.cloudBackupCopied': 'Key copied to clipboard',
+    'settings.cloudBackupCopyFailed': 'Could not copy — select and copy manually',
+    'settings.cloudBackupRestoreTitle': 'Restore backup?',
+    'settings.cloudBackupRestoreConfirm':
+      'You have {localPatients} patient(s) in this Telar. The backup from {backupDate} contains {backupPatients} patient(s). A local backup will be created automatically before overwriting.',
+    'settings.cloudBackupRestoreAction': 'Restore',
+    'settings.cloudBackupRestorePin': 'Enter your PIN to install the backup',
+    'settings.cloudBackupRestoreOk': 'Backup restored. Your data is ready.',
+    'settings.cloudBackupRecoveryPromptTitle': 'Recovery key',
+    'settings.cloudBackupRecoveryPrompt':
+      'Paste the AGE-SECRET-KEY-… you saved when enabling backup (or from your .txt/PDF download).',
     'settings.export': 'Download my data',
     'settings.exportSub': 'Export patients, sessions and profile as CSV (Documents folder)',
+    'settings.exportIcs': 'Export calendar (.ics)',
+    'settings.exportIcsSub': 'Anonymized schedules (TL-XXXX code). Saved to Documents/Telar/calendario/',
     'settings.wipe': 'Delete all my data',
     'settings.wipeSub': 'Erases patients, treatments, notes and profile. Cannot be undone',
     'settings.version': 'Version',
@@ -266,6 +434,15 @@ export function localeLabel(code) {
 export function t(key, fallback = '') {
   const table = STRINGS[currentLocale] || STRINGS.es;
   return table[key] ?? STRINGS.es[key] ?? fallback ?? key;
+}
+
+/** Interpolación simple: tf('key', { name: 'Ana' }) con `{name}` en el string. */
+export function tf(key, vars = {}, fallback = '') {
+  let s = t(key, fallback);
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.split(`{${k}}`).join(String(v));
+  }
+  return s;
 }
 
 export function applyLocale(locale) {

@@ -38,6 +38,10 @@ docs/
 /src/packs/clinical-shared/
 /src/packs/tdah-adulto/
 /src/packs/trauma-regulacion/
+/src/packs/ansiedad-depresion/
 !/src/packs/demo/
 !/src/packs/index.public.json
 !/src/packs/index.json
+
+# Claude Code — config local de la máquina
+.claude/settings.local.json

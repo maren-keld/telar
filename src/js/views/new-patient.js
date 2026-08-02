@@ -37,7 +37,7 @@ export function renderNewPatient(container, { onNavigate }) {
       </main>
     </div>`;
 
-  container.querySelector('[data-back]')?.addEventListener('click', () => onNavigate({ view: 'agenda' }));
+  container.querySelector('[data-back]')?.addEventListener('click', () => onNavigate({ view: 'treatments' }));
 
   container.querySelector('#form-new-patient')?.addEventListener('submit', async (e) => {
     e.preventDefault();

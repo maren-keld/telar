@@ -47,7 +47,7 @@ export async function renderTreatment(container, { treatmentId, onNavigate }) {
       </main>
     </div>`;
 
-  container.querySelector('[data-back]')?.addEventListener('click', () => onNavigate({ view: 'agenda' }));
+  container.querySelector('[data-back]')?.addEventListener('click', () => onNavigate({ view: 'treatments' }));
 
   container.querySelectorAll('.btn-open-session').forEach((btn) => {
     btn.addEventListener('click', async () => {

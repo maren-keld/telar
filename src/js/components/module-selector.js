@@ -220,6 +220,7 @@ async function loadSelectorList(ctx) {
 
   const { listEl, previewEl, searchInput } = ctx;
   let selectedType = null;
+  let selecting = false;
 
   const customCategoryHtml = customMods.length
     ? `<div class="mod-selector-cat" data-cat="custom">
@@ -289,11 +290,22 @@ async function loadSelectorList(ctx) {
   };
 
   const selectModule = async (type) => {
+    if (selecting) return;
     const def = resolveModuleDef(type);
     if (!def || type === 'selector_modulo') return;
 
+    selecting = true;
     try {
-      const existingInSession = sessionMods.find(
+      const selectorRow = await getModule(ctx.selectorModuleId);
+      if (!selectorRow || selectorRow.module_type !== 'selector_modulo') {
+        if (ctx.refreshWorkspace) {
+          await ctx.refreshWorkspace(ctx.selectorModuleId, ctx.sessionId);
+        }
+        return;
+      }
+
+      const sessionModsNow = await getSessionModules(ctx.sessionId);
+      const existingInSession = sessionModsNow.find(
         (m) => m.module_type === type && String(m.id) !== String(ctx.selectorModuleId),
       );
       if (existingInSession) {
@@ -315,6 +327,8 @@ async function loadSelectorList(ctx) {
       await finishNavigation(ctx.sessionId, modId);
     } catch (e) {
       toast(e.message || 'No se pudo añadir el módulo');
+    } finally {
+      selecting = false;
     }
   };
 
@@ -326,7 +340,7 @@ async function loadSelectorList(ctx) {
 
   listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (btn.disabled) return;
+      if (btn.disabled || selecting) return;
       const type = btn.dataset.type;
       selectedType = type;
       const def = resolveModuleDef(type) || { label: type, description: 'Módulo clínico.' };

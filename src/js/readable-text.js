@@ -6,6 +6,7 @@ import { pcl5Summary } from './pcl5-scoring.js';
 import { sprintSummary } from './sprint-scoring.js';
 import { iesrSummary } from './iesr-scoring.js';
 import { adesSummary } from './ades-scoring.js';
+import { getScorer } from './pack-registry.js';
 import { parseJsonSafe } from './utils.js';
 
 function linesFromObject(obj, labels) {
@@ -307,7 +308,8 @@ export function buildReadableText(moduleType, data) {
     case 'escala_ansiedad':
       return d.value != null && d.value !== '' ? `Ansiedad subjetiva: ${d.value}/100` : '';
     default:
-      return '';
+      // Escalas aportadas por packs clínicos.
+      return getScorer(moduleType)?.readable?.(d) || '';
   }
 }
 

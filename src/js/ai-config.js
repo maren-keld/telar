@@ -100,6 +100,30 @@ export const AI_DEFAULTS = {
   aiApiKey: BUNDLED_MISTRAL_API_KEY || '',
 };
 
+/** Ollama OpenAI-compatible en el mismo equipo. */
+export const OLLAMA_LOCAL_API_BASE = 'http://127.0.0.1:11434/v1';
+
+const LOCAL_MODEL_TO_OLLAMA = {
+  'qwen2.5-3b-instruct-q4': 'qwen2.5:3b',
+  'qwen2.5-7b-instruct-q4': 'qwen2.5:7b',
+  'llama3.2-3b-instruct-q4': 'llama3.2:3b',
+  'mistral-7b-instruct-q4': 'mistral',
+};
+
+export function isLocalAiApiBase(base = '') {
+  return /127\.0\.0\.1|localhost/.test(String(base));
+}
+
+export function ollamaModelFromLocalId(localModelId) {
+  return LOCAL_MODEL_TO_OLLAMA[localModelId] || 'mistral';
+}
+
+export function isLocalAiEndpoint(cfg) {
+  if (!cfg?.enabled) return false;
+  if (cfg.mode === 'local') return true;
+  return cfg.mode === 'api' && isLocalAiApiBase(cfg.apiBase);
+}
+
 export function aiModeLabel(mode) {
   return AI_MODES[mode]?.label || AI_MODES.off.label;
 }
@@ -115,10 +139,15 @@ export function resolveAiConfig(profile = {}) {
     return { enabled: false, mode: 'off' };
   }
   if (mode === 'local') {
+    const localModel = profile.aiLocalModel || AI_DEFAULTS.aiLocalModel;
     return {
       enabled: true,
       mode: 'local',
-      model: profile.aiLocalModel || AI_DEFAULTS.aiLocalModel,
+      apiBase: OLLAMA_LOCAL_API_BASE,
+      model: localModel,
+      apiModel: ollamaModelFromLocalId(localModel),
+      apiKey: '',
+      keyRequired: false,
     };
   }
   const providerId = profile.aiApiProvider || AI_DEFAULTS.aiApiProvider;

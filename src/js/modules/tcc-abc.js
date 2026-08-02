@@ -26,7 +26,12 @@ export async function renderTccAbc(host, moduleRow) {
 
   host.innerHTML = `
     <div class="card tcc-module">
-      <h2 class="module-title">Modelo ABC (versión simple)</h2>
+      <div class="module-card-head">
+        <div>
+          <h2 class="module-title" style="margin:0">Modelo ABC (versión simple)</h2>
+          <p class="module-card-head__sub">Material TCC Telar — elaboración propia</p>
+        </div>
+      </div>
       <p class="tcc-intro">
         El modelo ABC es una herramienta que tiene como objetivo explorar pensamientos, emociones, conductas y
         creencias antes, durante y luego de una situación desagradable o de dificultad.

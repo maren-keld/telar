@@ -1,5 +1,13 @@
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats, getTreatmentReport } from '../db.js';
+import {
+  renderCobrosHtml,
+  loadCobrosData,
+  bindCobrosPanel,
+  addMonths,
+} from '../components/agenda-billing.js';
+import { parseDateISO, toDateISO } from '../agenda-utils.js';
+import { loadProfile } from '../profile.js';
 import { escapeHtml, formatDate, parseJsonSafe } from '../utils.js';
 
 const PIE_COLORS = [
@@ -129,10 +137,30 @@ function mountPieChart(canvas, slices, title) {
   });
 }
 
-export async function renderReportes(container, { treatmentId, onNavigate }) {
+export async function renderReportes(container, { treatmentId, date, billingFilter = 'todos', onNavigate }) {
   const groups = await getAgendaGroups();
   const dash = await getDashboardStats();
   const demo = await getPatientDemographicsStats();
+  const profile = loadProfile();
+  const presentationMode = Boolean(profile.presentationMode);
+  const focusDate = parseDateISO(date) || new Date();
+  const { rows, summary } = await loadCobrosData(focusDate, billingFilter);
+
+  const cobrosNav = (patch) =>
+    onNavigate({ view: 'reportes', date: toDateISO(focusDate), billingFilter, ...patch });
+
+  const cobrosSection = `
+    <section class="reportes-section" id="reportes-cobros">
+      <div class="reportes-section__head">
+        <h2 class="reportes-section__title">Cobros</h2>
+        <div class="reportes-cobros__nav">
+          <button type="button" class="btn btn-secondary btn-icon-only" id="cobros-prev" title="Mes anterior">‹</button>
+          <span class="reportes-cobros__month">${escapeHtml(focusDate.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }))}</span>
+          <button type="button" class="btn btn-secondary btn-icon-only" id="cobros-next" title="Mes siguiente">›</button>
+        </div>
+      </div>
+      <div class="card reportes-cobros__panel">${renderCobrosHtml(rows, summary, billingFilter, presentationMode)}</div>
+    </section>`;
 
   const chartLabels = dash.new_patients_by_month.map((m) => formatMonth(m.ym));
   const chartValues = dash.new_patients_by_month.map((m) => m.count);
@@ -175,12 +203,26 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
       <div class="app-content reportes-page">
         <h1 class="reportes-page__title">Estadísticas</h1>
         ${renderGlobalDashboard(dash, groups)}
+        ${cobrosSection}
         ${renderDemographicsSection()}
         ${extraHtml}
       </div>
     </div>`;
 
   bindAppSidebar(container, { onNavigate });
+
+  bindCobrosPanel(container.querySelector('#reportes-cobros'), {
+    focusDate,
+    billingFilter,
+    presentationMode,
+    onFilterChange: (bf) => cobrosNav({ billingFilter: bf }),
+  });
+  container.querySelector('#cobros-prev')?.addEventListener('click', () =>
+    cobrosNav({ date: toDateISO(addMonths(focusDate, -1)) }),
+  );
+  container.querySelector('#cobros-next')?.addEventListener('click', () =>
+    cobrosNav({ date: toDateISO(addMonths(focusDate, 1)) }),
+  );
 
   const lineCanvas = container.querySelector('#chart-new-patients');
   if (lineCanvas && window.Chart) {

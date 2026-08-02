@@ -15,6 +15,7 @@ import {
 import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
+import { exportCasePresentationPdf } from '../export-case-presentation-pdf.js';
 import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { t } from '../i18n.js';
@@ -92,6 +93,12 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   ) {
     return;
   }
+
+  const prevTreatmentId = container.dataset.workspaceTreatmentId;
+  const prevModuleId = container.dataset.workspaceModuleId;
+  const prevScrollRoot = container.querySelector('#workspace-center-scroll');
+  const prevScrollTop = prevScrollRoot?.scrollTop ?? 0;
+  const sameTreatment = prevTreatmentId === String(treatmentId);
 
   // Guardar scroll de notas antes del re-render para no perder posición.
   const savedNotesScroll = container.querySelector('#notes-list')?.scrollTop ?? 0;
@@ -217,25 +224,27 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   if (activeModule) {
     const scrollToRestore = pendingCenterScrollRestore;
     pendingCenterScrollRestore = null;
-    if (scrollToRestore != null) {
-      const root = container.querySelector('#workspace-center-scroll');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (root) root.scrollTop = scrollToRestore;
-          setActiveModuleHighlight(container, activeModule.id);
-        });
-      });
-    } else {
-      scrollToModule(container, activeModule.id, { force: true });
-      scrollSidebarToModule(container, activeModule.id);
+    const root = container.querySelector('#workspace-center-scroll');
+    const moduleIdStr = String(activeModule.id);
+
+    if (root) {
+      if (scrollToRestore != null) {
+        root.scrollTop = scrollToRestore;
+      } else if (sameTreatment && prevModuleId === moduleIdStr) {
+        root.scrollTop = prevScrollTop;
+      } else {
+        syncScrollToModule(container, activeModule.id);
+      }
     }
+    setActiveModuleHighlight(container, activeModule.id);
+    scrollSidebarToModule(container, activeModule.id);
   }
   bindModuleScrollSpy(container);
 
   container.querySelector('[data-back]')?.addEventListener('click', () => {
     teardownNeurofeedback();
     teardownBilateralStimulation();
-    onNavigate({ view: 'agenda' });
+    onNavigate({ view: 'treatments' });
   });
 
   container.querySelector('#btn-patient-menu')?.addEventListener('click', (e) => {
@@ -292,6 +301,10 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
       await exportTreatmentPdf(treatmentId);
       toast('PDF exportado en Documentos/Telar/exportaciones');
     },
+    onExportCasePresentation: async () => {
+      const filename = await exportCasePresentationPdf(treatmentId);
+      toast(`${filename} — anonimizado, listo para supervisión`);
+    },
     onTemplateApplied: async () => {
       await renderWorkspace(container, {
         treatmentId,
@@ -337,16 +350,36 @@ async function tryFastModuleNavigation(container, { treatmentId, sessionId, modu
   if (!moduleId || !activeModule) return false;
   if (container.dataset.workspaceTreatmentId !== String(treatmentId)) return false;
   if (!container.querySelector('#workspace-layout')) return false;
-  if (!container.querySelector(`#module-${moduleId}`)) return false;
+  const card = container.querySelector(`#module-${moduleId}`);
+  if (!card) return false;
+
+  // Tras reemplazar el selector, el id es el mismo pero el tipo cambió — hay que re-renderizar.
+  if (
+    card.dataset.moduleType &&
+    activeModule.module_type &&
+    card.dataset.moduleType !== activeModule.module_type
+  ) {
+    return false;
+  }
 
   container.dataset.workspaceModuleId = String(moduleId);
   if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
 
   bindSessionCollapse(container, activeModule);
   setActiveModuleHighlight(container, moduleId);
-  scrollToModule(container, moduleId, { force: true });
+  syncScrollToModule(container, moduleId);
   scrollSidebarToModule(container, moduleId);
   return true;
+}
+
+function syncScrollToModule(container, moduleId, pad = 20) {
+  if (!moduleId) return;
+  const root = container.querySelector('#workspace-center-scroll');
+  const el = container.querySelector(`#module-${moduleId}`);
+  if (!root || !el) return;
+  const rootRect = root.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  root.scrollTop = Math.max(0, root.scrollTop + (elRect.top - rootRect.top) - pad);
 }
 
 function setActiveModuleHighlight(container, moduleId) {
@@ -398,7 +431,8 @@ function scrollToModule(container, moduleId, { force = false, smooth = false } =
   };
 
   if (force) {
-    requestAnimationFrame(() => requestAnimationFrame(run));
+    syncScrollToModule(container, moduleId);
+    setActiveModuleHighlight(container, moduleId);
   } else {
     requestAnimationFrame(run);
   }

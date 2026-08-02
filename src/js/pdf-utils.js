@@ -9,6 +9,11 @@ export function pdfSafeText(text) {
     .replace(/✓/g, '[x]')
     .replace(/≥/g, '>=')
     .replace(/≤/g, '<=')
+    .replace(/[—–]/g, '-')
+    .replace(/→/g, '->')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/…/g, '...')
     .replace(/[^\t\n\r\x20-\x7E\xA0-\xFF]/g, ' ');
 }
 

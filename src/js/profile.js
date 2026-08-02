@@ -15,6 +15,10 @@ const DEFAULTS = {
   plan: 'free',
   customModules: [],
   hiddenDxProblems: [],
+  cloudBackupDestDir: '',
+  cloudBackupEnabled: false,
+  cloudBackupLastError: '',
+  cloudBackupLastSuccessAt: '',
   ...AI_DEFAULTS,
 };
 

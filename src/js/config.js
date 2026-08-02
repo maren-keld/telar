@@ -3,6 +3,7 @@
  * Los módulos clínicos se registran vía pack-loader → pack-registry.
  */
 import { getAllModuleDefs as getPackModuleDefs } from './pack-registry.js';
+import { getLegacyModuleDefs } from './legacy-module-defs.js';
 
 export const CORE_MODULE_DEFS = {
   selector_modulo: {
@@ -40,9 +41,9 @@ export const CORE_MODULE_DEFS = {
   },
 };
 
-/** Core + packs cargados. Usar en lugar de MODULE_DEFS estático. */
+/** Core + legacy embebido + packs cargados (pack gana en conflicto). */
 export function getModuleDefs() {
-  return { ...CORE_MODULE_DEFS, ...getPackModuleDefs() };
+  return { ...CORE_MODULE_DEFS, ...getLegacyModuleDefs(), ...getPackModuleDefs() };
 }
 
 export function getModuleDef(type) {

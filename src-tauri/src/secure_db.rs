@@ -107,7 +107,7 @@ struct KeyInfo {
     salt_b64: String,
 }
 
-fn app_config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn app_config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path()
         .resolve("", BaseDirectory::AppConfig)
         .map_err(|e| format!("No se pudo resolver AppConfig dir: {e}"))
@@ -241,6 +241,7 @@ fn read_migrations() -> Vec<(&'static str, &'static str)> {
         ("008_notes_author.sql", include_str!("../migrations/008_notes_author.sql")),
         ("009_convenios_goals.sql", include_str!("../migrations/009_convenios_goals.sql")),
         ("010_cleanup_test_patients.sql", include_str!("../migrations/010_cleanup_test_patients.sql")),
+        ("011_agenda_cobros.sql", include_str!("../migrations/011_agenda_cobros.sql")),
     ]
 }
 
@@ -349,6 +350,81 @@ fn with_conn<T>(f: impl FnOnce(&Connection) -> Result<T, String>) -> Result<T, S
         return Err("DB bloqueada. Ingresa PIN para desbloquear.".to_string());
     };
     f(conn)
+}
+
+/// Expuesto para respaldo en la nube (`backup.rs`).
+pub(crate) fn with_open_conn<T>(f: impl FnOnce(&Connection) -> Result<T, String>) -> Result<T, String> {
+    with_conn(f)
+}
+
+pub(crate) fn open_encrypted_at(path: &Path, key: &str) -> Result<Connection, String> {
+    open_encrypted_connection(path, key)
+}
+
+pub fn schema_version() -> u32 {
+    read_migrations().len() as u32
+}
+
+pub(crate) fn vacuum_db_into(conn: &Connection, dest: &Path) -> Result<(), String> {
+    if dest.exists() {
+        fs::remove_file(dest).map_err(|e| format!("No se pudo limpiar temporal: {e}"))?;
+    }
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear carpeta temporal: {e}"))?;
+    }
+    let dest_escaped = dest.to_string_lossy().replace('\'', "''");
+    conn.execute_batch(&format!("VACUUM INTO '{dest_escaped}';"))
+        .map_err(|e| format!("VACUUM INTO falló: {e}"))
+}
+
+pub(crate) fn rekey_encrypted_file(path: &Path, current_key: &str, new_key: &str) -> Result<(), String> {
+    let conn = open_encrypted_connection(path, current_key)?;
+    let new_escaped = new_key.replace('\'', "''");
+    conn.execute_batch(&format!("PRAGMA rekey = '{new_escaped}';"))
+        .map_err(|e| format!("PRAGMA rekey falló: {e}"))
+}
+
+pub(crate) fn count_patients_in_conn(conn: &Connection) -> Result<u64, String> {
+    conn.query_row("SELECT COUNT(*) FROM patients", [], |r| r.get(0))
+        .map_err(|e| format!("No se pudo contar pacientes: {e}"))
+}
+
+pub(crate) fn derive_key_from_pin_for_backup(app: &tauri::AppHandle, pin: &str) -> Result<String, String> {
+    derive_key_from_pin(app, pin)
+}
+
+pub(crate) fn encrypted_db_path_for_backup(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    encrypted_db_path(app)
+}
+
+pub(crate) fn app_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_cache_dir()
+        .map_err(|e| format!("No se pudo resolver caché: {e}"))
+}
+
+pub(crate) fn install_encrypted_db_file(app: &tauri::AppHandle, source: &Path) -> Result<(), String> {
+    let dest = encrypted_db_path(app)?;
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear AppConfig: {e}"))?;
+    }
+    fs::copy(source, &dest).map_err(|e| format!("No se pudo instalar base restaurada: {e}"))?;
+    Ok(())
+}
+
+pub(crate) fn reopen_encrypted_db(app: &tauri::AppHandle, pin: &str) -> Result<(), String> {
+    check_pin_lockout()?;
+    let key = derive_key_from_pin(app, pin)?;
+    match unlock_with_key(app, &key) {
+        Ok(()) => {
+            reset_pin_lockout();
+            Ok(())
+        }
+        Err(e) => {
+            record_pin_failure();
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]

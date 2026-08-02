@@ -1001,7 +1001,7 @@
   gap: 12px;
   margin-bottom: 12px;
   /* espacio para los iconos de module-card-actions (swap + delete) */
-  padding-right: 80px;
+  padding-right: 116px;
 }
 
 .support-view-tabs {
@@ -2166,6 +2166,118 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   color: var(--text-secondary);
 }
 
+/* --- Escalas de packs: bandas de severidad genéricas --- */
+.psych-score-pill.psych-band--minimal { border-color: #a8d5ba; background: #edf7f0; }
+.psych-score-pill.psych-band--mild { border-color: #f0d78c; background: #fff8e6; }
+.psych-score-pill.psych-band--moderate { border-color: #f5b8a8; background: #fff0eb; }
+.psych-score-pill.psych-band--severe { border-color: #e8a0a0; background: #ffe8e8; }
+.psych-score-pill.psych-band--extreme { border-color: #d98080; background: #ffdede; }
+
+/* Grillas Likert genéricas por número de anclajes. */
+.likert-head__opts.likert-opts--4,
+.likert-row__opts.likert-opts--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.likert-head__opts.likert-opts--5,
+.likert-row__opts.likert-opts--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+/* --- Escalas de packs: ítems con anclajes propios por ítem --- */
+.psych-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.psych-item__q {
+  display: flex;
+  gap: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.psych-item__n {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.psych-item__opts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+}
+
+.psych-item__opt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+}
+
+.psych-item__opt input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.psych-item__opt:hover {
+  border-color: var(--accent);
+}
+
+.psych-item__opt:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.psych-item__opt:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 60%, transparent);
+}
+
+.psych-item__opt-v {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Ítem sensible dentro de una grilla Likert (p. ej. ideación suicida). */
+.likert-row--risk .likert-row__q {
+  font-weight: 600;
+}
+
+/* Alerta de riesgo (p. ej. ítem de ideación suicida). */
+.psych-alert {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e8a0a0;
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: #fff5f5;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #922b21;
+}
+
+.psych-alert[hidden] {
+  display: none;
+}
+
+.psych-alert strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
 .asrs-module .likert-head__opts,
 .asrs-module .likert-row__opts,
 .asrs-head__opts,
@@ -2591,6 +2703,7 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   margin: 0 0 20px;
   color: var(--text-secondary);
   line-height: 1.45;
+  white-space: pre-line;
 }
 
 /* Redes de apoyo */
@@ -3541,4 +3654,31 @@ html[data-theme='dark'] .tcc-warning {
 .tcc-quiz__opt input {
   margin-top: 3px;
   flex-shrink: 0;
+}
+
+/* Dark mode — escalas de packs */
+html[data-theme='dark'] .psych-score-pill.psych-band--minimal {
+  border-color: #3d6b52;
+  background: #152820;
+  color: var(--text-primary);
+}
+
+html[data-theme='dark'] .psych-score-pill.psych-band--mild,
+html[data-theme='dark'] .psych-score-pill.psych-band--moderate {
+  border-color: #6b5a2f;
+  background: #2a2415;
+  color: var(--text-primary);
+}
+
+html[data-theme='dark'] .psych-score-pill.psych-band--severe,
+html[data-theme='dark'] .psych-score-pill.psych-band--extreme {
+  border-color: #6b3d3d;
+  background: #2a1515;
+  color: var(--text-primary);
+}
+
+html[data-theme='dark'] .psych-alert {
+  border-color: #6b3d3d;
+  background: #2a1515;
+  color: #f0a0a0;
 }
