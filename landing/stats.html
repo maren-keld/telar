@@ -4,55 +4,625 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Telar — Uso (privado)</title>
-  <link rel="stylesheet" href="css/style.css?v=20260724">
+  <title>Telar — Funnel y uso (privado)</title>
   <style>
-    body { max-width: 520px; margin: 48px auto; padding: 0 20px; font-family: Inter, system-ui, sans-serif; }
-    h1 { font-size: 1.25rem; margin-bottom: 8px; }
-    .muted { color: #64748b; font-size: 0.9rem; line-height: 1.5; }
-    .stat { font-size: 2.5rem; font-weight: 700; margin: 16px 0 4px; color: #2f6fed; }
-    .err { color: #b91c1c; }
+    .viz-root {
+      color-scheme: light;
+      --page:           #f5f5f0;
+      --surface-1:      #fafaf8;
+      --text-primary:   #111111;
+      --text-secondary: #444444;
+      --muted:          #5f5f5f;
+      --grid:           #e1e0d9;
+      --axis:           #c3c2b7;
+      --border:         rgba(17, 17, 17, 0.10);
+      --series-1:       #2a78d6;
+      --series-2:       #eb6834;
+      --ord-1:          #86b6ef;
+      --ord-2:          #5598e7;
+      --ord-3:          #2a78d6;
+      --ord-4:          #184f95;
+      --critical:       #d03b3b;
+      --warning:        #fab219;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:where(:not([data-theme="light"])) .viz-root {
+        color-scheme: dark;
+        --page:           #0d0d0d;
+        --surface-1:      #1a1a19;
+        --text-primary:   #ffffff;
+        --text-secondary: #c3c2b7;
+        --muted:          #898781;
+        --grid:           #2c2c2a;
+        --axis:           #383835;
+        --border:         rgba(255, 255, 255, 0.10);
+        --series-1:       #3987e5;
+        --series-2:       #d95926;
+        --ord-1:          #b7d3f6;
+        --ord-2:          #6da7ec;
+        --ord-3:          #2a78d6;
+        --ord-4:          #184f95;
+      }
+    }
+    :root[data-theme="dark"] .viz-root {
+      color-scheme: dark;
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --grid:           #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255, 255, 255, 0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --ord-1:          #b7d3f6;
+      --ord-2:          #6da7ec;
+      --ord-3:          #2a78d6;
+      --ord-4:          #184f95;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .viz-root {
+      background: var(--page);
+      color: var(--text-primary);
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 64px;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+
+    header h1 { font-size: 1.15rem; font-weight: 700; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 0.85rem; line-height: 1.55; margin: 0; }
+    .sub a { color: inherit; }
+
+    /* Una sola fila de filtros, arriba, que aplica a todo lo de abajo */
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin: 24px 0 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
+    }
+    .filters .lbl { font-size: 0.8rem; color: var(--muted); margin-right: 4px; }
+    .chip {
+      font: inherit; font-size: 0.82rem; cursor: pointer;
+      background: var(--surface-1); color: var(--text-secondary);
+      border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px;
+    }
+    .chip[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+    .chip:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }
+
+    .card {
+      background: var(--surface-1); border: 1px solid var(--border);
+      border-radius: 6px; padding: 22px 24px; margin-bottom: 20px;
+    }
+    .card > h2 {
+      font-size: 0.82rem; font-weight: 600; letter-spacing: 0.02em;
+      color: var(--text-secondary); margin: 0 0 2px; text-transform: none;
+    }
+    .card > .hint { font-size: 0.78rem; color: var(--muted); margin: 0 0 20px; line-height: 1.5; }
+
+    /* Hero: exactamente una por vista */
+    .hero-fig { font-size: 3.5rem; font-weight: 700; line-height: 1; margin: 6px 0 4px; }
+    /* Sin datos, un guion a 3.5rem se lee como una barra negra tachada */
+    .hero-fig.is-empty { font-size: 1.5rem; font-weight: 600; color: var(--muted); }
+    .hero-note { font-size: 0.82rem; color: var(--muted); margin: 0; }
+
+    /* La grilla usa el color de superficie de fondo: si la última fila queda
+       incompleta, el hueco se ve vacío y no como una celda gris. */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--surface-1); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+    .kpi { background: var(--surface-1); padding: 18px 20px; box-shadow: 0 0 0 1px var(--border); }
+    .kpi .k-label { font-size: 0.78rem; color: var(--muted); margin: 0 0 6px; }
+    .kpi .k-value { font-size: 1.75rem; font-weight: 600; line-height: 1.1; }
+    .kpi .k-foot { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    svg { display: block; width: 100%; height: auto; overflow: visible; }
+    /* display:block le gana al atributo hidden del UA: hay que reponerlo */
+    svg[hidden] { display: none; }
+    .scroller { overflow-x: auto; }
+
+    /* El texto nunca usa el color de la serie */
+    .tick { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+    .dlabel { font-size: 12px; fill: var(--text-primary); font-weight: 600; }
+    .dlabel-soft { font-size: 11px; fill: var(--muted); }
+    .stage { font-size: 12px; fill: var(--text-secondary); }
+    .gridline { stroke: var(--grid); stroke-width: 1; }
+    .axisline { stroke: var(--axis); stroke-width: 1; }
+
+    .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 14px; padding: 0; list-style: none; }
+    .legend li { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--text-secondary); }
+    .legend .key { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+
+    .tbl-toggle {
+      font: inherit; font-size: 0.78rem; cursor: pointer; margin-top: 16px;
+      background: none; border: 1px solid var(--border); border-radius: 4px;
+      padding: 5px 10px; color: var(--text-secondary);
+    }
+    table { border-collapse: collapse; width: 100%; margin-top: 14px; font-size: 0.82rem; }
+    th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    th { color: var(--muted); font-weight: 600; }
+
+    .tooltip {
+      position: fixed; pointer-events: none; opacity: 0; transition: opacity .12s;
+      background: var(--surface-1); color: var(--text-primary);
+      border: 1px solid var(--border); border-radius: 5px;
+      padding: 8px 11px; font-size: 0.78rem; line-height: 1.5;
+      box-shadow: 0 4px 14px rgba(0,0,0,.14); z-index: 20; max-width: 240px;
+    }
+    .tooltip .t-row { display: flex; align-items: center; gap: 7px; }
+    .tooltip .t-key { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .tooltip b { font-variant-numeric: tabular-nums; }
+
+    .callout {
+      border: 1px solid var(--border); border-left: 3px solid var(--warning);
+      border-radius: 4px; padding: 13px 16px; font-size: 0.8rem; line-height: 1.6;
+      color: var(--text-secondary); background: var(--surface-1); margin-bottom: 20px;
+    }
+    .callout strong { color: var(--text-primary); }
+    .err { color: var(--critical); }
+    .empty { color: var(--muted); font-size: 0.85rem; padding: 20px 0; line-height: 1.6; }
+    code { font-size: 0.85em; background: var(--page); padding: 1px 5px; border-radius: 3px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
-  <h1>Uso de Telar</h1>
-  <p class="muted">Página privada (no indexada). Muestra el contador anónimo de aperturas de la app.</p>
-  <p id="status" class="muted">Cargando…</p>
-  <div id="panel" hidden>
-    <p class="stat" id="total">—</p>
-    <p class="muted">Aperturas acumuladas (ping 1×/día/dispositivo si está activo)</p>
-    <p class="muted" id="updated"></p>
-    <p class="muted" id="note"></p>
-  </div>
-  <script>
-    const API = 'https://telar-api-aim8.onrender.com';
-    const params = new URLSearchParams(location.search);
-    const secret = params.get('secret') || '';
-    const status = document.getElementById('status');
-    const panel = document.getElementById('panel');
+<div class="viz-root">
+<div class="wrap">
 
-    if (!secret) {
-      status.innerHTML = '<span class="err">Falta <code>?secret=TU_WEBHOOK_SECRET</code> en la URL.</span>';
-    } else {
-      fetch(`${API}/api/admin/usage?secret=${encodeURIComponent(secret)}`)
-        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
-        .then(({ ok, j }) => {
-          if (!ok) {
-            status.innerHTML = `<span class="err">${j.error || 'No autorizado'}</span>`;
-            return;
-          }
-          status.hidden = true;
-          panel.hidden = false;
-          document.getElementById('total').textContent = String(j.usage_opens_total ?? '—');
-          document.getElementById('updated').textContent = j.updated_at
-            ? `Última actualización: ${j.updated_at}`
-            : '';
-          document.getElementById('note').textContent = j.note || '';
-        })
-        .catch((e) => {
-          status.innerHTML = `<span class="err">Error: ${e.message}</span>`;
-        });
+  <header>
+    <h1>Funnel y uso de Telar</h1>
+    <p class="sub">Página privada, no indexada. Datos agregados por día: sin cookies, sin IP, sin identificadores de visitante.</p>
+  </header>
+
+  <p id="status" class="sub" style="margin-top:20px">Cargando…</p>
+
+  <main id="panel" hidden>
+    <div class="filters" role="group" aria-label="Rango de fechas">
+      <span class="lbl">Rango</span>
+      <button class="chip" data-days="7" aria-pressed="false">7 días</button>
+      <button class="chip" data-days="30" aria-pressed="true">30 días</button>
+      <button class="chip" data-days="90" aria-pressed="false">90 días</button>
+    </div>
+
+    <div id="warn" class="callout" hidden></div>
+
+    <section class="card">
+      <h2>Conversión visita → descarga o contacto</h2>
+      <p class="hint" id="hero-hint">Porcentaje de sesiones que llegaron al último paso del funnel.</p>
+      <p class="hero-fig" id="hero">—</p>
+      <p class="hero-note" id="hero-note"></p>
+    </section>
+
+    <div class="kpis" id="kpis"></div>
+
+    <section class="card">
+      <h2>Embudo de conversión</h2>
+      <p class="hint">Sesiones únicas por paso (una vez por pestaña). Alcanzar un paso implica los anteriores, por eso los conteos siempre bajan.</p>
+      <div id="funnel-empty" class="empty" hidden></div>
+      <div class="scroller"><svg id="funnel" role="img" aria-label="Embudo de conversión por paso"></svg></div>
+      <button class="tbl-toggle" data-table="funnel-table">Ver tabla</button>
+      <div id="funnel-table" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2>Visitas e intención por día</h2>
+      <p class="hint">Sesiones que entraron al sitio y sesiones que hicieron clic en descargar o WhatsApp.</p>
+      <ul class="legend">
+        <li><span class="key" style="background:var(--series-1)"></span>Visitas</li>
+        <li><span class="key" style="background:var(--series-2)"></span>Intención</li>
+      </ul>
+      <div id="trend-empty" class="empty" hidden></div>
+      <div class="scroller"><svg id="trend" role="img" aria-label="Visitas e intención por día"></svg></div>
+      <button class="tbl-toggle" data-table="trend-table">Ver tabla</button>
+      <div id="trend-table" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2>Clics por CTA</h2>
+      <p class="hint">Cada clic cuenta (no está deduplicado por sesión).</p>
+      <div id="cta-empty" class="empty" hidden></div>
+      <div class="scroller"><svg id="cta" role="img" aria-label="Clics por tipo de CTA"></svg></div>
+      <button class="tbl-toggle" data-table="cta-table">Ver tabla</button>
+      <div id="cta-table" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2>Páginas más vistas</h2>
+      <p class="hint">Vistas de página totales en el rango (cada carga cuenta).</p>
+      <div id="pages-empty" class="empty" hidden></div>
+      <div class="scroller"><svg id="pages" role="img" aria-label="Vistas por página"></svg></div>
+      <button class="tbl-toggle" data-table="pages-table">Ver tabla</button>
+      <div id="pages-table" hidden></div>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tip" role="status" aria-live="polite"></div>
+</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = 'https://telar-api-aim8.onrender.com';
+  var params = new URLSearchParams(location.search);
+  var secret = params.get('secret') || '';
+  var days = 30;
+
+  var statusEl = document.getElementById('status');
+  var panel = document.getElementById('panel');
+  var tip = document.getElementById('tip');
+
+  var ORD = ['--ord-1', '--ord-2', '--ord-3', '--ord-4'];
+  var CTA_LABELS = {
+    'cta:download_mac': 'Descarga macOS',
+    'cta:download_windows': 'Descarga Windows',
+    'cta:download_other': 'Descarga (otro SO)',
+    'cta:releases': 'Ver releases',
+    'cta:whatsapp': 'WhatsApp',
+    'cta:telefono': 'Teléfono'
+  };
+  var PAGE_LABELS = {
+    'view:home': 'Inicio', 'view:precio': 'Precio', 'view:neurofeedback': 'Neurofeedback',
+    'view:modules': 'Módulos', 'view:equipo': 'Equipo', 'view:privacidad': 'Privacidad',
+    'view:blog_index': 'Blog (índice)', 'view:blog_tdah_adulto': 'Blog · TDAH adulto',
+    'view:blog_trauma_herramientas': 'Blog · Trauma'
+  };
+
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs) {
+    var node = document.createElementNS(SVGNS, name);
+    for (var k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+    return node;
+  }
+  function fmt(n) {
+    if (n === null || n === undefined) return '—';
+    return n >= 10000 ? new Intl.NumberFormat('es-CL', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+                      : new Intl.NumberFormat('es-CL').format(n);
+  }
+  function niceMax(v) {
+    if (v <= 5) return 5;
+    var mag = Math.pow(10, Math.floor(Math.log10(v)));
+    return Math.ceil(v / (mag / 2)) * (mag / 2);
+  }
+  function dayLabel(iso) {
+    var p = iso.split('-');
+    return p[2] + '/' + p[1];
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  /* svg.hidden = true no hace nada: `hidden` vive en HTMLElement, no en
+     SVGElement, así que hay que tocar el atributo a mano. */
+  function setHidden(node, on) {
+    if (on) node.setAttribute('hidden', '');
+    else node.removeAttribute('hidden');
+  }
+
+  /* Barra horizontal: base cuadrada a la izquierda, extremo redondeado a 4px */
+  function hBar(x, y, w, h, r) {
+    var rr = Math.min(r, Math.max(0, w));
+    return 'M' + x + ',' + y + 'H' + (x + w - rr) +
+           'a' + rr + ',' + rr + ' 0 0 1 ' + rr + ',' + rr +
+           'V' + (y + h - rr) + 'a' + rr + ',' + rr + ' 0 0 1 ' + (-rr) + ',' + rr +
+           'H' + x + 'Z';
+  }
+
+  function showTip(html, evt) {
+    tip.innerHTML = html;
+    tip.style.opacity = '1';
+    var pad = 14;
+    var box = tip.getBoundingClientRect();
+    var x = Math.min(evt.clientX + pad, window.innerWidth - box.width - 8);
+    var y = Math.max(8, evt.clientY - box.height - pad);
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+  function hideTip() { tip.style.opacity = '0'; }
+  function hoverable(node, html) {
+    node.addEventListener('mousemove', function (e) { showTip(html, e); });
+    node.addEventListener('mouseleave', hideTip);
+  }
+
+  function tableView(host, headers, rows) {
+    var html = '<table><thead><tr>';
+    headers.forEach(function (h, i) {
+      html += '<th' + (i ? ' class="num"' : '') + '>' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr>';
+      r.forEach(function (c, i) { html += '<td' + (i ? ' class="num"' : '') + '>' + c + '</td>'; });
+      html += '</tr>';
+    });
+    host.innerHTML = html + '</tbody></table>';
+  }
+
+  /* ---------------- Embudo (rampa ordinal, un solo tono) ---------------- */
+  function drawFunnel(steps) {
+    var svg = document.getElementById('funnel');
+    var empty = document.getElementById('funnel-empty');
+    clear(svg);
+    var top = steps.length ? steps[0].count : 0;
+    if (!top) {
+      setHidden(svg, true); empty.hidden = false;
+      empty.textContent = 'Sin sesiones registradas en este rango todavía.';
+      tableView(document.getElementById('funnel-table'), ['Paso', 'Sesiones'], []);
+      return;
     }
-  </script>
+    setHidden(svg, false); empty.hidden = true;
+
+    var W = 720, labelW = 178, valueW = 108, rowH = 46, barH = 22;
+    var plotW = W - labelW - valueW;
+    var H = steps.length * rowH + 8;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('style', 'min-width:640px');
+
+    steps.forEach(function (s, i) {
+      var y = i * rowH + 6;
+      var barY = y + (rowH - barH) / 2 - 6;
+      var w = Math.max(2, (s.count / top) * plotW);
+
+      svg.appendChild(el('line', { x1: labelW, y1: barY - 7, x2: labelW, y2: barY + barH + 7, class: 'axisline' }));
+
+      var label = el('text', { x: labelW - 12, y: barY + barH / 2 + 4, 'text-anchor': 'end', class: 'stage' });
+      label.textContent = s.label;
+      svg.appendChild(label);
+
+      var bar = el('path', {
+        d: hBar(labelW, barY, w, barH, 4),
+        fill: 'var(' + ORD[Math.min(i, ORD.length - 1)] + ')'
+      });
+      svg.appendChild(bar);
+
+      /* Etiqueta directa fuera del extremo: nunca se recorta dentro de la barra */
+      var val = el('text', { x: labelW + w + 10, y: barY + barH / 2 + 4, class: 'dlabel' });
+      val.textContent = fmt(s.count) + '  ·  ' + s.pct_of_top + '%';
+      svg.appendChild(val);
+
+      if (s.drop_from_previous !== null && s.drop_from_previous !== undefined) {
+        var drop = el('text', { x: labelW - 12, y: barY - 12, 'text-anchor': 'end', class: 'dlabel-soft' });
+        drop.textContent = '↓ ' + s.drop_from_previous + '% se pierde aquí';
+        svg.appendChild(drop);
+      }
+
+      hoverable(bar, '<b>' + s.label + '</b><br>' + fmt(s.count) + ' sesiones · ' + s.pct_of_top + '% del total' +
+        (s.drop_from_previous != null ? '<br>Caída vs. paso anterior: ' + s.drop_from_previous + '%' : ''));
+    });
+
+    tableView(document.getElementById('funnel-table'),
+      ['Paso', 'Sesiones', '% del total', 'Caída'],
+      steps.map(function (s) {
+        return [s.label, fmt(s.count), s.pct_of_top + '%', s.drop_from_previous == null ? '—' : s.drop_from_previous + '%'];
+      }));
+  }
+
+  /* ---------------- Serie diaria (2 series categóricas) ---------------- */
+  function drawTrend(series) {
+    var svg = document.getElementById('trend');
+    var empty = document.getElementById('trend-empty');
+    clear(svg);
+    var maxVal = series.reduce(function (m, d) { return Math.max(m, d.visits, d.intent); }, 0);
+    if (!maxVal) {
+      setHidden(svg, true); empty.hidden = false;
+      empty.textContent = 'Sin eventos en este rango todavía.';
+      tableView(document.getElementById('trend-table'), ['Día', 'Visitas', 'Intención'], []);
+      return;
+    }
+    setHidden(svg, false); empty.hidden = true;
+
+    var W = 720, H = 268, mL = 46, mR = 62, mT = 14, mB = 34;
+    var plotW = W - mL - mR, plotH = H - mT - mB;
+    var yMax = niceMax(maxVal);
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('style', 'min-width:640px');
+
+    var x = function (i) { return mL + (series.length === 1 ? plotW / 2 : (i / (series.length - 1)) * plotW); };
+    var y = function (v) { return mT + plotH - (v / yMax) * plotH; };
+
+    [0, 0.5, 1].forEach(function (t) {
+      var v = yMax * t, yy = y(v);
+      svg.appendChild(el('line', { x1: mL, y1: yy, x2: mL + plotW, y2: yy, class: t === 0 ? 'axisline' : 'gridline' }));
+      var tk = el('text', { x: mL - 10, y: yy + 4, 'text-anchor': 'end', class: 'tick' });
+      tk.textContent = fmt(Math.round(v));
+      svg.appendChild(tk);
+    });
+
+    /* Ticks espaciados, y el último día siempre visible. Si el último queda muy
+       pegado al tick previo, se descarta ese previo en vez de encimar el texto. */
+    var everyN = Math.max(1, Math.ceil(series.length / 8));
+    var MIN_TICK_GAP = 46;
+    var ticks = [];
+    series.forEach(function (d, i) {
+      if (i % everyN === 0 || i === series.length - 1) ticks.push(i);
+    });
+    while (ticks.length > 1 && x(ticks[ticks.length - 1]) - x(ticks[ticks.length - 2]) < MIN_TICK_GAP) {
+      ticks.splice(ticks.length - 2, 1);
+    }
+    ticks.forEach(function (i) {
+      var tk = el('text', { x: x(i), y: mT + plotH + 20, 'text-anchor': 'middle', class: 'tick' });
+      tk.textContent = dayLabel(series[i].day);
+      svg.appendChild(tk);
+    });
+
+    [
+      { key: 'visits', color: 'var(--series-1)', name: 'Visitas' },
+      { key: 'intent', color: 'var(--series-2)', name: 'Intención' }
+    ].forEach(function (s) {
+      var d = series.map(function (row, i) { return (i ? 'L' : 'M') + x(i) + ',' + y(row[s.key]); }).join('');
+      svg.appendChild(el('path', {
+        d: d, fill: 'none', stroke: s.color, 'stroke-width': 2,
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+      }));
+      var last = series.length - 1;
+      /* Anillo de 2px en color superficie para que los puntos no se pisen */
+      svg.appendChild(el('circle', { cx: x(last), cy: y(series[last][s.key]), r: 4, fill: s.color, stroke: 'var(--surface-1)', 'stroke-width': 2 }));
+      var lab = el('text', { x: x(last) + 10, y: y(series[last][s.key]) + 4, class: 'dlabel' });
+      lab.textContent = fmt(series[last][s.key]);
+      svg.appendChild(lab);
+    });
+
+    /* Crosshair + tooltip: banda de impacto ancha, no hay que apuntar al punto */
+    var cross = el('line', { x1: 0, y1: mT, x2: 0, y2: mT + plotH, class: 'axisline', opacity: 0 });
+    svg.appendChild(cross);
+    var band = el('rect', { x: mL, y: mT, width: plotW, height: plotH, fill: 'transparent' });
+    svg.appendChild(band);
+    band.addEventListener('mousemove', function (e) {
+      var box = svg.getBoundingClientRect();
+      var rel = (e.clientX - box.left) / box.width * W;
+      var i = Math.max(0, Math.min(series.length - 1, Math.round((rel - mL) / plotW * (series.length - 1))));
+      var d = series[i];
+      cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
+      showTip('<b>' + d.day + '</b>' +
+        '<div class="t-row"><span class="t-key" style="background:var(--series-1)"></span>Visitas <b>' + fmt(d.visits) + '</b></div>' +
+        '<div class="t-row"><span class="t-key" style="background:var(--series-2)"></span>Intención <b>' + fmt(d.intent) + '</b></div>', e);
+    });
+    band.addEventListener('mouseleave', function () { cross.setAttribute('opacity', 0); hideTip(); });
+
+    tableView(document.getElementById('trend-table'), ['Día', 'Visitas', 'Intención'],
+      series.map(function (d) { return [d.day, fmt(d.visits), fmt(d.intent)]; }));
+  }
+
+  /* ------- Barras nominales: una sola serie, todas del mismo tono ------- */
+  function drawBars(svgId, emptyId, tableId, rows, unitLabel, emptyMsg) {
+    var svg = document.getElementById(svgId);
+    var empty = document.getElementById(emptyId);
+    clear(svg);
+    if (!rows.length) {
+      setHidden(svg, true); empty.hidden = false; empty.textContent = emptyMsg;
+      tableView(document.getElementById(tableId), ['Nombre', unitLabel], []);
+      return;
+    }
+    setHidden(svg, false); empty.hidden = true;
+
+    var W = 720, labelW = 178, valueW = 70, rowH = 34, barH = 20;
+    var plotW = W - labelW - valueW;
+    var H = rows.length * rowH + 10;
+    var max = rows[0].value;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('style', 'min-width:640px');
+
+    rows.forEach(function (r, i) {
+      /* rowH − barH = 14px de aire: las barras adyacentes nunca se tocan */
+      var barY = i * rowH + 8;
+      var w = Math.max(2, (r.value / max) * plotW);
+      svg.appendChild(el('line', { x1: labelW, y1: barY - 4, x2: labelW, y2: barY + barH + 4, class: 'axisline' }));
+      var lab = el('text', { x: labelW - 12, y: barY + barH / 2 + 4, 'text-anchor': 'end', class: 'stage' });
+      lab.textContent = r.label;
+      svg.appendChild(lab);
+      var bar = el('path', { d: hBar(labelW, barY, w, barH, 4), fill: 'var(--series-1)' });
+      svg.appendChild(bar);
+      var val = el('text', { x: labelW + w + 10, y: barY + barH / 2 + 4, class: 'dlabel' });
+      val.textContent = fmt(r.value);
+      svg.appendChild(val);
+      hoverable(bar, '<b>' + r.label + '</b><br>' + fmt(r.value) + ' ' + unitLabel.toLowerCase());
+    });
+
+    tableView(document.getElementById(tableId), ['Nombre', unitLabel],
+      rows.map(function (r) { return [r.label, fmt(r.value)]; }));
+  }
+
+  function rowsFrom(events, prefix, labels) {
+    return Object.keys(events)
+      .filter(function (k) { return k.indexOf(prefix) === 0; })
+      .map(function (k) { return { label: labels[k] || k.replace(prefix, ''), value: events[k] }; })
+      .sort(function (a, b) { return b.value - a.value; });
+  }
+
+  function render(data) {
+    var steps = data.funnel || [];
+    var top = steps.length ? steps[0].count : 0;
+    var bottom = steps.length ? steps[steps.length - 1].count : 0;
+    var rate = top ? (bottom / top * 100) : 0;
+
+    var heroEl = document.getElementById('hero');
+    heroEl.textContent = top ? rate.toFixed(1) + '%' : 'Sin datos aún';
+    heroEl.classList.toggle('is-empty', !top);
+    document.getElementById('hero-note').textContent = top
+      ? fmt(bottom) + ' de ' + fmt(top) + ' sesiones en los últimos ' + data.range_days + ' días'
+      : 'Aún no hay sesiones registradas en este rango.';
+
+    var pricing = steps.find(function (s) { return s.key === 'step:pricing'; }) || { count: 0 };
+    var downloads = (data.events['cta:download_mac'] || 0) + (data.events['cta:download_windows'] || 0) +
+                    (data.events['cta:download_other'] || 0);
+    var whatsapp = data.events['cta:whatsapp'] || 0;
+
+    var kpis = [
+      { label: 'Sesiones', value: fmt(top), foot: 'últimos ' + data.range_days + ' días' },
+      { label: 'Vieron el precio', value: fmt(pricing.count), foot: pricing.pct_of_top + '% de las sesiones' },
+      { label: 'Clics en descargar', value: fmt(downloads), foot: 'mac + windows + otros' },
+      { label: 'Clics a WhatsApp', value: fmt(whatsapp), foot: 'demo y dudas' },
+      { label: 'Aperturas de la app', value: fmt(data.usage_opens_total), foot: 'acumulado histórico' }
+    ];
+    document.getElementById('kpis').innerHTML = kpis.map(function (k) {
+      return '<div class="kpi"><p class="k-label">' + k.label + '</p>' +
+             '<div class="k-value">' + k.value + '</div>' +
+             '<div class="k-foot">' + k.foot + '</div></div>';
+    }).join('');
+
+    drawFunnel(steps);
+    drawTrend(data.series || []);
+    drawBars('cta', 'cta-empty', 'cta-table', rowsFrom(data.events || {}, 'cta:', CTA_LABELS),
+      'Clics', 'Sin clics en CTA en este rango todavía.');
+    drawBars('pages', 'pages-empty', 'pages-table', rowsFrom(data.events || {}, 'view:', PAGE_LABELS),
+      'Vistas', 'Sin vistas de página en este rango todavía.');
+
+    var warn = document.getElementById('warn');
+    if (!top) {
+      warn.hidden = false;
+      warn.innerHTML = '<strong>Sin datos aún.</strong> El contador parte en cero desde el primer deploy con ' +
+        '<code>js/track.js</code> publicado. Si ya lo desplegaste y sigue vacío tras varias visitas, revisa que ' +
+        '<code>ALLOWED_ORIGINS</code> en el servidor incluya <code>https://telarapp.cl</code>.';
+    } else {
+      warn.hidden = false;
+      warn.innerHTML = '<strong>Ojo con la persistencia.</strong> El servicio corre en Render con plan free y sin disco ' +
+        'persistente, así que la base SQLite se borra en cada deploy o reinicio. Estos números miden desde el último ' +
+        'reinicio, no desde siempre.';
+    }
+  }
+
+  function load() {
+    if (!secret) {
+      statusEl.innerHTML = '<span class="err">Falta <code>?secret=TU_WEBHOOK_SECRET</code> en la URL.</span>';
+      return;
+    }
+    statusEl.hidden = false;
+    statusEl.textContent = 'Cargando…';
+    fetch(API + '/api/admin/funnel?secret=' + encodeURIComponent(secret) + '&days=' + days)
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          statusEl.innerHTML = '<span class="err">' + (res.j.error || 'No autorizado') + '</span>';
+          panel.hidden = true;
+          return;
+        }
+        statusEl.hidden = true;
+        panel.hidden = false;
+        render(res.j);
+      })
+      .catch(function (e) {
+        statusEl.innerHTML = '<span class="err">Error: ' + e.message + '</span>';
+      });
+  }
+
+  document.querySelectorAll('.chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      document.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+      chip.setAttribute('aria-pressed', 'true');
+      days = parseInt(chip.dataset.days, 10);
+      load();
+    });
+  });
+
+  document.querySelectorAll('.tbl-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var host = document.getElementById(btn.dataset.table);
+      host.hidden = !host.hidden;
+      btn.textContent = host.hidden ? 'Ver tabla' : 'Ocultar tabla';
+    });
+  });
+
+  load();
+})();
+</script>
 </body>
 </html>

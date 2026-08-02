@@ -74,6 +74,34 @@ window.TELAR_SUBSCRIPTION_API = 'https://tu-api.onrender.com';
 
 La app abre el checkout en el navegador y, al volver, puede consultar el estado con el email del perfil (Ajustes).
 
+## Analítica del landing (funnel)
+
+Endpoints agregados para medir el embudo de `telarapp.cl`:
+
+| Endpoint | Uso |
+|----------|-----|
+| `POST /api/events` | Recibe `{"name": "view:precio"}` desde `landing/js/track.js`. Responde 204 siempre. |
+| `GET /api/admin/funnel?secret=…&days=30` | Devuelve funnel, serie diaria y totales. Requiere `WEBHOOK_SECRET`. |
+
+Se guarda **solo un contador por (día, evento)** en la tabla `landing_events`: sin
+IP, sin user-agent, sin cookies y sin sesión. El navegador deduplica los pasos
+`step:*` en `sessionStorage`, así que el servidor nunca sabe de quién viene un evento.
+
+Nombres válidos: `view:*`, `cta:*` y `step:*` (regex `EVENT_NAME_RE`), con un techo
+de `MAX_DISTINCT_EVENTS` nombres distintos para que nadie infle la tabla.
+
+El dashboard vive en `landing/stats.html?secret=TU_WEBHOOK_SECRET` (página con
+`noindex`).
+
+> **Requisito de despliegue:** `ALLOWED_ORIGINS` debe incluir `https://telarapp.cl`
+> para que `stats.html` pueda leer `/api/admin/funnel`. Ya viene en el valor por
+> defecto; si lo defines a mano en Render, no lo omitas.
+
+> **Persistencia:** en el plan free de Render el filesystem es efímero y no admite
+> disco persistente, así que `subscriptions.db` (suscripciones **y** contadores) se
+> pierde en cada deploy o reinicio. Para conservar histórico hace falta un disco
+> persistente (plan de pago) o mover la base a Postgres gestionado.
+
 ## Checklist antes de cobrar en producción
 
 - [ ] Access Token de **producción** en el servidor

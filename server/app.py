@@ -5,8 +5,9 @@ Mercado Pago (Chile) · preapproval mensual en CLP.
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
 
@@ -24,7 +25,8 @@ ALLOWED_ORIGINS = [
         "ALLOWED_ORIGINS",
         "http://127.0.0.1:1420,http://localhost:1420,"
         "http://tauri.localhost,https://tauri.localhost,"
-        "tauri://localhost",
+        "tauri://localhost,"
+        "https://telarapp.cl,https://www.telarapp.cl",
     ).split(",")
     if origin.strip()
 ]
@@ -43,6 +45,23 @@ DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "s
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
 _plan_cache: dict | None = None
+
+# --- Analítica del landing (agregada, sin cookies ni identificadores) -------
+# Solo se guarda un contador por (día, nombre de evento). Nunca IP, user-agent
+# ni sesión: el cliente deduplica los pasos del funnel en sessionStorage y el
+# servidor jamás ve de quién viene el evento.
+EVENT_NAME_RE = re.compile(r"^(view|cta|step):[a-z0-9_]{1,32}$")
+# Techo de nombres distintos: evita que un tercero infle la tabla inventando
+# eventos. Los nombres ya vistos siguen contando aunque se alcance el techo.
+MAX_DISTINCT_EVENTS = 200
+FUNNEL_STEPS = [
+    ("step:visit", "Visitas"),
+    ("step:explore", "Exploran el producto"),
+    ("step:pricing", "Ven el precio"),
+    ("step:intent", "Descargan o escriben"),
+]
+DEFAULT_FUNNEL_DAYS = 30
+MAX_FUNNEL_DAYS = 365
 
 
 def dev_bypass_enabled() -> bool:
@@ -90,6 +109,15 @@ def init_db():
             "INSERT OR IGNORE INTO usage_opens (id, total, updated_at) VALUES (1, 0, ?)",
             (now_iso(),),
         )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS landing_events (
+                day TEXT NOT NULL,
+                name TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, name)
+            )"""
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_events_day ON landing_events(day)")
 
 
 def mp_sdk():
@@ -100,6 +128,34 @@ def mp_sdk():
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
+
+
+def today_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def record_event(name: str) -> bool:
+    """Suma 1 al contador (día, evento). Devuelve False si el nombre no es válido
+    o si se alcanzó el techo de nombres distintos."""
+    if not EVENT_NAME_RE.match(name):
+        return False
+    day = today_utc()
+    with db() as conn:
+        known = conn.execute(
+            "SELECT 1 FROM landing_events WHERE name = ? LIMIT 1", (name,)
+        ).fetchone()
+        if not known:
+            distinct = conn.execute(
+                "SELECT COUNT(DISTINCT name) AS n FROM landing_events"
+            ).fetchone()["n"]
+            if distinct >= MAX_DISTINCT_EVENTS:
+                return False
+        conn.execute(
+            """INSERT INTO landing_events (day, name, count) VALUES (?, ?, 1)
+               ON CONFLICT(day, name) DO UPDATE SET count = count + 1""",
+            (day, name),
+        )
+    return True
 
 
 def normalize_payer_email(raw: str) -> str:
@@ -379,6 +435,94 @@ def admin_usage():
         "usage_opens_total": row["total"] if row else 0,
         "updated_at": row["updated_at"] if row else None,
         "note": "Contador acumulado de aperturas de app (1 ping/día/dispositivo si está activo). No mide usuarios simultáneos.",
+    })
+
+
+@APP.post("/api/events")
+def collect_event():
+    """Evento anónimo del landing. Sin cookies, sin IP, sin user-agent:
+    solo incrementa un contador por (día, nombre)."""
+    # force=True: el cliente envía text/plain a propósito para evitar el
+    # preflight CORS que sendBeacon no puede negociar.
+    data = request.get_json(silent=True, force=True) or {}
+    name = (data.get("name") or "").strip().lower()[:64]
+    record_event(name)
+    # Siempre 204: el navegador no debe reintentar ni exponer si el nombre existe.
+    return "", 204
+
+
+def funnel_from_totals(totals: dict[str, int]) -> list[dict]:
+    """Pasos del funnel con % respecto al paso 1 y caída contra el paso previo."""
+    top = totals.get(FUNNEL_STEPS[0][0], 0)
+    steps = []
+    previous = None
+    for key, label in FUNNEL_STEPS:
+        count = totals.get(key, 0)
+        steps.append({
+            "key": key,
+            "label": label,
+            "count": count,
+            "pct_of_top": round(count / top * 100, 1) if top else 0.0,
+            "drop_from_previous": (
+                round((previous - count) / previous * 100, 1)
+                if previous else None
+            ),
+        })
+        previous = count
+    return steps
+
+
+@APP.get("/api/admin/funnel")
+def admin_funnel():
+    """Funnel del landing (solo propietario, requiere WEBHOOK_SECRET)."""
+    if not WEBHOOK_SECRET or request.args.get("secret", "") != WEBHOOK_SECRET:
+        return jsonify({"error": "No autorizado"}), 401
+
+    try:
+        days = int(request.args.get("days", DEFAULT_FUNNEL_DAYS))
+    except ValueError:
+        days = DEFAULT_FUNNEL_DAYS
+    days = max(1, min(days, MAX_FUNNEL_DAYS))
+    since = (datetime.now(timezone.utc) - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT day, name, count FROM landing_events WHERE day >= ? ORDER BY day",
+            (since,),
+        ).fetchall()
+        usage = conn.execute("SELECT total, updated_at FROM usage_opens WHERE id = 1").fetchone()
+
+    totals: dict[str, int] = {}
+    by_day: dict[str, dict[str, int]] = {}
+    for row in rows:
+        totals[row["name"]] = totals.get(row["name"], 0) + row["count"]
+        by_day.setdefault(row["day"], {})[row["name"]] = row["count"]
+
+    # Serie diaria continua (los días sin tráfico valen 0, no se saltan).
+    start = datetime.strptime(since, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    series = []
+    for offset in range(days):
+        day = (start + timedelta(days=offset)).strftime("%Y-%m-%d")
+        counts = by_day.get(day, {})
+        series.append({
+            "day": day,
+            "visits": counts.get("step:visit", 0),
+            "intent": counts.get("step:intent", 0),
+        })
+
+    return jsonify({
+        "ok": True,
+        "range_days": days,
+        "since": since,
+        "funnel": funnel_from_totals(totals),
+        "series": series,
+        "events": dict(sorted(totals.items())),
+        "usage_opens_total": usage["total"] if usage else 0,
+        "usage_updated_at": usage["updated_at"] if usage else None,
+        "note": (
+            "Eventos agregados por día. Los pasos del funnel se cuentan una vez "
+            "por sesión del navegador; los eventos view:/cta: cuentan cada ocurrencia."
+        ),
     })
 
 
