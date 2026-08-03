@@ -190,6 +190,14 @@ input[type='date']::-webkit-calendar-picker-indicator {
   margin-bottom: 28px;
 }
 
+/* .btn y otras clases fijan display, que gana contra el `display:none` que el
+   navegador aplica a [hidden]. Sin esto, cualquier elemento marcado como
+   oculto en JS sigue viendose: asi es como el boton «Activar Pro (solo
+   desarrollo)» aparecia en produccion pese a estar hidden. */
+[hidden] {
+  display: none !important;
+}
+
 .btn {
   border: none;
   border-radius: var(--radius-pill);
@@ -525,7 +533,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
 }
 
 .unlock-pin-block__submit {
-  margin-top: 4px;
+  margin-top: 20px;
 }
 
 .unlock-actions__touch {

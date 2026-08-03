@@ -63,7 +63,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           Activar Pro (solo desarrollo, sin pago)
         </button>
         <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-verify" style="margin-top:8px">
-          Verificar manualmente
+          Ya pagué — actualizar mi plan
         </button>
         <p class="subscribe-pro-modal__fine" id="subscribe-pro-pending" hidden>
           Tras pagar en Mercado Pago, vuelve a Telar: el plan se activará en unos segundos.
@@ -110,9 +110,13 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
       if (health.dev_bypass) {
         overlay.querySelector('#subscribe-pro-dev')?.removeAttribute('hidden');
       }
+      // El host de la API y la palabra «producción» no le dicen nada a un
+      // psicologo; solo se muestran en modo prueba, que es cuando sirven.
       apiStatus.textContent = health.mp_configured
-        ? `Mercado Pago (${mode}) · ${getSubscriptionApiBase().replace(/^https?:\/\//, '')}`
-        : 'Servidor sin credenciales de Mercado Pago';
+        ? health.mp_test_mode
+          ? `Mercado Pago (${mode}) · ${getSubscriptionApiBase().replace(/^https?:\/\//, '')}`
+          : 'Conectado con Mercado Pago'
+        : 'El servidor de pagos no responde. Escríbenos y lo resolvemos.';
       apiStatus.classList.toggle('subscribe-pro-modal__api-status--ok', Boolean(health.mp_configured));
       if (health.mp_test_mode && health.dev_bypass) {
         const intro = overlay.querySelector('.subscribe-pro-modal__intro');

@@ -7,7 +7,6 @@ import { getInvoke } from '../tauri-bridge.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
 import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
 import { scheduleAutoCloudBackup } from '../cloud-backup.js';
-import { openTreatmentWorkspace } from '../navigate.js';
 import { toast, escapeHtml } from '../utils.js';
 
 export async function renderUnlock(host, { onNavigate }) {
@@ -152,10 +151,10 @@ export async function renderUnlock(host, { onNavigate }) {
         const demoTreatmentId = await seedDemoCaseIfNeeded({ firstSetup: true });
         hint.textContent = '';
         if (demoTreatmentId) {
-          toast('Caso de ejemplo listo — revisa las curvas en la pestaña Puntajes.');
-          scheduleAutoCloudBackup();
-          await openTreatmentWorkspace(demoTreatmentId, onNavigate);
-          return;
+          // El caso de ejemplo se crea igual, pero se aterriza en la lista de
+          // tratamientos. Abrir de entrada la ficha de un paciente que no es
+          // suyo desorienta y esconde el boton para crear el primero propio.
+          toast('Listo. Dejamos un caso de ejemplo para que veas cómo funciona.');
         }
       } else {
         hint.textContent = '';

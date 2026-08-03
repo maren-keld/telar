@@ -44,6 +44,20 @@ export function bindPinBoxes(root, id) {
       if (el.value && idx < inputs.length - 1) inputs[idx + 1].focus();
     };
 
+    // Cuando el PIN llega entero de una sola vez —autocompletado del gestor de
+    // claves, teclado movil, dictado— el navegador manda un unico beforeinput
+    // con toda la cadena y maxlength=1 la recorta al primer digito antes de
+    // que el evento input la vea. Hay que repartirla aca, mientras aun existe.
+    el.addEventListener('beforeinput', (ev) => {
+      const digits = String(ev.data || '').replace(/\D/g, '');
+      if (digits.length < 2) return;
+      ev.preventDefault();
+      for (let i = 0; i < digits.length && idx + i < inputs.length; i += 1) {
+        inputs[idx + i].value = digits[i];
+      }
+      inputs[Math.min(idx + digits.length, inputs.length - 1)].focus();
+    });
+
     el.addEventListener('input', () => {
       const digit = clampDigit((el.value || '').replace(/\D/g, '').slice(-1));
       el.value = digit;
