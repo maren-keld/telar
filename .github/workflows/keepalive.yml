@@ -1,0 +1,52 @@
+name: Keepalive API
+
+# Render free duerme el servicio tras 15 min sin trafico y despertarlo puede
+# tardar mas de dos minutos. Eso da igual para el ping de uso —el latido
+# siguiente lo recupera— pero es fatal en el checkout: las primeras
+# suscripciones van a llegar de a una y espaciadas, o sea justo cuando el
+# servidor esta dormido.
+#
+# No se mantiene despierto 24/7 a proposito: el plan free da 750 horas de
+# instancia al mes y un servicio despierto todo el mes consume ~744. Quedaria
+# al borde, y cualquier segundo servicio te dejaria sin cuota. Cubrir solo el
+# horario en que alguien puede estar mirando son ~520 horas: holgado.
+#
+# Las horas van en UTC. 11:00-03:00 UTC cubre de 07:00/08:00 a 23:00/00:00 en
+# Chile, tanto en horario de invierno (UTC-4) como de verano (UTC-3), sin
+# tener que tocar nada dos veces al año.
+on:
+  schedule:
+    - cron: '*/5 11-23,0-3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despertar la API
+        run: |
+          URL="https://telar-api-aim8.onrender.com/api/health"
+          # --max-time generoso: si estaba dormida, esta llamada es justamente
+          # la que paga el arranque en frio. 200 es lo unico que cuenta.
+          for attempt in 1 2 3; do
+            CODE=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 180 "$URL" || echo 000)
+            SECS=$(curl -s -o /dev/null -w '%{time_total}' --max-time 30 "$URL" 2>/dev/null || echo '?')
+            if [ "$CODE" = "200" ]; then
+              echo "✓ HTTP 200 — respuesta en caliente: ${SECS}s"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "intento $attempt → HTTP $CODE"
+            sleep 20
+          done
+          # Tres intentos de 180 s fallados no son "estaba dormida": es que la
+          # API esta caida. Fallar aca convierte esto en un monitor gratis.
+          echo "::error::La API no respondio 200 en tres intentos. Revisa Render."
+          exit 1
