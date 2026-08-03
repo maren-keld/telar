@@ -9,6 +9,14 @@ permissions:
   contents: read
 
 jobs:
+  # 30 s que avisan el dia que main deja de poder compilar un release, en vez
+  # del dia que necesitas publicar. Ver cabecera de check-release-ready.sh.
+  release-ready:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-release-ready.sh
+
   frontend-e2e:
     runs-on: ubuntu-latest
     steps:
