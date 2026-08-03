@@ -77,7 +77,6 @@ function variablesRow(type) {
   if (!vars?.length) return '';
   return `
     <div class="mod-info-row">
-      <span class="mod-info-icon" aria-hidden="true">🎯</span>
       <span><strong>Variables:</strong> ${vars.map(escapeHtml).join(' · ')}</span>
     </div>`;
 }
@@ -87,24 +86,19 @@ function previewHtml(type, def, psych) {
   const rows = hasPsych
     ? `
       <div class="mod-info-row">
-        <span class="mod-info-icon" aria-hidden="true">📖</span>
         <span><strong>Autor/es:</strong> ${escapeHtml(psych.authors)}</span>
       </div>
       <div class="mod-info-row">
-        <span class="mod-info-icon" aria-hidden="true">👥</span>
         <span><strong>Rango etario:</strong> ${escapeHtml(psych.ageRange)}</span>
       </div>
       <div class="mod-info-row">
-        <span class="mod-info-icon" aria-hidden="true">🛡</span>
         <span><strong>Confiabilidad:</strong> ${escapeHtml(psych.reliability)}</span>
       </div>
       <div class="mod-info-row">
-        <span class="mod-info-icon" aria-hidden="true">📍</span>
         <span><strong>Validez (Chile):</strong> ${escapeHtml(psych.validity)}</span>
       </div>`
     : `
       <div class="mod-info-row">
-        <span class="mod-info-icon" aria-hidden="true">📋</span>
         <span>${escapeHtml(def.description || 'Módulo clínico.')}</span>
       </div>
       ${variablesRow(type)}`;

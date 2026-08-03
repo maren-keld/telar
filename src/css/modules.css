@@ -1920,16 +1920,6 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   font-size: 13px;
 }
 
-.mod-info-icon {
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 1.1rem;
-}
-
 .mod-info__note {
   font-size: 0.8rem;
   color: var(--text-muted);
