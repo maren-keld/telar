@@ -30,6 +30,14 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      # src/js/ai-secrets.js esta gitignoreado y lo genera este script. Sin el,
+      # ai-config.js no resuelve su import y caen 20 tests: es lo que dejo el CI
+      # en rojo desde que se saco la clave del repo el 31 de julio. Sin
+      # MISTRAL_API_KEY el script escribe la clave vacia, que es lo que quieren
+      # los tests.
+      - name: Generate AI secrets stub
+        run: ./scripts/write-ai-secrets.sh
+
       - name: Frontend unit tests
         run: npm run test:frontend
 
@@ -49,6 +57,17 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+
+      # tauri-build exige que exista el externalBin declarado en tauri.conf.json
+      # antes de compilar. El binario real lo produce build-sidecar.sh con
+      # PyInstaller, que aca costaria minutos y no aporta: `cargo test --lib`
+      # nunca ejecuta el sidecar. Un archivo vacio basta para pasar la
+      # validacion. El release si compila el sidecar de verdad.
+      - name: Placeholder del sidecar (solo para tests unitarios)
+        run: |
+          mkdir -p src-tauri/binaries
+          touch src-tauri/binaries/analyze_session-aarch64-apple-darwin
+          chmod +x src-tauri/binaries/analyze_session-aarch64-apple-darwin
 
       - name: Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib
