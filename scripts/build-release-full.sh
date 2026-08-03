@@ -27,9 +27,14 @@ done
 if [[ -f "$ROOT/src/packs/index.json" ]]; then
   cp "$ROOT/src/packs/index.json" "$ROOT/src/packs/.index.release.json"
 fi
-cat > src/packs/index.json <<'EOF'
-{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}
-EOF
+# Lista unica en scripts/clinical-packs.txt — ver cabecera de ese archivo.
+python3 -c "
+import json, pathlib
+packs = [l.strip() for l in pathlib.Path('scripts/clinical-packs.txt').read_text().splitlines()
+         if l.strip() and not l.startswith('#')]
+pathlib.Path('src/packs/index.json').write_text(json.dumps({'packs': packs}) + '\n')
+print('→ index.json de release:', packs)
+"
 
 echo "==> Clave Mistral embebida (release comercial)"
 chmod +x "$ROOT/scripts/write-ai-secrets.sh"

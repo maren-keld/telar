@@ -1,0 +1,7 @@
+# Packs clinicos que van en el build comercial — uno por linea.
+# Fuente unica: la leen pack-packs-for-ci.sh, build-release-full.sh y release.yml.
+# Al agregar un pack nuevo, basta con anadirlo aca.
+clinical-shared
+tdah-adulto
+trauma-regulacion
+ansiedad-depresion

@@ -82,13 +82,35 @@ jobs:
             echo "⚠ Sin packs clínicos — build solo con demo pack"
             cp src/packs/index.public.json src/packs/index.json 2>/dev/null || true
           fi
+          # Lista unica en scripts/clinical-packs.txt — ver cabecera de ese archivo.
+          # while-read en vez de mapfile: los runners de macOS traen bash 3.2.
+          PACKS=()
+          while IFS= read -r line; do
+            case "$line" in ''|\#*) continue ;; esac
+            PACKS+=("$line")
+          done < scripts/clinical-packs.txt
           if [[ -d packs/clinical-shared || -d src/packs/clinical-shared ]]; then
-            for p in clinical-shared tdah-adulto trauma-regulacion; do
+            for p in "${PACKS[@]}"; do
               if [[ -d "packs/$p" && ! -d "src/packs/$p" ]]; then
                 cp -R "packs/$p" "src/packs/$p"
               fi
             done
-            echo '{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}' > src/packs/index.json
+            MISSING=()
+            for p in "${PACKS[@]}"; do
+              [[ -d "src/packs/$p" ]] || MISSING+=("$p")
+            done
+            if (( ${#MISSING[@]} )); then
+              echo "::error::Faltan packs en el bundle: ${MISSING[*]}."
+              echo "::error::Regenera dist/telar-packs-bundle.tar.gz con ./scripts/pack-packs-for-ci.sh y subelo al release."
+              exit 1
+            fi
+            printf '{"packs":[' > src/packs/index.json
+            for i in "${!PACKS[@]}"; do
+              (( i > 0 )) && printf ',' >> src/packs/index.json
+              printf '"%s"' "${PACKS[$i]}" >> src/packs/index.json
+            done
+            printf ']}\n' >> src/packs/index.json
+            echo "→ Packs embebidos: ${PACKS[*]}"
           fi
 
       - name: Embed Mistral API key (app comercial)

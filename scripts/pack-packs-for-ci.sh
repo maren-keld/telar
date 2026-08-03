@@ -8,7 +8,14 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/packs" "$TMP/src/packs"
-for p in clinical-shared tdah-adulto trauma-regulacion; do
+# Lista unica en scripts/clinical-packs.txt — ver cabecera de ese archivo.
+PACKS=()
+while IFS= read -r line; do
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  PACKS+=("$line")
+done < "$ROOT/scripts/clinical-packs.txt"
+
+for p in "${PACKS[@]}"; do
   for src in "$ROOT/packs/$p" "$ROOT/packs-src/$p" "$ROOT/src/packs/$p"; do
     if [[ -d "$src" ]]; then
       cp -R "$src" "$TMP/packs/$p"
@@ -19,9 +26,12 @@ for p in clinical-shared tdah-adulto trauma-regulacion; do
     rm -rf "$TMP/packs/$p/handouts"
   fi
 done
-cat > "$TMP/src/packs/index.json" <<'EOF'
-{"packs":["clinical-shared","tdah-adulto","trauma-regulacion"]}
-EOF
+printf '{"packs":[' > "$TMP/src/packs/index.json"
+for i in "${!PACKS[@]}"; do
+  [[ $i -gt 0 ]] && printf ',' >> "$TMP/src/packs/index.json"
+  printf '"%s"' "${PACKS[$i]}" >> "$TMP/src/packs/index.json"
+done
+printf ']}\n' >> "$TMP/src/packs/index.json"
 
 tar -czf "$OUT" -C "$TMP" packs src/packs/index.json
 echo "✓ Bundle CI: $OUT ($(du -h "$OUT" | awk '{print $1}'))"
