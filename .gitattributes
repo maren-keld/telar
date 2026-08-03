@@ -1,0 +1,6 @@
+# Los runners de Windows hacen checkout con CRLF por defecto. Un \r invisible al
+# final de cada linea rompe los scripts de build y las listas que estos leen.
+*.sh            text eol=lf
+*.txt           text eol=lf
+*.py            text eol=lf
+.github/**/*.yml text eol=lf

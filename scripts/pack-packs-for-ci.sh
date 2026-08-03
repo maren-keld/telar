@@ -10,7 +10,8 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/packs" "$TMP/src/packs"
 # Lista unica en scripts/clinical-packs.txt — ver cabecera de ese archivo.
 PACKS=()
-while IFS= read -r line; do
+while IFS= read -r line || [[ -n "$line" ]]; do
+  line="${line%$'\r'}"   # checkout de Windows deja CRLF
   [[ -z "$line" || "$line" == \#* ]] && continue
   PACKS+=("$line")
 done < "$ROOT/scripts/clinical-packs.txt"
