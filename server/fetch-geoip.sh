@@ -5,7 +5,7 @@
 # versión nueva cada mes; si la del mes actual todavía no está, se usa la del
 # mes anterior.
 #
-# El archivo NO va en git (pesa ~60 MB y la licencia pide atribución en el
+# El archivo NO va en git (pesa ~124 MB y la licencia pide atribución en el
 # sitio, no redistribución dentro del repo). Se baja en cada build de Render.
 #
 # La API funciona sin este archivo: geo_event() devuelve None y el panel

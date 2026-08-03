@@ -102,7 +102,7 @@ almacena, ni siquiera truncada. Fuera de Chile todo cae en un único
 `geo:otro_pais`.
 
 La base es [DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite)
-(CC BY 4.0), que **no está en git** (~60 MB, se publica una versión nueva cada
+(CC BY 4.0), que **no está en git** (~124 MB, se publica una versión nueva cada
 mes). La baja `server/fetch-geoip.sh` en el `buildCommand` de Render. Sin ella
 la API arranca igual y el panel muestra la sección de comuna apagada — útil en
 desarrollo local, donde nunca hace falta.
