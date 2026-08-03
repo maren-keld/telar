@@ -446,21 +446,10 @@ for (const id of ids) {
   writeFileSync(join(OUT_DIR, `${id}.html`), detailPage(id, def, psych, handout), 'utf8');
 }
 
-// Redirect stub at /modules.html → /modules/
-writeFileSync(
-  join(ROOT, 'landing/modules.html'),
-  `<!DOCTYPE html>
-<html lang="es-CL">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=modules/index.html">
-  <link rel="canonical" href="https://telarapp.cl/modules">
-  <title>Módulos — Telar</title>
-</head>
-<body><p><a href="modules/index.html">Catálogo de módulos</a></p></body>
-</html>`,
-  'utf8'
-);
+// Nada de stub en landing/modules.html: con cleanUrls, ese archivo y
+// modules/index.html compiten por la URL /modules y su meta refresh producía
+// un bucle infinito (/modules → /modules/index.html → /modules → …).
+// Los enlaces antiguos a /modules.html los cubre el redirect de vercel.json.
 
 // Sitemap: reescribe solo el bloque de módulos, entre marcadores.
 const SITEMAP = join(ROOT, 'landing/sitemap.xml');
