@@ -175,13 +175,18 @@ ${links}
     </div>
   </footer>
   <script src="${p}js/download.js?v=${CSS_V}"></script>
+  <script src="${p}js/track.js?v=${CSS_V}"></script>
   <script src="${p}js/nav.js?v=${CSS_V}"></script>`;
 }
 
 function pageShell({ title, description, canonical, depth, body, schema }) {
   const p = depth ? '../'.repeat(depth) : '';
+  // JSON.stringify no escapa «<», así que un «</script>» en cualquier label o
+  // descripción cerraría el bloque antes de tiempo. < es JSON válido y el
+  // parser lo lee igual.
   const ld = schema
     ? `\n  <script type="application/ld+json">\n${JSON.stringify(schema, null, 2)
+        .replace(/</g, '\\u003c')
         .split('\n')
         .map((l) => `  ${l}`)
         .join('\n')}\n  </script>`

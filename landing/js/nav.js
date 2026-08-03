@@ -25,9 +25,13 @@
   /** Marca el link de la página actual para lectores de pantalla y estilo. */
   const here = location.pathname.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
   navLinks.querySelectorAll('a').forEach((a) => {
-    const target = new URL(a.getAttribute('href'), location.href).pathname
-      .replace(/\/index\.html$/, '/')
-      .replace(/\.html$/, '');
-    if (target === here) a.setAttribute('aria-current', 'page');
+    try {
+      const target = new URL(a.getAttribute('href'), location.href).pathname
+        .replace(/\/index\.html$/, '/')
+        .replace(/\.html$/, '');
+      if (target === here) a.setAttribute('aria-current', 'page');
+    } catch (e) {
+      /* href no parseable: no marcar, pero nunca romper el menú */
+    }
   });
 })();
