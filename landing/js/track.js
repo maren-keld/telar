@@ -9,6 +9,15 @@
  * "sesiones que llegaron hasta aquí" una sola vez. sessionStorage muere al
  * cerrar la pestaña y no viaja entre sitios.
  *
+ * Además se envían tres rasgos de la sesión, ya reducidos a una categoría de una
+ * lista cerrada antes de salir del navegador — nunca la URL de origen, nunca el
+ * user-agent, nunca una marca de tiempo:
+ *   src:instagram   de dónde llegó (dominio del referrer o utm_source)
+ *   dev:movil       tipo de pantalla
+ *   dwell:30_60     tramo de segundos con la pestaña visible
+ * Como son contadores independientes, no se pueden cruzar entre sí: "42 desde
+ * Instagram" y "61% en móvil" no dicen qué dispositivo usó nadie en particular.
+ *
  * Respeta Do Not Track y Global Privacy Control: si están activos, no envía nada.
  */
 (function () {
@@ -16,6 +25,7 @@
 
   const API = window.TELAR_API || 'https://telar-api-aim8.onrender.com';
   const STORAGE_KEY = 'telar:steps';
+  const ONCE_KEY = 'telar:once';
 
   // Orden del funnel: alcanzar un paso implica haber alcanzado los anteriores,
   // así los conteos siempre decrecen y el embudo es legible.
@@ -85,6 +95,142 @@
     if (added.length) markSeen(seen.concat(added));
   }
 
+  /** Envía un nombre una sola vez por sesión del navegador. */
+  function sendOnce(name) {
+    let seen;
+    try {
+      seen = JSON.parse(sessionStorage.getItem(ONCE_KEY) || '[]');
+    } catch (e) {
+      // Modo privado sin storage: se envía en cada página. Infla el conteo de
+      // esas sesiones, no revela nada nuevo.
+      send(name);
+      return;
+    }
+    if (seen.indexOf(name) !== -1) return;
+    send(name);
+    try {
+      sessionStorage.setItem(ONCE_KEY, JSON.stringify(seen.concat([name])));
+    } catch (e) {
+      /* ídem */
+    }
+  }
+
+  // --- De dónde viene la sesión ---------------------------------------------
+  // Del referrer se mira solo el dominio, y solo para elegir una etiqueta de
+  // esta lista. La URL completa (que puede llevar términos de búsqueda o el hilo
+  // exacto de Reddit) nunca sale del navegador.
+  const SOURCES = [
+    [/(^|\.)google\./, 'google'],
+    [/(^|\.)bing\./, 'bing'],
+    [/duckduckgo\./, 'duckduckgo'],
+    [/(^|\.)ecosia\.|(^|\.)brave\./, 'otro_buscador'],
+    [/facebook\.|fb\.me|fb\.com/, 'facebook'],
+    [/instagram\./, 'instagram'],
+    [/tiktok\./, 'tiktok'],
+    [/reddit\./, 'reddit'],
+    [/(^|\.)(twitter|x)\.com/, 'x'],
+    [/linkedin\.|lnkd\.in/, 'linkedin'],
+    [/youtube\.|youtu\.be/, 'youtube'],
+    [/whatsapp\./, 'whatsapp'],
+    [/t\.me|telegram/, 'telegram'],
+    [/chatgpt\.|openai\.|perplexity\.|claude\.ai|copilot\./, 'ia'],
+    [/mail\.|outlook\.|gmail/, 'email'],
+  ];
+
+  // utm_source solo puede tomar uno de estos valores; cualquier otro cae en
+  // "otro", así que un enlace con utm inventado no crea etiquetas nuevas.
+  const UTM_ALLOWED = SOURCES.map((pair) => pair[1]).concat([
+    'newsletter', 'qr', 'flyer', 'colega', 'evento',
+  ]);
+
+  function sourceLabel() {
+    let utm = '';
+    try {
+      utm = (new URLSearchParams(location.search).get('utm_source') || '')
+        .trim().toLowerCase();
+    } catch (e) {
+      /* navegador sin URLSearchParams: seguimos con el referrer */
+    }
+    if (utm) return UTM_ALLOWED.indexOf(utm) !== -1 ? utm : 'otro';
+
+    const ref = document.referrer || '';
+    if (!ref) return 'directo';
+    let host = '';
+    try {
+      host = new URL(ref).hostname.toLowerCase();
+    } catch (e) {
+      return 'otro';
+    }
+    // Navegación dentro del propio sitio: no es una fuente de tráfico.
+    if (host === location.hostname) return null;
+    for (let i = 0; i < SOURCES.length; i += 1) {
+      if (SOURCES[i][0].test(host)) return SOURCES[i][1];
+    }
+    return 'otro';
+  }
+
+  /** Tipo de pantalla. Se mira el ancho, no el user-agent. */
+  function deviceLabel() {
+    const width = Math.min(
+      window.screen && window.screen.width ? window.screen.width : 1024,
+      window.innerWidth || 1024
+    );
+    const touch = navigator.maxTouchPoints > 1;
+    if (width < 640) return 'movil';
+    if (width < 1024 && touch) return 'tablet';
+    return 'escritorio';
+  }
+
+  // --- Tiempo con la pestaña visible ----------------------------------------
+  // Se acumulan solo los segundos en que la página estuvo de verdad a la vista
+  // y se envía el tramo, no el número exacto: "entre 30 s y 1 min".
+  const DWELL_BUCKETS = [
+    [10, '0_10'],
+    [30, '10_30'],
+    [60, '30_60'],
+    [180, '1_3min'],
+    [600, '3_10min'],
+    [Infinity, '10min_mas'],
+  ];
+
+  function dwellBucket(seconds) {
+    for (let i = 0; i < DWELL_BUCKETS.length; i += 1) {
+      if (seconds < DWELL_BUCKETS[i][0]) return DWELL_BUCKETS[i][1];
+    }
+    return '10min_mas';
+  }
+
+  function trackDwell() {
+    let visibleMs = 0;
+    let since = document.visibilityState === 'visible' ? Date.now() : 0;
+    let sent = false;
+
+    function accumulate() {
+      if (since) visibleMs += Date.now() - since;
+      since = 0;
+    }
+
+    function flush() {
+      if (sent) return;
+      accumulate();
+      if (visibleMs < 1000) return; // rebotes instantáneos y prerender: no cuentan
+      sent = true;
+      send(`dwell:${dwellBucket(visibleMs / 1000)}`);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (!since) since = Date.now();
+      } else {
+        // En móvil el navegador puede matar la pestaña sin pagehide: este es el
+        // último momento seguro para enviar.
+        flush();
+      }
+    });
+    // pagehide cubre el cierre y la navegación normal en escritorio.
+    window.addEventListener('pagehide', flush);
+  }
+
   /** Nombre de página desde la ruta: /precio → precio, / → home. */
   function pageName() {
     const path = location.pathname.replace(/\.html$/, '').replace(/\/$/, '');
@@ -99,6 +245,11 @@
   function trackPageview() {
     const page = pageName();
     send(`view:${page}`);
+    // Antes del paso 1: el servidor resuelve la comuna al ver "step:visit", así
+    // que los rasgos de la sesión ya están contados cuando eso ocurre.
+    const source = sourceLabel();
+    if (source) sendOnce(`src:${source}`);
+    sendOnce(`dev:${deviceLabel()}`);
     reachStep('step:visit');
     if (page === 'precio') {
       reachStep('step:pricing');
@@ -137,6 +288,10 @@
   }
 
   if (optedOut()) return;
+
+  // El cronómetro parte antes del DOMContentLoaded: si no, una página lenta
+  // regalaría segundos de lectura que el visitante sí estuvo mirando.
+  trackDwell();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

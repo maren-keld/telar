@@ -82,13 +82,36 @@ Endpoints agregados para medir el embudo de `telarapp.cl`:
 |----------|-----|
 | `POST /api/events` | Recibe `{"name": "view:precio"}` desde `landing/js/track.js`. Responde 204 siempre. |
 | `GET /api/admin/funnel?secret=…&days=30` | Devuelve funnel, serie diaria y totales. Requiere `WEBHOOK_SECRET`. |
+| `GET /api/admin/landing?days=14` | Origen, dispositivo, tiempo en página y comuna, agregados. Requiere la sesión de `/panel`. |
 
 Se guarda **solo un contador por (día, evento)** en la tabla `landing_events`: sin
 IP, sin user-agent, sin cookies y sin sesión. El navegador deduplica los pasos
 `step:*` en `sessionStorage`, así que el servidor nunca sabe de quién viene un evento.
 
-Nombres válidos: `view:*`, `cta:*` y `step:*` (regex `EVENT_NAME_RE`), con un techo
-de `MAX_DISTINCT_EVENTS` nombres distintos para que nadie infle la tabla.
+Nombres válidos: `view:*`, `cta:*`, `step:*`, `src:*`, `dev:*`, `dwell:*` y
+`geo:*` (regex `EVENT_NAME_RE`), con un techo de `MAX_DISTINCT_EVENTS` nombres
+distintos para que nadie infle la tabla. Los tres rasgos de sesión solo aceptan
+valores de una lista cerrada (`ALLOWED_TRAIT_VALUES`); `geo:*` lo escribe el
+servidor y se **rechaza** si viene del cliente.
+
+### Comuna del visitante
+
+`geo_event()` traduce la IP a un nombre de comuna **en memoria** al recibir el
+primer paso del funnel, guarda `geo:providencia` y descarta la IP: no se
+almacena, ni siquiera truncada. Fuera de Chile todo cae en un único
+`geo:otro_pais`.
+
+La base es [DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite)
+(CC BY 4.0), que **no está en git** (~60 MB, se publica una versión nueva cada
+mes). La baja `server/fetch-geoip.sh` en el `buildCommand` de Render. Sin ella
+la API arranca igual y el panel muestra la sección de comuna apagada — útil en
+desarrollo local, donde nunca hace falta.
+
+La atribución a DB-IP que pide la licencia está en `landing/privacidad.html`.
+
+Los cuatro contadores son independientes: no se pueden cruzar entre sí ni
+atribuir a una persona. Esa es la razón de que el panel muestre distribuciones
+y no una tabla de visitas.
 
 El dashboard vive en `landing/stats.html?secret=TU_WEBHOOK_SECRET` (página con
 `noindex`).

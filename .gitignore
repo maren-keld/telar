@@ -45,3 +45,6 @@ docs/
 
 # Claude Code — config local de la máquina
 .claude/settings.local.json
+
+# Base GeoIP descargada en el build (server/fetch-geoip.sh) — ~60 MB, no va en git
+/server/geoip/

@@ -5,7 +5,10 @@ services:
     name: telar-api
     runtime: python
     rootDir: server
-    buildCommand: pip install -r requirements.txt
+    # La base GeoIP (comuna del visitante) se baja en cada build: no está en git
+    # y se publica una versión nueva cada mes. Si falla, la API arranca igual y
+    # el panel muestra la comuna apagada.
+    buildCommand: pip install -r requirements.txt && ./fetch-geoip.sh
     startCommand: gunicorn app:APP --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     plan: free
     healthCheckPath: /api/health

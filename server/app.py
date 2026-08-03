@@ -10,6 +10,7 @@ import os
 import re
 import sqlite3
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -64,10 +65,11 @@ _plan_cache: dict | None = None
 # Solo se guarda un contador por (día, nombre de evento). Nunca IP, user-agent
 # ni sesión: el cliente deduplica los pasos del funnel en sessionStorage y el
 # servidor jamás ve de quién viene el evento.
-EVENT_NAME_RE = re.compile(r"^(view|cta|step):[a-z0-9_]{1,32}$")
+EVENT_NAME_RE = re.compile(r"^(view|cta|step|src|dev|dwell|geo):[a-z0-9_]{1,32}$")
 # Techo de nombres distintos: evita que un tercero infle la tabla inventando
 # eventos. Los nombres ya vistos siguen contando aunque se alcance el techo.
-MAX_DISTINCT_EVENTS = 200
+# Holgado a propósito: Chile tiene 346 comunas y cada una es un nombre distinto.
+MAX_DISTINCT_EVENTS = 600
 FUNNEL_STEPS = [
     ("step:visit", "Visitas"),
     ("step:explore", "Exploran el producto"),
@@ -76,6 +78,96 @@ FUNNEL_STEPS = [
 ]
 DEFAULT_FUNNEL_DAYS = 30
 MAX_FUNNEL_DAYS = 365
+DEFAULT_LANDING_DAYS = 14
+TOP_COMUNAS = 15
+
+# Rasgos de la sesión: categorías de lista cerrada. Un cliente cualquiera puede
+# postear a /api/events, así que el valor se valida acá y no solo en el
+# navegador; lo que no está en la lista se descarta sin registrar nada.
+SOURCE_LABELS = {
+    "google": "Google", "bing": "Bing", "duckduckgo": "DuckDuckGo",
+    "otro_buscador": "Otro buscador", "facebook": "Facebook",
+    "instagram": "Instagram", "tiktok": "TikTok", "reddit": "Reddit",
+    "x": "X", "linkedin": "LinkedIn", "youtube": "YouTube",
+    "whatsapp": "WhatsApp", "telegram": "Telegram", "ia": "Asistentes IA",
+    "email": "Correo", "newsletter": "Newsletter", "qr": "Código QR",
+    "flyer": "Flyer", "colega": "Colega", "evento": "Evento",
+    "directo": "Directo", "otro": "Otro",
+}
+DEVICE_LABELS = {"movil": "Móvil", "tablet": "Tablet", "escritorio": "Escritorio"}
+# (clave, etiqueta, segundos representativos del tramo) — los segundos sirven
+# para estimar el tiempo típico sin haber guardado nunca una duración exacta.
+DWELL_BUCKETS = [
+    ("0_10", "Menos de 10 s", 5),
+    ("10_30", "10–30 s", 20),
+    ("30_60", "30 s–1 min", 45),
+    ("1_3min", "1–3 min", 120),
+    ("3_10min", "3–10 min", 390),
+    ("10min_mas", "Más de 10 min", 900),
+]
+ALLOWED_TRAIT_VALUES = {
+    "src": set(SOURCE_LABELS),
+    "dev": set(DEVICE_LABELS),
+    "dwell": {key for key, _, _ in DWELL_BUCKETS},
+}
+
+# --- Comuna (GeoIP local, sin terceros) ------------------------------------
+# La IP se traduce en memoria a un nombre de comuna y se descarta: lo único que
+# llega a la base es un contador "geo:providencia" del día. Sin la base de datos
+# instalada la función devuelve None y el resto de la analítica sigue igual.
+# Base: DB-IP City Lite (CC BY 4.0) — ver server/fetch-geoip.sh.
+# El evento guardado es un slug ASCII ("nunoa"); acá se repone la escritura
+# correcta de las comunas que más aparecen. Las que falten se muestran
+# capitalizadas sin tilde, que es feo pero no incorrecto de leer.
+COMUNA_LABELS = {
+    "nunoa": "Ñuñoa",
+    "vina_del_mar": "Viña del Mar",
+    "concepcion": "Concepción",
+    "valparaiso": "Valparaíso",
+    "san_joaquin": "San Joaquín",
+    "san_ramon": "San Ramón",
+    "penalolen": "Peñalolén",
+    "conchali": "Conchalí",
+    "maipu": "Maipú",
+    "curico": "Curicó",
+    "chillan": "Chillán",
+    "copiapo": "Copiapó",
+    "vallenar": "Vallenar",
+    "quilpue": "Quilpué",
+    "san_antonio": "San Antonio",
+    "san_bernardo": "San Bernardo",
+    "puente_alto": "Puente Alto",
+    "la_florida": "La Florida",
+    "las_condes": "Las Condes",
+    "lo_barnechea": "Lo Barnechea",
+    "estacion_central": "Estación Central",
+    "san_miguel": "San Miguel",
+    "quinta_normal": "Quinta Normal",
+    "villa_alemana": "Villa Alemana",
+    "talcahuano": "Talcahuano",
+    "temuco": "Temuco",
+    "valdivia": "Valdivia",
+    "osorno": "Osorno",
+    "puerto_montt": "Puerto Montt",
+    "punta_arenas": "Punta Arenas",
+    "antofagasta": "Antofagasta",
+    "iquique": "Iquique",
+    "arica": "Arica",
+    "la_serena": "La Serena",
+    "coquimbo": "Coquimbo",
+    "rancagua": "Rancagua",
+    "talca": "Talca",
+    "santiago": "Santiago",
+    "providencia": "Providencia",
+    "otro_pais": "Fuera de Chile",
+    "desconocida": "Sin determinar",
+}
+
+GEOIP_DB_PATH = os.environ.get(
+    "GEOIP_DB_PATH", str(Path(__file__).parent / "geoip" / "dbip-city-lite.mmdb")
+)
+_geoip_reader = None
+_geoip_tried = False
 
 
 def clean_field(value, limit: int) -> str:
@@ -239,6 +331,10 @@ def record_event(name: str) -> bool:
     o si se alcanzó el techo de nombres distintos."""
     if not EVENT_NAME_RE.match(name):
         return False
+    prefix, _, value = name.partition(":")
+    allowed = ALLOWED_TRAIT_VALUES.get(prefix)
+    if allowed is not None and value not in allowed:
+        return False
     day = today_utc()
     with db() as conn:
         known = conn.execute(
@@ -257,6 +353,74 @@ def record_event(name: str) -> bool:
             (day, name),
         )
     return True
+
+
+def geoip_reader():
+    """Lector mmdb compartido, o None si la base no está instalada.
+
+    Se intenta una sola vez: si falta el archivo (desarrollo local, tests) la
+    analítica de comuna queda apagada en silencio y el resto no se entera.
+    """
+    global _geoip_reader, _geoip_tried
+    if _geoip_tried:
+        return _geoip_reader
+    _geoip_tried = True
+    try:
+        import maxminddb
+
+        _geoip_reader = maxminddb.open_database(GEOIP_DB_PATH)
+    except Exception:
+        _geoip_reader = None
+    return _geoip_reader
+
+
+def client_ip() -> str:
+    """IP del visitante detrás del proxy de Render. Se usa y se descarta."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or ""
+
+
+def slugify(value: str) -> str:
+    """'Ñuñoa' → 'nunoa'. El evento es un slug ASCII; la tilde se repone al
+    mostrarlo (COMUNA_LABELS)."""
+    plain = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", plain.lower()).strip("_")[:32]
+
+
+def geo_event() -> str | None:
+    """Nombre de evento con la comuna del visitante, sin guardar la IP.
+
+    Solo se resuelve para Chile; el resto se agrupa en un único contador para no
+    convertir el panel en una lista de países con una visita cada uno.
+    """
+    reader = geoip_reader()
+    if reader is None:
+        return None
+    ip = client_ip()
+    if not ip:
+        return None
+    try:
+        record = reader.get(ip) or {}
+    except Exception:
+        # IP privada, IPv6 mal formada, base corrupta: no es motivo para que
+        # falle el evento del visitante.
+        return None
+
+    country = (record.get("country") or {}).get("iso_code", "")
+    if country and country != "CL":
+        return "geo:otro_pais"
+
+    names = (record.get("city") or {}).get("names") or {}
+    city = names.get("es") or names.get("en") or ""
+    if not city:
+        subdivisions = record.get("subdivisions") or []
+        if subdivisions:
+            region_names = subdivisions[0].get("names") or {}
+            city = region_names.get("es") or region_names.get("en") or ""
+    slug = slugify(city)
+    return f"geo:{slug}" if slug else "geo:desconocida"
 
 
 def normalize_payer_email(raw: str) -> str:
@@ -604,7 +768,17 @@ def collect_event():
     # preflight CORS que sendBeacon no puede negociar.
     data = request.get_json(silent=True, force=True) or {}
     name = (data.get("name") or "").strip().lower()[:64]
+    # "geo:*" lo escribe solo el servidor a partir de la IP: si viniera del
+    # cliente cualquiera podría inventar comunas.
+    if name.startswith("geo:"):
+        return "", 204
     record_event(name)
+    # La comuna se cuenta una vez por sesión, enganchada al primer paso del
+    # funnel — que el cliente ya deduplica en sessionStorage.
+    if name == FUNNEL_STEPS[0][0]:
+        located = geo_event()
+        if located:
+            record_event(located)
     # Siempre 204: el navegador no debe reintentar ni exponer si el nombre existe.
     return "", 204
 
@@ -680,6 +854,128 @@ def admin_funnel():
         "note": (
             "Eventos agregados por día. Los pasos del funnel se cuentan una vez "
             "por sesión del navegador; los eventos view:/cta: cuentan cada ocurrencia."
+        ),
+    })
+
+
+def _distribution(totals: dict[str, int], prefix: str, labels: dict[str, str],
+                  order: list[str] | None = None) -> list[dict]:
+    """Contadores de un prefijo, con % sobre el total del propio grupo."""
+    counts = {
+        key: totals.get(f"{prefix}:{key}", 0)
+        for key in (order or labels)
+    }
+    total = sum(counts.values())
+    items = [
+        {
+            "key": key,
+            "label": labels.get(key, key),
+            "count": count,
+            "pct": round(count / total * 100, 1) if total else 0.0,
+        }
+        for key, count in counts.items()
+    ]
+    if order is None:
+        items.sort(key=lambda item: -item["count"])
+    return [item for item in items if item["count"] or order]
+
+
+def comuna_label(slug: str) -> str:
+    """Repone tildes de las comunas frecuentes; el resto se muestra capitalizado."""
+    if slug in COMUNA_LABELS:
+        return COMUNA_LABELS[slug]
+    return " ".join(word.capitalize() for word in slug.split("_"))
+
+
+def dwell_summary(buckets: list[dict]) -> dict:
+    """Tramo mediano y promedio aproximado, calculados desde el histograma.
+
+    Nunca se guardó una duración exacta, así que esto es una estimación por
+    tramos — suficiente para saber si la gente lee o rebota.
+    """
+    seconds = {key: secs for key, _, secs in DWELL_BUCKETS}
+    total = sum(b["count"] for b in buckets)
+    if not total:
+        return {"total": 0, "median_label": None, "avg_seconds": 0}
+    half, running, median = total / 2, 0, buckets[-1]
+    for bucket in buckets:
+        running += bucket["count"]
+        if running >= half:
+            median = bucket
+            break
+    average = sum(b["count"] * seconds[b["key"]] for b in buckets) / total
+    return {
+        "total": total,
+        "median_label": median["label"],
+        "avg_seconds": round(average),
+    }
+
+
+@APP.get("/api/admin/landing")
+def admin_landing():
+    """Rasgos agregados del landing para el panel: origen, dispositivo, tiempo
+    y comuna. Son contadores independientes por día: no se pueden cruzar entre
+    sí ni atribuir a una persona."""
+    if not panel_authorized():
+        return jsonify({"error": "No autorizado"}), 401
+
+    try:
+        days = int(request.args.get("days", DEFAULT_LANDING_DAYS))
+    except ValueError:
+        days = DEFAULT_LANDING_DAYS
+    days = max(1, min(days, MAX_FUNNEL_DAYS))
+    since = (datetime.now(timezone.utc) - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT name, SUM(count) AS total FROM landing_events "
+            "WHERE day >= ? GROUP BY name",
+            (since,),
+        ).fetchall()
+    totals = {row["name"]: int(row["total"]) for row in rows}
+
+    comunas = sorted(
+        (
+            {"key": name[4:], "label": comuna_label(name[4:]), "count": count}
+            for name, count in totals.items()
+            if name.startswith("geo:") and count
+        ),
+        key=lambda item: -item["count"],
+    )
+    located = sum(item["count"] for item in comunas)
+    for item in comunas:
+        item["pct"] = round(item["count"] / located * 100, 1) if located else 0.0
+    # Cola larga agrupada: la lista útil son las primeras, no 300 filas de a una.
+    head, tail = comunas[:TOP_COMUNAS], comunas[TOP_COMUNAS:]
+    if tail:
+        head.append({
+            "key": "otras",
+            "label": f"Otras {len(tail)} comunas",
+            "count": sum(item["count"] for item in tail),
+            "pct": round(sum(item["count"] for item in tail) / located * 100, 1),
+        })
+
+    dwell = _distribution(
+        totals, "dwell",
+        {key: label for key, label, _ in DWELL_BUCKETS},
+        order=[key for key, _, _ in DWELL_BUCKETS],
+    )
+
+    return jsonify({
+        "ok": True,
+        "range_days": days,
+        "since": since,
+        "visits": totals.get("step:visit", 0),
+        "sources": _distribution(totals, "src", SOURCE_LABELS),
+        "devices": _distribution(totals, "dev", DEVICE_LABELS),
+        "dwell": dwell,
+        "dwell_summary": dwell_summary(dwell),
+        "comunas": head,
+        "geo_enabled": geoip_reader() is not None,
+        "note": (
+            "Contadores agregados por día, sin cookies ni IP almacenada. Cada "
+            "rasgo se cuenta una vez por sesión del navegador y son "
+            "independientes entre sí: no se pueden cruzar."
         ),
     })
 
@@ -777,6 +1073,16 @@ code { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5d6ff; }
 .blabels { display:flex; gap:5px; padding:6px 18px 16px; }
 .blabels span { flex:1; text-align:center; font-size:10px; color:#6e7681; }
 .empty { padding:36px 18px; text-align:center; color:#6e7681; font-size:13px; }
+.cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:0 24px; }
+/* Barras horizontales: la etiqueta se lee sin hover, a diferencia del gráfico
+   vertical de arriba, donde solo hay 14 días numerados. */
+.rows { padding:14px 18px 16px; display:grid; gap:9px; }
+.row { display:grid; grid-template-columns:1fr auto; gap:2px 12px; font-size:13px; }
+.row .bar { grid-column:1/-1; height:5px; border-radius:3px; background:#21262d; }
+.row .bar i { display:block; height:100%; border-radius:3px; background:#1f6feb; }
+.row .n { color:#8b949e; font-variant-numeric:tabular-nums; font-size:12px; }
+.row.muted .bar i { background:#30363d; }
+.note { color:#6e7681; font-size:12px; margin:10px 0 0; }
 .err { color:#f85149; }
 form { max-width:320px; margin:14vh auto; padding:0 20px; }
 input { width:100%; padding:11px 13px; border-radius:8px; border:1px solid #30363d;
@@ -818,6 +1124,23 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
   <div class="card scroll" id="devices"></div>
   <h2>Suscripciones</h2>
   <div class="card scroll" id="subs"></div>
+
+  <h2 id="landing-title">Visitas al sitio</h2>
+  <div class="cols">
+    <div>
+      <h2>De dónde llegan</h2>
+      <div class="card" id="sources"></div>
+      <h2>Dispositivo</h2>
+      <div class="card" id="screens"></div>
+    </div>
+    <div>
+      <h2>Comuna</h2>
+      <div class="card" id="comunas"></div>
+      <h2>Tiempo en la página</h2>
+      <div class="card" id="dwell"></div>
+    </div>
+  </div>
+  <p class="note" id="landing-note"></p>
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -878,6 +1201,40 @@ function render(d) {
     : '<p class="empty">Sin suscripciones registradas.</p>';
 }
 
+function rows(items, empty) {
+  if (!items || !items.length) return `<p class="empty">${empty}</p>`;
+  const max = Math.max(1, ...items.map((i) => i.count));
+  return `<div class="rows">${items.map((i) => `<div class="row ${
+      i.count ? '' : 'muted'}"><span>${esc(i.label)}</span>
+    <span class="n">${i.count} · ${i.pct}%</span>
+    <span class="bar"><i style="width:${(i.count / max) * 100}%"></i></span>
+  </div>`).join('')}</div>`;
+}
+
+function renderLanding(d) {
+  $('landing-title').textContent =
+    `Visitas al sitio · ${d.range_days} días · ${d.visits} sesiones`;
+  $('sources').innerHTML = rows(d.sources, 'Nadie ha llegado todavía.');
+  $('screens').innerHTML = rows(d.devices, 'Sin datos de pantalla.');
+  // Si la base GeoIP se cae después de haber contado, lo ya registrado se sigue
+  // mostrando: el aviso es para cuando no hay nada que mostrar.
+  $('comunas').innerHTML = d.comunas.length
+    ? rows(d.comunas, '')
+    : `<p class="empty">${d.geo_enabled
+        ? 'Sin ubicaciones resueltas todavía.'
+        : 'Comuna apagada: falta la base GeoIP en el servidor.'}</p>`;
+
+  const s = d.dwell_summary;
+  $('dwell').innerHTML = rows(d.dwell, 'Nadie ha completado una visita aún.')
+    + (s.total
+      ? `<p class="note" style="padding:0 18px 16px">Tramo mediano: ${
+          esc(s.median_label)} · promedio aprox. ${
+          Math.floor(s.avg_seconds / 60)}m ${s.avg_seconds % 60}s</p>`
+      : '');
+
+  $('landing-note').textContent = d.note;
+}
+
 async function load() {
   try {
     const res = await fetch('/api/admin/live', { credentials: 'same-origin' });
@@ -885,6 +1242,13 @@ async function load() {
     render(await res.json());
   } catch (e) {
     $('stamp').innerHTML = '<span class="err">Sin conexión con la API.</span>';
+  }
+  try {
+    const res = await fetch('/api/admin/landing', { credentials: 'same-origin' });
+    if (res.ok) renderLanding(await res.json());
+  } catch (e) {
+    // El bloque del landing es secundario: si falla, el resto del panel sigue.
+    $('landing-note').textContent = 'No se pudo cargar la analítica del sitio.';
   }
 }
 load();

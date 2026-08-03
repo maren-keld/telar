@@ -16,7 +16,7 @@ import { TCC_HANDOUT_DEFS } from '../src/js/tcc-handout-defs.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'landing/modules');
-const CSS_V = '20260802b';
+const CSS_V = '20260803a';
 
 const SKIP = new Set(['selector_modulo']);
 
