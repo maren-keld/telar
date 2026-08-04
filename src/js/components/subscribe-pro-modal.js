@@ -1,5 +1,9 @@
 import { isProUser, loadProfile } from '../profile.js';
-import { SUBSCRIPTION_PRICE_CLP, formatSubscriptionPriceCLP } from '../subscription-config.js';
+import {
+  FREE_ACTIVE_PATIENT_LIMIT,
+  SUBSCRIPTION_PRICE_CLP,
+  formatSubscriptionPriceCLP,
+} from '../subscription-config.js';
 import { openExternalUrl } from '../tauri-bridge.js';
 import {
   activateDevPro,
@@ -37,7 +41,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           <button type="button" class="modal-close" aria-label="Cerrar">×</button>
         </header>
         <p class="subscribe-pro-modal__intro">
-          En Demo tienes todos los packs clínicos, Neurofeedback en vivo y hasta <strong>8 pacientes activos</strong> (archivados o en pausa no cuentan).
+          En Demo tienes todos los packs clínicos, Neurofeedback en vivo y hasta <strong>${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos</strong> — los archivados, completados o en pausa no ocupan cupo.
           El Plan Profesional desbloquea:
         </p>
         <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite" ${pro ? 'hidden' : ''}>Comprobando servidor de pagos…</p>

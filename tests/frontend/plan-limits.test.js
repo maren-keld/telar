@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-test('FREE_ACTIVE_PATIENT_LIMIT is 8', async () => {
+test('FREE_ACTIVE_PATIENT_LIMIT is 3', async () => {
   const { FREE_ACTIVE_PATIENT_LIMIT } = await import('../../src/js/subscription-config.js');
-  assert.equal(FREE_ACTIVE_PATIENT_LIMIT, 8);
+  assert.equal(FREE_ACTIVE_PATIENT_LIMIT, 3);
 });
 
 test('isProUser when plan is pro', async () => {

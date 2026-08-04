@@ -9,7 +9,7 @@
 export const SUBSCRIPTION_API_PRODUCTION = 'https://telar-api-aim8.onrender.com';
 
 /** Pacientes distintos con ≥1 tratamiento en estado en_tratamiento (plan Demo). */
-export const FREE_ACTIVE_PATIENT_LIMIT = 8;
+export const FREE_ACTIVE_PATIENT_LIMIT = 3;
 
 /** Precio mensual Plan Pro en CLP (debe coincidir con PLAN_AMOUNT_CLP en server/.env). */
 export const SUBSCRIPTION_PRICE_CLP = 19990;
