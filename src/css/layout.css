@@ -278,15 +278,24 @@
 .workspace-center__scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   min-height: 0;
   width: 100%;
 }
 
 .workspace-center__inner {
-  width: 100%;
+  width: 720px;
+  min-width: 720px;
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 32px 40px;
+  box-sizing: border-box;
+}
+
+.center-module-card__body > .card,
+.center-module-card__body > .nf-panel {
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -516,6 +525,16 @@
 
 .workspace-resizer--right {
   right: calc(var(--workspace-right-w, 320px) - 3px);
+}
+
+/* Ventana estrecha: ocultar panel derecho; módulos centrales mantienen 720px fijos */
+.workspace-layout--compact-right .workspace-tools,
+.workspace-layout--compact-right .workspace-resizer--right {
+  display: none !important;
+}
+
+.workspace-layout--compact-right {
+  --workspace-right-w: 0px !important;
 }
 
 /* Panel notas / IA: ver css/notes.css */

@@ -101,7 +101,7 @@ export async function renderIesr(host, moduleRow) {
         <div class="module-card-head">
           <div>
             <h2 class="module-title" style="margin:0">${escapeHtml(t('iesr.title', 'IES-R — Impacto del evento'))}</h2>
-            <p class="module-card-head__sub">${escapeHtml(t('iesr.subtitle', '22 ítems · escala 0–4 · últimos 7 días · subescalas intrusión, evitación, hiperactivación.'))}</p>
+            <p class="module-card-head__sub">${escapeHtml(t('iesr.subtitle', '22 ítems · escala 0–4 · últimos 7 días.'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="iesr-progress" title="${escapeHtml(t('iesr.progress', 'Ítems respondidos'))}">${answeredCount}/${IESR_TOTAL}</div>
         </div>

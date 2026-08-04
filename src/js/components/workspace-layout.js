@@ -12,7 +12,11 @@ export const RIGHT_WIDTH_DEFAULT = 320;
 export const RIGHT_WIDTH_MIN = 320;
 export const RIGHT_WIDTH_MAX = 720;
 
-export const MIN_CENTER_WIDTH = 420;
+export const MODULE_INNER_WIDTH = 720;
+export const MIN_CENTER_WIDTH = MODULE_INNER_WIDTH;
+
+/** Por debajo de este ancho total, el panel derecho se oculta solo (p. ej. mitad pantalla + videollamada). */
+export const COMPACT_HIDE_RIGHT_BELOW = 1080;
 
 export function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
@@ -63,6 +67,30 @@ function applyWorkspaceSidebarWidths({ layoutEl, leftSidebarEl, leftWidth, right
   leftSidebarEl.classList.toggle('workspace-sidebar--focus', isLeftSidebarFocusMode(leftWidth));
 }
 
+function applyCompactRightPanel({ layoutEl, layoutWidth, rightWidth, rightSidebarEl }) {
+  const compact = layoutWidth < COMPACT_HIDE_RIGHT_BELOW;
+  layoutEl.classList.toggle('workspace-layout--compact-right', compact);
+  if (compact) {
+    layoutEl.dataset.workspaceRightSaved = String(rightWidth);
+    layoutEl.style.setProperty('--workspace-right-w', '0px');
+    rightSidebarEl?.setAttribute('aria-hidden', 'true');
+  } else {
+    const leftW =
+      parsePxInt(getComputedStyle(layoutEl).getPropertyValue('--workspace-left-w')) ??
+      LEFT_WIDTH_DEFAULT;
+    const restored =
+      parsePxInt(layoutEl.dataset.workspaceRightSaved) ??
+      parsePxInt(localStorage.getItem(WORKSPACE_RIGHT_WIDTH_KEY)) ??
+      RIGHT_WIDTH_DEFAULT;
+    const maxRight = calculateMaxRightWidth(layoutWidth, leftW);
+    const nextRight = clamp(restored, RIGHT_WIDTH_MIN, maxRight);
+    layoutEl.style.setProperty('--workspace-right-w', `${nextRight}px`);
+    rightSidebarEl?.removeAttribute('aria-hidden');
+    return nextRight;
+  }
+  return rightWidth;
+}
+
 export function initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSidebarEl }) {
   const leftResizer = layoutEl.querySelector('.workspace-resizer--left');
   const rightResizer = layoutEl.querySelector('.workspace-resizer--right');
@@ -87,6 +115,30 @@ export function initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSid
   }));
 
   applyWorkspaceSidebarWidths({ layoutEl, leftSidebarEl, leftWidth, rightWidth });
+  rightWidth = applyCompactRightPanel({
+    layoutEl,
+    layoutWidth,
+    rightWidth,
+    rightSidebarEl,
+  });
+
+  const syncCompactOnResize = () => {
+    const w = layoutEl.getBoundingClientRect().width || window.innerWidth;
+    rightWidth = applyCompactRightPanel({
+      layoutEl,
+      layoutWidth: w,
+      rightWidth,
+      rightSidebarEl,
+    });
+  };
+
+  if (window._telarWorkspaceResizeObserver) {
+    window._telarWorkspaceResizeObserver.disconnect();
+  }
+  const ro = new ResizeObserver(() => syncCompactOnResize());
+  ro.observe(layoutEl);
+  window._telarWorkspaceResizeObserver = ro;
+  window.addEventListener('resize', syncCompactOnResize, { passive: true });
 
   const persist = (nextLeft, nextRight) => {
     try {

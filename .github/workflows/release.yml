@@ -114,7 +114,7 @@ jobs:
             echo "→ Packs embebidos: ${PACKS[*]}"
           fi
 
-      - name: Embed Mistral API key (app comercial)
+      - name: Prepare AI defaults (release build)
         shell: bash
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
