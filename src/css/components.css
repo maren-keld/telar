@@ -183,6 +183,35 @@ input[type='date']::-webkit-calendar-picker-indicator {
   background: transparent;
 }
 
+/* WKWebView dibuja una lupa y una «x» nativas dentro de input[type=search].
+   No son parte del diseno y en macOS se ven como un emoji pegado al campo. */
+input[type='search'] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Cada pseudo va en su propia regla a proposito: si se agrupan y el motor no
+   reconoce uno, descarta el grupo completo y no se oculta ninguno. */
+input[type='search']::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type='search']::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type='search']::-webkit-search-results-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+input[type='search']::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
 .toolbar {
   display: flex;
   align-items: center;

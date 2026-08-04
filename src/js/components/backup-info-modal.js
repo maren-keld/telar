@@ -39,7 +39,7 @@ export function openBackupInfoModal() {
           </section>
 
           <div class="backup-info-warning" role="alert">
-            <p class="backup-info-warning__lead">⚠️ ${t('settings.cloudBackupInfoWarn')}</p>
+            <p class="backup-info-warning__lead">${t('settings.cloudBackupInfoWarn')}</p>
           </div>
 
           <section class="backup-info-section">

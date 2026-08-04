@@ -32,7 +32,6 @@ function renderList(root, treatmentId) {
     .map(
       (d) => `
     <div class="ref-docs-item" data-id="${escapeHtml(d.id)}">
-      <span class="ref-docs-item__icon" aria-hidden="true">📄</span>
       <span class="ref-docs-item__meta">
         <strong>${escapeHtml(d.name)}</strong>
         <small>${escapeHtml(formatSize(d.size))} · ${escapeHtml(d.addedAt.slice(0, 10))}</small>

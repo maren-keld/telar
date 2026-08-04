@@ -37,7 +37,7 @@ export function openBackupRecoveryKeyModal({ recoveryKey }) {
           </div>
 
           <div class="backup-info-warning" role="alert">
-            <p class="backup-info-warning__lead">⚠️ ${t('settings.cloudBackupInfoWarn')}</p>
+            <p class="backup-info-warning__lead">${t('settings.cloudBackupInfoWarn')}</p>
           </div>
 
           <label class="backup-recovery-confirm">
