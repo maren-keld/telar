@@ -274,6 +274,18 @@ li a.card {
   color: var(--text);
 }
 
+/* Cada clausula del titular es un inline-block: si las dos no caben en una
+   linea, la segunda baja entera y el corte queda despues de «paciente», que
+   es donde la frase respira. Con el salto natural quedaba «deja de ser /
+   una impresion clinica», y con text-wrap:balance, «deja / de ser».
+   Solo desde 901px: mas abajo el titular ya ocupa cuatro lineas y forzar el
+   corte deja «paciente» huerfano en una linea para el solo. */
+@media (min-width: 901px) {
+  .hero-main h1 span {
+    display: inline-block;
+  }
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
