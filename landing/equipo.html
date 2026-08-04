@@ -14,7 +14,11 @@
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
+       media="print" y se activa al terminar de bajar. Hasta entonces se ve
+       la tipografía del sistema, que es el fallback de --font. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css?v=20260803a">
 </head>
 <body>
@@ -63,15 +67,18 @@
       <div class="container">
         <div class="team-grid">
           <article class="team-card">
-            <img
-              class="team-photo"
-              src="assets/team-felipe.png"
-              alt="Felipe"
-              width="150"
-              height="150"
-              loading="eager"
-              decoding="async"
-            >
+            <picture>
+              <source type="image/webp" srcset="assets/team-felipe-150.webp 150w, assets/team-felipe-300.webp 300w" sizes="150px">
+              <img
+                class="team-photo"
+                src="assets/team-felipe.png"
+                alt="Felipe"
+                width="150"
+                height="150"
+                loading="eager"
+                decoding="async"
+              >
+            </picture>
             <div class="team-card-body">
               <h2>Felipe</h2>
               <p class="team-role">Psicólogo clínico y desarrollador</p>
@@ -80,15 +87,18 @@
           </article>
 
           <article class="team-card">
-            <img
-              class="team-photo"
-              src="assets/team-debbie.png"
-              alt="Debbie"
-              width="150"
-              height="150"
-              loading="eager"
-              decoding="async"
-            >
+            <picture>
+              <source type="image/webp" srcset="assets/team-debbie-150.webp 150w, assets/team-debbie-300.webp 300w" sizes="150px">
+              <img
+                class="team-photo"
+                src="assets/team-debbie.png"
+                alt="Debbie"
+                width="150"
+                height="150"
+                loading="eager"
+                decoding="async"
+              >
+            </picture>
             <div class="team-card-body">
               <h2>Debbie</h2>
               <p class="team-role">Outreach y ventas</p>

@@ -110,7 +110,11 @@
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
+       media="print" y se activa al terminar de bajar. Hasta entonces se ve
+       la tipografía del sistema, que es el fallback de --font. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css?v=20260803a">
 </head>
 <body>
@@ -181,14 +185,22 @@
     <section class="hero-screenshot">
       <div class="container">
         <figure class="app-shot app-shot--hero">
-        <img
-          src="assets/telar-app-screenshot.png"
-          alt="Telar mostrando una escala GAD-7 con puntuación automática y neurofeedback Muse 2 en sesión clínica"
-          width="2688"
-          height="1524"
-          loading="eager"
-          decoding="async"
-        >
+        <picture>
+          <source
+            type="image/webp"
+            srcset="assets/telar-app-screenshot-920.webp 920w, assets/telar-app-screenshot-1840.webp 1840w"
+            sizes="(max-width: 968px) calc(100vw - 3rem), 920px"
+          >
+          <img
+            src="assets/telar-app-screenshot.png"
+            alt="Telar mostrando una escala GAD-7 con puntuación automática y neurofeedback Muse 2 en sesión clínica"
+            width="2688"
+            height="1524"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          >
+        </picture>
         <figcaption class="app-shot-caption">Captura real: escala con scoring automático y neurofeedback en la misma sesión.</figcaption>
         </figure>
       </div>
@@ -210,7 +222,7 @@
 
           <article class="value-card">
             <p class="value-kicker">Tiempo</p>
-            <p class="value-figure">hasta 3 h<span>/mes</span></p>
+            <p class="value-figure">ahorra hasta 3h<span> al mes</span></p>
             <h3>Se acaba el puntaje a mano</h3>
             <p>Telar puntúa todas sus escalas al instante y dibuja la curva sola. A mano, una PCL-5 toma unos 10 minutos y hay que llevarla a una planilla para ver si mejoró; con 18 escalas al mes son hasta tres horas.</p>
           </article>
@@ -223,10 +235,10 @@
           </article>
 
           <article class="value-card">
-            <p class="value-kicker">Privacidad</p>
-            <p class="value-figure">0<span> fichas en nuestros servidores</span></p>
+            <p class="value-kicker">Respaldo encriptado</p>
+            <p class="value-figure">en tu nube personal</p>
             <h3>La ficha es tuya y no viaja</h3>
-            <p>La base clínica está cifrada en tu equipo y Telar no tiene servidor de fichas: aunque quisiéramos, no podemos leer a tus pacientes. El Plan Pro añade respaldo automático diario, cifrado, en tu propia nube.</p>
+            <p>La información está 100% encriptada en tu equipo con respaldo automático en tu nube personal.</p>
           </article>
         </div>
       </div>
@@ -256,15 +268,22 @@
               <p>Entrena interocepción con protocolos de atención y calma, en vivo dentro de la sesión. Funciona con una banda Muse 2 de consumo: el mismo tipo de entrenamiento que hasta hace poco pedía equipamiento de laboratorio. En Demo: sesiones en vivo; en Pro: grabar, analizar y exportar.</p>
               <p class="feature-link"><a href="neurofeedback.html">Ver guía de neurofeedback →</a></p>
             </div>
-            <img
-              class="feature-shot"
-              src="assets/telar-neurofeedback.png"
-              alt="Neurofeedback en Telar con Muse 2 conectado y protocolo Calma activo"
-              width="1318"
-              height="1246"
-              loading="lazy"
-              decoding="async"
-            >
+            <picture>
+              <source
+                type="image/webp"
+                srcset="assets/telar-neurofeedback-660.webp 660w, assets/telar-neurofeedback-1318.webp 1318w"
+                sizes="(min-width: 901px) 60vw, calc(100vw - 3rem)"
+              >
+              <img
+                class="feature-shot"
+                src="assets/telar-neurofeedback.png"
+                alt="Neurofeedback en Telar con Muse 2 conectado y protocolo Calma activo"
+                width="1318"
+                height="1246"
+                loading="lazy"
+                decoding="async"
+              >
+            </picture>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/><path d="m8 9 1 1 2-2"/></svg></div>
@@ -358,7 +377,7 @@
             </div>
             <div class="req-card-aside">
               <p class="req-platform-note">Internet no es necesario para el día a día clínico. Solo para verificar suscripción Pro o recibir actualizaciones si las activas.</p>
-              <p class="req-platform-note"><strong>Muse 2 (opcional):</strong> Solo para Neurofeedback. Banda <strong>Interaxon Muse 2</strong> con Bluetooth; no es equipamiento diagnóstico. <a href="neurofeedback.html#muse">Más información</a>.</p>
+              <p class="req-platform-note"><strong>Muse 2 (opcional):</strong> Solo para Neurofeedback. Banda <strong>Interaxon Muse 2</strong> con Bluetooth; no es equipamiento diagnóstico. <a href="neurofeedback.html#muse">Más información sobre la banda Muse 2</a>.</p>
             </div>
           </div>
         </div>

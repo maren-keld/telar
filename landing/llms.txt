@@ -21,7 +21,7 @@ Psicólogos interesados en:
 - IA opcional desactivada por defecto: BYOK (p. ej. Mistral) u Ollama local
 - Respaldo automático diario, cifrado con age, a una carpeta que elige el profesional (Plan Pro). Telar no aloja los respaldos: si la carpeta está sincronizada con Google Drive, Dropbox, OneDrive o iCloud, es el servicio del propio profesional el que los sube.
 
-El catálogo completo suma 33 módulos entre todos los packs: 13 escalas y 11 materiales de trabajo en el pack base, más 4 registros de conceptualización, estimulación bilateral, neurofeedback y 3 escalas del pack ansiedad y depresión (PHQ-9, OASIS, ODSIS). Cada módulo tiene una ficha pública con autor, rango etario, confiabilidad y validez en Chile en https://telarapp.cl/modules
+El catálogo completo suma 33 módulos entre todos los packs: 13 escalas y 11 materiales de trabajo en el pack base, más 4 registros de conceptualización, estimulación bilateral, neurofeedback y 3 escalas del pack ansiedad y depresión (PHQ-9, OASIS, ODSIS). Cada módulo tiene una ficha pública con autor, rango etario, confiabilidad y validez en Chile en [Módulos clínicos](https://telarapp.cl/modules).
 
 ## Planes
 
@@ -30,15 +30,15 @@ El catálogo completo suma 33 módulos entre todos los packs: 13 escalas y 11 ma
 
 ## Páginas principales
 
-- Inicio: https://telarapp.cl/
-- Neurofeedback: https://telarapp.cl/neurofeedback
-- Precio: https://telarapp.cl/precio
-- Blog: https://telarapp.cl/blog
-- Módulos clínicos (33 fichas con metadatos psicométricos): https://telarapp.cl/modules
-- TDAH adulto: https://telarapp.cl/blog/tdah-adulto
-- Trauma y herramientas: https://telarapp.cl/blog/trauma-herramientas
-- Equipo: https://telarapp.cl/equipo
-- Privacidad: https://telarapp.cl/privacidad
+- [Inicio](https://telarapp.cl/): qué es Telar, funciones y descarga.
+- [Neurofeedback](https://telarapp.cl/neurofeedback): guía clínica del módulo con Muse 2 y del curso incluido en Plan Pro.
+- [Precio](https://telarapp.cl/precio): planes Demo y Pro, qué incluye cada uno.
+- [Blog](https://telarapp.cl/blog): artículos clínicos.
+- [Módulos clínicos](https://telarapp.cl/modules): 33 fichas con metadatos psicométricos (autor, rango etario, confiabilidad, validez en Chile).
+- [TDAH adulto](https://telarapp.cl/blog/tdah-adulto): plantilla de 8 sesiones y escalas del pack.
+- [Trauma y herramientas](https://telarapp.cl/blog/trauma-herramientas): PCL-5, IES-R, plan de seguridad y estimulación bilateral.
+- [Equipo](https://telarapp.cl/equipo): quiénes desarrollan Telar.
+- [Privacidad](https://telarapp.cl/privacidad): cifrado local, Ley 19.628 y qué datos se recogen.
 
 ## Límites importantes
 
@@ -46,5 +46,6 @@ Telar no diagnostica, no prescribe ni sustituye el juicio profesional. No es un 
 
 ## Contacto
 
-- WhatsApp: +56 9 2050 9726
-- Descargas: https://github.com/maren-keld/telar/releases/latest
+- [WhatsApp](https://wa.me/56920509726): +56 9 2050 9726
+- [Descargas](https://github.com/maren-keld/telar/releases/latest): instaladores para macOS y Windows.
+- [Código fuente](https://github.com/maren-keld/telar): repositorio open-core, licencia AGPL-3.0.

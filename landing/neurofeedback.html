@@ -75,7 +75,11 @@
   <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
+       media="print" y se activa al terminar de bajar. Hasta entonces se ve
+       la tipografía del sistema, que es el fallback de --font. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="css/style.css?v=20260803a">
 </head>
 <body>
@@ -113,14 +117,22 @@
 
   <main id="contenido">
     <section class="nf-hero-image" aria-label="Neurofeedback con Muse 2">
-      <img
-        src="assets/muse-headband-hero.png"
-        alt="Persona usando la banda Muse 2 para entrenamiento de neurofeedback en consulta"
-        width="1024"
-        height="768"
-        loading="eager"
-        decoding="async"
-      >
+      <picture>
+        <source
+          type="image/webp"
+          srcset="assets/muse-headband-hero-512.webp 512w, assets/muse-headband-hero-1024.webp 1024w"
+          sizes="100vw"
+        >
+        <img
+          src="assets/muse-headband-hero.png"
+          alt="Persona usando la banda Muse 2 para entrenamiento de neurofeedback en consulta"
+          width="1024"
+          height="768"
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
+        >
+      </picture>
     </section>
 
     <section class="page-hero nf-section">
@@ -156,14 +168,21 @@
     <section class="nf-showcase">
       <div class="container">
         <figure class="app-shot app-shot--hero">
-          <img
-            src="assets/telar-neurofeedback.png"
-            alt="Módulo de Neurofeedback en Telar: Muse 2 conectado, protocolos Calma y Atención (TDAH), feedback en vivo"
-            width="1318"
-            height="1246"
-            loading="lazy"
-            decoding="async"
-          >
+          <picture>
+            <source
+              type="image/webp"
+              srcset="assets/telar-neurofeedback-660.webp 660w, assets/telar-neurofeedback-1318.webp 1318w"
+              sizes="(max-width: 968px) calc(100vw - 3rem), 920px"
+            >
+            <img
+              src="assets/telar-neurofeedback.png"
+              alt="Módulo de Neurofeedback en Telar: Muse 2 conectado, protocolos Calma y Atención (TDAH), feedback en vivo"
+              width="1318"
+              height="1246"
+              loading="lazy"
+              decoding="async"
+            >
+          </picture>
           <figcaption class="app-shot-caption">Sesión en vivo dentro de la ficha: protocolos, feedback visual y grabación sin salir de Telar.</figcaption>
         </figure>
       </div>
@@ -217,7 +236,10 @@
           </div>
           <aside class="nf-course-gallery" aria-label="Curso online v2">
             <figure class="nf-course-photo">
-              <img src="assets/muse-headband-hero.png" alt="Persona entrenando con banda Muse 2 en consulta" width="1024" height="768" loading="lazy" decoding="async">
+              <picture>
+                <source type="image/webp" srcset="assets/muse-headband-hero-512.webp 512w, assets/muse-headband-hero-1024.webp 1024w" sizes="(max-width: 900px) calc(100vw - 3rem), 420px">
+                <img src="assets/muse-headband-hero.png" alt="Persona entrenando con banda Muse 2 en consulta" width="1024" height="768" loading="lazy" decoding="async">
+              </picture>
               <figcaption>Práctica clínica con Muse 2</figcaption>
             </figure>
             <div class="nf-course-vina-card">

@@ -9,14 +9,18 @@
  * "sesiones que llegaron hasta aquí" una sola vez. sessionStorage muere al
  * cerrar la pestaña y no viaja entre sitios.
  *
- * Además se envían tres rasgos de la sesión, ya reducidos a una categoría de una
- * lista cerrada antes de salir del navegador — nunca la URL de origen, nunca el
- * user-agent, nunca una marca de tiempo:
+ * Además se envían cuatro rasgos de la sesión, ya reducidos a una categoría de
+ * una lista cerrada antes de salir del navegador — nunca la URL de origen,
+ * nunca el user-agent, nunca una marca de tiempo:
  *   src:instagram   de dónde llegó (dominio del referrer o utm_source)
- *   dev:movil       tipo de pantalla
+ *   dev:movil       tipo de dispositivo
+ *   os:android      sistema operativo
  *   dwell:30_60     tramo de segundos con la pestaña visible
  * Como son contadores independientes, no se pueden cruzar entre sí: "42 desde
  * Instagram" y "61% en móvil" no dicen qué dispositivo usó nadie en particular.
+ * El user-agent se lee en el navegador para elegir una de siete etiquetas de SO
+ * y se descarta ahí mismo: al servidor solo llega la etiqueta, que no distingue
+ * versiones ni sirve para fingerprinting.
  *
  * Respeta Do Not Track y Global Privacy Control: si están activos, no envía nada.
  */
@@ -169,16 +173,72 @@
     return 'otro';
   }
 
-  /** Tipo de pantalla. Se mira el ancho, no el user-agent. */
-  function deviceLabel() {
+  // --- Sistema operativo y tipo de dispositivo ------------------------------
+  // El user-agent se mira solo para elegir una de estas etiquetas y no se envía
+  // ni se guarda: no hay versión, ni build, ni arquitectura.
+  const OS_RULES = [
+    [/windows|win32|win64/, 'windows'],
+    [/android/, 'android'],
+    [/iphone|ipad|ipod/, 'ios'],
+    [/cros/, 'chromeos'],
+    [/mac os x|macintel|macintosh/, 'macos'],
+    [/linux|x11|ubuntu|fedora/, 'linux'],
+  ];
+
+  // userAgentData.platform (Chromium) es la fuente limpia: una palabra, sin
+  // versiones. Los demás navegadores caen al user-agent clásico.
+  const UA_DATA_OS = {
+    windows: 'windows', macos: 'macos', android: 'android',
+    linux: 'linux', 'chrome os': 'chromeos', chromeos: 'chromeos',
+  };
+
+  /** Puntero grueso: dedo en vez de mouse. iPadOS se declara Mac, esto lo delata. */
+  function coarsePointer() {
+    try {
+      return window.matchMedia('(pointer: coarse)').matches;
+    } catch (e) {
+      return navigator.maxTouchPoints > 1;
+    }
+  }
+
+  function osLabel() {
+    const data = navigator.userAgentData;
+    let os = '';
+    if (data && data.platform) {
+      os = UA_DATA_OS[data.platform.toLowerCase()] || '';
+    }
+    if (!os) {
+      const ua = (navigator.userAgent || '').toLowerCase();
+      for (let i = 0; i < OS_RULES.length; i += 1) {
+        if (OS_RULES[i][0].test(ua)) { os = OS_RULES[i][1]; break; }
+      }
+    }
+    // Un iPad con iPadOS 13+ se presenta como Mac de escritorio; el puntero
+    // grueso es lo único que lo separa de un MacBook.
+    if (os === 'macos' && coarsePointer() && navigator.maxTouchPoints > 1) return 'ios';
+    return os || 'otro';
+  }
+
+  /** Tipo de dispositivo: ancho de pantalla corregido con el SO y el puntero. */
+  function deviceLabel(os) {
     const width = Math.min(
       window.screen && window.screen.width ? window.screen.width : 1024,
       window.innerWidth || 1024
     );
-    const touch = navigator.maxTouchPoints > 1;
+    const data = navigator.userAgentData;
+    const coarse = coarsePointer();
+    // El navegador declara si es un teléfono: más fiable que cualquier ancho,
+    // porque una tablet en horizontal mide lo mismo que un portátil chico.
+    if (data && typeof data.mobile === 'boolean') {
+      if (data.mobile) return 'movil';
+      if (os === 'android' || os === 'ios') return 'tablet';
+      if (!coarse) return 'escritorio';
+    }
+    if (os === 'ios') return width < 768 ? 'movil' : 'tablet';
+    if (os === 'android') return width < 600 || !coarse ? 'movil' : 'tablet';
+    if (!coarse) return 'escritorio';
     if (width < 640) return 'movil';
-    if (width < 1024 && touch) return 'tablet';
-    return 'escritorio';
+    return width < 1280 ? 'tablet' : 'escritorio';
   }
 
   // --- Tiempo con la pestaña visible ----------------------------------------
@@ -249,7 +309,9 @@
     // que los rasgos de la sesión ya están contados cuando eso ocurre.
     const source = sourceLabel();
     if (source) sendOnce(`src:${source}`);
-    sendOnce(`dev:${deviceLabel()}`);
+    const os = osLabel();
+    sendOnce(`os:${os}`);
+    sendOnce(`dev:${deviceLabel(os)}`);
     reachStep('step:visit');
     if (page === 'precio') {
       reachStep('step:pricing');
@@ -287,19 +349,48 @@
     );
   }
 
+  /** Corre cuando el navegador ya no tiene nada urgente que hacer.
+   *
+   * deviceLabel() consulta el ancho de la ventana, y hacerlo mientras el
+   * navegador todavía está montando la página lo obliga a recalcular el layout
+   * en medio del primer pintado (reflow forzado). En un hueco de inactividad el
+   * layout ya está calculado y la medición sale gratis. El timeout garantiza que
+   * el evento igual se envíe en una pestaña que nunca queda inactiva.
+   */
+  function whenIdle(fn) {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(fn, { timeout: 1000 });
+    } else {
+      setTimeout(fn, 200);
+    }
+  }
+
   if (optedOut()) return;
 
   // El cronómetro parte antes del DOMContentLoaded: si no, una página lenta
   // regalaría segundos de lectura que el visitante sí estuvo mirando.
   trackDwell();
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      trackPageview();
-      trackClicks();
-    });
-  } else {
+  let pageviewSent = false;
+
+  function sendPageviewOnce() {
+    if (pageviewSent) return;
+    pageviewSent = true;
     trackPageview();
+  }
+
+  // Los clics se escuchan de inmediato (no miden nada del layout); la vista de
+  // página espera al primer hueco libre, o al cierre si la visita fue tan corta
+  // que ese hueco nunca llegó.
+  function boot() {
     trackClicks();
+    whenIdle(sendPageviewOnce);
+    window.addEventListener('pagehide', sendPageviewOnce);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
   }
 })();

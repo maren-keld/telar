@@ -55,6 +55,12 @@ img {
   height: auto;
 }
 
+/* <picture> solo elige el archivo; el elemento que se maqueta sigue siendo el
+   <img> de dentro, así que no debe interponerse como hijo de grid o flex. */
+picture {
+  display: contents;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
@@ -62,6 +68,28 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+/* Dentro de un texto corrido el enlace se distingue subrayado y no solo por el
+   color (WCAG 1.4.1): con baja visión o daltonismo el azul no basta. Los
+   enlaces que ya tienen forma propia —botones, tarjetas, navegación— quedan
+   fuera porque se reconocen sin subrayado. */
+p a,
+li a,
+figcaption a,
+dd a,
+blockquote a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
+}
+
+p a.btn,
+li a.btn,
+p a.hero-featured-card,
+p a.card,
+li a.card {
+  text-decoration: none;
 }
 
 :focus-visible {
@@ -1030,11 +1058,8 @@ section {
 
 .feature-link a {
   color: var(--accent);
-  text-decoration: none;
-}
-
-.feature-link a:hover {
   text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 /* Features */
@@ -1085,13 +1110,13 @@ section {
   font-size: 1rem;
 }
 
+/* Toma el color del título, así que sin subrayado no habría forma de saber que
+   es un enlace: el color no puede ser la única señal (WCAG 1.4.1). */
 .feature-card h3 a {
   color: inherit;
-  text-decoration: none;
-}
-
-.feature-card h3 a:hover {
   text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
 }
 
 .feature-card p {
@@ -1646,11 +1671,8 @@ section {
 
 .team-contact a {
   color: var(--text);
-  text-decoration: none;
-}
-
-.team-contact a:hover {
   text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 /* Mobile nav toggle */
