@@ -64,13 +64,29 @@ def test_traits_are_counted_and_summarised(panel):
     assert {d["key"]: d["count"] for d in body["devices"]}["movil"] == 1
 
 
+def test_operating_system_is_counted_separately(panel):
+    """El SO es su propio contador: saber que hubo 3 Android y 2 móviles no dice
+    qué usó nadie en particular, que es justamente la idea."""
+    for _ in range(3):
+        post_event(panel, "os:android")
+    post_event(panel, "os:macos")
+
+    body = landing(panel)
+
+    counts = {o["key"]: o for o in body["os"]}
+    assert counts["android"]["count"] == 3
+    assert counts["android"]["pct"] == 75.0
+    assert counts["macos"]["label"] == "macOS"
+
+
 def test_unknown_trait_values_are_rejected(panel):
     """Cualquiera puede postear a /api/events: las categorías son lista cerrada."""
-    for bad in ("src:mi_empresa", "dev:reloj", "dwell:99", "dwell:0_10x"):
+    for bad in ("src:mi_empresa", "dev:reloj", "os:symbian", "dwell:99", "dwell:0_10x"):
         assert post_event(panel, bad).status_code == 204
 
     body = landing(panel)
     assert body["sources"] == []
+    assert body["os"] == []
     assert all(item["count"] == 0 for item in body["devices"])
     assert all(item["count"] == 0 for item in body["dwell"])
 

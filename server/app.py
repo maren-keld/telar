@@ -65,7 +65,7 @@ _plan_cache: dict | None = None
 # Solo se guarda un contador por (día, nombre de evento). Nunca IP, user-agent
 # ni sesión: el cliente deduplica los pasos del funnel en sessionStorage y el
 # servidor jamás ve de quién viene el evento.
-EVENT_NAME_RE = re.compile(r"^(view|cta|step|src|dev|dwell|geo):[a-z0-9_]{1,32}$")
+EVENT_NAME_RE = re.compile(r"^(view|cta|step|src|dev|os|dwell|geo):[a-z0-9_]{1,32}$")
 # Techo de nombres distintos: evita que un tercero infle la tabla inventando
 # eventos. Los nombres ya vistos siguen contando aunque se alcance el techo.
 # Holgado a propósito: Chile tiene 346 comunas y cada una es un nombre distinto.
@@ -95,6 +95,13 @@ SOURCE_LABELS = {
     "directo": "Directo", "otro": "Otro",
 }
 DEVICE_LABELS = {"movil": "Móvil", "tablet": "Tablet", "escritorio": "Escritorio"}
+# El navegador manda solo esta etiqueta: nunca la cadena de user-agent, así que
+# no hay versión ni build con que construir una huella del visitante.
+OS_LABELS = {
+    "windows": "Windows", "macos": "macOS", "ios": "iPhone / iPad",
+    "android": "Android", "linux": "Linux", "chromeos": "ChromeOS",
+    "otro": "Otro",
+}
 # (clave, etiqueta, segundos representativos del tramo) — los segundos sirven
 # para estimar el tiempo típico sin haber guardado nunca una duración exacta.
 DWELL_BUCKETS = [
@@ -108,6 +115,7 @@ DWELL_BUCKETS = [
 ALLOWED_TRAIT_VALUES = {
     "src": set(SOURCE_LABELS),
     "dev": set(DEVICE_LABELS),
+    "os": set(OS_LABELS),
     "dwell": {key for key, _, _ in DWELL_BUCKETS},
 }
 
@@ -968,6 +976,7 @@ def admin_landing():
         "visits": totals.get("step:visit", 0),
         "sources": _distribution(totals, "src", SOURCE_LABELS),
         "devices": _distribution(totals, "dev", DEVICE_LABELS),
+        "os": _distribution(totals, "os", OS_LABELS),
         "dwell": dwell,
         "dwell_summary": dwell_summary(dwell),
         "comunas": head,
@@ -1051,6 +1060,16 @@ h1 { font-size:20px; margin:0; letter-spacing:-.01em; }
 .tile.live.zero b { color:#6e7681; }
 h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:#8b949e;
   margin:36px 0 12px; font-weight:600; }
+.section-head { display:flex; justify-content:space-between; align-items:center;
+  gap:12px 16px; flex-wrap:wrap; }
+.section-head h2 { margin-bottom:0; }
+/* Selector de rango: semana / mes / trimestre / año sobre los mismos contadores
+   diarios; no se recalcula nada, solo cambia el "day >= ?" de la consulta. */
+.range { display:flex; gap:6px; margin-top:36px; }
+.range button { width:auto; padding:5px 11px; font-size:12px; font-weight:500;
+  background:#161b22; border:1px solid #262c36; color:#8b949e; border-radius:7px; }
+.range button:hover { background:#1c2230; color:#e6edf3; }
+.range button[aria-pressed="true"] { background:#1f6feb; border-color:#1f6feb; color:#fff; }
 .card { background:#161b22; border:1px solid #262c36; border-radius:10px; overflow:hidden; }
 .scroll { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:13px; min-width:640px; }
@@ -1125,13 +1144,18 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
   <h2>Suscripciones</h2>
   <div class="card scroll" id="subs"></div>
 
-  <h2 id="landing-title">Visitas al sitio</h2>
+  <div class="section-head">
+    <h2 id="landing-title">Visitas al sitio</h2>
+    <div class="range" id="range"></div>
+  </div>
   <div class="cols">
     <div>
       <h2>De dónde llegan</h2>
       <div class="card" id="sources"></div>
-      <h2>Dispositivo</h2>
+      <h2>Tipo de dispositivo</h2>
       <div class="card" id="screens"></div>
+      <h2>Sistema operativo</h2>
+      <div class="card" id="os"></div>
     </div>
     <div>
       <h2>Comuna</h2>
@@ -1211,11 +1235,25 @@ function rows(items, empty) {
   </div>`).join('')}</div>`;
 }
 
+// Rangos del bloque de visitas. Los contadores se guardan por día, así que
+// cambiar de rango es solo pedir más días: nunca se guarda nada por sesión.
+const RANGES = [[7, 'Semana'], [30, 'Mes'], [90, '3 meses'], [365, 'Año']];
+let landingDays = 30;
+
+function renderRange() {
+  $('range').innerHTML = RANGES.map(([days, label]) =>
+    `<button type="button" data-days="${days}" aria-pressed="${
+      days === landingDays}">${label}</button>`).join('');
+}
+
 function renderLanding(d) {
+  const label = (RANGES.find((r) => r[0] === d.range_days) || [])[1];
   $('landing-title').textContent =
-    `Visitas al sitio · ${d.range_days} días · ${d.visits} sesiones`;
+    `Visitas al sitio · ${label ? label.toLowerCase() : d.range_days + ' días'} · ${
+      d.visits} ${d.visits === 1 ? 'sesión' : 'sesiones'}`;
   $('sources').innerHTML = rows(d.sources, 'Nadie ha llegado todavía.');
-  $('screens').innerHTML = rows(d.devices, 'Sin datos de pantalla.');
+  $('screens').innerHTML = rows(d.devices, 'Sin datos de dispositivo.');
+  $('os').innerHTML = rows(d.os, 'Sin datos de sistema operativo.');
   // Si la base GeoIP se cae después de haber contado, lo ya registrado se sigue
   // mostrando: el aviso es para cuando no hay nada que mostrar.
   $('comunas').innerHTML = d.comunas.length
@@ -1235,7 +1273,7 @@ function renderLanding(d) {
   $('landing-note').textContent = d.note;
 }
 
-async function load() {
+async function loadLive() {
   try {
     const res = await fetch('/api/admin/live', { credentials: 'same-origin' });
     if (res.status === 401) { location.reload(); return; }
@@ -1243,14 +1281,29 @@ async function load() {
   } catch (e) {
     $('stamp').innerHTML = '<span class="err">Sin conexión con la API.</span>';
   }
+}
+
+async function loadLanding() {
   try {
-    const res = await fetch('/api/admin/landing', { credentials: 'same-origin' });
+    const res = await fetch(`/api/admin/landing?days=${landingDays}`,
+      { credentials: 'same-origin' });
     if (res.ok) renderLanding(await res.json());
   } catch (e) {
     // El bloque del landing es secundario: si falla, el resto del panel sigue.
     $('landing-note').textContent = 'No se pudo cargar la analítica del sitio.';
   }
 }
+
+$('range').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-days]');
+  if (!button) return;
+  landingDays = Number(button.dataset.days);
+  renderRange();
+  loadLanding();
+});
+
+function load() { loadLive(); loadLanding(); }
+renderRange();
 load();
 setInterval(load, 20000);
 </script></body></html>""".replace("__CSS__", PANEL_CSS)
