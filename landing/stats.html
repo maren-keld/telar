@@ -249,6 +249,16 @@
   var secret = params.get('secret') || '';
   var days = 30;
 
+  // El secreto llega por la URL, pero no debe quedarse ahí: lo sacamos de la barra
+  // de direcciones para que no persista en el historial ni se filtre por Referer.
+  // (El envío al backend sigue siendo por query string, así que aún queda en los
+  // logs de acceso del servidor; eso se arregla moviendo la auth a un header.)
+  if (secret && window.history && window.history.replaceState) {
+    params.delete('secret');
+    var rest = params.toString();
+    window.history.replaceState(null, '', location.pathname + (rest ? '?' + rest : ''));
+  }
+
   var statusEl = document.getElementById('status');
   var panel = document.getElementById('panel');
   var tip = document.getElementById('tip');
@@ -584,7 +594,7 @@
     }
     statusEl.hidden = false;
     statusEl.textContent = 'Cargando…';
-    fetch(API + '/api/admin/funnel?secret=' + encodeURIComponent(secret) + '&days=' + days)
+    fetch(API + '/api/admin/funnel?secret=' + encodeURIComponent(secret) + '&days=' + days, { referrerPolicy: 'no-referrer' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) {
