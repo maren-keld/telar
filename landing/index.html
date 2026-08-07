@@ -115,7 +115,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260803a">
+  <link rel="stylesheet" href="css/style.css?v=20260807b">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -153,12 +153,25 @@
   <main id="contenido">
     <section class="hero-panel">
       <div class="hero-main">
-        <h1><span>La evolución del paciente</span> <span>deja de ser una impresión clínica.</span></h1>
-        <div class="hero-actions">
-          <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
-            <span class="btn-label">Descargar Telar</span>
-          </a>
-          <a href="https://wa.me/56920509726?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Hablemos por Whatsapp</a>
+        <div class="hero-cloud" aria-hidden="true">
+          <span class="hero-cloud__chip hero-cloud__chip--asrs">ASRS</span>
+          <span class="hero-cloud__chip hero-cloud__chip--pcl">PCL-5</span>
+          <figure class="hero-cloud__card hero-cloud__card--asrs">
+            <img src="assets/hero-cloud-asrs-chart.png" alt="" width="830" height="514" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero-cloud__card hero-cloud__card--sprint">
+            <img src="assets/hero-cloud-sprint-chart.png" alt="" width="830" height="514" loading="lazy" decoding="async">
+          </figure>
+          <span class="hero-cloud__chip hero-cloud__chip--trend">28 → 10</span>
+        </div>
+        <div class="hero-main__copy">
+          <h1><span>La evolución del paciente</span> <span>deja de ser una impresión clínica.</span></h1>
+          <div class="hero-actions">
+            <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
+              <span class="btn-label">Descargar Telar</span>
+            </a>
+            <a href="https://wa.me/56920509726?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Hablemos por Whatsapp</a>
+          </div>
         </div>
       </div>
       <aside class="hero-sidebar">
@@ -201,7 +214,7 @@
             decoding="async"
           >
         </picture>
-        <figcaption class="app-shot-caption">Captura real: escala con scoring automático y neurofeedback en la misma sesión.</figcaption>
+        <figcaption class="app-shot-caption">Captura real: escala con scoring automático y conversación con la IA sobre el caso.</figcaption>
         </figure>
       </div>
     </section>
@@ -216,8 +229,8 @@
           <article class="value-card">
             <p class="value-kicker">Ingresos</p>
             <p class="value-figure" data-geo-session-fee>$50.000</p>
-            <h3>Una prestación nueva que sí puedes cobrar</h3>
-            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro, agregas una línea de servicio que hoy no ofreces. Tú defines tu tarifa. Requiere una banda Muse 2 (~<span data-geo-muse-cost>$320.000</span>, compra única, la compras tú: <a href="precio.html#costos">ver todos los costos</a>).</p>
+            <h3>Añade una nueva prestación a tus servicios</h3>
+            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro, agregas una línea de servicio. Tú defines tu tarifa. Requiere una banda Muse 2 (~<span data-geo-muse-cost>$320.000</span>: <a href="precio.html#costos">ver todos los costos</a>).</p>
           </article>
 
           <article class="value-card">
@@ -229,14 +242,14 @@
 
           <article class="value-card">
             <p class="value-kicker">Seguimiento clínico</p>
-            <p class="value-figure">sesión a sesión</p>
+            <p class="value-figure">Seguimiento sesión a sesión</p>
             <h3>Ve la evolución, no solo la recuerdes</h3>
             <p>Compara la línea base con cada reevaluación en una curva longitudinal. Así puedes conversar los cambios con el paciente y ajustar el plan de tratamiento con más información.</p>
           </article>
 
           <article class="value-card">
             <p class="value-kicker">Seguridad y respaldo</p>
-            <p class="value-figure">bajo tu control</p>
+            <p class="value-figure">La información de tus pacientes segura</p>
             <h3>Datos cifrados en tu equipo</h3>
             <p>Telar guarda la ficha clínica cifrada en tu computador y crea respaldos automáticos cifrados en la carpeta de nube que tú eliges. Telar no aloja ni puede leer esos datos.</p>
           </article>
@@ -393,6 +406,38 @@
             <h3>macOS</h3>
             <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip" class="btn btn-primary install-download">Descargar para macOS</a>
             <p class="install-note install-note--warn"><strong>Si macOS dice «Telar not opened» / «No se abrió Telar»:</strong> no uses <em>Mover a la Papelera</em>. Cierra el diálogo, ve a la carpeta donde descomprimiste el .zip, <strong>clic derecho en Telar.app → Abrir</strong> y confirma. Solo la primera vez.</p>
+            <p class="install-carousel__hint">Así se ve en macOS (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
+            <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para abrir Telar en macOS">
+              <div class="install-carousel__viewport">
+                <figure class="install-carousel__slide is-active">
+                  <img src="assets/install-macos-blocked.png" alt="Diálogo de macOS: No se abrió Telar, con opciones Mover al basurero y Listo" width="1200" height="750" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 1 de 3.</strong> Si aparece este aviso, no uses «Mover a la Papelera». Cierra con «Listo».</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-macos-settings.png" alt="Ajustes del Sistema en macOS, sección Privacidad y seguridad, con botón Abrir de todos modos para Telar" width="1200" height="750" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 2 de 3.</strong> Ve a <strong>Ajustes del Sistema → Privacidad y seguridad</strong> y pulsa «Abrir de todos modos».</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-macos-open-anyway.png" alt="Diálogo de confirmación de macOS: ¿Abrir Telar?, con botón Abrir de todos modos" width="1200" height="750" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 3 de 3.</strong> Confirma con «Abrir de todos modos». Solo la primera vez.</figcaption>
+                </figure>
+              </div>
+              <div class="install-carousel__controls">
+                <button type="button" class="install-carousel__arrow install-carousel__prev" aria-label="Imagen anterior">
+                  <span class="install-carousel__arrow-symbol" aria-hidden="true">‹</span>
+                  <span class="install-carousel__arrow-label">Imagen anterior</span>
+                </button>
+                <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar paso">
+                  <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Paso 1" aria-selected="true"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 2" aria-selected="false"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 3" aria-selected="false"></button>
+                </div>
+                <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
+                  <span class="install-carousel__arrow-label">Imagen siguiente</span>
+                  <span class="install-carousel__arrow-symbol" aria-hidden="true">›</span>
+                </button>
+              </div>
+            </div>
             <ol>
               <li>Descomprime <strong>Telar-macos.zip</strong>.</li>
               <li>Arrastra <strong>Telar.app</strong> a Aplicaciones.</li>
@@ -405,9 +450,58 @@
             <h3>Windows 10/11</h3>
             <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-windows.exe" class="btn btn-primary install-download">Descargar para Windows</a>
             <p class="install-note install-note--warn"><strong>Si SmartScreen aparece:</strong> <strong>Más información → Ejecutar de todas formas</strong>. Es normal en apps sin certificado de editor (beta).</p>
+            <p class="install-carousel__hint">Así se ve en Windows 10/11 (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
+            <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para instalar Telar en Windows">
+              <div class="install-carousel__viewport">
+                <figure class="install-carousel__slide is-active">
+                  <img src="assets/install-windows-smartscreen.png" alt="SmartScreen de Windows: Windows protegió su PC, con enlace Más información" width="1024" height="958" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 1 de 6.</strong> Al ejecutar <strong>Telar-windows.exe</strong>, SmartScreen puede bloquear la app. Pulsa <strong>Más información</strong>.</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-windows-smartscreen-run.png" alt="SmartScreen de Windows con botón Ejecutar de todas formas para Telar-windows.exe" width="1024" height="954" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 2 de 6.</strong> Confirma con <strong>Ejecutar de todas formas</strong>. Solo la primera vez.</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-windows-welcome.png" alt="Asistente Telar Setup: pantalla de bienvenida con botón Next" width="994" height="766" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 3 de 6.</strong> Se abre el asistente. Pulsa <strong>Next</strong> (Siguiente) para continuar.</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-windows-location.png" alt="Asistente Telar Setup: elegir carpeta de instalación" width="994" height="766" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 4 de 6.</strong> Deja la carpeta por defecto o elige otra con <strong>Browse</strong>. Pulsa <strong>Next</strong>.</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-windows-progress.png" alt="Asistente Telar Setup: barra de progreso al 100% con Installation Complete" width="994" height="766" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 5 de 6.</strong> Espera a que termine la instalación y pulsa <strong>Next</strong>.</figcaption>
+                </figure>
+                <figure class="install-carousel__slide" hidden>
+                  <img src="assets/install-windows-finish.png" alt="Asistente Telar Setup: pantalla final con opciones Run Telar y Create desktop shortcut" width="994" height="766" loading="lazy" decoding="async">
+                  <figcaption><strong>Paso 6 de 6.</strong> Opcional: marca <strong>Run Telar</strong> y acceso directo. Pulsa <strong>Finish</strong> y configura tu PIN.</figcaption>
+                </figure>
+              </div>
+              <div class="install-carousel__controls">
+                <button type="button" class="install-carousel__arrow install-carousel__prev" aria-label="Imagen anterior">
+                  <span class="install-carousel__arrow-symbol" aria-hidden="true">‹</span>
+                  <span class="install-carousel__arrow-label">Imagen anterior</span>
+                </button>
+                <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar paso">
+                  <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Paso 1" aria-selected="true"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 2" aria-selected="false"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 3" aria-selected="false"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 4" aria-selected="false"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 5" aria-selected="false"></button>
+                  <button type="button" class="install-carousel__dot" role="tab" aria-label="Paso 6" aria-selected="false"></button>
+                </div>
+                <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
+                  <span class="install-carousel__arrow-label">Imagen siguiente</span>
+                  <span class="install-carousel__arrow-symbol" aria-hidden="true">›</span>
+                </button>
+              </div>
+            </div>
             <ol>
               <li>Ejecuta <strong>Telar-windows.exe</strong>.</li>
-              <li>Completa el asistente y abre Telar desde el menú Inicio.</li>
+              <li>Si SmartScreen aparece: <strong>Más información → Ejecutar de todas formas</strong>.</li>
+              <li>Sigue el asistente con <strong>Next</strong> hasta completar.</li>
+              <li>Al finalizar, opcional: <strong>Run Telar</strong> y acceso directo en el escritorio.</li>
               <li>Configura tu PIN de 6 dígitos.</li>
             </ol>
           </div>
@@ -483,6 +577,7 @@
 
   <script src="js/download.js?v=20260803a"></script>
   <script src="js/geo-pricing.js?v=20260804a"></script>
+  <script src="js/install-carousel.js?v=20260806a"></script>
   <script src="js/track.js?v=20260803a"></script>
   <script src="js/nav.js?v=20260803a"></script>
 </body>
