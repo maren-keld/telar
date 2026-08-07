@@ -274,7 +274,7 @@ li a.card {
 .hero-cloud {
   position: relative;
   flex: 0 0 auto;
-  min-height: 220px;
+  min-height: 260px;
   margin: 0.75rem 0 1.5rem;
   pointer-events: none;
 }
@@ -295,6 +295,14 @@ li a.card {
   width: min(58%, 300px);
   z-index: 2;
   transform: rotate(4deg);
+}
+
+.hero-cloud__card--formulation {
+  top: 6%;
+  right: 4%;
+  width: min(50%, 230px);
+  z-index: 3;
+  transform: rotate(5deg);
 }
 
 .hero-cloud__card--sprint {
@@ -1627,22 +1635,32 @@ section {
 
 .install-carousel__viewport {
   position: relative;
+  display: grid;
   aspect-ratio: 16 / 10;
   max-height: 280px;
 }
 
 .install-carousel__slide {
-  position: absolute;
-  inset: 0;
+  grid-area: 1 / 1;
   margin: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   opacity: 0;
-  transition: opacity 0.35s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
 .install-carousel__slide.is-active {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.install-carousel__slide[hidden] {
+  display: none !important;
 }
 
 .install-carousel__slide img {
@@ -1656,12 +1674,15 @@ section {
 }
 
 .install-carousel__slide figcaption {
+  flex: 0 0 auto;
+  width: 100%;
   padding: 0.65rem 0.85rem;
   font-size: 0.8rem;
   line-height: 1.45;
   color: #e5e5e5;
   background: #141414;
   border-top: 1px solid #2a2a2a;
+  box-sizing: border-box;
 }
 
 .install-carousel__controls {
@@ -1928,7 +1949,7 @@ section {
   }
 
   .hero-cloud {
-    min-height: 180px;
+    min-height: 200px;
     margin: 1.25rem 0 1.25rem;
   }
 
@@ -1936,6 +1957,12 @@ section {
     left: 0;
     width: min(62%, 260px);
     transform: rotate(2deg);
+  }
+
+  .hero-cloud__card--formulation {
+    right: 0;
+    width: min(58%, 210px);
+    transform: rotate(3deg);
   }
 
   .hero-cloud__card--sprint {
