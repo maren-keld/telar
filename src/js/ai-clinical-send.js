@@ -14,9 +14,6 @@ export async function confirmClinicalAiSend({ contextText, purpose }) {
   if (!cfg.enabled) {
     throw new Error('Asistente IA desactivado. Actívalo en Ajustes → Proveedor de IA.');
   }
-  if (cfg.mode === 'local') {
-    throw new Error('IA local aún no disponible (sidecar Ollama). Usa API externa o desactiva la función.');
-  }
   if (cfg.mode === 'api') {
     requireAiApiConsent(profile);
     const ok = await openAiContextPreviewModal({ contextText, purpose });

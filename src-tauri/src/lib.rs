@@ -7,6 +7,7 @@ use serde::Deserialize;
 mod ai_api;
 mod backup;
 mod muse_ble;
+mod ollama;
 mod secure_db;
 mod subscription_api;
 mod touch_id;
@@ -439,6 +440,8 @@ pub fn run() {
             cloud_backup_restore,
             cloud_backup_folder_status_cmd,
             ai_api::ai_chat_completion,
+            ollama::ollama_status,
+            ollama::ollama_pull_model,
             subscription_api::subscription_checkout,
             subscription_api::subscription_health,
             subscription_api::subscription_status,

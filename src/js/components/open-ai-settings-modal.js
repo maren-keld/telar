@@ -8,6 +8,11 @@ import {
 } from '../ai-config.js';
 import { getApiTransferNotice, hasAiApiConsent } from '../ai-consent.js';
 import { testAiConnection } from '../ai-client.js';
+import {
+  formatOllamaPullStatus,
+  openOllamaDownloadPage,
+  pullLocalModel,
+} from '../ollama-client.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { isTauriApp } from '../tauri-bridge.js';
 import { escapeHtml, formatDate, toast } from '../utils.js';
@@ -123,12 +128,13 @@ export function openAiSettingsModal({ onSaved } = {}) {
               ).join('')}
             </select>
             <p class="settings-ai-panel__hint">
-              La primera vez Telar descargará el motor Ollama y el modelo elegido a
-              <code>~/Library/Application Support/cl.telarapp.desktop/models/</code> (no va dentro del .app).
+              Requiere <strong>Ollama</strong> instalado en tu equipo. Telar descargará el modelo elegido
+              con <code>ollama pull</code> (varios GB; puede tardar según tu conexión).
             </p>
             <button type="button" class="btn btn-secondary btn-sm" id="ai-download-model" ${mode !== 'local' ? 'disabled' : ''}>
               Descargar / actualizar modelo
             </button>
+            <span id="ai-download-status" class="settings-ai-test-status" aria-live="polite"></span>
           </div>
 
           <div id="ai-panel-api" class="settings-ai-panel" ${vis.api}>
@@ -179,6 +185,7 @@ export function openAiSettingsModal({ onSaved } = {}) {
   const panelLocal = root.querySelector('#ai-panel-local');
   const panelApi = root.querySelector('#ai-panel-api');
   const downloadBtn = root.querySelector('#ai-download-model');
+  const downloadStatus = root.querySelector('#ai-download-status');
   const testBtn = root.querySelector('#ai-test-connection');
   const testStatus = root.querySelector('#ai-test-status');
   const providerSelect = root.querySelector('#ai-api-provider');
@@ -257,13 +264,51 @@ export function openAiSettingsModal({ onSaved } = {}) {
     if (e.target === e.currentTarget) close();
   });
 
-  root.querySelector('#ai-download-model')?.addEventListener('click', () => {
+  downloadBtn?.addEventListener('click', async () => {
     if (!isTauriApp()) {
       toast('Descarga de modelos disponible en la app de escritorio');
       return;
     }
-    const model = form.querySelector('#ai-local-model')?.value;
-    toast(`Próximamente: descarga de «${model}» vía sidecar Ollama (AI-1)`);
+    const localModelId = form.querySelector('#ai-local-model')?.value;
+    if (!localModelId) return;
+
+    downloadBtn.disabled = true;
+    if (downloadStatus) {
+      downloadStatus.textContent = 'Conectando con Ollama…';
+      downloadStatus.className = 'settings-ai-test-status settings-ai-test-status--pending';
+    }
+
+    try {
+      const result = await pullLocalModel(localModelId, {
+        onProgress: (payload) => {
+          if (!downloadStatus) return;
+          downloadStatus.textContent = formatOllamaPullStatus(payload);
+        },
+      });
+      if (downloadStatus) {
+        downloadStatus.textContent = result.alreadyPresent
+          ? 'Modelo ya instalado en Ollama'
+          : 'Modelo descargado correctamente';
+        downloadStatus.className = 'settings-ai-test-status settings-ai-test-status--ok';
+      }
+      toast(
+        result.alreadyPresent
+          ? 'El modelo ya estaba instalado en Ollama'
+          : 'Modelo descargado. Ya puedes usar la IA local.',
+      );
+    } catch (err) {
+      const msg = err?.message || String(err);
+      if (downloadStatus) {
+        downloadStatus.textContent = msg.slice(0, 160);
+        downloadStatus.className = 'settings-ai-test-status settings-ai-test-status--err';
+      }
+      toast(msg);
+      if (/ollama\.com\/download|Instala Ollama/i.test(msg)) {
+        await openOllamaDownloadPage();
+      }
+    } finally {
+      downloadBtn.disabled = form.querySelector('input[name="aiMode"]:checked')?.value !== 'local';
+    }
   });
 
   testBtn?.addEventListener('click', async () => {

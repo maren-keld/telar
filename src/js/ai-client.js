@@ -23,9 +23,6 @@ export async function chatCompletion({ messages, maxTokens = 512, profile } = {}
   if (!cfg.enabled) {
     throw new Error('Asistente IA desactivado. Actívalo en Ajustes → Proveedor de IA.');
   }
-  if (cfg.mode === 'local') {
-    throw new Error('IA local aún no disponible (sidecar Ollama — AI-1). Usa API externa por ahora.');
-  }
   if (!cfg.apiBase) {
     throw new Error('Falta URL base de la API en Ajustes.');
   }

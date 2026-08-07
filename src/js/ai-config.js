@@ -11,7 +11,7 @@ export const AI_MODES = {
     id: 'local',
     label: 'IA local privada',
     description:
-      'Ollama sidecar en Telar. El modelo se descarga aparte a Application Support (~2–5 GB). Los datos no salen del dispositivo.',
+      'Ollama en tu equipo (~2–5 GB por modelo). Requiere Ollama.app instalado. Los datos no salen del dispositivo.',
   },
   api: {
     id: 'api',
