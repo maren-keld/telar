@@ -205,13 +205,6 @@ function pageShell({ title, description, canonical, depth, body, schema }) {
   <meta property="og:locale" content="es_CL">
   <meta property="og:url" content="${escapeHtml(canonical)}">${ld}
   <link rel="icon" href="${p}assets/icon.png" type="image/png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
-       media="print" y se activa al terminar de bajar. Hasta entonces se ve
-       la tipografía del sistema, que es el fallback de --font. -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
   <link rel="stylesheet" href="${p}css/style.css?v=${CSS_V}">
 </head>
 <body>
