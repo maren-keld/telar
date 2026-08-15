@@ -99,7 +99,7 @@
             "name": "¿Cómo funciona la IA en Telar?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "La IA está desactivada por defecto. Si la activas, puedes usar tu propia clave API (p. ej. Mistral) u Ollama local para organizar notas a partir del contexto clínico registrado. Los datos no pasan por servidores de Telar."
+              "text": "La IA de Telar lee el caso ya registrado y puede proponer un programa de tratamiento por sesiones, redactar un email post-sesión, resumir el caso o diseñar un módulo a medida. Viene desactivada por defecto. Si la activas, usas tu propia clave API u Ollama local; los datos no pasan por servidores de Telar."
             }
           }
         ]
@@ -115,7 +115,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260807d">
+  <link rel="stylesheet" href="css/style.css?v=20260814a">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -135,6 +135,8 @@
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="neurofeedback.html">Neurofeedback</a>
         <span class="nav-divider" aria-hidden="true"></span>
+        <a href="ia.html">IA</a>
+        <span class="nav-divider" aria-hidden="true"></span>
         <a href="blog/index.html">Blog</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="precio.html">Precio</a>
@@ -153,32 +155,20 @@
   <main id="contenido">
     <section class="hero-panel">
       <div class="hero-main">
-        <div class="hero-cloud" aria-hidden="true">
-          <span class="hero-cloud__chip hero-cloud__chip--asrs">ASRS</span>
-          <span class="hero-cloud__chip hero-cloud__chip--pcl">PCL-5</span>
-          <figure class="hero-cloud__card hero-cloud__card--asrs">
-            <img src="assets/hero-cloud-asrs-chart.png" alt="" width="830" height="514" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero-cloud__card hero-cloud__card--formulation">
-            <img src="assets/hero-cloud-formulation.png" alt="" width="820" height="386" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero-cloud__card hero-cloud__card--sprint">
-            <img src="assets/hero-cloud-sprint-chart.png" alt="" width="830" height="514" loading="lazy" decoding="async">
-          </figure>
-          <span class="hero-cloud__chip hero-cloud__chip--trend">28 → 10</span>
-        </div>
         <div class="hero-main__copy">
           <h1><span>La evolución del paciente</span> <span>deja de ser una impresión clínica.</span></h1>
+          <p class="hero-lead-main">Escalas validadas con puntuación automática, curva longitudinal sesión a sesión y programas de tratamiento por objetivos. La ficha clínica queda cifrada en tu computador.</p>
           <div class="hero-actions">
             <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
               <span class="btn-label">Descargar Telar</span>
             </a>
             <a href="https://wa.me/56920509726?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Hablemos por Whatsapp</a>
           </div>
+          <p class="hero-proof">Código auditable bajo <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">licencia AGPL-3.0</a> · Sin servidor: los datos no salen de tu equipo</p>
         </div>
       </div>
       <aside class="hero-sidebar">
-        <p class="hero-mission">Aplicación de escritorio para seguimiento clínico: crea programas de psicoterapia con escalas de puntuación automática (ASRS, GAD-7, PCL-5, IES-R, DASS-21, etc.), módulos de psicoeducación, material de trabajo clínico y neurofeedback en consulta. Los datos se guardan cifrados en tu computador. La IA es opcional, con tu propia clave, y viene desactivada.</p>
+        <p class="hero-mission">Aplicación de escritorio para psicólogos: 13 escalas con scoring automático (ASRS, GAD-7, PCL-5, IES-R, DASS-21) y 33 módulos clínicos para TDAH adulto, trauma y regulación emocional.</p>
         <div class="hero-badges">
           <span class="badge badge-chile">Desarrollado en Latam</span>
           <span class="badge badge-encrypted">Datos clínicos cifrados localmente</span>
@@ -186,11 +176,11 @@
         </div>
         <div class="hero-featured">
           <p class="hero-featured-label">DESTACADO</p>
-          <a href="neurofeedback.html#curso" class="hero-featured-card">
-            <img src="assets/muse-headband-thumb.png" alt="Curso de Neurofeedback con banda Muse 2" width="224" height="168" loading="lazy" decoding="async">
+          <a href="modules/index.html" class="hero-featured-card">
+            <img src="assets/hero-cloud-asrs-chart.png" alt="Curva de evolución por sesión de la escala ASRS en Telar" width="830" height="514" loading="lazy" decoding="async">
             <div>
-              <strong>Curso de Neurofeedback para ansiedad</strong>
-              <span>Online todo el año · incluido gratis en la suscripción al Plan Pro</span>
+              <strong>Catálogo de 33 módulos clínicos</strong>
+              <span>13 escalas con puntuación automática y 11 materiales de trabajo, ficha por ficha</span>
             </div>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
@@ -226,14 +216,14 @@
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
         <h2 class="section-title">Lo que Telar te devuelve.</h2>
-        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>estimulación bilateral</strong>, <strong>evaluación neuropsicológica</strong> con escalas longitudinales y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>. Ofrece nuevas prestaciones, ahorro de tiempo y un análisis clínico más sólido.</p>
+        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>escalas longitudinales</strong> en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>. Menos planillas, seguimiento medible y la ficha clínica bajo tu control.</p>
 
         <div class="value-grid">
           <article class="value-card">
-            <p class="value-kicker">Ingresos</p>
-            <p class="value-figure" data-geo-session-fee>$50.000</p>
-            <h3>Añade una nueva prestación a tus servicios</h3>
-            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro, agregas una línea de servicio. Tú defines tu tarifa. Requiere una banda Muse 2 (~<span data-geo-muse-cost>$320.000</span>: <a href="precio.html#costos">ver todos los costos</a>).</p>
+            <p class="value-kicker">Tiempo</p>
+            <p class="value-figure">Al instante</p>
+            <h3>Crea programas de psicoterapia</h3>
+            <p>La <a href="ia.html">IA</a> lee el caso y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento. Armar eso a mano suele costar más de veinte minutos.</p>
           </article>
 
           <article class="value-card">
@@ -244,10 +234,10 @@
           </article>
 
           <article class="value-card">
-            <p class="value-kicker">Seguimiento clínico</p>
-            <p class="value-figure">Seguimiento sesión a sesión</p>
-            <h3>Ve la evolución, no solo la recuerdes</h3>
-            <p>Compara la línea base con cada reevaluación en una curva longitudinal. Así puedes conversar los cambios con el paciente y ajustar el plan de tratamiento con más información.</p>
+            <p class="value-kicker">Tiempo</p>
+            <p class="value-figure">El correo ya escrito</p>
+            <h3>Emails post-sesión y resúmenes del caso</h3>
+            <p>Después de la sesión: un correo al paciente con lo trabajado y la tarea de la semana. Antes de una supervisión o una derivación: un resumen con hipótesis, focos y alertas. Sale del contexto que ya está en la ficha, no de un chatbot en blanco.</p>
           </article>
 
           <article class="value-card">
@@ -256,10 +246,47 @@
             <h3>Datos cifrados en tu equipo</h3>
             <p>Telar guarda la ficha clínica cifrada en tu computador y crea respaldos automáticos cifrados en la carpeta de nube que tú eliges. Telar no aloja ni puede leer esos datos.</p>
           </article>
+
+          <article class="value-card">
+            <p class="value-kicker">Prestación opcional</p>
+            <p class="value-figure" data-geo-session-fee>$50.000</p>
+            <h3>Si además haces neurofeedback</h3>
+            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa. Requiere una banda Muse 2 (~<span data-geo-muse-cost>$320.000</span>: <a href="precio.html#costos">ver todos los costos</a>).</p>
+          </article>
         </div>
       </div>
     </section>
 
+
+    <section id="confianza">
+      <div class="container">
+        <p class="section-label">Transparencia</p>
+        <h2 class="section-title">Todo lo que Telar afirma se puede revisar.</h2>
+        <p class="section-lead">No te pedimos confiar en una promesa de marketing. Estos son los hechos que puedes verificar por tu cuenta antes de poner una sola ficha adentro.</p>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>No es una caja negra</h3>
+            <p>Cómo Telar guarda y cifra las fichas está publicado: cualquiera puede revisarlo. No tienes que creernos de palabra. Si un colega o alguien de informática quiere mirarlo, el código está <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">abierto acá</a>.</p>
+          </article>
+          <article class="trust-card">
+            <h3>No hay servidor que pueda filtrarse</h3>
+            <p>Telar no sube fichas a ninguna parte. El respaldo del Plan Pro se cifra en tu equipo <em>antes</em> de copiarse a la carpeta de nube que tú elijas, así que ni nosotros ni el proveedor de nube pueden leerlo. Ver <a href="privacidad.html">privacidad</a>.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Instrumentos publicados, no inventados</h3>
+            <p>Las 13 escalas del pack base son instrumentos publicados (ASRS, GAD-7, PCL-5, IES-R, DASS-21, entre otros), con su puntuación y puntos de corte de referencia. Telar automatiza el cálculo; la interpretación clínica sigue siendo tuya.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Lo que Telar no hace</h3>
+            <p>No diagnostica, no reemplaza una batería neuropsicológica completa, no sustituye el protocolo de ocho fases de EMDR y el módulo de neurofeedback no es equipamiento diagnóstico. Cada módulo lo dice explícitamente en la app, no solo acá.</p>
+          </article>
+        </div>
+        <!-- PRUEBA SOCIAL — pendiente y es el vacío más notorio de la página.
+             Cuando haya 2 o 3 colegas dispuestos a aparecer, agregar acá un bloque
+             con nombre real, profesión, ciudad y una línea concreta sobre el uso.
+             Un testimonio anónimo o inventado resta más de lo que suma. -->
+      </div>
+    </section>
 
     <section id="funciones">
       <div class="container">
@@ -283,10 +310,10 @@
           </article>
           <article class="feature-card feature-card--shot">
             <div>
-              <div class="feature-eyebrow">Diferenciador clínico</div>
+              <div class="feature-eyebrow">Módulo complementario</div>
               <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0M4 13v5a2 2 0 0 0 2 2h2v-8H4ZM20 13v5a2 2 0 0 1-2 2h-2v-8h4Z"/><path d="M10 5.3V3M14 5.3V3"/></svg></div>
               <h3>Neurofeedback</h3>
-              <p>Entrena interocepción con protocolos de atención y calma, en vivo dentro de la sesión. Funciona con una banda Muse 2 de consumo: el mismo tipo de entrenamiento que hasta hace poco pedía equipamiento de laboratorio. En Demo: sesiones en vivo; en Pro: grabar, analizar y exportar.</p>
+              <p>Entrena atención y calma con retroalimentación en vivo dentro de la sesión, usando la banda <strong>Muse 2</strong>. La plataforma Muse tiene validación publicada para registro de EEG y potenciales relacionados a eventos en investigación (<a href="https://doi.org/10.3389/fnins.2017.00109" target="_blank" rel="noopener">Krigolson et al., 2017, <em>Frontiers in Neuroscience</em></a>). Telar lo integra como herramienta de <strong>entrenamiento complementario</strong>, con el registro clínico al lado: no es equipamiento diagnóstico ni un tratamiento en sí mismo. En Demo: sesiones en vivo; en Pro: grabar, analizar y exportar.</p>
               <p class="feature-link"><a href="neurofeedback.html">Ver guía de neurofeedback →</a></p>
             </div>
             <picture>
@@ -328,8 +355,8 @@
           </article>
           <article class="feature-card">
             <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-4 12.7V21l4-2 4 2v-5.3A7 7 0 0 0 12 3Z"/><path d="M9 10h.01M15 10h.01M9.5 13.5c1.6 1 3.4 1 5 0"/></svg></div>
-            <h3>Apoyo documental con IA (opcional)</h3>
-            <p>Consulta el contexto registrado para organizar notas. Viene <strong>desactivada por defecto</strong>; si la activas, usa tu propia clave API (p. ej. Mistral, ~USD 2–8/mes según uso) u Ollama local en tu equipo. Los datos no pasan por servidores de Telar.</p>
+            <h3><a href="ia.html">IA que ya leyó la ficha</a></h3>
+            <p>Propone un programa por sesiones, redacta el email post-sesión, resume el caso y puede diseñar un módulo a medida. Tú decides qué aplicar. <a href="ia.html">Cómo funciona →</a></p>
           </article>
         </div>
       </div>
@@ -373,6 +400,18 @@
       </div>
     </section>
 
+    <section id="instituciones" class="inst-section">
+      <div class="container">
+        <p class="section-label">Instituciones y programas</p>
+        <h2 class="section-title">Si además de atender tienes que reportar resultados.</h2>
+        <p class="section-lead">Servicios de salud estudiantil, COSAM, programas de salud mental laboral y fundaciones que rinden cuentas a quien las financia necesitan que todo el equipo mida con los mismos instrumentos y de la misma forma. Telar estandariza el set de escalas y su puntuación, sin obligar a subir fichas a un servidor externo.</p>
+        <div class="inst-actions">
+          <a href="instituciones.html" class="btn btn-secondary">Ver el uso institucional</a>
+          <a href="https://wa.me/56920509726?text=Hola%2C%20consulto%20por%20Telar%20para%20un%20equipo%20o%20programa" class="btn btn-primary" target="_blank" rel="noopener">Conversar por un equipo</a>
+        </div>
+      </div>
+    </section>
+
     <section id="requisitos">
       <div class="container">
         <p class="section-label">Requisitos</p>
@@ -408,9 +447,17 @@
           <div class="install-steps">
             <h3>macOS</h3>
             <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-macos.zip" class="btn btn-primary install-download">Descargar para macOS</a>
-            <p class="install-note install-note--warn"><strong>Si macOS dice «Telar not opened» / «No se abrió Telar»:</strong> no uses <em>Mover a la Papelera</em>. Cierra el diálogo, ve a la carpeta donde descomprimiste el .zip, <strong>clic derecho en Telar.app → Abrir</strong> y confirma. Solo la primera vez.</p>
-            <p class="install-carousel__hint">Así se ve en macOS (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
-            <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para abrir Telar en macOS">
+            <ol>
+              <li>Descomprime <strong>Telar-macos.zip</strong>.</li>
+              <li>Arrastra <strong>Telar.app</strong> a Aplicaciones.</li>
+              <li>La primera vez: <strong>clic derecho → Abrir</strong> (no doble clic).</li>
+              <li>Configura tu PIN y, si tu Mac lo permite, Touch ID.</li>
+            </ol>
+            <details class="install-help">
+              <summary>¿macOS bloqueó la apertura? Ver los pasos con imágenes</summary>
+              <p class="install-note install-note--warn"><strong>Si macOS dice «Telar not opened» / «No se abrió Telar»:</strong> no uses <em>Mover a la Papelera</em>. Cierra el diálogo, ve a la carpeta donde descomprimiste el .zip, <strong>clic derecho en Telar.app → Abrir</strong> y confirma. Si insiste, ve a <strong>Ajustes del Sistema → Privacidad y seguridad → Abrir de todas formas</strong>. Solo la primera vez.</p>
+              <p class="install-carousel__hint">Así se ve en macOS (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
+              <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para abrir Telar en macOS">
               <div class="install-carousel__viewport">
                 <figure class="install-carousel__slide is-active">
                   <img src="assets/install-macos-blocked.png" alt="Diálogo de macOS: No se abrió Telar, con opciones Mover al basurero y Listo" width="1200" height="750" loading="lazy" decoding="async">
@@ -441,20 +488,22 @@
                 </button>
               </div>
             </div>
-            <ol>
-              <li>Descomprime <strong>Telar-macos.zip</strong>.</li>
-              <li>Arrastra <strong>Telar.app</strong> a Aplicaciones.</li>
-              <li>La primera vez: <strong>clic derecho → Abrir</strong> (no doble clic).</li>
-              <li>Si macOS bloquea: <strong>Ajustes del Sistema → Privacidad y seguridad → Abrir de todas formas</strong>.</li>
-              <li>Configura tu PIN y, si tu Mac lo permite, Touch ID.</li>
-            </ol>
+            </details>
           </div>
           <div class="install-steps">
             <h3>Windows 10/11</h3>
             <a href="https://github.com/maren-keld/telar/releases/latest/download/Telar-windows.exe" class="btn btn-primary install-download">Descargar para Windows</a>
-            <p class="install-note install-note--warn"><strong>Si SmartScreen aparece:</strong> <strong>Más información → Ejecutar de todas formas</strong>. Es normal en apps sin certificado de editor (beta).</p>
-            <p class="install-carousel__hint">Así se ve en Windows 10/11 (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
-            <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para instalar Telar en Windows">
+            <ol>
+              <li>Ejecuta <strong>Telar-windows.exe</strong>.</li>
+              <li>Sigue el asistente con <strong>Next</strong> hasta completar.</li>
+              <li>Al finalizar, opcional: <strong>Run Telar</strong> y acceso directo en el escritorio.</li>
+              <li>Configura tu PIN de 6 dígitos.</li>
+            </ol>
+            <details class="install-help">
+              <summary>¿SmartScreen bloqueó el instalador? Ver los pasos con imágenes</summary>
+              <p class="install-note install-note--warn"><strong>Si SmartScreen aparece:</strong> <strong>Más información → Ejecutar de todas formas</strong>. Es normal en apps sin certificado de editor (beta).</p>
+              <p class="install-carousel__hint">Así se ve en Windows 10/11 (puede variar según versión). El carrusel avanza solo; puedes pausarlo pasando el mouse.</p>
+              <div class="install-carousel" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Pasos visuales para instalar Telar en Windows">
               <div class="install-carousel__viewport">
                 <figure class="install-carousel__slide is-active">
                   <img src="assets/install-windows-smartscreen.png" alt="SmartScreen de Windows: Windows protegió su PC, con enlace Más información" width="1024" height="958" loading="lazy" decoding="async">
@@ -500,13 +549,7 @@
                 </button>
               </div>
             </div>
-            <ol>
-              <li>Ejecuta <strong>Telar-windows.exe</strong>.</li>
-              <li>Si SmartScreen aparece: <strong>Más información → Ejecutar de todas formas</strong>.</li>
-              <li>Sigue el asistente con <strong>Next</strong> hasta completar.</li>
-              <li>Al finalizar, opcional: <strong>Run Telar</strong> y acceso directo en el escritorio.</li>
-              <li>Configura tu PIN de 6 dígitos.</li>
-            </ol>
+            </details>
           </div>
         </div>
       </div>
@@ -535,7 +578,7 @@
           </div>
           <div class="nf-faq-item">
             <dt>¿Cómo funciona la IA?</dt>
-            <dd>Está <strong>desactivada por defecto</strong>. Si la activas, puedes usar tu propia clave API (p. ej. Mistral, ~USD 2–8/mes según uso) u <strong>Ollama local</strong> para organizar notas a partir del contexto clínico. Los datos no pasan por servidores de Telar. Ver <a href="privacidad.html">privacidad</a>.</dd>
+            <dd>Lee el caso que ya registraste y puede proponer un programa de tratamiento, redactar un email post-sesión, resumir el caso o diseñar un módulo. Viene desactivada. Cómo se configura y qué sale (o no) de tu equipo: <a href="ia.html">página de IA</a> y <a href="privacidad.html">privacidad</a>.</dd>
           </div>
         </dl>
       </div>
@@ -566,6 +609,8 @@
         <a href="index.html">Inicio</a>
         <a href="modules/index.html">Módulos</a>
         <a href="neurofeedback.html">Neurofeedback</a>
+        <a href="ia.html">IA</a>
+        <a href="instituciones.html">Instituciones</a>
         <a href="precio.html">Precio</a>
         <a href="blog/index.html">Blog</a>
         <a href="equipo.html">Equipo</a>

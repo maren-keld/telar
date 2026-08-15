@@ -14,6 +14,9 @@
     if (index < 0) index = 0;
     let timer = null;
     let paused = false;
+    // Los carruseles viven dentro de un <details> plegado: no vale rotar imágenes
+    // que nadie está mirando.
+    const disclosure = root.closest('details');
 
     function show(nextIndex) {
       index = (nextIndex + slides.length) % slides.length;
@@ -38,8 +41,14 @@
     function startAuto() {
       stopAuto();
       if (reducedMotion || paused || slides.length < 2) return;
+      if (disclosure && !disclosure.open) return;
       timer = setInterval(() => show(index + 1), AUTO_MS);
     }
+
+    disclosure?.addEventListener('toggle', () => {
+      if (disclosure.open) startAuto();
+      else stopAuto();
+    });
 
     prevBtn?.addEventListener('click', () => {
       show(index - 1);

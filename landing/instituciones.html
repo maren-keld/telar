@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telar para instituciones — medición clínica comparable entre profesionales</title>
+  <meta name="description" content="Para servicios de salud estudiantil, COSAM, salud mental laboral y fundaciones que reportan resultados: set de escalas estandarizado, puntuación automática y curvas longitudinales, con las fichas cifradas en el equipo de cada profesional.">
+  <link rel="canonical" href="https://telarapp.cl/instituciones">
+  <meta property="og:title" content="Telar para instituciones y programas">
+  <meta property="og:description" content="Medición comparable entre profesionales con escalas validadas y puntuación automática, sin subir fichas clínicas a un servidor externo.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:url" content="https://telarapp.cl/instituciones">
+  <meta property="og:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Telar para instituciones y programas",
+    "url": "https://telarapp.cl/instituciones",
+    "inLanguage": "es-CL",
+    "description": "Uso de Telar en equipos y programas que deben reportar resultados clínicos: escalas estandarizadas, puntuación automática y datos que permanecen en el equipo de cada profesional.",
+    "isPartOf": { "@type": "WebSite", "name": "Telar", "url": "https://telarapp.cl/" }
+  }
+  </script>
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
+       media="print" y se activa al terminar de bajar. Hasta entonces se ve
+       la tipografía del sistema, que es el fallback de --font. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css?v=20260812a">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand">
+        <img src="assets/icon.png" alt="" width="28" height="28">
+        Telar
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="index.html#funciones">Funciones</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="modules/index.html">Módulos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="neurofeedback.html">Neurofeedback</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="blog/index.html">Blog</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="precio.html">Precio</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="index.html#contacto">Contacto</a>
+      </nav>
+      <div class="nav-actions">
+        <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-nav">
+          <span class="btn-label">Descargar Telar</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="page-hero">
+      <div class="container">
+        <p class="section-label">Instituciones y programas</p>
+        <h1>Medición comparable entre profesionales, sin entregar las fichas a un servidor.</h1>
+        <p class="page-hero-lead">Si tu programa tiene que demostrar resultados —a una dirección, a un municipio, a una universidad o a quien lo financia— el problema no es la falta de voluntad clínica: es que cada profesional mide distinto, en planillas distintas, y consolidar eso al final del período es un trabajo manual que nadie quiere hacer.</p>
+      </div>
+    </section>
+
+    <section id="problema">
+      <div class="container">
+        <p class="section-label">El punto de partida</p>
+        <h2 class="section-title">Lo que suele pasar hoy.</h2>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>Cada profesional mide a su manera</h3>
+            <p>Uno aplica GAD-7, otro usa una escala propia, otro registra solo en texto. Al comparar entre casos o entre profesionales no hay una base común, y el informe final termina siendo una suma de impresiones.</p>
+          </article>
+          <article class="trust-card">
+            <h3>El puntaje se calcula a mano</h3>
+            <p>Puntuar una PCL-5 a mano toma cerca de diez minutos y se presta a errores de suma y de inversión de ítems. Multiplicado por el volumen de un programa, es tiempo clínico convertido en aritmética.</p>
+          </article>
+          <article class="trust-card">
+            <h3>La línea base se pierde</h3>
+            <p>Sin un registro estructurado por sesión, la comparación entre el ingreso y el egreso depende de encontrar el papel correcto. La evolución existe, pero no se puede mostrar.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Y los datos son sensibles</h3>
+            <p>La alternativa habitual es una plataforma en la nube que aloja las fichas de todo el equipo. Eso resuelve la consolidación y a cambio concentra el riesgo: un solo incidente expone a toda la población atendida.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="que-entrega" class="inst-section">
+      <div class="container">
+        <p class="section-label">Qué entrega Telar</p>
+        <h2 class="section-title">Un set común de instrumentos, puntuado siempre igual.</h2>
+        <p class="section-lead">Telar es una aplicación de escritorio que cada profesional instala en su equipo. Lo que se estandariza es el instrumento y su cálculo; lo que no se mueve son los datos del paciente.</p>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>13 escalas validadas con puntuación automática</h3>
+            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED y más. El puntaje y los puntos de corte de referencia se calculan solos, iguales para todo el equipo. Ver el <a href="modules/index.html">catálogo de 33 módulos</a>.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Curva longitudinal por caso</h3>
+            <p>Cada reevaluación se compara con la línea base dentro del programa de tratamiento, sesión a sesión. Sirve para conversar el cambio con el paciente y para sostener con datos la decisión de alta o de continuidad.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Programas de tratamiento por objetivos</h3>
+            <p>Las sesiones se ordenan en un programa con objetivos, módulos y resultados, no en una ficha estática. Eso da una estructura común para supervisión y para inducción de profesionales nuevos.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Exportación en PDF para el informe</h3>
+            <p>El programa de tratamiento y el material de trabajo se exportan a PDF, de modo que el profesional entrega el respaldo documental sin rearmarlo en un procesador de texto.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Datos cifrados en el equipo del profesional</h3>
+            <p>La ficha se guarda cifrada localmente y el respaldo se cifra antes de copiarse a la carpeta de nube que la institución defina. Telar no aloja ni puede leer esos datos. Ver <a href="privacidad.html">privacidad</a>.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Software auditable</h3>
+            <p>El motor es open core con <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">licencia AGPL-3.0</a>. Si tu institución tiene un área de informática o de datos personales, puede revisar <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">el código</a> antes de aprobar el uso.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="limites">
+      <div class="container">
+        <p class="section-label">Sin letra chica</p>
+        <h2 class="section-title">Qué todavía no hace.</h2>
+        <p class="section-lead">Preferimos decirlo antes de una reunión que después de una compra. Telar está diseñado como herramienta local para cada profesional, y eso tiene un costo concreto en el uso institucional.</p>
+        <dl class="nf-faq">
+          <div class="nf-faq-item">
+            <dt>No hay un tablero central que consolide a todo el equipo</dt>
+            <dd>Como las fichas viven cifradas en cada computador, hoy <strong>no existe</strong> un panel institucional que agregue automáticamente los resultados de todos los profesionales. La consolidación se hace reuniendo los reportes exportados. Si tu programa necesita agregación automática, conversémoslo: es exactamente el tipo de requerimiento que define qué construimos después.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No es un sistema multiusuario ni tiene inicio de sesión institucional</dt>
+            <dd>Cada instalación es independiente, con su propio PIN. No hay cuentas centralizadas, perfiles de supervisor ni control de acceso por rol.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No agenda, no factura y no emite boletas</dt>
+            <dd>Telar cubre el registro y el seguimiento clínico. No reemplaza el sistema de agenda ni el de facturación que ya use la institución.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No diagnostica ni sustituye el juicio profesional</dt>
+            <dd>Las escalas apoyan <strong>tamizaje y seguimiento longitudinal</strong>. No reemplazan una batería neuropsicológica completa, ni la entrevista clínica, ni la interpretación especializada. El módulo de neurofeedback es entrenamiento complementario y no es equipamiento diagnóstico.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="para-quien" class="inst-section">
+      <div class="container">
+        <p class="section-label">Para quién</p>
+        <h2 class="section-title">Dónde calza mejor.</h2>
+        <p class="section-lead">Telar rinde más donde la medición no es una preferencia personal del profesional, sino una obligación del programa.</p>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>Servicios de salud mental estudiantil</h3>
+            <p>Universidades e institutos que atienden alto volumen con equipos rotativos y necesitan mostrar resultados agregados por período a su dirección.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Programas municipales y COSAM</h3>
+            <p>Equipos que reportan cobertura y evolución con instrumentos estandarizados, y donde la continuidad del caso pasa por varios profesionales.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Salud mental laboral y mutuales</h3>
+            <p>Programas de acompañamiento donde el seguimiento longitudinal sostiene decisiones de reintegro y donde el dato tiene consecuencias administrativas.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Fundaciones y programas con financiamiento externo</h3>
+            <p>Organizaciones que deben rendir resultados a quien las financia y hoy lo hacen con planillas armadas a mano al cierre del proyecto.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-partir">
+      <div class="container">
+        <p class="section-label">Cómo partir</p>
+        <h2 class="section-title">Sin compromiso y sin instalación masiva.</h2>
+        <ol class="steps-list">
+          <li><strong>Descarga el plan Demo</strong> en un equipo. Es gratis, no pide tarjeta y permite hasta 3 pacientes activos: alcanza para revisar el flujo completo con casos de prueba.</li>
+          <li><strong>Define el set de escalas</strong> que el programa va a usar de forma transversal, para que todos midan lo mismo.</li>
+          <li><strong>Piloto con dos o tres profesionales</strong> durante un ciclo de sesiones, y revisen juntos qué reporte necesitan al final.</li>
+          <li><strong>Conversemos el resto</strong>: licencias por profesional, capacitación del equipo y qué formato de consolidación necesita tu programa.</li>
+        </ol>
+        <div class="inst-actions">
+          <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-secondary"><span class="btn-label">Descargar y probar</span></a>
+          <a href="https://wa.me/56920509726?text=Hola%2C%20consulto%20por%20Telar%20para%20un%20equipo%20o%20programa" class="btn btn-primary" target="_blank" rel="noopener">Conversar por un equipo</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="contacto" class="cta-section">
+      <div class="cta-box">
+        <div>
+          <h2>Cuéntanos qué tienes que reportar</h2>
+          <p>Si nos dices a quién le rinde cuentas tu programa y con qué instrumentos, te decimos derecho si Telar sirve hoy, si sirve con un piloto o si todavía no.</p>
+        </div>
+        <div class="cta-actions">
+          <a href="https://wa.me/56920509726?text=Hola%2C%20consulto%20por%20Telar%20para%20un%20equipo%20o%20programa" class="btn btn-primary btn-lg" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+          <a href="tel:+56920509726" class="btn btn-secondary btn-lg cta-secondary">+56 9 2050 9726</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>Telar</strong><br>
+        Software open-core · Datos clínicos 100 % locales<br>
+        Hecho en Chile · 2026
+      </div>
+      <nav class="footer-links" aria-label="Enlaces del pie">
+        <a href="index.html">Inicio</a>
+        <a href="modules/index.html">Módulos</a>
+        <a href="neurofeedback.html">Neurofeedback</a>
+        <a href="ia.html">IA</a>
+        <a href="instituciones.html">Instituciones</a>
+        <a href="precio.html">Precio</a>
+        <a href="blog/index.html">Blog</a>
+        <a href="equipo.html">Equipo</a>
+        <a href="privacidad.html">Privacidad</a>
+        <a href="tel:+56920509726">+56 9 2050 9726</a>
+        <a href="https://wa.me/56920509726" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="js/download.js?v=20260803a"></script>
+  <script src="js/nav.js?v=20260803a"></script>
+</body>
+</html>

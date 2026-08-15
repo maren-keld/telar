@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IA en Telar — programas, emails y resúmenes sobre la ficha clínica</title>
+  <meta name="description" content="La IA de Telar lee el caso ya registrado y propone un programa de tratamiento, redacta emails post-sesión, resume el caso y puede diseñar un módulo. Viene desactivada. Tú eliges la clave o un modelo local.">
+  <link rel="canonical" href="https://telarapp.cl/ia">
+  <meta property="og:title" content="IA en Telar — sobre la ficha, no sobre internet">
+  <meta property="og:description" content="Programa de sesiones, email post-sesión, resumen del caso y módulo a medida. Desactivada por defecto. Los datos no pasan por servidores de Telar.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:url" content="https://telarapp.cl/ia">
+  <meta property="og:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "IA en Telar",
+    "url": "https://telarapp.cl/ia",
+    "inLanguage": "es-CL",
+    "description": "Asistente clínico opcional de Telar: propone programas de tratamiento, emails post-sesión, resúmenes de caso y módulos a medida a partir de la ficha registrada.",
+    "isPartOf": { "@type": "WebSite", "name": "Telar", "url": "https://telarapp.cl/" }
+  }
+  </script>
+  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
+       media="print" y se activa al terminar de bajar. Hasta entonces se ve
+       la tipografía del sistema, que es el fallback de --font. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
+  <link rel="stylesheet" href="css/style.css?v=20260814a">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand">
+        <img src="assets/icon.png" alt="" width="28" height="28">
+        Telar
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="index.html#funciones">Funciones</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="modules/index.html">Módulos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="neurofeedback.html">Neurofeedback</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="ia.html">IA</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="blog/index.html">Blog</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="precio.html">Precio</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="index.html#contacto">Contacto</a>
+      </nav>
+      <div class="nav-actions">
+        <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-nav">
+          <span class="btn-label">Descargar Telar</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido">
+    <section class="page-hero">
+      <div class="container">
+        <p class="section-label">IA en Telar</p>
+        <h1>La IA que ya leyó la ficha.</h1>
+        <p class="page-hero-lead">No es un chatbot en blanco. Trabaja sobre el caso que ya registraste: escalas, notas, módulos. Propone un programa, un correo o un resumen. Tú revisas. Nada se aplica ni se envía solo.</p>
+      </div>
+    </section>
+
+    <section id="que-hace">
+      <div class="container">
+        <p class="section-label">Qué hace</p>
+        <h2 class="section-title">Cuatro atajos sobre el caso real.</h2>
+        <p class="section-lead">En la sesión, junto a la ficha, hay cuatro acciones. Cada una usa el contexto clínico ya guardado en Telar, no una conversación genérica.</p>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>Sugerir programa</h3>
+            <p>Propone un plan por sesiones con módulos de Telar: qué escala aplicar, qué handout dejar de tarea, qué no repetir. Si te sirve, un clic lo aplica al tratamiento actual. Armar eso a mano suele costar más de veinte minutos.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Generar email</h3>
+            <p>Redacta el correo post-sesión: lo trabajado hoy, qué reforzar en la semana, qué traer resuelto a la próxima. Tono cercano, firma con tu nombre. Tú lo copias, lo revisas y lo envías.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Resumen del caso</h3>
+            <p>Sintetiza hipótesis, focos de trabajo y señales de alerta. Sirve antes de una supervisión, una derivación o cuando retomas un caso después de semanas.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Módulo a medida</h3>
+            <p>Si el catálogo no cubre el foco, propone un cuestionario o ejercicio nuevo —ítems genéricos, no anécdotas del relato— y, si aceptas, lo crea en tu Telar.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="como" class="inst-section">
+      <div class="container">
+        <p class="section-label">Cómo trabaja</p>
+        <h2 class="section-title">Lee Telar. No inventa el caso.</h2>
+        <p class="section-lead">El contexto que recibe es el que tú ya cargaste: datos del paciente, escalas, módulos y notas. Cuando propone un programa, solo puede citar módulos que existen en tu catálogo. Si pide aplicar el plan, Telar te muestra las sesiones y espera un «Aplicar» o un «Ahora no».</p>
+        <p class="section-lead">No diagnostica. No reemplaza el juicio clínico. No manda el correo. Es un borrador con el caso abierto, no un colega.</p>
+      </div>
+    </section>
+
+    <section id="privacidad">
+      <div class="container">
+        <p class="section-label">Privacidad</p>
+        <h2 class="section-title">Viene apagada. Tú eliges si enciende, y dónde.</h2>
+        <p class="section-lead">Por defecto no hay IA. Si la activas, hay dos caminos. En ambos, Telar no tiene un servidor intermedio que reciba o guarde esos envíos.</p>
+        <div class="trust-grid">
+          <article class="trust-card">
+            <h3>En tu computador (Ollama)</h3>
+            <p>El contexto clínico se procesa en tu equipo. No sale a internet. Requiere descargar un modelo de unos 2–5 GB. Es la vía si no quieres que el caso toque un proveedor externo.</p>
+          </article>
+          <article class="trust-card">
+            <h3>Con tu propia clave (p. ej. Mistral)</h3>
+            <p>Usas una API tuya, no una de Telar. El costo típico anda entre USD 2 y 8 al mes, según uso. Antes de cada envío puedes revisar el texto exacto. La primera vez hay un aviso explícito. Detalle legal en <a href="privacidad.html">privacidad</a>.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="limites" class="inst-section">
+      <div class="container">
+        <p class="section-label">Límites</p>
+        <h2 class="section-title">Lo que no hace, a propósito.</h2>
+        <dl class="nf-faq">
+          <div class="nf-faq-item">
+            <dt>No diagnostica ni indica tratamiento</dt>
+            <dd>Propone un orden de sesiones y módulos a partir de lo registrado. La hipótesis, el plan y lo que ocurre en la sala siguen siendo tuyos.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No envía nada al paciente</dt>
+            <dd>El email queda como borrador. Lo copias, lo editas y lo mandas tú. Telar no tiene correo saliente.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No aplica un programa a escondidas</dt>
+            <dd>Si sugiere un plan, aparece un diálogo: «¿Aplico este programa al tratamiento actual?». Sin ese clic, la ficha no cambia.</dd>
+          </div>
+          <div class="nf-faq-item">
+            <dt>No pasa por servidores de Telar</dt>
+            <dd>O queda en tu computador (Ollama) o va directo al proveedor cuya clave configuraste. Telar no aloja esos envíos. Ver <a href="privacidad.html">privacidad</a>.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="contacto" class="cta-section">
+      <div class="cta-box">
+        <div>
+          <h2>Pruébala en un caso de ejemplo</h2>
+          <p>Descarga Telar, abre el caso demo y usa «Sugerir programa». Si prefieres verlo juntos, coordinamos una demo breve.</p>
+        </div>
+        <div class="cta-actions">
+          <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg"><span class="btn-label">Descargar Telar</span></a>
+          <a href="https://wa.me/56920509726?text=Hola%2C%20quiero%20ver%20la%20IA%20de%20Telar" class="btn btn-secondary btn-lg cta-secondary" target="_blank" rel="noopener">Solicitar demo</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>Telar</strong><br>
+        Software open-core · Datos clínicos 100 % locales<br>
+        Hecho en Chile · 2026
+      </div>
+      <nav class="footer-links" aria-label="Enlaces del pie">
+        <a href="index.html">Inicio</a>
+        <a href="modules/index.html">Módulos</a>
+        <a href="neurofeedback.html">Neurofeedback</a>
+        <a href="ia.html">IA</a>
+        <a href="instituciones.html">Instituciones</a>
+        <a href="precio.html">Precio</a>
+        <a href="blog/index.html">Blog</a>
+        <a href="equipo.html">Equipo</a>
+        <a href="privacidad.html">Privacidad</a>
+        <a href="tel:+56920509726">+56 9 2050 9726</a>
+        <a href="https://wa.me/56920509726" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="js/download.js?v=20260803a"></script>
+  <script src="js/nav.js?v=20260803a"></script>
+</body>
+</html>

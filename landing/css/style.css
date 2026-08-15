@@ -252,108 +252,35 @@ li a.card {
   /* Anula el padding genérico de `section`: el hero ya tiene su propio padding interno. */
   padding: 0;
   border-bottom: 1px solid var(--border);
-  /* Deja asomar la captura de la app sobre el fold: el hero no ocupa el alto completo. */
-  min-height: clamp(420px, calc(84vh - 56px), 680px);
-  min-height: clamp(420px, calc(84dvh - 56px), 680px);
+  /* Alto contenido para que la captura real de la app asome sobre el fold: es la
+     prueba más fuerte del producto y antes quedaba entera bajo el pliegue. */
+  min-height: clamp(300px, calc(52vh - 56px), 420px);
+  min-height: clamp(300px, calc(52dvh - 56px), 420px);
 }
 
 .hero-main {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 2.5rem 3rem 3rem;
+  padding: 2.5rem 3rem;
   border-right: 1px solid var(--border);
-  overflow: hidden;
 }
 
 .hero-main__copy {
-  position: relative;
-  z-index: 1;
+  max-width: 34rem;
 }
 
-.hero-cloud {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 260px;
-  margin: 0.75rem 0 1.5rem;
-  pointer-events: none;
+.hero-lead-main {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 1.25rem 0 0;
 }
 
-.hero-cloud__card {
-  position: absolute;
-  margin: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: #fff;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-}
-
-.hero-cloud__card--asrs {
-  top: 0;
-  left: -2%;
-  width: min(58%, 300px);
-  z-index: 2;
-  transform: rotate(4deg);
-}
-
-.hero-cloud__card--formulation {
-  top: 6%;
-  right: 4%;
-  width: min(50%, 230px);
-  z-index: 3;
-  transform: rotate(5deg);
-}
-
-.hero-cloud__card--sprint {
-  right: -4%;
-  bottom: 0;
-  width: min(82%, 430px);
-  z-index: 1;
-  transform: rotate(-2.5deg);
-}
-
-.hero-cloud__card img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.hero-cloud__chip {
-  position: absolute;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg-card);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-  white-space: nowrap;
-  z-index: 3;
-}
-
-.hero-cloud__chip--asrs {
-  top: -4%;
-  left: 42%;
-  transform: rotate(7deg);
-}
-
-.hero-cloud__chip--pcl {
-  bottom: 34%;
-  left: -1%;
-  transform: rotate(5deg);
-}
-
-.hero-cloud__chip--trend {
-  bottom: 10%;
-  right: 38%;
-  transform: rotate(-4deg);
-  background: #fff6d6;
-  border-color: #e6c84a;
-  font-variant-numeric: tabular-nums;
+.hero-proof {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .hero-main h1 {
@@ -1235,7 +1162,7 @@ section {
 
 .value-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
   margin-bottom: 2.5rem;
 }
@@ -1286,6 +1213,62 @@ section {
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--text-secondary);
+}
+
+/* Transparencia — hechos verificables. Sin testimonios inventados: un testimonio
+   anónimo resta más de lo que suma en software clínico. */
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.trust-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 1.5rem;
+}
+
+.trust-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.trust-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Instituciones y programas con obligación de reportar resultados */
+.inst-section {
+  background: var(--bg-card);
+}
+
+.inst-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.steps-list {
+  max-width: 44rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.steps-list li {
+  margin-bottom: 0.85rem;
+}
+
+.steps-list strong {
+  color: var(--text);
 }
 
 .value-math {
@@ -1625,6 +1608,36 @@ section {
   color: var(--text);
 }
 
+/* Las advertencias de Gatekeeper y SmartScreen viven dentro de un <details>: son
+   útiles cuando fallan, pero puestas a la vista contradicen el argumento de
+   seguridad de datos y son lo primero que ve alguien evaluando la app. */
+.install-help {
+  margin: 1.25rem 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+
+.install-help > summary {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.install-help > summary:hover {
+  color: var(--text);
+}
+
+.install-help[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.install-help > *:not(summary) {
+  margin-inline: 1rem;
+}
+
 .install-carousel {
   margin: 1.25rem 0;
   border: 1px solid var(--border);
@@ -1948,42 +1961,6 @@ section {
     padding: 2rem 1.5rem;
   }
 
-  .hero-cloud {
-    min-height: 200px;
-    margin: 1.25rem 0 1.25rem;
-  }
-
-  .hero-cloud__card--asrs {
-    left: 0;
-    width: min(62%, 260px);
-    transform: rotate(2deg);
-  }
-
-  .hero-cloud__card--formulation {
-    right: 0;
-    width: min(58%, 210px);
-    transform: rotate(3deg);
-  }
-
-  .hero-cloud__card--sprint {
-    right: -2%;
-    width: min(92%, 360px);
-    transform: rotate(-1.5deg);
-  }
-
-  .hero-cloud__chip {
-    font-size: 0.65rem;
-    padding: 0.3rem 0.55rem;
-  }
-
-  .hero-cloud__chip--asrs {
-    left: 34%;
-  }
-
-  .hero-cloud__chip--trend {
-    right: 28%;
-  }
-
   .hero-main h1 {
     margin-bottom: 0;
   }
@@ -2006,6 +1983,7 @@ section {
 
   .hero-grid,
   .problem-grid,
+  .trust-grid,
   .nf-grid,
   .nf-muse-card,
   .nf-course-grid,
