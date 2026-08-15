@@ -70,7 +70,7 @@ function legacyDefFor(type) {
   return {
     label: handout?.title || moduleLabelI18n(type, FALLBACK_LABELS[type] || type.replace(/_/g, ' ')),
     description: intro ? intro.split('.')[0] + (intro.includes('.') ? '.' : '') : 'Módulo clínico.',
-    oncePerTreatment: ONCE_PER_TREATMENT.has(type),
+    oncePerTreatment: ONCE_PER_TREATMENT.has(type) || Boolean(handout),
   };
 }
 

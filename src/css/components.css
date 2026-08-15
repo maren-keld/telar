@@ -620,7 +620,7 @@ input[type='search']::-webkit-search-results-decoration {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   padding: 14px 18px;
   background: var(--bg-card);
   border-radius: var(--radius-md);
@@ -629,20 +629,140 @@ input[type='search']::-webkit-search-results-decoration {
   border: 1px solid transparent;
 }
 
+.patient-card__status {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+}
+
+.patient-card__status--en_pausa,
+.patient-card__status--archivado {
+  color: var(--text-muted);
+}
+
+.patient-card__status--abandonado {
+  color: var(--text-muted);
+  opacity: 0.62;
+}
+
+.status-glyph__svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  overflow: visible;
+}
+
+.patient-card__status--en_tratamiento .status-glyph__svg {
+  transform-origin: center;
+  animation: patient-status-work 1.2s ease-in-out infinite;
+  animation-delay: var(--status-stagger, 0ms);
+}
+
+.patient-card__status--en_pausa .status-glyph__svg {
+  transform-origin: center;
+  animation: patient-status-standby 2.4s ease-in-out infinite;
+  animation-delay: var(--status-stagger, 0ms);
+}
+
+.patient-card__status--completado .status-glyph__svg {
+  animation: none;
+}
+
+@keyframes patient-status-work {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  35% {
+    transform: translateY(-1.5px);
+    opacity: 1;
+  }
+}
+
+@keyframes patient-status-standby {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.88;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-card__status .status-glyph__svg {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .patient-card__body {
   flex: 1;
   min-width: 0;
 }
 
+.patient-card__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.patient-card__main strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.patient-card__tn {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--text-secondary);
+}
+
+html[data-theme='dark'] .patient-card__tn {
+  background: var(--border);
+  color: var(--text-secondary);
+}
+
 .patient-card__menu {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   border: none;
   background: none;
-  font-size: 1.25rem;
-  line-height: 1;
-  padding: 4px 8px;
+  padding: 0;
   cursor: pointer;
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-card__menu .nav-icon-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .patient-card__menu:hover {
@@ -718,6 +838,7 @@ input[type='search']::-webkit-search-results-decoration {
   color: var(--text-primary);
   cursor: pointer;
   text-align: left;
+  overflow: visible;
 }
 
 .patient-menu-status-item:hover {
@@ -734,6 +855,21 @@ input[type='search']::-webkit-search-results-decoration {
   font-size: 0.9rem;
   color: var(--accent);
   flex-shrink: 0;
+}
+
+.patient-menu-status-item .tag-glyph__svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.patient-menu-status-item[data-tag='alerta'] {
+  color: #c4473a;
+}
+
+html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
+  color: #e07070;
 }
 
 .patient-menu-new-treatment {
@@ -1028,6 +1164,99 @@ input[type='search']::-webkit-search-results-decoration {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.patient-card__meta .badge,
+.patient-card__meta .badge--info {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  font-weight: 500;
+  font-size: 0.68rem;
+}
+
+.patient-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.patient-card__tag .tag-glyph__svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.tag-glyph--pulse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+}
+
+.tag-glyph--pulse .tag-glyph__svg {
+  position: relative;
+  z-index: 1;
+}
+
+.tag-glyph__ping {
+  position: absolute;
+  inset: -3px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: tag-alert-ping 1.4s ease-out infinite;
+}
+
+.patient-menu-status-item .tag-glyph--pulse {
+  width: 16px;
+  height: 16px;
+}
+
+.patient-menu-status-item .tag-glyph--pulse .tag-glyph__svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes tag-alert-ping {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag-glyph__ping {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.patient-card__tag--alerta {
+  color: #c4473a;
+  font-weight: 600;
+}
+
+html[data-theme='dark'] .patient-card__meta .badge,
+html[data-theme='dark'] .patient-card__meta .badge--info {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+html[data-theme='dark'] .patient-card__tag--alerta {
+  color: #e07070;
 }
 
 .badge {
@@ -1105,7 +1334,7 @@ html[data-theme='dark'] .badge--info {
   font-weight: 500;
 }
 
-.form-group input,
+.form-group input:not([type='radio']):not([type='checkbox']),
 .form-group select,
 .form-group textarea {
   border: 1px solid var(--border);
@@ -1116,7 +1345,7 @@ html[data-theme='dark'] .badge--info {
   color: var(--text-primary);
 }
 
-.form-group input,
+.form-group input:not([type='radio']):not([type='checkbox']),
 .form-group select {
   height: 40px;
 }
@@ -1236,7 +1465,7 @@ html[data-theme='dark'] .toast {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 35, 71, 0.35);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1246,7 +1475,9 @@ html[data-theme='dark'] .toast {
 
 .modal {
   background: var(--bg-card);
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
   max-width: 720px;
   width: 100%;
   max-height: 90vh;
@@ -1378,6 +1609,196 @@ html[data-theme='dark'] .toast {
   margin-bottom: 20px;
 }
 
+.stat-card {
+  padding: 22px 24px 18px;
+  margin-bottom: 20px;
+}
+
+.stat-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card__kicker {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.stat-card__value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.stat-card__trend {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.stat-card__trend--up {
+  color: var(--success);
+}
+
+.stat-card__trend--down {
+  color: #c0392b;
+}
+
+.stat-card__title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.stat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-bars__plot {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  height: 132px;
+}
+
+.stat-bars__mean {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1.5px dashed var(--accent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.stat-bars__mean-legend {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.stat-bars__col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.stat-bars__axis {
+  display: flex;
+  gap: 6px;
+}
+
+.stat-bars__bar {
+  width: 70%;
+  max-width: 22px;
+  min-height: 4px;
+  border-radius: 7px 7px 3px 3px;
+  background: #f4b183;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+html[data-theme='dark'] .stat-bars__bar {
+  background: #e08a5a;
+}
+
+.stat-bars__n {
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #5a3418;
+}
+
+html[data-theme='dark'] .stat-bars__n {
+  color: #fff8f2;
+}
+
+.stat-bars__label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.stat-card--break {
+  margin-bottom: 0;
+}
+
+.stat-seg {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.stat-seg__pill {
+  min-width: 8px;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.stat-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stat-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.stat-legend li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.stat-legend__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.stat-legend__label {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.stat-legend__pct {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-legend__n {
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: right;
+}
+
 .reportes-chart-card__head {
   display: flex;
   align-items: center;
@@ -1506,7 +1927,7 @@ html[data-theme='dark'] .toast {
 }
 
 .report-grid--pies {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   margin-bottom: 20px;
 }
 
@@ -1712,9 +2133,10 @@ html[data-presentation='on'] .genogram-node__name::after {
   max-width: 720px;
   width: calc(100vw - 32px);
   background: var(--bg-card);
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-modal);
 }
 
 .subscribe-pro-modal__brand {
@@ -1883,9 +2305,10 @@ html[data-presentation='on'] .genogram-node__name::after {
 /* Workspace — menú Herramientas */
 .workspace-tools-menu {
   background: var(--bg-card);
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-lg);
   width: min(440px, 94vw);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-modal);
   overflow: hidden;
 }
 

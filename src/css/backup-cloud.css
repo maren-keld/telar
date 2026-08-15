@@ -53,6 +53,13 @@
   color: var(--accent, #2f6fed);
 }
 
+.backup-forgot-link {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  text-align: center;
+}
+
 .settings-toggle--disabled {
   opacity: 0.45;
 }

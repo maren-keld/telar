@@ -21,7 +21,7 @@ export const CORE_MODULE_DEFS = {
   motivo_consulta: {
     label: 'Motivo de consulta',
     category: 'conceptualizacion',
-    description: 'Razón principal de consulta y expectativas.',
+    description: 'Anamnesis de la primera sesión: motivo acotado, expectativas y antecedentes.',
     oncePerTreatment: true,
   },
   redes_apoyo: {
@@ -62,10 +62,15 @@ export const TREATMENT_STATUS = {
 };
 
 export const TREATMENT_TAG_DEFS = {
-  derivado: { label: 'Derivado', legacyReferral: true },
-  necesita_supervision: { label: 'Necesita supervisión', legacySupervised: true },
-  estudiar_caso: { label: 'Estudiar más el caso' },
+  derivado: { label: 'Derivado', legacyReferral: true, glyph: 'derivado' },
+  necesita_supervision: { label: 'Supervisado', legacySupervised: true, glyph: 'supervisado' },
+  estudiar_caso: { label: 'Necesita más estudio', glyph: 'masEstudio' },
+  alerta: { label: 'En alerta', auto: true, glyph: 'alerta' },
 };
+
+export function selectableTreatmentTags() {
+  return Object.entries(TREATMENT_TAG_DEFS);
+}
 
 export const PREVISION_OPTIONS = [
   'Fonasa',

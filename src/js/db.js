@@ -1,5 +1,6 @@
 import { getTreatmentTemplate } from './treatment-templates.js';
 import { isCustomModuleType, resolveModuleDef } from './custom-modules.js';
+import { clinicalAlertFromModules, VITAL_RISK_LABELS } from './clinical-alert.js';
 import { parseJsonSafe } from './utils.js';
 import { getInvoke, isTauriApp, loadSqlDatabase } from './tauri-bridge.js';
 
@@ -26,23 +27,63 @@ export async function execute(sql, params = []) {
   return db.execute(sql, params);
 }
 
+async function loadClinicalAlertIds() {
+  const placeholders = VITAL_RISK_LABELS.map(() => '?').join(', ');
+  const spaceRows = await query(
+    `SELECT treatment_id, label FROM treatment_space_checks
+     WHERE checked = 1 AND label IN (${placeholders})`,
+    VITAL_RISK_LABELS,
+  );
+  const spaceByTreatment = new Map();
+  for (const row of spaceRows) {
+    const id = Number(row.treatment_id);
+    if (!spaceByTreatment.has(id)) spaceByTreatment.set(id, []);
+    spaceByTreatment.get(id).push(row.label);
+  }
+  const mods = await query(
+    `SELECT s.treatment_id, sm.module_type, sm.data
+     FROM session_modules sm
+     JOIN sessions s ON s.id = sm.session_id
+     WHERE sm.module_type IN ('motivo_consulta', 'sprint_ecl', 'escala_fer')
+       AND sm.data IS NOT NULL AND sm.data != '' AND sm.data != '{}'`,
+  );
+  const modsByTreatment = new Map();
+  for (const row of mods) {
+    const id = Number(row.treatment_id);
+    if (!modsByTreatment.has(id)) modsByTreatment.set(id, []);
+    modsByTreatment.get(id).push(row);
+  }
+  const ids = new Set();
+  const allIds = new Set([...spaceByTreatment.keys(), ...modsByTreatment.keys()]);
+  for (const id of allIds) {
+    if (clinicalAlertFromModules(modsByTreatment.get(id) || [], spaceByTreatment.get(id) || [])) {
+      ids.add(id);
+    }
+  }
+  return ids;
+}
+
 export async function getAgendaGroups(search = '') {
   const like = `%${search.trim()}%`;
-  const rows = await query(
-    `SELECT t.id AS treatment_id, t.number AS treatment_number, t.status,
-            t.requires_referral, t.supervised, t.tags, t.created_at, t.convenio_id,
-            p.id AS patient_id, p.name,
-            c.name AS convenio_name
-     FROM treatments t
-     JOIN patients p ON p.id = t.patient_id
-     LEFT JOIN convenios c ON c.id = t.convenio_id
-     WHERE (? = '' OR p.name LIKE ? OR CAST(p.id_number AS TEXT) LIKE ? OR CAST(p.phone AS TEXT) LIKE ?)
-     ORDER BY t.status, t.created_at DESC, p.name`,
-    [search.trim(), like, like, like],
-  );
+  const [rows, alertIds] = await Promise.all([
+    query(
+      `SELECT t.id AS treatment_id, t.number AS treatment_number, t.status,
+              t.requires_referral, t.supervised, t.tags, t.created_at, t.convenio_id,
+              p.id AS patient_id, p.name,
+              c.name AS convenio_name
+       FROM treatments t
+       JOIN patients p ON p.id = t.patient_id
+       LEFT JOIN convenios c ON c.id = t.convenio_id
+       WHERE (? = '' OR p.name LIKE ? OR CAST(p.id_number AS TEXT) LIKE ? OR CAST(p.phone AS TEXT) LIKE ?)
+       ORDER BY t.status, t.created_at DESC, p.name`,
+      [search.trim(), like, like, like],
+    ),
+    loadClinicalAlertIds(),
+  ]);
   const groups = {};
   for (const row of rows) {
     row.tags = parseJsonSafe(row.tags, []);
+    row.clinical_alert = alertIds.has(Number(row.treatment_id));
     if (!groups[row.status]) groups[row.status] = [];
     groups[row.status].push(row);
   }
@@ -76,6 +117,17 @@ export async function getSessionModules(sessionId) {
   );
 }
 
+/** Todos los módulos del tratamiento en una sola consulta. */
+export async function getTreatmentModules(treatmentId) {
+  return query(
+    `SELECT sm.* FROM session_modules sm
+     JOIN sessions s ON s.id = sm.session_id
+     WHERE s.treatment_id = ?
+     ORDER BY s.number, sm.sort_order`,
+    [treatmentId],
+  );
+}
+
 export async function getModule(moduleId) {
   const [row] = await query(`SELECT * FROM session_modules WHERE id = ?`, [moduleId]);
   return row;
@@ -88,20 +140,14 @@ export function canMoveModule(module) {
   return module && !MODULE_TYPES_NO_MOVE.has(module.module_type);
 }
 
-/** Registro inicial, motivo de consulta y selector único en sesión no se pueden eliminar. */
+/** Registro inicial y motivo de consulta son parte de la estructura del caso. */
+const MODULE_TYPES_NO_DELETE = new Set(['registro_inicial', 'motivo_consulta']);
+
+/** No se puede borrar lo estructural ni dejar una sesión sin módulos. */
 export function canDeleteModule(module, sessionModules) {
-  if (module.module_type === 'registro_inicial' || module.module_type === 'motivo_consulta') {
-    return false;
-  }
-  if (module.module_type === 'selector_modulo' && sessionModules.length <= 1) {
-    return false;
-  }
-  const ordered = [...sessionModules].sort(
-    (a, b) => a.sort_order - b.sort_order || Number(a.id) - Number(b.id),
-  );
-  const firstReal = ordered.find((m) => m.module_type !== 'selector_modulo');
-  if (firstReal && String(firstReal.id) === String(module.id)) return false;
-  return true;
+  if (!module || MODULE_TYPES_NO_DELETE.has(module.module_type)) return false;
+  const others = (sessionModules || []).filter((m) => String(m.id) !== String(module.id));
+  return others.length > 0;
 }
 
 export async function moveModuleToPosition(moduleId, targetSessionId, insertIndex) {
@@ -113,10 +159,13 @@ export async function moveModuleToPosition(moduleId, targetSessionId, insertInde
   let sourceMods = (await getSessionModules(sourceSessionId)).filter(
     (m) => String(m.id) !== String(moduleId),
   );
-  let targetMods =
-    sourceSessionId === targetSessionId
-      ? [...sourceMods]
-      : await getSessionModules(targetSessionId);
+  const changesSession = String(sourceSessionId) !== String(targetSessionId);
+  if (changesSession && !sourceMods.length) {
+    throw new Error('Una sesión no puede quedar sin módulos.');
+  }
+  let targetMods = changesSession
+    ? await getSessionModules(targetSessionId)
+    : [...sourceMods];
 
   insertIndex = Math.max(0, Math.min(insertIndex, targetMods.length));
   targetMods.splice(insertIndex, 0, mod);
@@ -143,6 +192,33 @@ export async function deleteSessionModule(moduleId) {
     throw new Error('Este módulo no se puede eliminar.');
   }
   await execute(`DELETE FROM session_modules WHERE id = ?`, [moduleId]);
+}
+
+/** Reemplaza un módulo clínico por el selector. Si es el único de la sesión, lo convierte in situ. */
+export async function swapModuleToSelector(moduleId) {
+  const mod = await getModule(moduleId);
+  if (!mod) throw new Error('Módulo no encontrado');
+  if (MODULE_TYPES_NO_DELETE.has(mod.module_type) || mod.module_type === 'selector_modulo') {
+    throw new Error('Este módulo no se puede cambiar.');
+  }
+  const sessionMods = await getSessionModules(mod.session_id);
+  const others = sessionMods.filter((m) => String(m.id) !== String(moduleId));
+  const existingSel = others.find((m) => m.module_type === 'selector_modulo');
+
+  if (!others.length) {
+    await execute(
+      `UPDATE session_modules SET module_type = 'selector_modulo', data = '{}', status = 'pendiente', updated_at = datetime('now') WHERE id = ?`,
+      [moduleId],
+    );
+    return { sessionId: mod.session_id, moduleId: Number(moduleId) };
+  }
+
+  await deleteSessionModule(moduleId);
+  if (existingSel) {
+    return { sessionId: mod.session_id, moduleId: existingSel.id };
+  }
+  const id = await addModuleToSession(mod.session_id, 'selector_modulo');
+  return { sessionId: mod.session_id, moduleId: id };
 }
 
 export async function saveModuleData(moduleId, data, status = 'completado') {

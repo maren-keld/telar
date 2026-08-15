@@ -1,16 +1,8 @@
 import { NOTE_COLORS } from '../config.js';
+import { mountThinkingOrb } from '../thinking-orb.js';
 
-/* Grid loader 3×3 — onda diagonal en idle, ripple desde centro al pensar */
-const AI_GRID_SVG = `<svg class="ai-grid" viewBox="0 0 22 22" width="16" height="16" fill="none" aria-hidden="true">
-  <circle class="d d0" cx="3"  cy="3"  r="1.9"/>
-  <circle class="d d1" cx="11" cy="3"  r="1.9"/>
-  <circle class="d d2" cx="19" cy="3"  r="1.9"/>
-  <circle class="d d3" cx="3"  cy="11" r="1.9"/>
-  <circle class="d d4" cx="11" cy="11" r="1.9"/>
-  <circle class="d d5" cx="19" cy="11" r="1.9"/>
-  <circle class="d d6" cx="3"  cy="19" r="1.9"/>
-  <circle class="d d7" cx="11" cy="19" r="1.9"/>
-  <circle class="d d8" cx="19" cy="19" r="1.9"/>
+const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+  <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 import {
   addClinicalNote,
@@ -29,10 +21,20 @@ import { resolveAiConfig } from '../ai-config.js';
 import { chatCompletion } from '../ai-client.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
+import {
+  AI_QUICK_PROMPTS,
+  aiActionsHtml,
+  applyAiModule,
+  applyAiPlan,
+  buildAiSystemPrompt,
+  markAiActionApplied,
+  markupModuleRefs,
+  parseAiActions,
+} from '../ai-actions.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
 import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
-import { ICON_PALETTE } from '../icons.js';
+import { ICON_COPY, ICON_PALETTE } from '../icons.js';
 
 const PERFIL_ONLY_SELECTED_KEY = (treatmentId) => `telar.perfil.onlySelected.${treatmentId}`;
 
@@ -120,7 +122,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     <div class="space-tools" data-active-tab="${activeTab}">
       <nav class="space-tools__tabs2" role="tablist">
         ${[
-          ['notas', 'Notas'],
+          ['notas', 'Bitácora'],
           ['puntajes', 'Puntajes'],
           ['perfil', 'Perfil'],
           ['herramientas', 'Herramientas'],
@@ -138,9 +140,18 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
+        <div class="ai-dock__chips" id="ai-dock-chips">
+          ${AI_QUICK_PROMPTS.map(
+            (p) =>
+              `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" title="${escapeHtml(p.hint || p.label)}">${escapeHtml(p.label)}</button>`,
+          ).join('')}
+        </div>
         <div class="ai-dock__input-row">
           <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" rows="1"></textarea>
-          <button type="button" class="btn btn-primary" id="ai-dock-send"><span class="ai-dock-label">Consultar</span>${AI_GRID_SVG}</button>
+          <button type="button" class="ai-dock__send" id="ai-dock-send" title="Enviar" aria-label="Enviar">
+            <span class="ai-dock__arrow-wrap">${AI_SEND_ARROW}</span>
+            <span class="ai-dock__orb" hidden></span>
+          </button>
         </div>
         <p class="ai-dock__hint" id="ai-dock-hint" hidden></p>
       </aside>
@@ -164,9 +175,15 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         listEl.innerHTML = `<p class="notes-empty">Pulsa + Nota para añadir un comentario. También puedes seleccionar texto en un módulo para crear una anotación.</p>`;
         return;
       }
+      const savedScroll = listEl.scrollTop;
       listEl.innerHTML = sorted.map((n) => kindleNoteHtml(n, defaultInitials)).join('');
-      bindNoteCards(listEl, refreshList);
+      bindNoteCards(listEl, refreshList, {
+        treatmentId,
+        onApplied: toolsOpts.onTemplateApplied || null,
+        onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
+      });
       if (scrollBottom) scrollNotesToBottom();
+      else listEl.scrollTop = savedScroll;
       return;
     }
 
@@ -218,24 +235,33 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   const aiHint = container.querySelector('#ai-dock-hint');
   const aiCfg = resolveAiConfig(profile);
 
+  const aiChips = container.querySelector('#ai-dock-chips');
+
   if (!aiCfg.enabled) {
     aiInput.disabled = true;
     aiSend.disabled = true;
+    if (aiChips) aiChips.hidden = true;
     aiHint.textContent = 'Activa el asistente IA en Ajustes → Proveedor de IA.';
     aiHint.hidden = false;
   } else {
-    // Auto-grow textarea hacia arriba (la notas list encoge con 1fr)
+    // Auto-grow textarea hacia arriba (la notas list encoge con 1fr).
+    // Con box-sizing: border-box, scrollHeight no incluye bordes: sin compensarlos
+    // la caja queda corta y el texto salta en cada tecla.
+    const AI_INPUT_MAX_H = 120;
     const autoGrow = () => {
       aiInput.style.height = 'auto';
-      aiInput.style.height = Math.min(aiInput.scrollHeight, 120) + 'px';
+      aiInput.style.overflowY = 'hidden';
+      const chrome = aiInput.offsetHeight - aiInput.clientHeight;
+      const needed = aiInput.scrollHeight + chrome;
+      aiInput.style.height = `${Math.min(needed, AI_INPUT_MAX_H)}px`;
+      aiInput.style.overflowY = needed > AI_INPUT_MAX_H ? 'auto' : 'hidden';
     };
     aiInput.addEventListener('input', autoGrow);
 
     // Disabled cuando vacío (solo evalúa si no estamos en estado "pensando")
     const syncSendState = () => {
-      if (!aiSend.querySelector('.ai-grid--thinking')) {
-        aiSend.disabled = aiInput.value.trim() === '';
-      }
+      if (aiSend.dataset.busy === '1') return;
+      aiSend.disabled = aiInput.value.trim() === '';
     };
     aiInput.addEventListener('input', syncSendState);
     syncSendState();
@@ -243,6 +269,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     const resetInput = () => {
       aiInput.value = '';
       aiInput.style.height = '';
+      aiInput.style.overflowY = '';
       syncSendState();
     };
 
@@ -251,11 +278,13 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       if (!q) return;
       aiInput.disabled = true;
       aiSend.disabled = true;
-      const gridEl = aiSend.querySelector('.ai-grid');
-      aiSend.querySelector('.ai-dock-label').textContent = 'Consultando';
-      if (gridEl) gridEl.classList.add('ai-grid--thinking');
-      // Yield al navegador para que pinte la animación antes del trabajo pesado
-      await new Promise(r => requestAnimationFrame(r));
+      aiSend.dataset.busy = '1';
+      const arrowWrap = aiSend.querySelector('.ai-dock__arrow-wrap');
+      const orbHost = aiSend.querySelector('.ai-dock__orb');
+      if (arrowWrap) arrowWrap.hidden = true;
+      if (orbHost) orbHost.hidden = false;
+      const stopOrb = mountThinkingOrb(orbHost, { state: 'working', size: 20 });
+      await new Promise((r) => requestAnimationFrame(r));
       try {
         const context = await buildCaseContextText(treatmentId);
         await confirmClinicalAiSend({
@@ -264,16 +293,16 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         });
         const { text } = await chatCompletion({
           messages: [
-            {
-              role: 'system',
-              content:
-                'Eres un asistente clínico de apoyo al psicoterapeuta. Responde de forma concisa y fundamentada. Evita listas con asteriscos; usa texto corrido o numeración. Contexto del caso:\n\n' +
-                context,
-            },
+            { role: 'system', content: buildAiSystemPrompt(context, { practitioner: loadProfile() }) },
             { role: 'user', content: q },
           ],
-          maxTokens: 800,
+          maxTokens: 2000,
         });
+        if (!text.trim()) {
+          throw new Error(
+            'La IA devolvió una respuesta vacía. Con modelos locales pequeños suele ayudar reformular la pregunta o usar un modelo mayor.',
+          );
+        }
         await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'teal',
@@ -297,10 +326,14 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         });
         await refreshList({ scrollBottom: true });
       } finally {
+        stopOrb();
         aiInput.disabled = false;
-        aiSend.querySelector('.ai-dock-label').textContent = 'Consultar';
-        const gridFinal = aiSend.querySelector('.ai-grid');
-        if (gridFinal) gridFinal.classList.remove('ai-grid--thinking');
+        delete aiSend.dataset.busy;
+        if (arrowWrap) arrowWrap.hidden = false;
+        if (orbHost) {
+          orbHost.hidden = true;
+          orbHost.replaceChildren();
+        }
         syncSendState();
       }
     };
@@ -311,6 +344,17 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         e.preventDefault();
         sendAiQuestion();
       }
+    });
+
+    aiChips?.querySelectorAll('[data-quick-prompt]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const spec = AI_QUICK_PROMPTS.find((p) => p.id === chip.dataset.quickPrompt);
+        if (!spec) return;
+        aiInput.value = spec.prompt;
+        autoGrow();
+        syncSendState();
+        aiInput.focus();
+      });
     });
   }
 
@@ -609,11 +653,17 @@ function defaultsFor(tab) {
 }
 
 function renderMarkdown(text) {
-  return escapeHtml(text)
+  const html = escapeHtml(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+    // Encabezados del protocolo: dejan ver de un vistazo qué se hace en la app
+    // y qué queda para la sesión presencial o material impreso.
+    .replace(/^En Telar:/gm, '<span class="ai-scope ai-scope--in">En Telar</span>')
+    .replace(/^Fuera de Telar:/gm, '<span class="ai-scope ai-scope--out">Fuera de Telar</span>')
+    .replace(/^[-•]\s+/gm, '· ')
     .replace(/\n/g, '<br>');
+  return markupModuleRefs(html);
 }
 
 function kindleNoteHtml(note, fallbackInitials) {
@@ -631,10 +681,13 @@ function kindleNoteHtml(note, fallbackInitials) {
       `<button type="button" class="kindle-note__palette-dot${c.id === color ? ' active' : ''}" data-color="${c.id}" title="${escapeHtml(c.label)}" style="background:var(--note-${c.id})"></button>`,
   ).join('');
 
+  const ai = isAi ? parseAiActions(note.content || '') : null;
+
   const bodyContent = isAi
     ? `
         ${source ? `<p class="kindle-note__source kindle-note__source--question">${escapeHtml(source)}</p>` : ''}
-        <div class="kindle-note__ai-answer">${renderMarkdown(note.content || '')}</div>`
+        <div class="kindle-note__ai-answer">${renderMarkdown(ai.text)}</div>
+        ${aiActionsHtml(ai.actions, note.id)}`
     : `
         ${source ? `<p class="kindle-note__source">${escapeHtml(source)}</p>` : ''}
         ${showQuote ? `<blockquote class="kindle-note__quote"><span class="kindle-note__quote-mark">"</span>${escapeHtml(quote)}</blockquote>` : ''}
@@ -648,6 +701,7 @@ function kindleNoteHtml(note, fallbackInitials) {
       </div>
       <div class="kindle-note__rail">
         <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? 'Respuesta IA' : 'Autor/a de la nota'}">${escapeHtml(initials)}</span>
+        ${isAi ? `<button type="button" class="kindle-note__rail-btn kindle-note__copy" title="Copiar respuesta" aria-label="Copiar respuesta">${ICON_COPY}</button>` : ''}
         <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
         <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota" aria-haspopup="true">${ICON_PALETTE}</button>
         <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="Color de la nota">${paletteDots}</div>
@@ -656,7 +710,7 @@ function kindleNoteHtml(note, fallbackInitials) {
     </article>`;
 }
 
-function bindNoteCards(listEl, rerender) {
+function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null, onJumpToModuleType = null } = {}) {
   ensurePaletteClose();
   listEl.querySelectorAll('.kindle-note').forEach((card) => {
     const id = Number(card.dataset.id);
@@ -686,7 +740,25 @@ function bindNoteCards(listEl, rerender) {
       await updateClinicalNote(id, f);
     }, 400);
 
+    card.querySelectorAll('.ai-mod-tag').forEach((tag) => {
+      tag.addEventListener('click', () => {
+        const type = tag.dataset.moduleType;
+        if (type) void onJumpToModuleType?.(type);
+      });
+    });
+
     ta?.addEventListener('input', save);
+
+    card.querySelector('.kindle-note__copy')?.addEventListener('click', async () => {
+      const text = card.querySelector('.kindle-note__ai-answer')?.innerText?.trim();
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('Copiado como texto plano');
+      } catch {
+        toast('No se pudo copiar');
+      }
+    });
 
     card.querySelector('.note-star')?.addEventListener('click', async () => {
       const next = !card.classList.contains('kindle-note--starred');
@@ -700,6 +772,80 @@ function bindNoteCards(listEl, rerender) {
     card.querySelector('.note-delete')?.addEventListener('click', async () => {
       await deleteClinicalNote(id);
       await rerender();
+    });
+
+    card.querySelectorAll('.ai-dialog').forEach((actionEl) => {
+      const applyBtn = actionEl.querySelector('[data-ai-apply]');
+      const dismissBtn = actionEl.querySelector('[data-ai-dismiss]');
+
+      const rawContent = () => {
+        try {
+          return decodeURIComponent(card.dataset.contentEncoded || '');
+        } catch {
+          return '';
+        }
+      };
+
+      const consumeAction = async () => {
+        // Quitar el bloque del contenido: la acción ya se resolvió y no debe
+        // volver a ofrecerse al recargar el workspace.
+        const f = readFields();
+        await updateClinicalNote(id, { ...f, content: parseAiActions(rawContent()).text });
+      };
+
+      const persistApplied = async (actionIndex) => {
+        const f = readFields();
+        await updateClinicalNote(id, {
+          ...f,
+          content: markAiActionApplied(rawContent(), actionIndex),
+        });
+      };
+
+      dismissBtn?.addEventListener('click', async () => {
+        await consumeAction();
+        await rerender();
+      });
+
+      applyBtn?.addEventListener('click', async () => {
+        if (!treatmentId) return;
+        const idx = Number(actionEl.dataset.actionIndex || 0);
+        const { actions } = parseAiActions(rawContent());
+        const action = actions[idx];
+        if (!action) return;
+
+        applyBtn.disabled = true;
+        const prevLabel = applyBtn.textContent;
+        applyBtn.textContent = 'Aplicando…';
+        try {
+          if (action.type === 'plan') {
+            const res = await applyAiPlan(treatmentId, action.plan);
+            toast(
+              `Programa aplicado: ${res.sessionsCreated} sesiones nuevas · ${res.modulesAdded} módulos añadidos${
+                res.modulesSkipped ? ` · ${res.modulesSkipped} ya estaban` : ''
+              }`,
+            );
+          } else {
+            const res = await applyAiModule(treatmentId, action.module);
+            toast(
+              res.sessionNumber
+                ? `Módulo «${res.def.title}» creado y añadido a la sesión ${res.sessionNumber}`
+                : `Módulo «${res.def.title}» creado en Mis módulos`,
+            );
+          }
+          await persistApplied(idx);
+          // Primero la card: si el workspace toma el fast-path, el diálogo
+          // igual pasa a «Aplicado». Luego el centro/sidebar con sesiones nuevas.
+          await rerender();
+          if (onApplied) await onApplied();
+        } catch (err) {
+          toast(err?.message || 'No se pudo aplicar la sugerencia');
+        } finally {
+          if (applyBtn.isConnected) {
+            applyBtn.disabled = false;
+            applyBtn.textContent = prevLabel;
+          }
+        }
+      });
     });
 
     const pop = card.querySelector('.kindle-note__palette-pop');

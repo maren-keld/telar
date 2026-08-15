@@ -1,7 +1,6 @@
 import { isProUser, loadProfile, saveProfile } from '../profile.js';
-import { isTauriApp } from '../tauri-bridge.js';
 import { SETTINGS_ICONS } from '../icons.js';
-import { escapeHtml, toast } from '../utils.js';
+import { toast } from '../utils.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { applyTemplateFromTools } from './treatment-templates-modal.js';
@@ -25,7 +24,6 @@ function dispatchWorkspaceMode(mode) {
 const TOOL_ICONS = {
   export: SETTINGS_ICONS.export,
   reference: SETTINGS_ICONS.backup,
-  ai: SETTINGS_ICONS.ai,
   templates: SETTINGS_ICONS.presentation,
   supervision: SETTINGS_ICONS.supervision,
 };
@@ -69,15 +67,6 @@ function toolsItemsHtml() {
           </span>
         </button>
       </li>
-      <li>
-        <button type="button" class="workspace-tools-tab__item" data-action="ai-program">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.ai}</span>
-          <span class="workspace-tools-tab__text">
-            <strong>Crear programa con IA</strong>
-            <small>Propuesta de sesiones y módulos según motivo, notas y tests (próximamente)</small>
-          </span>
-        </button>
-      </li>
     </ul>`;
 }
 
@@ -110,16 +99,6 @@ function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresenta
 
   root.querySelector('[data-action="reference-docs"]')?.addEventListener('click', () => {
     openReferenceDocumentsModal({ treatmentId });
-  });
-
-  root.querySelector('[data-action="ai-program"]')?.addEventListener('click', () => {
-    if (!isTauriApp()) {
-      toast('Disponible en la app de escritorio');
-      return;
-    }
-    toast(
-      'Próximamente: IA local generará un programa según motivo de consulta, notas y resultados de tests.',
-    );
   });
 }
 
@@ -183,7 +162,6 @@ export function openWorkspaceToolsMenu(opts) {
         <ul class="workspace-tools-menu__list">
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><strong>Exportar programa PDF</strong><small>Resumen del tratamiento</small></span></button></li>
           <li><button type="button" class="workspace-tools-menu__item" data-action="reference-docs"><span class="workspace-tools-menu__text"><strong>Documentos de referencia</strong><small>Adjuntar guías y protocolos</small></span></button></li>
-          <li><button type="button" class="workspace-tools-menu__item" data-action="ai-program"><span class="workspace-tools-menu__text"><strong>Crear programa con IA</strong><small>Próximamente</small></span></button></li>
         </ul>
       </div>
     </div>`;

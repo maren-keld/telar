@@ -109,12 +109,19 @@ async fn open_pdf_export(
     app: tauri::AppHandle,
     filename: String,
     data: Vec<u8>,
+    destination: Option<String>,
 ) -> Result<(), String> {
-    let dir = app
-        .path()
-        .document_dir()
-        .map_err(|e| format!("No se pudo resolver carpeta Documentos: {e}"))?;
-    let exports = dir.join("Telar").join("exportaciones");
+    let dir = if destination.as_deref() == Some("desktop") {
+        app.path().desktop_dir().or_else(|_| app.path().document_dir())
+    } else {
+        app.path().document_dir()
+    }
+    .map_err(|e| format!("No se pudo resolver la carpeta de destino: {e}"))?;
+    let exports = if destination.as_deref() == Some("desktop") {
+        dir
+    } else {
+        dir.join("Telar").join("exportaciones")
+    };
     std::fs::create_dir_all(&exports)
         .map_err(|e| format!("No se pudo crear carpeta de exportaciones: {e}"))?;
     let path = exports.join(&filename);

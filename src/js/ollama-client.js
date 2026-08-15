@@ -27,12 +27,41 @@ async function listenOllamaPullProgress(onProgress) {
   return unlisten;
 }
 
+/**
+ * Ollama lista los modelos con tag (`mistral:latest`), pero el id configurado
+ * puede venir sin él (`mistral`).
+ */
+export function isModelPresent(models = [], wanted = '') {
+  const target = String(wanted).trim();
+  if (!target) return false;
+  return models.some((name) => name === target || name.startsWith(`${target}:`));
+}
+
 /** @returns {Promise<{ running: boolean, models: string[] }>} */
 export async function getOllamaStatus() {
   if (!isTauriApp()) {
     return { running: false, models: [] };
   }
   return getInvoke()('ollama_status');
+}
+
+/**
+ * Falla con un mensaje accionable si Ollama no está listo, en vez de dejar que
+ * la petición muera por timeout.
+ */
+export async function assertOllamaModelReady(model) {
+  const { running, models } = await getOllamaStatus();
+  if (!running) {
+    throw new Error(
+      'Ollama no está corriendo. Ábrelo (o pulsa «Descargar / actualizar modelo» en Ajustes → Asistente IA, que lo arranca) y vuelve a consultar.',
+    );
+  }
+  if (!isModelPresent(models, model)) {
+    const available = models.length ? ` Disponibles: ${models.join(', ')}.` : '';
+    throw new Error(
+      `El modelo «${model}» no está descargado en Ollama. Ve a Ajustes → Asistente IA → Descargar / actualizar modelo.${available}`,
+    );
+  }
 }
 
 /**

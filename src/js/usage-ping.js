@@ -17,6 +17,7 @@ const HEARTBEAT_MS = 60_000;
 
 let heartbeatTimer = null;
 let started = false;
+let pingInFlight = false;
 
 function apiBase() {
   return (SUBSCRIPTION_API_PRODUCTION || '').replace(/\/$/, '');
@@ -56,6 +57,8 @@ async function sendPing(reason) {
   const base = apiBase();
   const id = deviceId();
   if (!base || !id || optedOut()) return;
+  if (pingInFlight) return;
+  pingInFlight = true;
 
   try {
     await getInvoke()('usage_ping', {
@@ -71,8 +74,10 @@ async function sendPing(reason) {
     });
   } catch (err) {
     // Render free duerme tras 15 min: el primer ping del día puede fallar por
-    // arranque en frío. El siguiente latido lo recupera; no molestamos al usuario.
+    // arranque en frío. El POST corre en un hilo de Rust y vuelve al instante.
     console.debug('[usage-ping]', err?.message || err);
+  } finally {
+    pingInFlight = false;
   }
 }
 
@@ -97,7 +102,7 @@ export async function maybeSendUsagePing() {
   if (!isTauriApp() || started) return;
   started = true;
 
-  await sendPing('open');
+  void sendPing('open');
   startHeartbeat();
 
   document.addEventListener('visibilitychange', () => {

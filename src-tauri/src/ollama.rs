@@ -8,6 +8,23 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
 const OLLAMA_BASE: &str = "http://127.0.0.1:11434";
+const PING_TIMEOUT_SECS: u64 = 3;
+/// La descarga llega en chunks; el timeout es por lectura, no por descarga total.
+const PULL_READ_TIMEOUT_SECS: u64 = 120;
+
+fn ping_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(PING_TIMEOUT_SECS))
+        .timeout_read(Duration::from_secs(PING_TIMEOUT_SECS))
+        .build()
+}
+
+fn pull_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(PING_TIMEOUT_SECS))
+        .timeout_read(Duration::from_secs(PULL_READ_TIMEOUT_SECS))
+        .build()
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,13 +50,14 @@ struct OllamaPullProgress {
 }
 
 fn ollama_ping() -> bool {
-    ureq::get(&format!("{OLLAMA_BASE}/api/tags"))
+    ping_agent()
+        .get(&format!("{OLLAMA_BASE}/api/tags"))
         .call()
         .is_ok()
 }
 
 fn list_models() -> Vec<String> {
-    let Ok(response) = ureq::get(&format!("{OLLAMA_BASE}/api/tags")).call() else {
+    let Ok(response) = ping_agent().get(&format!("{OLLAMA_BASE}/api/tags")).call() else {
         return vec![];
     };
     let Ok(body): Result<Value, _> = response.into_json() else {
@@ -160,7 +178,8 @@ fn emit_progress(app: &AppHandle, status: &str, completed: Option<u64>, total: O
 }
 
 fn pull_model_blocking(app: &AppHandle, model: &str) -> Result<(), String> {
-    let response = ureq::post(&format!("{OLLAMA_BASE}/api/pull"))
+    let response = pull_agent()
+        .post(&format!("{OLLAMA_BASE}/api/pull"))
         .set("Content-Type", "application/json")
         .send_json(json!({ "name": model, "stream": true }))
         .map_err(|e| format!("No se pudo iniciar la descarga en Ollama: {e}"))?;
@@ -207,18 +226,23 @@ fn pull_model_blocking(app: &AppHandle, model: &str) -> Result<(), String> {
     }
 }
 
+/// Async para no bloquear el hilo principal: hace I/O de red.
 #[tauri::command]
-pub fn ollama_status() -> OllamaStatus {
-    if !ollama_ping() {
-        return OllamaStatus {
-            running: false,
-            models: vec![],
-        };
-    }
-    OllamaStatus {
-        running: true,
-        models: list_models(),
-    }
+pub async fn ollama_status() -> Result<OllamaStatus, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        if !ollama_ping() {
+            return OllamaStatus {
+                running: false,
+                models: vec![],
+            };
+        }
+        OllamaStatus {
+            running: true,
+            models: list_models(),
+        }
+    })
+    .await
+    .map_err(|e| format!("Error interno al consultar Ollama: {e}"))
 }
 
 #[tauri::command]

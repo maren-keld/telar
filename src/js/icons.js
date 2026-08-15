@@ -24,6 +24,9 @@ export const ICON_MORE_VERT = svg('<circle cx="12" cy="5" r="1.5" fill="currentC
 export const ICON_SEARCH = svg('<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>');
 export const ICON_CLOSE = svg('<path d="M18 6L6 18M6 6l12 12"/>');
 export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
+export const ICON_WAND = svg(
+  '<path d="M15 4v4M13 6h4M5 20L13 12"/><path d="M16.5 3.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5L14.5 5.5l1.5-.5z"/>',
+);
 
 /** Iconos Ajustes — misma familia que app-sidebar */
 export const ICON_SWAP = svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>');

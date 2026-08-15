@@ -68,7 +68,7 @@ function ensureToolbar() {
       moduleId: ctx.moduleId,
       authorInitials,
     });
-    toast('Anotación añadida a Notas');
+    toast('Anotación añadida a Bitácora');
     await onNoteCreated?.();
   });
 
@@ -240,19 +240,21 @@ export function mountTextHighlight(root, { treatmentId, onNoteCreated }) {
   const onDismissPointer = (e) => {
     if (!toolbarEl || toolbarEl.hidden) return;
     if (toolbarEl.contains(e.target)) return;
+    // El click/mousedown que cierra la selección vive en el textarea: si
+    // lo tratamos como “afuera”, la barra aparece un instante y se va.
+    const field = e.target.closest?.('textarea');
+    if (isMultilineField(field) && root.contains(field)) return;
     dismissToolbar(state?.anchorField);
   };
 
   root.addEventListener('mouseup', onMouseUp);
   document.addEventListener('selectionchange', onSelectionChange);
   document.addEventListener('mousedown', onDismissPointer, true);
-  document.addEventListener('click', onDismissPointer, true);
 
   return () => {
     root.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('selectionchange', onSelectionChange);
     document.removeEventListener('mousedown', onDismissPointer, true);
-    document.removeEventListener('click', onDismissPointer, true);
     toolbarEl?.remove();
     toolbarEl = null;
     state = null;

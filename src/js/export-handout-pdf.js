@@ -94,18 +94,19 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
     let correct = 0;
     quizKeys.forEach((q, qi) => {
       const v = quiz[q.key];
-      y = ensurePdfSpace(doc, y, 22);
+      y = ensurePdfSpace(doc, y, 36);
       y = pdfText(doc, `${qi + 1}. ${q.prompt}`, MARGIN, y, { size: 9, maxWidth: maxW });
+      y += 4;
       if (v == null || v === '') {
-        y = drawAnswerBox(doc, MARGIN, y, maxW, 18);
-        y += 2;
+        y = drawAnswerBox(doc, MARGIN, y, maxW, 22);
+        y += 10;
         return;
       }
       answered += 1;
       const opt = q.options.find((o) => o.v === v);
       if (opt?.correct) correct += 1;
       y = pdfText(doc, `Respuesta: ${opt?.label || v}`, MARGIN + 4, y, { size: 9, maxWidth: maxW - 4 });
-      y += 2;
+      y += 6;
     });
     if (answered > 0) {
       hasContent = true;

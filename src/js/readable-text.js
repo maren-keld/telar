@@ -1,4 +1,5 @@
 import { getModuleDef } from './config.js';
+import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
 import { formatTccHandoutReadable } from './tcc-handout-defs.js';
 import { saveModuleData } from './db.js';
 import { asrsSummary } from './asrs-scoring.js';
@@ -225,6 +226,32 @@ function formatTccActivacion(d) {
   return parts.join('\n');
 }
 
+/** Módulos personalizados (incluidos los creados por IA) para el contexto clínico. */
+function formatCustomModule(moduleType, d) {
+  const def = getCustomModuleByType(moduleType);
+  if (!def) return '';
+  const answers = d.answers || {};
+  const lines = (def.questions || [])
+    .map((q) => {
+      if (q.type === 'info') return null;
+      const a = answers[q.id];
+      if (q.type === 'task') {
+        if (!a) return null;
+        const state = a.done ? 'hecha' : 'pendiente';
+        return `${q.text}: ${state}${a.comment ? ` — ${a.comment}` : ''}`;
+      }
+      if (q.type === 'scale') {
+        return a === '' || a == null ? null : `${q.text}: ${a}/10`;
+      }
+      if (Array.isArray(a)) {
+        return a.length ? `${q.text}: ${a.join(', ')}` : null;
+      }
+      return a ? `${q.text}: ${a}` : null;
+    })
+    .filter(Boolean);
+  return lines.join('\n');
+}
+
 export function buildReadableText(moduleType, data) {
   const d = data || {};
   switch (moduleType) {
@@ -308,6 +335,7 @@ export function buildReadableText(moduleType, data) {
     case 'escala_ansiedad':
       return d.value != null && d.value !== '' ? `Ansiedad subjetiva: ${d.value}/100` : '';
     default:
+      if (isCustomModuleType(moduleType)) return formatCustomModule(moduleType, d);
       // Escalas aportadas por packs clínicos.
       return getScorer(moduleType)?.readable?.(d) || '';
   }

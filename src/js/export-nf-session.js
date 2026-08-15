@@ -154,6 +154,7 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
     await getInvoke()('open_pdf_export', {
       filename,
       data: Array.from(new Uint8Array(bytes)),
+      destination: null,
     });
     return filename;
   }

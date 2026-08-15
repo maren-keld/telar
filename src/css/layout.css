@@ -561,9 +561,8 @@
 .boot-splash__title {
   margin: 0 0 8px;
   font-size: 1.5rem;
-  font-weight: 400;
-  font-family: var(--font-display);
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .boot-splash__release {

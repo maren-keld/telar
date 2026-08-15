@@ -162,6 +162,11 @@ export function openAiSettingsModal({ onSaved } = {}) {
               value="${escapeHtml(profile.aiApiKey || '')}" />
             <p id="ai-key-hint" class="settings-ai-panel__hint">${escapeHtml(preset.keyHint)}</p>
 
+            <label class="ai-consent-notice__check">
+              <input type="checkbox" name="aiPreviewAsk" ${profile.aiPreviewSkip ? '' : 'checked'} />
+              <span>Revisar el contexto antes de cada consulta</span>
+            </label>
+
             <div class="settings-ai-panel__actions">
               <button type="button" class="btn btn-secondary btn-sm" id="ai-test-connection" ${mode !== 'api' ? 'disabled' : ''}>
                 Probar conexión
@@ -368,6 +373,7 @@ export function openAiSettingsModal({ onSaved } = {}) {
       aiApiBase: String(fd.get('aiApiBase') || presetOnSave.baseUrl || '').trim(),
       aiApiModel: String(fd.get('aiApiModel') || presetOnSave.defaultModel || '').trim(),
       aiApiKey: String(fd.get('aiApiKey') || '').trim(),
+      aiPreviewSkip: !fd.get('aiPreviewAsk'),
     };
     if (aiMode === 'api') {
       if (!patch.aiApiBase) {

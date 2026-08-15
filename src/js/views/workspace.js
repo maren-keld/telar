@@ -1,4 +1,4 @@
-import { moduleLabelFor } from '../custom-modules.js';
+import { customModuleHandoutPayload, moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
 import { bindWorkspaceModuleDnD } from '../components/workspace-dnd.js';
@@ -8,9 +8,11 @@ import {
   addSession,
   canDeleteModule,
   deleteSessionModule,
+  findModuleInTreatment,
   getSessionModules,
   getSessionsWithModules,
   getTreatment,
+  swapModuleToSelector,
 } from '../db.js';
 import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
@@ -28,6 +30,9 @@ import { isTauriApp, getInvoke } from '../tauri-bridge.js';
 /** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
 const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
 
+/** Sesiones que el usuario colapsó, por tratamiento. Sobrevive al re-render. */
+const collapsedSessionsByTreatment = new Map();
+
 /** Posición de scroll del centro a restaurar tras re-render (p. ej. borrar módulo). */
 let pendingCenterScrollRestore = null;
 
@@ -36,13 +41,15 @@ export function moduleLabel(type) {
 }
 
 async function printModulePdf(mod, patientName) {
-  const def = tccHandoutDef(mod.module_type);
-  if (!def) return;
   const data = parseJsonSafe(mod.data, {});
+  const custom = customModuleHandoutPayload(mod.module_type, data);
+  const def = tccHandoutDef(mod.module_type) || custom?.def;
+  if (!def) return;
+  const pdfData = custom?.data || data;
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  renderHandoutPdf(doc, { def, data, patientName });
+  renderHandoutPdf(doc, { def, data: pdfData, patientName });
 
   const filename = handoutPdfFilename(def, patientName);
 
@@ -51,8 +58,9 @@ async function printModulePdf(mod, patientName) {
     await getInvoke()('open_pdf_export', {
       filename,
       data: Array.from(new Uint8Array(bytes)),
+      destination: 'desktop',
     });
-    toast(`Handout guardado en Documentos/Telar/exportaciones/${filename}`);
+    toast(`Handout guardado en el Escritorio: ${filename}`);
     return;
   }
 
@@ -60,7 +68,17 @@ async function printModulePdf(mod, patientName) {
   toast(`Handout descargado: ${filename}`);
 }
 
-export async function renderWorkspace(container, { treatmentId, sessionId, moduleId, onNavigate }) {
+export async function renderWorkspace(
+  container,
+  {
+    treatmentId,
+    sessionId,
+    moduleId,
+    onNavigate,
+    forceFullRender = false,
+    expandSessionId = null,
+  },
+) {
   const treatment = await getTreatment(treatmentId);
   const sessions = await getSessionsWithModules(treatmentId);
   const activeModuleId = moduleId ? String(moduleId) : null;
@@ -84,6 +102,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
 
   if (
+    !forceFullRender &&
     await tryFastModuleNavigation(container, {
       treatmentId,
       sessionId: activeSessionId,
@@ -99,10 +118,16 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   const prevScrollRoot = container.querySelector('#workspace-center-scroll');
   const prevScrollTop = prevScrollRoot?.scrollTop ?? 0;
   const sameTreatment = prevTreatmentId === String(treatmentId);
+  snapshotSessionCollapse(container, treatmentId);
+  if (expandSessionId != null) {
+    rememberSessionCollapsed(treatmentId, expandSessionId, false);
+  }
 
   // Guardar scroll de notas antes del re-render para no perder posición.
   const savedNotesScroll = container.querySelector('#notes-list')?.scrollTop ?? 0;
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
+  const preserveCenterScroll =
+    pendingCenterScrollRestore != null || (sameTreatment && forceFullRender);
 
   container.innerHTML = `
     <div class="workspace-layout" id="workspace-layout">
@@ -114,7 +139,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
           <button type="button" class="workspace-patient-menu" id="btn-patient-menu" title="Opciones del paciente" aria-label="Opciones del paciente">${ICON_MORE_VERT}</button>
         </header>
         <div class="workspace-sidebar__scroll">
-          ${sessions.map((s) => sidebarSessionHtml(s, activeModule)).join('')}
+          ${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
           <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>
         </div>
         <footer class="workspace-sidebar__footer">
@@ -146,6 +171,10 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   const layoutEl = container.querySelector('#workspace-layout');
   const leftSidebarEl = container.querySelector('#leftsidebar');
   const rightSidebarEl = container.querySelector('#rightsidebar');
+  const centerScrollEl = container.querySelector('#workspace-center-scroll');
+  if (preserveCenterScroll && centerScrollEl) {
+    centerScrollEl.style.visibility = 'hidden';
+  }
   if (layoutEl && leftSidebarEl && rightSidebarEl) {
     initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSidebarEl });
   }
@@ -167,14 +196,13 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         });
       },
       async onSwap(modId, sessionId) {
-        await deleteSessionModule(modId);
-        const mods = await getSessionModules(sessionId);
-        let sel = mods.find((m) => m.module_type === 'selector_modulo');
-        if (!sel) {
-          const id = await addModuleToSession(sessionId, 'selector_modulo', treatmentId);
-          sel = { id };
-        }
-        onNavigate({ view: 'workspace', treatmentId, sessionId, moduleId: sel.id });
+        const next = await swapModuleToSelector(modId);
+        onNavigate({
+          view: 'workspace',
+          treatmentId,
+          sessionId: next.sessionId || sessionId,
+          moduleId: next.moduleId,
+        });
       },
       async onAddSession() {
         const id = await addSession(treatmentId);
@@ -189,25 +217,20 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         const remaining = sessions
           .flatMap((s) => s.modules)
           .filter((m) => String(m.id) !== String(deletedId));
-        if (wasActive) {
-          const next = remaining[0];
-          const sess = next
-            ? sessions.find((s) => s.modules.some((m) => m.id === next.id))
-            : null;
-          onNavigate({
-            view: 'workspace',
-            treatmentId,
-            sessionId: sess?.id,
-            moduleId: next?.id,
-          });
-        } else {
-          await renderWorkspace(container, {
-            treatmentId,
-            sessionId: activeSessionId,
-            moduleId: activeModule?.id,
-            onNavigate,
-          });
-        }
+        const all = sessions.flatMap((s) => s.modules);
+        const idx = all.findIndex((m) => String(m.id) === String(deletedId));
+        const neighbor = all[idx + 1] || all[idx - 1];
+        const next = wasActive ? neighbor || remaining[0] : activeModule;
+        const sess = next
+          ? sessions.find((s) => s.modules.some((m) => String(m.id) === String(next.id)))
+          : null;
+        await renderWorkspace(container, {
+          treatmentId,
+          sessionId: sess?.id ?? activeSessionId,
+          moduleId: next?.id,
+          onNavigate,
+          forceFullRender: true,
+        });
       },
     });
   }
@@ -226,18 +249,32 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
     pendingCenterScrollRestore = null;
     const root = container.querySelector('#workspace-center-scroll');
     const moduleIdStr = String(activeModule.id);
+    const y =
+      scrollToRestore != null
+        ? scrollToRestore
+        : sameTreatment && (prevModuleId === moduleIdStr || preserveCenterScroll)
+          ? prevScrollTop
+          : null;
 
     if (root) {
-      if (scrollToRestore != null) {
-        root.scrollTop = scrollToRestore;
-      } else if (sameTreatment && prevModuleId === moduleIdStr) {
-        root.scrollTop = prevScrollTop;
+      if (y != null) {
+        root.scrollTop = y;
+        requestAnimationFrame(() => {
+          if (!root.isConnected) return;
+          root.scrollTop = y;
+          root.style.visibility = '';
+        });
       } else {
         syncScrollToModule(container, activeModule.id);
+        root.style.visibility = '';
       }
     }
     setActiveModuleHighlight(container, activeModule.id);
     scrollSidebarToModule(container, activeModule.id);
+  } else {
+    pendingCenterScrollRestore = null;
+    const root = container.querySelector('#workspace-center-scroll');
+    if (root) root.style.visibility = '';
   }
   bindModuleScrollSpy(container);
 
@@ -255,18 +292,8 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
   });
 
   container.querySelectorAll('.module-link').forEach((link) => {
-    let didDrag = false;
-    link.addEventListener('dragstart', () => {
-      didDrag = true;
-    });
-    link.addEventListener('dragend', () => {
-      setTimeout(() => {
-        didDrag = false;
-      }, 0);
-    });
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      if (didDrag) return;
       const mid = link.dataset.moduleId;
       onNavigate({
         view: 'workspace',
@@ -297,6 +324,20 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
 
   const toolsOpts = {
     treatmentId,
+    onNavigate,
+    onJumpToModuleType: async (moduleType) => {
+      const found = await findModuleInTreatment(treatmentId, moduleType);
+      if (!found) {
+        toast('Ese módulo no está en este tratamiento');
+        return;
+      }
+      onNavigate({
+        view: 'workspace',
+        treatmentId,
+        sessionId: found.session_id,
+        moduleId: found.module_id,
+      });
+    },
     onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
       toast('PDF exportado en Documentos/Telar/exportaciones');
@@ -311,6 +352,7 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
         sessionId: activeSessionId,
         moduleId: activeModule?.id,
         onNavigate,
+        forceFullRender: true,
       });
     },
   };
@@ -319,9 +361,21 @@ export async function renderWorkspace(container, { treatmentId, sessionId, modul
     treatmentId,
     activeModuleId: activeModule?.id,
     onNavigate,
+    onMoved: async ({ sessionId: movedSessionId, moduleId: movedModuleId }) => {
+      const root = container.querySelector('#workspace-center-scroll');
+      pendingCenterScrollRestore = root?.scrollTop ?? 0;
+      await renderWorkspace(container, {
+        treatmentId,
+        sessionId: movedSessionId,
+        moduleId: movedModuleId ?? activeModule?.id,
+        onNavigate,
+        forceFullRender: true,
+        expandSessionId: movedSessionId,
+      });
+    },
   });
 
-  bindSessionCollapse(container, activeModule);
+  bindSessionCollapse(container, activeModule, treatmentId);
 
   const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, toolsOpts);
 
@@ -365,7 +419,7 @@ async function tryFastModuleNavigation(container, { treatmentId, sessionId, modu
   container.dataset.workspaceModuleId = String(moduleId);
   if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
 
-  bindSessionCollapse(container, activeModule);
+  bindSessionCollapse(container, activeModule, treatmentId);
   setActiveModuleHighlight(container, moduleId);
   syncScrollToModule(container, moduleId);
   scrollSidebarToModule(container, moduleId);
@@ -505,7 +559,9 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
     for (const mod of session.modules) {
       const deletable = canDeleteModule(mod, session.modules);
-      const handout = tccHandoutDef(mod.module_type);
+      const handout =
+        tccHandoutDef(mod.module_type) ||
+        customModuleHandoutPayload(mod.module_type, parseJsonSafe(mod.data, {}))?.def;
       const isActive = activeModule && String(mod.id) === String(activeModule.id);
       const wrap = document.createElement('article');
       wrap.className = `center-module-card${isActive ? ' center-module-card--active' : ''}`;
@@ -664,17 +720,24 @@ async function openSessionSelector(treatmentId, sessionId, onNavigate) {
   });
 }
 
-function sidebarSessionHtml(session, activeModule) {
+function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionId } = {}) {
   const modCount = session.modules.length;
   const activeInSession =
     activeModule && session.modules.some((m) => String(m.id) === String(activeModule.id));
+  const forceExpand =
+    expandSessionId != null && String(expandSessionId) === String(session.id);
   const startCollapsed =
-    modCount > SESSION_COLLAPSE_MODULE_THRESHOLD && !activeInSession;
+    !forceExpand &&
+    !activeInSession &&
+    isSessionCollapsed(treatmentId, session.id, modCount);
 
   const mods = session.modules
     .map((m) => {
       const active = activeModule && String(m.id) === String(activeModule.id);
+      // Con un solo módulo no hay nada que reordenar y moverlo dejaría la
+      // sesión vacía.
       const draggable =
+        modCount > 1 &&
         m.module_type !== 'registro_inicial' &&
         m.module_type !== 'motivo_consulta' &&
         m.module_type !== 'selector_modulo';
@@ -695,15 +758,48 @@ function sidebarSessionHtml(session, activeModule) {
     </section>`;
 }
 
-function bindSessionCollapse(container, activeModule) {
-  container.querySelectorAll('[data-session-toggle]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+function snapshotSessionCollapse(container, treatmentId) {
+  if (!container.querySelector('.session-block')) return;
+  const ids = new Set(
+    [...container.querySelectorAll('.session-block--collapsed')].map((el) =>
+      String(el.dataset.sessionId),
+    ),
+  );
+  collapsedSessionsByTreatment.set(String(treatmentId), ids);
+}
+
+function rememberSessionCollapsed(treatmentId, sessionId, collapsed) {
+  if (treatmentId == null || sessionId == null) return;
+  const key = String(treatmentId);
+  const ids = collapsedSessionsByTreatment.get(key) || new Set();
+  if (collapsed) ids.add(String(sessionId));
+  else ids.delete(String(sessionId));
+  collapsedSessionsByTreatment.set(key, ids);
+}
+
+function isSessionCollapsed(treatmentId, sessionId, modCount) {
+  const saved = collapsedSessionsByTreatment.get(String(treatmentId));
+  if (saved) return saved.has(String(sessionId));
+  return modCount > SESSION_COLLAPSE_MODULE_THRESHOLD;
+}
+
+function bindSessionCollapse(container, activeModule, treatmentId) {
+  if (container.dataset.sessionCollapseBound !== '1') {
+    container.dataset.sessionCollapseBound = '1';
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-session-toggle]');
+      if (!btn || !container.contains(btn)) return;
       const block = btn.closest('.session-block');
       if (!block) return;
       const collapsed = block.classList.toggle('session-block--collapsed');
       btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      rememberSessionCollapsed(
+        container.dataset.workspaceTreatmentId,
+        block.dataset.sessionId,
+        collapsed,
+      );
     });
-  });
+  }
 
   if (activeModule) {
     const link = container.querySelector(`.module-link[data-module-id="${activeModule.id}"]`);
@@ -711,6 +807,7 @@ function bindSessionCollapse(container, activeModule) {
     if (block?.classList.contains('session-block--collapsed')) {
       block.classList.remove('session-block--collapsed');
       block.querySelector('[data-session-toggle]')?.setAttribute('aria-expanded', 'true');
+      rememberSessionCollapsed(treatmentId, block.dataset.sessionId, false);
     }
   }
 }

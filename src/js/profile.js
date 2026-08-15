@@ -1,18 +1,23 @@
 import { AI_DEFAULTS } from './ai-config.js';
 
 const STORAGE_KEY = 'telar.practitioner';
+const DEFAULTS_MIGRATION_KEY = 'telar.defaults.dark-gender.v1';
 
 const DEFAULTS = {
   name: '',
   email: '',
   phone: '',
   address: '',
-  darkMode: false,
+  /** 'm' | 'f' | '' — género gramatical para que la IA firme emails correctamente. */
+  grammaticalGender: 'f',
+  darkMode: true,
   useTouchId: false,
   presentationMode: false,
   usagePingOptOut: false,
   locale: 'es',
   plan: 'free',
+  /** true = no mostrar la previsualización del contexto antes de cada consulta API. */
+  aiPreviewSkip: false,
   customModules: [],
   hiddenDxProblems: [],
   cloudBackupDestDir: '',
@@ -64,9 +69,25 @@ export function hideDxProblemName(name) {
 }
 
 export function initThemeFromProfile() {
+  migrateInterfaceDefaults();
   const profile = loadProfile();
   applyTheme(profile.darkMode);
   applyPresentationMode(Boolean(profile.presentationMode));
+}
+
+/** Una sola vez: el producto pasa a oscuro y género femenino si no estaban definidos. */
+export function migrateInterfaceDefaults() {
+  try {
+    if (localStorage.getItem(DEFAULTS_MIGRATION_KEY)) return;
+    localStorage.setItem(DEFAULTS_MIGRATION_KEY, '1');
+    const p = loadProfile();
+    const patch = {};
+    if (p.darkMode !== true) patch.darkMode = true;
+    if (!p.grammaticalGender) patch.grammaticalGender = 'f';
+    if (Object.keys(patch).length) saveProfile(patch);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Borra datos del profesional y módulos custom; conserva preferencias de interfaz y Touch ID. */

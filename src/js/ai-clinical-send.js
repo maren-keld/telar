@@ -16,9 +16,11 @@ export async function confirmClinicalAiSend({ contextText, purpose }) {
   }
   if (cfg.mode === 'api') {
     requireAiApiConsent(profile);
-    const ok = await openAiContextPreviewModal({ contextText, purpose });
-    if (!ok) {
-      throw new Error('Envío cancelado');
+    if (!profile.aiPreviewSkip) {
+      const ok = await openAiContextPreviewModal({ contextText, purpose });
+      if (!ok) {
+        throw new Error('Envío cancelado');
+      }
     }
   }
 

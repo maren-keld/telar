@@ -1,3 +1,8 @@
+import {
+  CUSTOM_ITEM_TYPES,
+  isValidItemType,
+  itemTypeNeedsOptions,
+} from '../custom-module-items.js';
 import { customModuleTypeId, newCustomModuleId, saveCustomModule } from '../custom-modules.js';
 
 function newQuestion(index) {
@@ -9,6 +14,18 @@ function newQuestion(index) {
   };
 }
 
+const ITEM_TYPE_OPTIONS = Object.entries(CUSTOM_ITEM_TYPES)
+  .map(([value, def]) => `<option value="${value}">${def.label}</option>`)
+  .join('');
+
+const ITEM_PLACEHOLDERS = {
+  checkbox: 'Pregunta',
+  text: 'Pregunta',
+  scale: 'Qué se puntúa de 0 a 10',
+  task: 'Ejercicio o tarea para entre sesiones',
+  info: 'Indicación para el paciente',
+};
+
 export function openCreateModuleModal({ onCreated, module: existing } = {}) {
   const isEdit = Boolean(existing?.id);
   const overlay = document.createElement('div');
@@ -16,7 +33,7 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
   overlay.innerHTML = `
     <div class="modal card create-module-modal" role="dialog" aria-labelledby="create-module-title">
       <header class="create-module-modal__head">
-        <h2 id="create-module-title">${isEdit ? 'Editar módulo' : 'Cuestionario'}</h2>
+        <h2 id="create-module-title">${isEdit ? 'Editar módulo' : 'Nuevo módulo'}</h2>
         <button type="button" class="modal-close" aria-label="Cerrar">×</button>
       </header>
       <div class="create-module-modal__body">
@@ -29,7 +46,7 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
           <input type="text" id="cm-title" class="input" placeholder="Ej. Cuestionario de sesión" required />
         </label>
         <div id="cm-questions"></div>
-        <button type="button" class="btn btn-dashed btn-block" id="cm-add-question">+ Agregar pregunta</button>
+        <button type="button" class="btn btn-dashed btn-block" id="cm-add-question">+ Agregar ítem (pregunta, ejercicio o indicación)</button>
       </div>
       <footer class="create-module-modal__foot">
         <button type="button" class="btn btn-ghost" id="cm-cancel">Cancelar</button>
@@ -52,23 +69,38 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
       <div class="cm-question__row">
         <span class="cm-question__drag" aria-hidden="true">⠿</span>
         <input type="text" class="input cm-question__text" placeholder="Pregunta ${questionCount}" data-field="text" />
-        <select class="input cm-question__type" data-field="type" title="Tipo de pregunta">
-          <option value="checkbox">Opción múltiple</option>
-          <option value="text">Texto libre</option>
+        <select class="input cm-question__type" data-field="type" title="Tipo de ítem">
+          ${ITEM_TYPE_OPTIONS}
         </select>
-        <button type="button" class="cm-question__remove" title="Eliminar pregunta" aria-label="Eliminar pregunta">×</button>
+        <button type="button" class="cm-question__remove" title="Eliminar ítem" aria-label="Eliminar ítem">×</button>
       </div>
-      <div class="cm-question__options" data-options></div>`;
+      <div class="cm-question__options" data-options></div>
+      <p class="cm-question__hint" data-hint hidden></p>`;
     questionsEl.appendChild(block);
 
     const textInput = block.querySelector('[data-field="text"]');
     const typeSel = block.querySelector('[data-field="type"]');
     const optionsWrap = block.querySelector('[data-options]');
+    const hintEl = block.querySelector('[data-hint]');
     textInput.value = q.text || '';
-    typeSel.value = q.type || 'checkbox';
+    typeSel.value = isValidItemType(q.type) ? q.type : 'checkbox';
+
+    const syncTypeUi = () => {
+      const type = typeSel.value;
+      textInput.placeholder = ITEM_PLACEHOLDERS[type] || `Pregunta ${questionCount}`;
+      if (hintEl) {
+        const hints = {
+          scale: 'El paciente responde con una escala 0–10 en la sesión.',
+          task: 'Aparece como tarea con casilla de «hecho» y espacio para comentar cómo fue.',
+          info: 'Solo texto informativo: no pide respuesta.',
+        };
+        hintEl.textContent = hints[type] || '';
+        hintEl.hidden = !hints[type];
+      }
+    };
 
     const renderOptions = (seedOptions = null) => {
-      if (typeSel.value === 'text') {
+      if (!itemTypeNeedsOptions(typeSel.value)) {
         optionsWrap.innerHTML = '';
         optionsWrap.hidden = true;
         return;
@@ -95,11 +127,15 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
       optionsWrap.querySelector('.cm-add-option')?.addEventListener('click', () => addOpt());
     };
 
-    typeSel.addEventListener('change', () => renderOptions());
+    typeSel.addEventListener('change', () => {
+      syncTypeUi();
+      renderOptions();
+    });
     block.querySelector('.cm-question__remove')?.addEventListener('click', () => {
       block.remove();
       if (!questionsEl.querySelector('.cm-question')) addQuestion();
     });
+    syncTypeUi();
     renderOptions(q.type === 'checkbox' ? q.options : null);
   };
 
@@ -134,10 +170,11 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
     const questions = [];
     overlay.querySelectorAll('.cm-question').forEach((block, i) => {
       const text = block.querySelector('[data-field="text"]')?.value?.trim();
-      const type = block.querySelector('[data-field="type"]')?.value || 'checkbox';
+      const rawType = block.querySelector('[data-field="type"]')?.value;
+      const type = isValidItemType(rawType) ? rawType : 'checkbox';
       if (!text) return;
       const q = { id: block.dataset.qid || `q${i + 1}`, text, type, options: [] };
-      if (type === 'checkbox') {
+      if (itemTypeNeedsOptions(type)) {
         block.querySelectorAll('[data-option]').forEach((inp) => {
           const v = inp.value?.trim();
           if (v) q.options.push(v);

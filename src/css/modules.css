@@ -1,9 +1,90 @@
 .module-title {
   font-size: 1.25rem;
-  font-weight: 600;
-  font-family: var(--font-display);
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   margin: 10px 0 20px;
+}
+
+.module-anamnesis-head {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.module-anamnesis-head .module-title {
+  margin: 0 0 6px;
+}
+
+.module-title-hint {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.form-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.btn.btn-ai-reorder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  min-width: 168px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+}
+
+.form-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-group-head > label {
+  margin: 0;
+}
+
+.btn-ai-reorder__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ai-reorder__label .nav-icon-svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.btn-ai-reorder__orb {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.btn-ai-reorder__label[hidden],
+.btn-ai-reorder__orb[hidden] {
+  display: none;
+}
+
+.btn-ai-reorder__orb canvas {
+  display: block;
+}
+
+.btn-ai-reorder[data-busy='1'] {
+  pointer-events: none;
 }
 
 .birth-date-row {
@@ -1771,11 +1852,45 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
 }
 
 .module-link--dragging {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .module-link--drop-before {
   box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.module-link--drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* Durante el arrastre no debe seleccionarse texto ni aparecer el cursor de texto. */
+body.is-dragging-module {
+  user-select: none;
+  cursor: grabbing;
+}
+
+body.is-dragging-module .session-block__title {
+  pointer-events: none;
+}
+
+.module-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  pointer-events: none;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-elevated);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-modal);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .session-block--drop-target .session-block__modules {
@@ -3209,6 +3324,66 @@ html[data-theme='dark'] .nf-state-card p {
   width: 100%;
 }
 
+/* Indicación: solo lectura, sin campo de respuesta */
+.custom-q--info {
+  border-left: 3px solid var(--accent);
+  padding: 8px 12px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+.custom-q__info-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+/* Escala 0–10 */
+.custom-q__scale-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.custom-q__range {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-q__scale-out {
+  flex-shrink: 0;
+  min-width: 2.5ch;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+/* Ejercicio / tarea entre sesiones */
+.custom-q--task {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.custom-q__task-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.custom-q__task-head .custom-q__label {
+  margin-bottom: 0;
+}
+
+/* Hint del editor de módulos según tipo de ítem */
+.cm-question__hint {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
 /* EAR — Escala de Autoestima de Rosenberg */
 .rsb-scores {
   align-items: flex-start;
@@ -3571,6 +3746,38 @@ html[data-theme='dark'] .tcc-warning {
 
 .tcc-section {
   margin-bottom: 16px;
+}
+
+.tcc-section__label {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tcc-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.tcc-choice__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tcc-choice__opt input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
 }
 
 .tcc-section__hint {

@@ -1,4 +1,5 @@
 import { resolveAiConfig } from './ai-config.js';
+import { assertOllamaModelReady } from './ollama-client.js';
 import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 
@@ -34,6 +35,9 @@ export async function chatCompletion({ messages, maxTokens = 512, profile } = {}
   }
   if (!isTauriApp()) {
     throw new Error('Las llamadas a IA requieren la app de escritorio Telar.');
+  }
+  if (cfg.mode === 'local') {
+    await assertOllamaModelReady(cfg.apiModel);
   }
 
   const response = await getInvoke()('ai_chat_completion', {

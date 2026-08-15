@@ -11,6 +11,7 @@ import {
   PDF_MAX_W as MAX_W,
   pdfText,
 } from './pdf-utils.js';
+import { captureScoreChartImages } from './components/workspace-scores.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
 
@@ -183,11 +184,18 @@ export async function exportTreatmentPdf(treatmentId) {
     .find((m) => m.module_type === 'motivo_consulta');
   if (motivo) {
     const md = parseJsonSafe(motivo.data, {});
-    y += 6;
-    y = ensurePdfSpace(doc, y, 20);
-    y = pdfText(doc, 'Motivo de consulta', MARGIN, y, { size: 12, style: 'bold' });
-    y += 2;
-    y = pdfText(doc, moduleSummary('motivo_consulta', md) || buildReadableText('motivo_consulta', md) || '—', MARGIN, y);
+    const blocks = [
+      ['Motivo de consulta', md.motivo],
+      ['Expectativas del tratamiento', md.expectativas],
+      ['Antecedentes relevantes', md.antecedentes],
+    ].filter(([, v]) => String(v || '').trim());
+    for (const [title, body] of blocks) {
+      y += 6;
+      y = ensurePdfSpace(doc, y, 20);
+      y = pdfText(doc, title, MARGIN, y, { size: 12, style: 'bold' });
+      y += 2;
+      y = pdfText(doc, String(body).trim(), MARGIN, y);
+    }
   }
 
   const dxEntries = [];
@@ -217,9 +225,30 @@ export async function exportTreatmentPdf(treatmentId) {
   if (psychBlock) {
     y += 8;
     y = ensurePdfSpace(doc, y, 24);
-    y = pdfText(doc, 'Resumen psicométrico (TDAH / trauma)', MARGIN, y, { size: 12, style: 'bold' });
+    y = pdfText(doc, 'Resumen psicométrico', MARGIN, y, { size: 12, style: 'bold' });
     y += 2;
     y = pdfText(doc, psychBlock, MARGIN, y, { size: 9 });
+  }
+
+  let chartImages = [];
+  try {
+    chartImages = await captureScoreChartImages(sessions);
+  } catch {
+    chartImages = [];
+  }
+  if (chartImages.length) {
+    y += 8;
+    y = ensurePdfSpace(doc, y, 28);
+    y = pdfText(doc, 'Evolución de puntajes', MARGIN, y, { size: 12, style: 'bold' });
+    y += 2;
+    const imgH = 58;
+    for (const img of chartImages) {
+      y = ensurePdfSpace(doc, y, imgH + 14);
+      y = pdfText(doc, img.title, MARGIN, y, { size: 10, style: 'bold', maxWidth: MAX_W });
+      y += 2;
+      doc.addImage(img.dataUrl, 'PNG', MARGIN, y, MAX_W, imgH);
+      y += imgH + 8;
+    }
   }
 
   y += 8;
@@ -271,6 +300,7 @@ export async function exportTreatmentPdf(treatmentId) {
     await getInvoke()('open_pdf_export', {
       filename,
       data: Array.from(new Uint8Array(bytes)),
+      destination: null,
     });
     return filename;
   }

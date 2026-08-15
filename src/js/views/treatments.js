@@ -2,46 +2,77 @@ import { TREATMENT_STATUS, TREATMENT_TAG_DEFS } from '../config.js';
 import { openAgendaCardMenu } from '../components/agenda-menu.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { createTreatment, getAgendaGroups, upsertPatient } from '../db.js';
+import { STATUS_GLYPH_INNER, TAG_GLYPHS } from '../glyphs.js';
+import { ICON_MORE_VERT } from '../icons.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { toast } from '../utils.js';
 import { escapeHtml } from '../utils.js';
 
-function tagBadges(row) {
-  const tags = row.tags || [];
-  return tags
-    .map((t) => {
-      const def = TREATMENT_TAG_DEFS[t];
-      return def ? `<span class="badge badge--tag">${escapeHtml(def.label)}</span>` : '';
-    })
-    .join('');
+function tagChip(tagKey) {
+  const def = TREATMENT_TAG_DEFS[tagKey];
+  if (!def) return '';
+  const glyph = TAG_GLYPHS[def.glyph] || '';
+  const icon =
+    tagKey === 'alerta'
+      ? `<span class="tag-glyph tag-glyph--pulse">${glyph}<span class="tag-glyph__ping" aria-hidden="true"></span></span>`
+      : glyph;
+  return `<span class="patient-card__tag patient-card__tag--${escapeHtml(tagKey)}">${icon}<span>${escapeHtml(def.label)}</span></span>`;
 }
 
-function patientCard(row) {
-  const badges = [
-    `<span class="badge">Tratamiento ${row.treatment_number}</span>`,
-    row.convenio_name ? `<span class="badge badge--info">${escapeHtml(row.convenio_name)}</span>` : '',
-    tagBadges(row),
-  ].join('');
+function tagBadges(row) {
+  const tags = row.tags || [];
+  const parts = [];
+  const showAlerta = row.clinical_alert || tags.includes('alerta');
+  if (showAlerta) parts.push(tagChip('alerta'));
+  for (const t of tags) {
+    if (t === 'alerta') continue;
+    const def = TREATMENT_TAG_DEFS[t];
+    if (def) parts.push(tagChip(t));
+  }
+  return parts.join('');
+}
+
+function statusGlyph(statusKey, index) {
+  const meta = TREATMENT_STATUS[statusKey] || { label: statusKey };
+  const inner = STATUS_GLYPH_INNER[statusKey] || STATUS_GLYPH_INNER.en_tratamiento;
+  const delay = `${Number(index) * 80}ms`;
+  return `<span class="patient-card__status patient-card__status--${escapeHtml(statusKey)}" role="img" aria-label="${escapeHtml(meta.label)}" style="--status-stagger:${delay}">${inner}</span>`;
+}
+
+function patientCard(row, statusKey, index = 0) {
+  const n = Number(row.treatment_number);
+  const tn =
+    n > 1
+      ? `<span class="patient-card__tn" title="Tratamiento ${n}">T${n}</span>`
+      : '';
+  const quiet = [row.convenio_name ? `<span class="badge badge--info">${escapeHtml(row.convenio_name)}</span>` : '', tagBadges(row)]
+    .join('')
+    .trim();
+  const meta = quiet ? `<div class="patient-card__meta">${quiet}</div>` : '';
   return `
-    <div class="patient-card" data-treatment-id="${row.treatment_id}">
+    <div class="patient-card" data-treatment-id="${row.treatment_id}" data-status="${escapeHtml(statusKey)}">
+      ${statusGlyph(statusKey, index)}
       <div class="patient-card__body">
-        <strong data-sensitive>${escapeHtml(row.name)}</strong>
-        <div class="patient-card__meta">${badges}</div>
+        <div class="patient-card__main">
+          <strong data-sensitive>${escapeHtml(row.name)}</strong>
+          ${tn}
+        </div>
+        ${meta}
       </div>
-      <button type="button" class="patient-card__menu" data-menu aria-label="Opciones del tratamiento" title="Opciones del tratamiento">⋯</button>
+      <button type="button" class="patient-card__menu" data-menu aria-label="Opciones del tratamiento" title="Opciones del tratamiento">${ICON_MORE_VERT}</button>
     </div>`;
 }
 
-function section(statusKey, rows, collapsed = false) {
+export function treatmentSectionHtml(statusKey, rows, collapsed = false) {
   const meta = TREATMENT_STATUS[statusKey] || { label: statusKey };
-  const body = collapsed
-    ? ''
-    : rows.map(patientCard).join('') || '<p class="text-muted reportes-empty">Sin pacientes en esta sección.</p>';
+  const body =
+    rows.map((row, i) => patientCard(row, statusKey, i)).join('') ||
+    '<p class="text-muted reportes-empty">Sin pacientes en esta sección.</p>';
   return `
     <section class="section-accordion" data-status="${statusKey}">
-      <div class="section-accordion__head" data-toggle-section>
-        <span>${collapsed ? '▸' : '▾'}</span>
+      <div class="section-accordion__head" data-toggle-section role="button" aria-expanded="${collapsed ? 'false' : 'true'}">
+        <span class="section-accordion__chev" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
         <h2>${meta.label}</h2>
         <span class="section-accordion__count">${rows.length}</span>
       </div>
@@ -49,14 +80,14 @@ function section(statusKey, rows, collapsed = false) {
     </section>`;
 }
 
-export async function renderTreatments(container, { search = '', onNavigate }) {
+export async function renderTreatments(container, { search = '', onNavigate, expandStatus = null }) {
   const groups = await getAgendaGroups(search);
   const order = ['en_tratamiento', 'en_pausa', 'completado', 'abandonado', 'archivado'];
   const totalPatients = order.reduce((n, k) => n + (groups[k] || []).length, 0);
   const sectionsHtml = totalPatients
     ? order
         .filter((k) => (groups[k] || []).length > 0)
-        .map((k) => section(k, groups[k] || [], k === 'archivado'))
+        .map((k) => treatmentSectionHtml(k, groups[k] || [], k === 'archivado' && expandStatus !== 'archivado'))
         .join('')
     : `<div class="agenda-empty card">
         <p class="agenda-empty__title">Sin pacientes añadidos aún</p>
@@ -79,8 +110,13 @@ export async function renderTreatments(container, { search = '', onNavigate }) {
       </div>
     </div>`;
 
-  const rerender = () =>
-    onNavigate({ view: 'treatments', search: container.querySelector('#agenda-search')?.value || '' });
+  const currentSearch = () => container.querySelector('#agenda-search')?.value || '';
+  const rerender = (detail = {}) =>
+    renderTreatments(container, {
+      search: currentSearch(),
+      onNavigate,
+      expandStatus: detail.status || null,
+    });
 
   container.querySelector('#agenda-search')?.addEventListener('input', (e) => {
     onNavigate({ view: 'treatments', search: e.target.value });
@@ -103,17 +139,19 @@ export async function renderTreatments(container, { search = '', onNavigate }) {
         row = list.find((r) => r.treatment_id === treatmentId);
         if (row) break;
       }
-      if (row) void openAgendaCardMenu(btn, row, { onUpdated: rerender });
+      if (row) void openAgendaCardMenu(btn, row, { onUpdated: (detail) => void rerender(detail), onNavigate });
     });
   });
 
   container.querySelectorAll('[data-toggle-section]').forEach((head) => {
     head.addEventListener('click', () => {
       const body = head.parentElement.querySelector('.section-accordion__body');
+      const chev = head.querySelector('.section-accordion__chev');
       const hidden = body.hasAttribute('hidden');
       if (hidden) body.removeAttribute('hidden');
       else body.setAttribute('hidden', '');
-      head.querySelector('span').textContent = hidden ? '▾' : '▸';
+      head.setAttribute('aria-expanded', hidden ? 'true' : 'false');
+      if (chev) chev.textContent = hidden ? '▾' : '▸';
     });
   });
 

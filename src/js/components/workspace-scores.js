@@ -600,3 +600,273 @@ function paintSubjective(root, id, sessions, moduleType, field) {
   });
   paintSimpleLine(root, id, series, 100, '#2f6fed');
 }
+
+const PDF_CHART_W = 800;
+const PDF_CHART_H = 280;
+
+function whiteBgPlugin() {
+  return {
+    id: 'pdfWhiteBg',
+    beforeDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    },
+  };
+}
+
+function pdfBaseOptions(yMax, { yTitle } = {}) {
+  return {
+    animation: false,
+    responsive: false,
+    maintainAspectRatio: false,
+    devicePixelRatio: 2,
+    layout: { padding: { top: 8, right: 12, bottom: 4, left: 4 } },
+    scales: {
+      x: {
+        ticks: { color: '#5a6b85', font: { size: 11 } },
+        grid: { display: false },
+      },
+      y: {
+        min: 0,
+        max: yMax,
+        title: yTitle ? { display: true, text: yTitle, color: '#5a6b85' } : undefined,
+        ticks: { color: '#5a6b85', font: { size: 11 }, precision: 0 },
+        grid: { color: 'rgba(15, 35, 71, 0.08)' },
+      },
+    },
+    plugins: { legend: { display: false } },
+  };
+}
+
+function paintPdfSimpleLine(canvas, series, yMax, color) {
+  if (!canvas || !series.length) return;
+  // eslint-disable-next-line no-new
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: series.map((p) => p.label),
+      datasets: [
+        {
+          data: series.map((p) => p.value),
+          borderColor: color,
+          backgroundColor: `${color}22`,
+          fill: true,
+          tension: 0.25,
+          pointRadius: 4,
+          pointBackgroundColor: color,
+        },
+      ],
+    },
+    options: pdfBaseOptions(yMax),
+    plugins: [whiteBgPlugin()],
+  });
+}
+
+function paintPdfDass(canvas, series, bands) {
+  if (!canvas || !series.length) return;
+  const yMax = chartYMax(bands);
+  const bg = bands.map((b, i) => {
+    const from = i === 0 ? 0 : bands[i - 1].max + 0.01;
+    const to = b.max;
+    const colors = {
+      'dass-sev--normal': 'rgba(212, 237, 218, 0.55)',
+      'dass-sev--mild': 'rgba(232, 245, 233, 0.45)',
+      'dass-sev--moderate': 'rgba(255, 243, 205, 0.5)',
+      'dass-sev--severe': 'rgba(253, 226, 216, 0.5)',
+      'dass-sev--extreme': 'rgba(248, 215, 218, 0.5)',
+    };
+    return { from, to, color: colors[b.cls] || 'transparent' };
+  });
+  // eslint-disable-next-line no-new
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: series.map((p) => p.label),
+      datasets: [
+        {
+          label: 'Puntaje',
+          data: series.map((p) => p.value),
+          borderColor: '#2f6fed',
+          backgroundColor: 'rgba(47, 111, 237, 0.12)',
+          fill: true,
+          tension: 0.25,
+          pointRadius: 4,
+        },
+      ],
+    },
+    options: pdfBaseOptions(yMax, { yTitle: 'Puntaje' }),
+    plugins: [
+      whiteBgPlugin(),
+      {
+        id: 'severityBands',
+        beforeDraw(chart) {
+          const { ctx, chartArea, scales } = chart;
+          if (!chartArea) return;
+          const yScale = scales.y;
+          bg.forEach((zone) => {
+            const yTop = yScale.getPixelForValue(zone.to);
+            const yBot = yScale.getPixelForValue(zone.from);
+            ctx.save();
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yBot - yTop);
+            ctx.restore();
+          });
+        },
+      },
+    ],
+  });
+}
+
+function collectPdfChartJobs(sessions) {
+  const types = new Set();
+  for (const s of sessions) {
+    for (const m of s.modules || []) types.add(m.module_type);
+  }
+  const jobs = [];
+
+  if (types.has('dass21')) {
+    [
+      { title: 'DASS-21 — Estrés', bands: DASS_STRESS_BANDS, idx: STRESS_IDX },
+      { title: 'DASS-21 — Depresión', bands: DASS_DEP_BANDS, idx: DEP_IDX },
+      { title: 'DASS-21 — Ansiedad', bands: DASS_ANX_BANDS, idx: ANX_IDX },
+    ].forEach((dim) => {
+      const series = buildDassSeries(sessions, dim.idx);
+      if (!series.length) return;
+      jobs.push({ title: dim.title, paint: (c) => paintPdfDass(c, series, dim.bands) });
+    });
+  }
+
+  if (types.has('eed')) {
+    [
+      { key: 'adapt', title: 'EED — Adaptativas', color: '#2e7d32' },
+      { key: 'inter', title: 'EED — Intermedias', color: '#856404' },
+      { key: 'mal', title: 'EED — Desadaptativas', color: '#c0392b' },
+    ].forEach((dim) => {
+      const series = buildEedSeries(sessions, dim.key);
+      if (!series.length) return;
+      jobs.push({ title: dim.title, paint: (c) => paintPdfSimpleLine(c, series, 5, dim.color) });
+    });
+  }
+
+  for (const psychType of psychometricChartTypes()) {
+    if (!types.has(psychType)) continue;
+    const series = psychometricSeries(sessions, psychType);
+    if (!series.length) continue;
+    const meta = psychometricChartMeta(psychType);
+    jobs.push({
+      title: meta.title,
+      paint: (c) => paintPdfSimpleLine(c, series, meta.yMax, meta.color),
+    });
+  }
+
+  if (types.has('rosenberg')) {
+    const series = buildRosenbergSeries(sessions);
+    if (series.length) {
+      jobs.push({
+        title: 'Escala de Autoestima de Rosenberg (EAR)',
+        paint: (c) => paintPdfSimpleLine(c, series, 40, '#2f6fed'),
+      });
+    }
+  }
+
+  if (types.has('qols')) {
+    const series = buildQolsSeries(sessions);
+    if (series.length) {
+      jobs.push({
+        title: 'Escala de calidad de vida (QOLS)',
+        paint: (c) => paintPdfSimpleLine(c, series, 112, '#2f6fed'),
+      });
+    }
+  }
+
+  if (types.has('escala_fer')) {
+    [
+      { key: 'fortalezas', title: 'EFR — Fortalezas', color: '#2e7d32' },
+      { key: 'riesgos', title: 'EFR — Riesgos', color: '#c0392b' },
+    ].forEach((dim) => {
+      const series = buildFerSeries(sessions, dim.key);
+      if (!series.length) return;
+      jobs.push({
+        title: dim.title,
+        paint: (c) => paintPdfSimpleLine(c, series, 24, dim.color),
+      });
+    });
+  }
+
+  if (types.has('escala_animo')) {
+    const series = [];
+    sessions.forEach((s) => {
+      const mod = s.modules.find((m) => m.module_type === 'escala_animo');
+      if (!mod) return;
+      const data = parseJsonSafe(mod.data, {});
+      const v = data.mood_score;
+      if (v === null || v === undefined || v === '') return;
+      series.push({ label: `S${s.number}`, value: Number(v) });
+    });
+    if (series.length) {
+      jobs.push({
+        title: 'Escala subjetiva de ánimo',
+        paint: (c) => paintPdfSimpleLine(c, series, 100, '#2f6fed'),
+      });
+    }
+  }
+
+  if (types.has('escala_ansiedad')) {
+    const series = [];
+    sessions.forEach((s) => {
+      const mod = s.modules.find((m) => m.module_type === 'escala_ansiedad');
+      if (!mod) return;
+      const data = parseJsonSafe(mod.data, {});
+      const v = data.anxiety_score;
+      if (v === null || v === undefined || v === '') return;
+      series.push({ label: `S${s.number}`, value: Number(v) });
+    });
+    if (series.length) {
+      jobs.push({
+        title: 'Escala subjetiva de ansiedad',
+        paint: (c) => paintPdfSimpleLine(c, series, 100, '#2f6fed'),
+      });
+    }
+  }
+
+  return jobs;
+}
+
+/**
+ * Captura las mismas curvas de Puntajes (Chart.js) como PNG para el PDF del programa.
+ * Omite neurofeedback en vivo.
+ */
+export async function captureScoreChartImages(sessions) {
+  if (!window.Chart || typeof document === 'undefined') return [];
+  const jobs = collectPdfChartJobs(sessions);
+  if (!jobs.length) return [];
+
+  const host = document.createElement('div');
+  host.setAttribute('aria-hidden', 'true');
+  host.style.cssText = `position:fixed;left:-12000px;top:0;width:${PDF_CHART_W}px;height:${PDF_CHART_H}px;background:#fff;pointer-events:none;`;
+  document.body.appendChild(host);
+
+  const images = [];
+  try {
+    for (const job of jobs) {
+      host.replaceChildren();
+      const canvas = document.createElement('canvas');
+      canvas.width = PDF_CHART_W;
+      canvas.height = PDF_CHART_H;
+      canvas.style.width = `${PDF_CHART_W}px`;
+      canvas.style.height = `${PDF_CHART_H}px`;
+      host.appendChild(canvas);
+      job.paint(canvas);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      images.push({ title: job.title, dataUrl: canvas.toDataURL('image/png') });
+      Chart.getChart(canvas)?.destroy();
+    }
+  } finally {
+    host.remove();
+  }
+  return images;
+}

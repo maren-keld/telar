@@ -12,6 +12,7 @@ import {
   fetchCloudBackupState,
   handleCloudBackupManage,
   handleCloudBackupToggleChange,
+  handleForgotBackupKey,
   isCloudBackupEnabled,
 } from '../cloud-backup.js';
 import { FREE_ACTIVE_PATIENT_LIMIT, getActivePatientUsage } from '../plan-limits.js';
@@ -47,6 +48,8 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'checkUpdate',
   'aiAssistant',
   'resetSubscription',
+  'grammaticalGender',
+  'encrypted',
 ]);
 
 function openLanguagePicker(onPick) {
@@ -80,10 +83,60 @@ function openLanguagePicker(onPick) {
   });
 }
 
-function row({ icon, title, subtitle, action = 'chevron', toggleOn = false, dataField, danger = false }) {
+function genderLabel(value) {
+  if (value === 'm') return t('settings.genderM');
+  if (value === 'f') return t('settings.genderF');
+  return t('settings.genderUnset');
+}
+
+function openGenderPicker(onPick) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-backdrop" data-close>
+      <div class="modal-card" role="dialog" aria-labelledby="gender-title">
+        <h2 id="gender-title" class="modal-card__title">${escapeHtml(t('settings.gender'))}</h2>
+        <p class="confirm-modal__message">${escapeHtml(t('settings.genderSub'))}</p>
+        <div class="settings-lang-options">
+          <button type="button" class="btn btn-secondary btn-block" data-gender="m">${escapeHtml(t('settings.genderM'))}</button>
+          <button type="button" class="btn btn-secondary btn-block" data-gender="f">${escapeHtml(t('settings.genderF'))}</button>
+          <button type="button" class="btn btn-secondary btn-block" data-gender="">${escapeHtml(t('settings.genderUnset'))}</button>
+        </div>
+        <div class="modal-card__actions">
+          <button type="button" class="btn btn-ghost" data-cancel>${escapeHtml(t('settings.cancel', 'Cancelar'))}</button>
+        </div>
+      </div>
+    </div>`;
+
+  const close = () => {
+    root.innerHTML = '';
+  };
+  root.querySelector('[data-cancel]')?.addEventListener('click', close);
+  root.querySelector('[data-close]')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) close();
+  });
+  root.querySelectorAll('[data-gender]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      onPick(btn.dataset.gender || '');
+      close();
+    });
+  });
+}
+
+function row({
+  icon,
+  title,
+  subtitle,
+  action = 'chevron',
+  toggleOn = false,
+  toggleLocked = false,
+  dataField,
+  danger = false,
+}) {
+  const lockedClass = toggleLocked ? ' settings-toggle--locked' : '';
+  const lockedAttr = toggleLocked ? ' disabled' : '';
   const control =
     action === 'toggle'
-      ? `<label class="settings-toggle"><input type="checkbox" data-toggle="${dataField}" ${toggleOn ? 'checked' : ''} /><span class="settings-toggle__track"></span></label>`
+      ? `<label class="settings-toggle${lockedClass}"><input type="checkbox" data-toggle="${dataField}" ${toggleOn ? 'checked' : ''}${lockedAttr} /><span class="settings-toggle__track"></span></label>`
       : `<span class="settings-row__chevron">›</span>`;
 
   const tag = action === 'toggle' ? 'div' : 'button';
@@ -191,6 +244,12 @@ export async function renderSettings(container, { onNavigate }) {
         <h1 class="settings-page__title">${escapeHtml(t('settings.title'))}</h1>
         <div class="settings-card">
           ${row({ icon: SETTINGS_ICONS.name, title: t('settings.name'), subtitle: profile.name || '—', dataField: 'name' })}
+          ${row({
+            icon: SETTINGS_ICONS.name,
+            title: t('settings.gender'),
+            subtitle: genderLabel(profile.grammaticalGender),
+            dataField: 'grammaticalGender',
+          })}
           ${row({ icon: SETTINGS_ICONS.email, title: t('settings.email'), subtitle: profile.email || '—', dataField: 'email' })}
           ${row({ icon: SETTINGS_ICONS.phone, title: t('settings.phone'), subtitle: profile.phone || '—', dataField: 'phone' })}
           ${row({ icon: SETTINGS_ICONS.address, title: t('settings.address'), subtitle: profile.address || '—', dataField: 'address' })}
@@ -264,6 +323,15 @@ export async function renderSettings(container, { onNavigate }) {
         </div>
         <div class="settings-card">
           ${row({
+            icon: SETTINGS_ICONS.lock,
+            title: t('settings.encrypted'),
+            subtitle: t('settings.encryptedSub'),
+            dataField: 'encrypted',
+            action: 'toggle',
+            toggleOn: true,
+            toggleLocked: true,
+          })}
+          ${row({
             icon: SETTINGS_ICONS.usagePing,
             title: t('settings.usagePing', 'Contador anónimo de uso'),
             subtitle: profile.usagePingOptOut
@@ -280,6 +348,11 @@ export async function renderSettings(container, { onNavigate }) {
               <span class="settings-row__sub settings-row__sub--wrap">${escapeHtml(cloudBackupState.subtitle)}</span>
               <span class="settings-cloud-backup-meta">
                 <button type="button" class="settings-inline-link" data-cloud-backup-info>${escapeHtml(t('settings.cloudBackupHowItWorks'))}</button>
+                ${
+                  isProUser() && isTauriApp()
+                    ? `<button type="button" class="settings-inline-link" data-cloud-backup-forgot>${escapeHtml(t('settings.cloudBackupForgotKey'))}</button>`
+                    : ''
+                }
                 ${
                   cloudBackupShowManage
                     ? `<button type="button" class="settings-inline-link settings-inline-link--manage" data-cloud-backup-manage>${escapeHtml(t('settings.cloudBackupManage'))}</button>`
@@ -380,6 +453,14 @@ export async function renderSettings(container, { onNavigate }) {
       setLocale(code);
       toast(t('toast.langChanged'));
       renderSettings(container, { onNavigate });
+    });
+  });
+
+  container.querySelector('[data-field="grammaticalGender"]')?.addEventListener('click', () => {
+    openGenderPicker((value) => {
+      saveProfile({ grammaticalGender: value });
+      renderSettings(container, { onNavigate });
+      toast(t('toast.saved'));
     });
   });
 
@@ -534,6 +615,14 @@ export async function renderSettings(container, { onNavigate }) {
   });
 
   bindCloudBackupInfoLink(container);
+
+  container.querySelector('[data-cloud-backup-forgot]')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await handleForgotBackupKey({
+      onChanged: () => renderSettings(container, { onNavigate }),
+    });
+  });
 
   container.querySelector('[data-toggle="backupCloud"]')?.addEventListener('change', async (e) => {
     const input = e.target;

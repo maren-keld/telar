@@ -1,6 +1,17 @@
+use std::time::Duration;
+
 use serde_json::Value;
 
 const PRODUCTION_API_BASE: &str = "https://telar-api-aim8.onrender.com";
+const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
+
+fn agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(CONNECT_TIMEOUT)
+        .timeout(HTTP_TIMEOUT)
+        .build()
+}
 
 fn validated_api_base(api_base: &str) -> Result<String, String> {
     let base = api_base.trim().trim_end_matches('/');
@@ -60,7 +71,8 @@ pub fn subscription_checkout(
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/subscriptions/checkout");
-    let result = ureq::post(&url)
+    let result = agent()
+        .post(&url)
         .set("Content-Type", "application/json")
         .send_json(serde_json::json!({
             "email": email,
@@ -73,23 +85,21 @@ pub fn subscription_checkout(
 pub fn subscription_health(api_base: String) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/health");
-    let result = ureq::get(&url).call();
+    let result = agent().get(&url).call();
     handle_response(result, &base, "API de suscripciones no disponible")
 }
 
 #[tauri::command]
 pub fn subscription_status(
     email: String,
-    access_token: String,
     api_base: String,
+    preapproval_id: Option<String>,
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/subscriptions/status");
-    let result = ureq::post(&url)
-        .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({
-            "email": email,
-            "access_token": access_token
-        }));
-    handle_response(result, &base, "No se pudo consultar la suscripción")
+    let mut req = agent().get(&url).query("email", &email);
+    if let Some(id) = preapproval_id.as_deref().filter(|s| !s.is_empty()) {
+        req = req.query("preapproval_id", id);
+    }
+    handle_response(req.call(), &base, "No se pudo consultar la suscripción")
 }

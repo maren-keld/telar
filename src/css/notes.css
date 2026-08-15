@@ -300,6 +300,218 @@
   outline: none;
 }
 
+/* Ámbito de la intervención: dentro de Telar vs trabajo analógico */
+.ai-scope {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin: 6px 0 2px;
+}
+
+.ai-scope--in {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.ai-scope--out {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  color: var(--text-secondary);
+}
+
+.ai-mod-tag {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 2px;
+  padding: 1px 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.ai-mod-tag:hover {
+  filter: brightness(0.96);
+}
+
+/* Diálogo tipo Cursor: la IA pregunta qué hacer con el plan */
+.ai-dialog {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  white-space: normal;
+}
+
+.ai-dialog__ask {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.ai-dialog__summary {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.ai-dialog__foot {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.ai-dialog__applied {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--success, #5f8f76);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.ai-dialog__applied svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Card accionable dentro de una respuesta de IA */
+.ai-action {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  white-space: normal;
+}
+
+.ai-action__question {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+
+.ai-action__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0 4px;
+}
+
+.ai-action__desc,
+.ai-action__meta,
+.ai-action__warn {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin: 0 0 6px;
+}
+
+.ai-action__warn {
+  color: var(--warning, #b8860b);
+}
+
+.ai-action__sessions {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ai-action__session {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ai-action__session-num {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.ai-action__session-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-action__session-label {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+
+.ai-action__session-mods {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.ai-action__items {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-action__item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 0.73rem;
+  color: var(--text-primary);
+}
+
+.ai-action__item-type {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.ai-action__item--more {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.ai-action__foot {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .kindle-note--teal .kindle-note__body { background: color-mix(in srgb, var(--note-teal) 35%, var(--bg-card)); }
 .kindle-note--yellow .kindle-note__body { background: color-mix(in srgb, var(--note-yellow) 40%, var(--bg-card)); }
 .kindle-note--lavender .kindle-note__body { background: color-mix(in srgb, var(--note-lavender) 40%, var(--bg-card)); }
@@ -337,6 +549,17 @@
   justify-content: center;
   line-height: 1;
   cursor: default;
+}
+
+.kindle-note--ia .kindle-note__copy {
+  opacity: 1;
+  pointer-events: auto;
+  color: var(--text-secondary);
+}
+
+.kindle-note--ia .kindle-note__copy:hover {
+  color: var(--text-primary);
+  background: var(--accent-soft);
 }
 
 .kindle-note:hover .kindle-note__rail-btn,
@@ -420,9 +643,9 @@
   gap: 8px;
   padding: 10px 14px 12px;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(15, 35, 71, 0.18);
+  box-shadow: var(--shadow-modal);
 }
 
 .highlight-toolbar[hidden] {
@@ -524,10 +747,38 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   min-height: 36px;
   max-height: 120px;
   line-height: 1.45;
-  /* Altura calculada por JS (auto-grow) */
+  /* Altura calculada por JS (auto-grow). Sin transition: animar la altura
+     mientras JS la remide en cada tecla produce saltos y parpadeo. */
   height: 36px;
   box-sizing: border-box;
-  transition: height 0.1s ease;
+  overflow-y: hidden;
+}
+
+/* Prompts sugeridos sobre el input */
+.ai-dock__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ai-dock__chip {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ai-dock__chip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 .ai-dock__input-row .btn {
@@ -535,6 +786,49 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   padding-left: 12px;
   padding-right: 12px;
   align-self: flex-end;
+}
+
+.ai-dock__send {
+  flex-shrink: 0;
+  align-self: flex-end;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: var(--bg-card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ai-dock__send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ai-dock__send[data-busy='1'] {
+  opacity: 1;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.ai-dock__arrow-wrap,
+.ai-dock__orb {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.ai-dock__orb[hidden],
+.ai-dock__arrow-wrap[hidden] {
+  display: none;
+}
+
+.ai-dock__orb canvas {
+  display: block;
 }
 
 .ai-dock__response {

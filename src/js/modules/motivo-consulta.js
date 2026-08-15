@@ -1,19 +1,99 @@
+import { confirmClinicalAiSend } from '../ai-clinical-send.js';
+import { chatCompletion } from '../ai-client.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { bindAutoSave } from '../autobind.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
-import { escapeHtml, parseJsonSafe } from '../utils.js';
+import { ICON_WAND } from '../icons.js';
+import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+
+const URGENCIA_HINT = {
+  baja: 'Malestar que no limita de forma grave el funcionamiento; puede esperar a la siguiente sesión habitual.',
+  media: 'Interferencia clara en el día a día o riesgo emocional relevante, sin emergencia inmediata.',
+  alta: 'Riesgo de daño (ideas de muerte, descompensación, violencia) o necesidad de intervenir en esta sesión / derivar.',
+};
+
+function reorderButtonHtml() {
+  return `
+    <button type="button" class="btn btn-secondary btn-sm btn-ai-reorder" data-reorder-anamnesis>
+      <span class="btn-ai-reorder__label">
+        ${ICON_WAND}
+        <span class="btn-ai-reorder__text">Reorganizar con IA</span>
+      </span>
+      <span class="btn-ai-reorder__orb" hidden></span>
+    </button>`;
+}
+
+export function stripAiFences(text) {
+  return String(text || '')
+    .replace(/^```[\w]*\s*/u, '')
+    .replace(/\s*```$/u, '')
+    .replace(/^["«]|["»]$/g, '')
+    .trim();
+}
+
+export function parseAnamnesisJson(raw) {
+  const cleaned = stripAiFences(raw);
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const obj = JSON.parse(cleaned.slice(start, end + 1));
+    const motivo = String(obj.motivo || '').trim();
+    const expectativas = String(obj.expectativas || '').trim();
+    const antecedentes = String(obj.antecedentes || '').trim();
+    if (!motivo && !expectativas && !antecedentes) return null;
+    return { motivo, expectativas, antecedentes };
+  } catch {
+    return null;
+  }
+}
+
+export async function reorganizeAnamnesis({ motivo, expectativas, antecedentes }) {
+  const system = `Eres un editor clínico. Redistribuyes texto ya escrito por el terapeuta entre tres campos de anamnesis, sin diagnosticar ni inventar.
+
+Campos:
+- motivo: tercera persona, breve (2–5 frases). Solo el motivo de consulta presentable: qué trae a la persona y el malestar principal. Nada de historia larga ni expectativas.
+- expectativas: tercera persona. Qué espera del tratamiento.
+- antecedentes: primera persona (voz del paciente). Historia, contexto y hechos relevantes que no son el motivo acotado.
+
+Reglas:
+- No agregues hechos, hipótesis ni vocabulario que no esté en el texto.
+- No quites información: muévela al campo que le corresponde.
+- Puedes corregir ortografía leve.
+- Devuelve SOLO un JSON con las claves motivo, expectativas y antecedentes. Sin markdown.`;
+
+  const { text } = await chatCompletion({
+    maxTokens: 1200,
+    messages: [
+      { role: 'system', content: system },
+      {
+        role: 'user',
+        content: `Motivo actual:\n${motivo || '—'}\n\nExpectativas actuales:\n${expectativas || '—'}\n\nAntecedentes actuales:\n${antecedentes || '—'}`,
+      },
+    ],
+  });
+  const parsed = parseAnamnesisJson(text);
+  if (!parsed) throw new Error('La IA no devolvió los tres campos.');
+  return parsed;
+}
 
 export async function renderMotivoConsulta(host, moduleRow) {
   const data = parseJsonSafe(moduleRow.data);
+  const urgencia = data.urgencia === 'alta' || data.urgencia === 'baja' ? data.urgencia : 'media';
 
   host.innerHTML = `
     <div class="card">
-      <h2 class="module-title">Motivo de consulta</h2>
+      <div class="form-group-head module-anamnesis-head">
+        <div>
+          <h2 class="module-title">Motivo de consulta</h2>
+          <p class="module-title-hint">Anamnesis de la primera sesión: el motivo queda acotado para presentar el caso; antecedentes y expectativas se separan abajo.</p>
+        </div>
+        ${reorderButtonHtml()}
+      </div>
       <form id="form-motivo">
         <div class="form-group" style="margin-bottom:16px">
-          <label>Motivo principal</label>
-          <textarea name="motivo" id="motivo-text" rows="4" placeholder="Describa el motivo de consulta...">${escapeHtml(data.motivo || '')}</textarea>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-reorder-motivo" style="margin-top:10px" title="Próximamente con IA local">Reordenar texto con IA</button>
+          <label for="motivo-text">Motivo principal</label>
+          <textarea name="motivo" id="motivo-text" rows="4" placeholder="Qué trae a la persona, en breve…">${escapeHtml(data.motivo || '')}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Expectativas del tratamiento</label>
@@ -24,25 +104,93 @@ export async function renderMotivoConsulta(host, moduleRow) {
           <textarea name="antecedentes" rows="3">${escapeHtml(data.antecedentes || '')}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
-          <label>Urgencia / prioridad</label>
-          <select name="urgencia">
-            <option value="baja" ${data.urgencia === 'baja' ? 'selected' : ''}>Baja</option>
-            <option value="media" ${data.urgencia === 'media' ? 'selected' : ''}>Media</option>
-            <option value="alta" ${data.urgencia === 'alta' ? 'selected' : ''}>Alta</option>
+          <label for="motivo-urgencia">Urgencia / prioridad</label>
+          <select name="urgencia" id="motivo-urgencia">
+            <option value="baja" ${urgencia === 'baja' ? 'selected' : ''}>Baja</option>
+            <option value="media" ${urgencia === 'media' ? 'selected' : ''}>Media</option>
+            <option value="alta" ${urgencia === 'alta' ? 'selected' : ''}>Alta</option>
           </select>
+          <p class="form-hint" id="motivo-urgencia-hint">${escapeHtml(URGENCIA_HINT[urgencia])}</p>
         </div>
       </form>
     </div>`;
 
+  const form = host.querySelector('#form-motivo');
+  const urgenciaHint = host.querySelector('#motivo-urgencia-hint');
+  const urgenciaSelect = form.querySelector('[name="urgencia"]');
+
+  urgenciaSelect?.addEventListener('change', () => {
+    const v = urgenciaSelect.value;
+    if (urgenciaHint) urgenciaHint.textContent = URGENCIA_HINT[v] || URGENCIA_HINT.media;
+  });
+
   const persist = async () => {
-    const fd = new FormData(host.querySelector('#form-motivo'));
+    const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
     await syncModuleReadableText(moduleRow, payload, 'completado');
   };
 
-  bindAutoSave(host.querySelector('#form-motivo'), persist, workspaceAutoSaveStatus());
+  bindAutoSave(form, persist, workspaceAutoSaveStatus());
 
-  host.querySelector('#btn-reorder-motivo')?.addEventListener('click', () => {
-    /* Reservado para IA local — sin servicio aún */
+  form.closest('.card')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-reorder-anamnesis]');
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const motivo = String(form.querySelector('[name="motivo"]')?.value || '').trim();
+    const expectativas = String(form.querySelector('[name="expectativas"]')?.value || '').trim();
+    const antecedentes = String(form.querySelector('[name="antecedentes"]')?.value || '').trim();
+    if (!motivo && !expectativas && !antecedentes) {
+      toast('Escribe algo en motivo, expectativas o antecedentes antes de reorganizar.');
+      form.querySelector('[name="motivo"]')?.focus();
+      return;
+    }
+
+    const textEl = btn.querySelector('.btn-ai-reorder__text');
+    const orbHost = btn.querySelector('.btn-ai-reorder__orb');
+    let stopOrb = () => {};
+
+    try {
+      await confirmClinicalAiSend({
+        contextText: [motivo, expectativas, antecedentes].filter(Boolean).join('\n\n'),
+        purpose: 'Reorganizar motivo, expectativas y antecedentes',
+      });
+
+      btn.disabled = true;
+      btn.dataset.busy = '1';
+      if (textEl) textEl.textContent = 'Reorganizando…';
+      if (orbHost) orbHost.hidden = false;
+      try {
+        const { mountThinkingOrb } = await import('../thinking-orb.js');
+        stopOrb = mountThinkingOrb(orbHost, { state: 'working', size: 20 });
+      } catch {
+        stopOrb = () => {};
+      }
+
+      toast('Reorganizando con IA…');
+      const next = await reorganizeAnamnesis({ motivo, expectativas, antecedentes });
+      const setVal = (name, value) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (el) el.value = value;
+      };
+      setVal('motivo', next.motivo);
+      setVal('expectativas', next.expectativas);
+      setVal('antecedentes', next.antecedentes);
+      await persist();
+      toast('Anamnesis reorganizada');
+    } catch (err) {
+      const msg = err?.message || 'No se pudo reorganizar el texto.';
+      if (!/cancelado/i.test(msg)) toast(msg);
+    } finally {
+      stopOrb();
+      btn.dataset.busy = '';
+      btn.disabled = false;
+      if (textEl) textEl.textContent = 'Reorganizar con IA';
+      if (orbHost) {
+        orbHost.hidden = true;
+        orbHost.replaceChildren();
+      }
+    }
   });
 }

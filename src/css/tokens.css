@@ -1,12 +1,10 @@
 /*
  * IDENTIDAD VISUAL TELAR
  *
- * Tipografía display: Fraunces (variable, Google Fonts)
- *   Elegida sobre Playfair Display y DM Serif Display porque su eje WONK
- *   le da una personalidad artesanal que resuena con "telar" (loom): cálida,
- *   hecha a mano, seria pero con alma latinoamericana. Perfecta para contextos
- *   clínicos de trauma, TDAH y neurofeedback — nada de frío corporativo.
- *   La calidez visual la aportan las imágenes y las ilustraciones, no el color.
+ * Tipografía única: Inter para todo (cuerpo y títulos).
+ *   La jerarquía se construye con tamaño, peso y color — no con una segunda
+ *   familia. Un solo tipo mantiene la interfaz sobria y predecible, que es lo
+ *   que se necesita en contexto clínico.
  *
  * Color acento: #0f2347 (negro-azulado profundo, monocromático)
  *   Sin colores de marca llamativos — solo negros, grises y blancos.
@@ -42,8 +40,13 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
   --shadow-card: 0 2px 12px rgba(15, 35, 71, 0.06);
+  /* Elevación de popups: en dark el color no basta, hace falta sombra + filo. */
+  --overlay: rgba(15, 35, 71, 0.35);
+  --shadow-modal: 0 24px 60px rgba(15, 35, 71, 0.22);
+  --border-elevated: var(--border);
   --font: "Inter", system-ui, -apple-system, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  /* Se mantiene el token para no tocar cada regla; ya no es una serif. */
+  --font-display: var(--font);
   --sidebar-w: 88px;
   --sidebar-w-wide: 260px;
 }
@@ -63,6 +66,9 @@ html[data-theme="dark"] {
   --accent-dark: #e8eef8;
   --border: #2a3850;
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.35);
+  --overlay: rgba(3, 6, 14, 0.66);
+  --shadow-modal: 0 28px 70px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
+  --border-elevated: #3a4a68;
   --note-teal: #3d8a82;
   --note-yellow: #b89a3a;
   --note-lavender: #7a6aa8;
@@ -85,9 +91,10 @@ body {
   overflow-x: hidden;
 }
 
-/* Tipografía editorial en títulos — Fraunces */
 h1, h2, h3 {
-  font-family: var(--font-display);
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 button,

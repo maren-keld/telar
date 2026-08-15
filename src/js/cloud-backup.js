@@ -245,6 +245,32 @@ export async function fetchCloudBackupState() {
   };
 }
 
+async function startFreshBackupIdentity({ warnLostFiles = true } = {}) {
+  if (warnLostFiles) {
+    const ok = await openConfirmModal({
+      title: t('settings.cloudBackupForgotTitle'),
+      message: t('settings.cloudBackupForgotMessage'),
+      confirmLabel: t('settings.cloudBackupForgotConfirm'),
+      cancelLabel: t('settings.cancel'),
+      danger: true,
+    });
+    if (!ok) return false;
+  }
+
+  try {
+    const recoveryKey = await getInvoke()('cloud_backup_setup_identity');
+    const acknowledged = await openBackupRecoveryKeyModal({ recoveryKey });
+    if (!acknowledged) {
+      toast(t('settings.cloudBackupNeedKeyConfirm'));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    toast(err?.message || String(err));
+    return false;
+  }
+}
+
 export async function activateCloudBackup() {
   const invoke = getInvoke();
   const { destDir: existingDest } = getCloudBackupConfig();
@@ -258,28 +284,23 @@ export async function activateCloudBackup() {
 
   if (!hasIdentity) {
     if (existingDest) {
-      const recoveryKey = await promptRecoveryKey();
-      if (!recoveryKey) return false;
-      try {
-        await invoke('cloud_backup_import_identity', { recoveryKey });
-      } catch (err) {
-        toast(err?.message || String(err));
+      const result = await promptRecoveryKey({ allowForgot: true });
+      if (result?.forgot) {
+        const ok = await startFreshBackupIdentity({ warnLostFiles: true });
+        if (!ok) return false;
+      } else if (result?.key) {
+        try {
+          await invoke('cloud_backup_import_identity', { recoveryKey: result.key });
+        } catch (err) {
+          toast(err?.message || String(err));
+          return false;
+        }
+      } else {
         return false;
       }
     } else {
-      let recoveryKey = null;
-      try {
-        recoveryKey = await invoke('cloud_backup_setup_identity');
-      } catch (err) {
-        toast(err?.message || String(err));
-        return false;
-      }
-
-      const acknowledged = await openBackupRecoveryKeyModal({ recoveryKey });
-      if (!acknowledged) {
-        toast(t('settings.cloudBackupNeedKeyConfirm'));
-        return false;
-      }
+      const ok = await startFreshBackupIdentity({ warnLostFiles: false });
+      if (!ok) return false;
     }
   }
 
@@ -408,9 +429,9 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
       return false;
     }
     const recoveryKey = await promptRecoveryKey();
-    if (!recoveryKey) return false;
+    if (!recoveryKey?.key) return false;
     try {
-      preview = await invoke('cloud_backup_preview', { backupPath, recoveryKey });
+      preview = await invoke('cloud_backup_preview', { backupPath, recoveryKey: recoveryKey.key });
     } catch (err2) {
       toast(err2?.message || String(err2));
       return false;
@@ -449,11 +470,11 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
           const msg = err?.message || String(err);
           if (/recuperación|recovery|incorrecta/i.test(msg)) {
             const recoveryKey = await promptRecoveryKey();
-            if (!recoveryKey) {
+            if (!recoveryKey?.key) {
               resolve(false);
               return;
             }
-            await invoke('cloud_backup_restore', { backupPath, pin, recoveryKey });
+            await invoke('cloud_backup_restore', { backupPath, pin, recoveryKey: recoveryKey.key });
             toast(t('settings.cloudBackupRestoreOk'));
             resolve(true);
             return;
@@ -467,7 +488,10 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
   });
 }
 
-function promptRecoveryKey() {
+/**
+ * @returns {Promise<{ key: string } | { forgot: true } | null>}
+ */
+function promptRecoveryKey({ allowForgot = false } = {}) {
   return new Promise((resolve) => {
     const root = document.getElementById('modal-root');
     root.innerHTML = `
@@ -480,6 +504,11 @@ function promptRecoveryKey() {
             <button type="button" class="btn btn-secondary" data-cancel>${t('settings.cancel')}</button>
             <button type="button" class="btn btn-primary" data-confirm>${t('settings.cloudBackupContinue')}</button>
           </div>
+          ${
+            allowForgot
+              ? `<button type="button" class="settings-inline-link backup-forgot-link" data-forgot>${t('settings.cloudBackupForgotKey')}</button>`
+              : ''
+          }
         </div>
       </div>`;
     const close = (val) => {
@@ -487,13 +516,31 @@ function promptRecoveryKey() {
       resolve(val);
     };
     root.querySelector('[data-cancel]')?.addEventListener('click', () => close(null));
+    root.querySelector('[data-forgot]')?.addEventListener('click', () => close({ forgot: true }));
     root.querySelector('[data-confirm]')?.addEventListener('click', () => {
       const val = root.querySelector('#recovery-key-input')?.value?.trim();
       if (!val) return;
-      close(val);
+      close({ key: val });
     });
     root.querySelector('#recovery-key-input')?.focus();
   });
+}
+
+/** Regenera la identidad de respaldo cuando se perdió la clave y activa copias nuevas. */
+export async function handleForgotBackupKey({ onChanged } = {}) {
+  if (!isProUser()) {
+    openSubscribeProModal({ onSubscribed: onChanged });
+    return false;
+  }
+  if (!isTauriApp()) {
+    toast(t('settings.cloudBackupDesktopOnly'));
+    return false;
+  }
+  const ok = await startFreshBackupIdentity({ warnLostFiles: true });
+  if (!ok) return false;
+  const activated = await activateCloudBackup();
+  if (activated) onChanged?.();
+  return activated;
 }
 
 export async function openCloudBackupActionsModal(state, { onChanged } = {}) {
@@ -510,6 +557,7 @@ export async function openCloudBackupActionsModal(state, { onChanged } = {}) {
           <button type="button" class="btn btn-primary btn-block" data-backup-now>${t('settings.cloudBackupNow')}</button>
           <button type="button" class="btn btn-secondary btn-block" data-restore>${t('settings.cloudBackupRestoreFromFile')}</button>
           <button type="button" class="btn btn-ghost btn-block" data-change-folder>${t('settings.cloudBackupChangeFolder')}</button>
+          <button type="button" class="btn btn-ghost btn-block" data-forgot>${t('settings.cloudBackupForgotKey')}</button>
           <button type="button" class="btn btn-ghost btn-block" data-info>${t('settings.cloudBackupHowItWorks')}</button>
         </div>
       </div>
@@ -545,6 +593,11 @@ export async function openCloudBackupActionsModal(state, { onChanged } = {}) {
     toast(t('settings.cloudBackupFolderUpdated'));
     close();
     onChanged?.();
+  });
+
+  root.querySelector('[data-forgot]')?.addEventListener('click', async () => {
+    close();
+    await handleForgotBackupKey({ onChanged });
   });
 }
 

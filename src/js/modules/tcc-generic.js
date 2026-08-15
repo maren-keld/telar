@@ -22,21 +22,21 @@ function sectionFieldHtml(s, data) {
   const id = `tcc-${s.key}`;
   if (s.type === 'radio') {
     return `
-      <fieldset class="form-group tcc-section">
-        <legend class="tcc-section__label">${escapeHtml(s.title)}</legend>
+      <div class="tcc-section tcc-section--choice">
+        <p class="tcc-section__label">${escapeHtml(s.title)}</p>
         ${s.hint ? `<p class="tcc-section__hint">${escapeHtml(s.hint)}</p>` : ''}
-        <div class="tcc-quiz__opts" role="radiogroup">
+        <div class="tcc-choice" role="radiogroup" aria-label="${escapeHtml(s.title)}">
           ${(s.options || [])
             .map(
               (o) => `
-            <label class="tcc-quiz__opt">
+            <label class="tcc-choice__opt">
               <input type="radio" name="${s.key}" value="${o.v}" ${val === o.v ? 'checked' : ''} />
               <span>${escapeHtml(o.label)}</span>
             </label>`,
             )
             .join('')}
         </div>
-      </fieldset>`;
+      </div>`;
   }
   if (s.type === 'number') {
     return `

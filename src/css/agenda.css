@@ -239,18 +239,18 @@
 }
 
 .agenda-detail-modal {
-  border: none;
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-md);
   padding: 0;
   max-width: 420px;
   width: calc(100vw - 48px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-modal);
   background: var(--bg-card);
   color: var(--text-primary);
 }
 
 .agenda-detail-modal::backdrop {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
 }
 
 .agenda-detail-modal__body {
@@ -454,15 +454,15 @@ html[data-theme='dark'] .badge--warning {
 
 /* Modal agendar */
 .agenda-modal {
-  border: none;
+  border: 1px solid var(--border-elevated);
   border-radius: var(--radius-md);
   padding: 0;
   max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-modal);
 }
 
 .agenda-modal::backdrop {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
 }
 
 .agenda-modal__body {

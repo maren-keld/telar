@@ -21,7 +21,14 @@ import { psychometricSeries, psychometricChartMeta, psychometricTypes } from './
 import { buildReadableText } from './readable-text.js';
 import { caseCode } from './case-code.js';
 import { loadProfile } from './profile.js';
-import { dxItemTexts, ensurePdfSpace, PDF_MARGIN as MARGIN, PDF_MAX_W as MAX_W, pdfText } from './pdf-utils.js';
+import {
+  drawSeriesChart,
+  dxItemTexts,
+  ensurePdfSpace,
+  PDF_MARGIN as MARGIN,
+  PDF_MAX_W as MAX_W,
+  pdfText,
+} from './pdf-utils.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
 
@@ -184,55 +191,6 @@ export function buildCasePresentationData({ treatment, sessions, notes = [], pro
       generatedAt: new Date().toISOString(),
     },
   };
-}
-
-/** Gráfico de línea compacto para una escala. Dibuja marco, ejes y serie. */
-function drawSeriesChart(doc, x, y, w, h, serie) {
-  const { points, yMax, color } = serie;
-  const rgb = hexToRgb(color);
-
-  doc.setDrawColor(220, 222, 228);
-  doc.setLineWidth(0.2);
-  doc.rect(x, y, w, h);
-
-  // Referencia horizontal a media escala.
-  doc.setDrawColor(238, 240, 244);
-  doc.line(x, y + h / 2, x + w, y + h / 2);
-
-  const max = Math.max(yMax || 0, ...points.map((p) => p.value), 1);
-  const toXY = (p, i) => {
-    const px = points.length === 1 ? x + w / 2 : x + (i * w) / (points.length - 1);
-    const py = y + h - (p.value / max) * h;
-    return [px, py];
-  };
-
-  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
-  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-  doc.setLineWidth(0.6);
-  for (let i = 1; i < points.length; i++) {
-    const [x1, y1] = toXY(points[i - 1], i - 1);
-    const [x2, y2] = toXY(points[i], i);
-    doc.line(x1, y1, x2, y2);
-  }
-  points.forEach((p, i) => {
-    const [px, py] = toXY(p, i);
-    doc.circle(px, py, 0.7, 'F');
-  });
-
-  // Etiquetas de primera y última sesión.
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(130, 134, 142);
-  doc.text(String(points[0].label), x, y + h + 3);
-  if (points.length > 1) {
-    doc.text(String(points[points.length - 1].label), x + w - 6, y + h + 3);
-  }
-  doc.setTextColor(0, 0, 0);
-}
-
-function hexToRgb(hex) {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || '#2f6fed'));
-  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [47, 111, 237];
 }
 
 function section(doc, y, title) {
@@ -402,6 +360,7 @@ export async function exportCasePresentationPdf(treatmentId) {
     await getInvoke()('open_pdf_export', {
       filename,
       data: Array.from(new Uint8Array(bytes)),
+      destination: null,
     });
     return filename;
   }

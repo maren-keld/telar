@@ -98,9 +98,11 @@ function isLocalApiBase(base) {
   return /127\.0\.0\.1:5001|localhost:5001/.test(String(base));
 }
 
-/** Tauri: fetch desde webview (CSP); Rust/ureq fallaba DNS en algunos Mac. */
+/** Tauri: en dev del navegador usamos fetch. En la .app, comandos Rust:
+ *  el fetch del WKWebView muestra el cursor de espera (rueda arcoíris) si la red cuelga. */
 function shouldUseFetchForBase(_base) {
-  return true;
+  if (isLocalDevFrontend()) return true;
+  return !isTauriApp();
 }
 
 async function fetchWithTimeout(url, init = {}, ms = 4000) {
@@ -247,7 +249,12 @@ export async function fetchProStatus(email) {
   }
 
   const accessToken = subscriptionAccessToken();
-  return getInvoke()('subscription_status', { email, accessToken, apiBase: base });
+  return getInvoke()('subscription_status', {
+    email,
+    accessToken,
+    apiBase: base,
+    preapprovalId: preapprovalId || null,
+  });
 }
 
 /** Activa Pro en local sin pasarela (requiere SUBSCRIPTION_DEV_BYPASS=1 en server/.env). */
