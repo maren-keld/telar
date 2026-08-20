@@ -116,6 +116,22 @@ y no una tabla de visitas.
 El dashboard vive en `landing/stats.html?secret=TU_WEBHOOK_SECRET` (página con
 `noindex`).
 
+### CRM del panel (`/panel`)
+
+La pestaña **Hoy** es un CRM chico para el outreach: grupos de WhatsApp (por
+crear o ya activos), personas interesadas, un registro de alcances, y un
+objetivo diario deliberadamente pequeño — tres mensajes personales, una cosa
+útil publicada, y una demo corta si alguien responde. Los días no cumplidos
+quedan marcados en el calendario (zona horaria de Chile).
+
+| Endpoint | Uso |
+|----------|-----|
+| `GET /api/admin/crm` | Estado: objetivo, historial, grupos, personas, alcances. Sesión de `/panel`. |
+| `PATCH /api/admin/crm/today` | Marca el objetivo del día (`messages`, `posted`, `demo` / `demo_na`). |
+| `POST/PATCH/DELETE /api/admin/crm/groups` | Grupos de WhatsApp. |
+| `POST/PATCH/DELETE /api/admin/crm/people` | Personas interesadas. |
+| `POST/DELETE /api/admin/crm/reaches` | Registro de alcances. |
+
 > **Requisito de despliegue:** `ALLOWED_ORIGINS` debe incluir `https://telarapp.cl`
 > para que `stats.html` pueda leer `/api/admin/funnel`. Ya viene en el valor por
 > defecto; si lo defines a mano en Render, no lo omitas.

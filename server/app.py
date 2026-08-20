@@ -318,6 +318,9 @@ def _create_schema():
                 PRIMARY KEY (device_id, day)
             )"""
         )
+        from crm import ensure_schema
+
+        ensure_schema(conn, autoincrement)
 
 
 def mp_sdk():
@@ -1103,13 +1106,17 @@ code { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5d6ff; }
 .row.muted .bar i { background:#30363d; }
 .note { color:#6e7681; font-size:12px; margin:10px 0 0; }
 .err { color:#f85149; }
-form { max-width:320px; margin:14vh auto; padding:0 20px; }
-input { width:100%; padding:11px 13px; border-radius:8px; border:1px solid #30363d;
+body > form { max-width:320px; margin:14vh auto; padding:0 20px; }
+body > form input { width:100%; padding:11px 13px; border-radius:8px; border:1px solid #30363d;
   background:#0d1117; color:#e6edf3; font-size:15px; margin:14px 0; }
-button { width:100%; padding:11px; border-radius:8px; border:0; background:#238636;
+body > form button { width:100%; padding:11px; border-radius:8px; border:0; background:#238636;
   color:#fff; font-size:15px; font-weight:500; cursor:pointer; }
-button:hover { background:#2ea043; }
+body > form button:hover { background:#2ea043; }
 """
+
+from crm import CRM_CSS, CRM_MARKUP, CRM_SCRIPT, register_routes
+
+PANEL_CSS = PANEL_CSS + CRM_CSS
 
 
 def panel_login_page(error: str = "") -> str:
@@ -1134,8 +1141,16 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
 <div class="wrap">
   <div class="top">
     <div><h1>Telar · panel</h1><p class="sub" id="stamp">Cargando…</p></div>
-    <p class="sub">Se actualiza solo cada 20 s</p>
+    <div>
+      <nav class="tabs" id="tabs">
+        <button type="button" data-tab="hoy" aria-pressed="true">Hoy</button>
+        <button type="button" data-tab="uso">Uso</button>
+      </nav>
+      <p class="sub" id="live-hint" hidden>Se actualiza solo cada 20 s</p>
+    </div>
   </div>
+  __CRM__
+  <div id="tab-uso" hidden>
   <div class="tiles" id="tiles"></div>
   <h2>Dispositivos activos por día (14 días)</h2>
   <div class="card" id="chart"></div>
@@ -1165,6 +1180,7 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
     </div>
   </div>
   <p class="note" id="landing-note"></p>
+  </div>
 </div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -1306,7 +1322,8 @@ function load() { loadLive(); loadLanding(); }
 renderRange();
 load();
 setInterval(load, 20000);
-</script></body></html>""".replace("__CSS__", PANEL_CSS)
+__CRM_JS__
+</script></body></html>""".replace("__CSS__", PANEL_CSS).replace("__CRM__", CRM_MARKUP).replace("__CRM_JS__", CRM_SCRIPT)
 
 
 @APP.post("/panel/login")
@@ -1578,6 +1595,7 @@ def webhook():
     return jsonify({"ok": True})
 
 
+register_routes(APP)
 init_db()
 
 if __name__ == "__main__":

@@ -1,0 +1,1027 @@
+"""CRM liviano del panel: objetivo diario, grupos, personas y alcances.
+
+El objetivo no es “conseguir usuarios”. Es un hábito chico y controlable:
+tres mensajes personales, una cosa útil publicada, y una demo corta si
+alguien responde. Los días sin cumplir quedan a la vista a propósito.
+"""
+from __future__ import annotations
+
+import re
+from datetime import datetime, timedelta
+from functools import wraps
+from zoneinfo import ZoneInfo
+
+from flask import jsonify, request
+
+CHILE_TZ = ZoneInfo("America/Santiago")
+HISTORY_DAYS = 42
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+GROUP_STATUSES = {
+    "por_crear": "Por crear",
+    "creado": "Creado",
+    "activo": "Activo",
+    "archivado": "Archivado",
+}
+PEOPLE_STATUSES = {
+    "interesado": "Interesado",
+    "conversando": "Conversando",
+    "demo": "Vio demo",
+    "usando": "Usa Telar",
+    "pausa": "En pausa",
+}
+REACH_KINDS = {
+    "grupo": "Grupo",
+    "persona": "Persona",
+    "otro": "Otro",
+}
+
+
+def _api():
+    import app as api
+
+    return api
+
+
+def today_chile(now: datetime | None = None) -> str:
+    current = now or datetime.now(CHILE_TZ)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=CHILE_TZ)
+    return current.astimezone(CHILE_TZ).strftime("%Y-%m-%d")
+
+
+def parse_day(raw, today: str) -> str | None:
+    value = (raw or "").strip() or today
+    if not DAY_RE.match(value):
+        return None
+    try:
+        day = datetime.strptime(value, "%Y-%m-%d").date()
+        end = datetime.strptime(today, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    start = end - timedelta(days=HISTORY_DAYS - 1)
+    if day > end or day < start:
+        return None
+    return value
+
+
+def day_complete(row: dict | None) -> bool:
+    if not row:
+        return False
+    return (
+        int(row.get("messages") or 0) >= 3
+        and int(row.get("posted") or 0) == 1
+        and (int(row.get("demo") or 0) == 1 or int(row.get("demo_na") or 0) == 1)
+    )
+
+
+def empty_day(day: str) -> dict:
+    return {
+        "day": day,
+        "messages": 0,
+        "posted": 0,
+        "demo": 0,
+        "demo_na": 0,
+        "complete": False,
+        "blank": True,
+        "is_today": False,
+    }
+
+
+def _started_on(conn) -> str | None:
+    """Primer día con algo anotado. Antes de eso el calendario no cuenta falta."""
+    dates = []
+    for sql in (
+        "SELECT MIN(day) AS d FROM crm_days",
+        "SELECT MIN(day) AS d FROM crm_reaches",
+        "SELECT MIN(created_at) AS d FROM crm_groups",
+        "SELECT MIN(created_at) AS d FROM crm_people",
+    ):
+        row = conn.execute(sql).fetchone()
+        value = row["d"] if row else None
+        if value:
+            dates.append(str(value)[:10])
+    return min(dates) if dates else None
+
+
+def ensure_schema(conn, autoincrement: str) -> None:
+    conn.execute(
+        f"""CREATE TABLE IF NOT EXISTS crm_groups (
+            id {autoincrement},
+            name TEXT NOT NULL,
+            location TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'por_crear',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        f"""CREATE TABLE IF NOT EXISTS crm_people (
+            id {autoincrement},
+            name TEXT NOT NULL,
+            location TEXT NOT NULL DEFAULT '',
+            contact TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'interesado',
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS crm_days (
+            day TEXT PRIMARY KEY,
+            messages INTEGER NOT NULL DEFAULT 0,
+            posted INTEGER NOT NULL DEFAULT 0,
+            demo INTEGER NOT NULL DEFAULT 0,
+            demo_na INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        f"""CREATE TABLE IF NOT EXISTS crm_reaches (
+            id {autoincrement},
+            day TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'grupo',
+            group_id INTEGER,
+            person_id INTEGER,
+            where_text TEXT NOT NULL DEFAULT '',
+            note TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_reaches_day ON crm_reaches(day)")
+
+
+def _insert_id(conn, sql: str, params) -> int:
+    api = _api()
+    if api.USE_POSTGRES:
+        row = conn.execute(sql + " RETURNING id", params).fetchone()
+        return int(row["id"])
+    cur = conn.execute(sql, params)
+    return int(cur.lastrowid)
+
+
+def _rows(result) -> list[dict]:
+    return [dict(r) for r in result.fetchall()]
+
+
+def _require_panel(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not _api().panel_authorized():
+            return jsonify({"error": "No autorizado"}), 401
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def _serialize_day(row: dict | None, day: str, today: str, started: str | None) -> dict:
+    data = empty_day(day)
+    data["blank"] = row is None and (not started or day < started)
+    if row:
+        data.update({
+            "messages": int(row.get("messages") or 0),
+            "posted": int(row.get("posted") or 0),
+            "demo": int(row.get("demo") or 0),
+            "demo_na": int(row.get("demo_na") or 0),
+            "blank": False,
+        })
+    data["complete"] = day_complete(data)
+    data["is_today"] = day == today
+    return data
+
+
+def _history(conn, today: str) -> list[dict]:
+    start = (
+        datetime.strptime(today, "%Y-%m-%d").date() - timedelta(days=HISTORY_DAYS - 1)
+    ).isoformat()
+    saved = {
+        r["day"]: r
+        for r in _rows(
+            conn.execute(
+                "SELECT day, messages, posted, demo, demo_na FROM crm_days "
+                "WHERE day >= ? AND day <= ? ORDER BY day",
+                (start, today),
+            )
+        )
+    }
+    started = _started_on(conn)
+    end = datetime.strptime(today, "%Y-%m-%d").date()
+    begin = datetime.strptime(start, "%Y-%m-%d").date()
+    days = []
+    cursor = begin
+    while cursor <= end:
+        key = cursor.isoformat()
+        days.append(_serialize_day(saved.get(key), key, today, started))
+        cursor += timedelta(days=1)
+    return days
+
+
+def _goal_summary(history: list[dict], today: str) -> dict:
+    today_row = next((d for d in history if d["day"] == today), empty_day(today))
+    past = [d for d in history if not d["is_today"]]
+    missed = [d["day"] for d in past if not d["complete"] and not d["blank"]]
+    done_days = [d["day"] for d in history if d["complete"]]
+    streak = 0
+    for row in reversed(history):
+        if row["is_today"] and not row["complete"]:
+            continue
+        if row["complete"]:
+            streak += 1
+        else:
+            break
+    week_start = datetime.strptime(today, "%Y-%m-%d").date()
+    week_start -= timedelta(days=week_start.weekday())
+    week = [
+        d for d in history
+        if datetime.strptime(d["day"], "%Y-%m-%d").date() >= week_start
+    ]
+    return {
+        **today_row,
+        "streak": streak,
+        "missed": missed,
+        "missed_count": len(missed),
+        "done_count": len(done_days),
+        "week_done": sum(1 for d in week if d["complete"]),
+        "week_total": len(week),
+        "history_days": HISTORY_DAYS,
+    }
+
+
+def crm_state() -> dict:
+    api = _api()
+    today = today_chile()
+    with api.db() as conn:
+        history = _history(conn, today)
+        groups = _rows(
+            conn.execute(
+                """SELECT g.id, g.name, g.location, g.status, g.notes,
+                          g.created_at, g.updated_at,
+                          (SELECT MAX(r.created_at) FROM crm_reaches r
+                           WHERE r.group_id = g.id) AS last_reach_at
+                   FROM crm_groups g
+                   ORDER BY CASE g.status WHEN 'archivado' THEN 1 ELSE 0 END,
+                            g.updated_at DESC"""
+            )
+        )
+        people = _rows(
+            conn.execute(
+                """SELECT id, name, location, contact, status, notes,
+                          created_at, updated_at
+                   FROM crm_people
+                   ORDER BY CASE status WHEN 'pausa' THEN 1 ELSE 0 END,
+                            updated_at DESC"""
+            )
+        )
+        reaches = _rows(
+            conn.execute(
+                """SELECT id, day, kind, group_id, person_id, where_text, note, created_at
+                   FROM crm_reaches ORDER BY created_at DESC, id DESC LIMIT 80"""
+            )
+        )
+    return {
+        "ok": True,
+        "today": today,
+        "goal": _goal_summary(history, today),
+        "history": history,
+        "groups": groups,
+        "people": people,
+        "reaches": reaches,
+        "labels": {
+            "groups": GROUP_STATUSES,
+            "people": PEOPLE_STATUSES,
+            "reaches": REACH_KINDS,
+        },
+    }
+
+
+def _upsert_day(day: str, data: dict) -> dict:
+    api = _api()
+    with api.db() as conn:
+        row = conn.execute(
+            "SELECT day, messages, posted, demo, demo_na FROM crm_days WHERE day = ?",
+            (day,),
+        ).fetchone()
+        current = dict(row) if row else {
+            "day": day, "messages": 0, "posted": 0, "demo": 0, "demo_na": 0,
+        }
+        if "messages" in data:
+            try:
+                current["messages"] = max(0, min(3, int(data["messages"])))
+            except (TypeError, ValueError):
+                pass
+        if "posted" in data:
+            current["posted"] = 1 if data["posted"] else 0
+        if "demo" in data and data["demo"]:
+            current["demo"] = 1
+            current["demo_na"] = 0
+        elif "demo_na" in data and data["demo_na"]:
+            current["demo"] = 0
+            current["demo_na"] = 1
+        elif "demo" in data or "demo_na" in data:
+            current["demo"] = 0
+            current["demo_na"] = 0
+        conn.execute(
+            """INSERT INTO crm_days (day, messages, posted, demo, demo_na, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(day) DO UPDATE SET
+                 messages = excluded.messages,
+                 posted = excluded.posted,
+                 demo = excluded.demo,
+                 demo_na = excluded.demo_na,
+                 updated_at = excluded.updated_at""",
+            (
+                day,
+                int(current["messages"]),
+                int(current["posted"]),
+                int(current["demo"]),
+                int(current["demo_na"]),
+                api.now_iso(),
+            ),
+        )
+    return crm_state()
+
+
+def register_routes(app) -> None:
+    @app.get("/api/admin/crm")
+    @_require_panel
+    def crm_get():
+        return jsonify(crm_state())
+
+    @app.patch("/api/admin/crm/today")
+    @_require_panel
+    def crm_today():
+        data = request.get_json(silent=True) or {}
+        today = today_chile()
+        day = parse_day(data.get("day"), today)
+        if not day:
+            return jsonify({"error": "Día fuera de rango"}), 400
+        return jsonify(_upsert_day(day, data))
+
+    @app.post("/api/admin/crm/groups")
+    @_require_panel
+    def crm_group_create():
+        return _save_group(None)
+
+    @app.patch("/api/admin/crm/groups/<int:item_id>")
+    @_require_panel
+    def crm_group_update(item_id: int):
+        return _save_group(item_id)
+
+    @app.delete("/api/admin/crm/groups/<int:item_id>")
+    @_require_panel
+    def crm_group_delete(item_id: int):
+        api = _api()
+        with api.db() as conn:
+            conn.execute(
+                "UPDATE crm_reaches SET group_id = NULL WHERE group_id = ?",
+                (item_id,),
+            )
+            conn.execute("DELETE FROM crm_groups WHERE id = ?", (item_id,))
+        return jsonify(crm_state())
+
+    @app.post("/api/admin/crm/people")
+    @_require_panel
+    def crm_person_create():
+        return _save_person(None)
+
+    @app.patch("/api/admin/crm/people/<int:item_id>")
+    @_require_panel
+    def crm_person_update(item_id: int):
+        return _save_person(item_id)
+
+    @app.delete("/api/admin/crm/people/<int:item_id>")
+    @_require_panel
+    def crm_person_delete(item_id: int):
+        api = _api()
+        with api.db() as conn:
+            conn.execute(
+                "UPDATE crm_reaches SET person_id = NULL WHERE person_id = ?",
+                (item_id,),
+            )
+            conn.execute("DELETE FROM crm_people WHERE id = ?", (item_id,))
+        return jsonify(crm_state())
+
+    @app.post("/api/admin/crm/reaches")
+    @_require_panel
+    def crm_reach_create():
+        api = _api()
+        data = request.get_json(silent=True) or {}
+        today = today_chile()
+        day = parse_day(data.get("day"), today) or today
+        kind = data.get("kind") if data.get("kind") in REACH_KINDS else "grupo"
+        where_text = api.clean_field(data.get("where_text"), 160)
+        note = api.clean_field(data.get("note"), 400)
+        group_id = _optional_id(data.get("group_id"))
+        person_id = _optional_id(data.get("person_id"))
+        with api.db() as conn:
+            if group_id:
+                row = conn.execute(
+                    "SELECT name FROM crm_groups WHERE id = ?", (group_id,)
+                ).fetchone()
+                if not row:
+                    group_id = None
+                elif not where_text:
+                    where_text = row["name"]
+            if person_id:
+                row = conn.execute(
+                    "SELECT name FROM crm_people WHERE id = ?", (person_id,)
+                ).fetchone()
+                if not row:
+                    person_id = None
+                elif not where_text:
+                    where_text = row["name"]
+            if not where_text:
+                return jsonify({"error": "Falta dónde se escribió"}), 400
+            _insert_id(
+                conn,
+                """INSERT INTO crm_reaches
+                   (day, kind, group_id, person_id, where_text, note, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (day, kind, group_id, person_id, where_text, note, api.now_iso()),
+            )
+        return jsonify(crm_state())
+
+    @app.delete("/api/admin/crm/reaches/<int:item_id>")
+    @_require_panel
+    def crm_reach_delete(item_id: int):
+        api = _api()
+        with api.db() as conn:
+            conn.execute("DELETE FROM crm_reaches WHERE id = ?", (item_id,))
+        return jsonify(crm_state())
+
+
+def _optional_id(value) -> int | None:
+    if value in (None, "", 0, "0"):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _save_group(item_id: int | None):
+    api = _api()
+    data = request.get_json(silent=True) or {}
+    name = api.clean_field(data.get("name"), 80)
+    if not name:
+        return jsonify({"error": "Falta el nombre del grupo"}), 400
+    location = api.clean_field(data.get("location"), 80)
+    notes = api.clean_field(data.get("notes"), 400)
+    status = data.get("status") if data.get("status") in GROUP_STATUSES else "por_crear"
+    now = api.now_iso()
+    with api.db() as conn:
+        if item_id is None:
+            _insert_id(
+                conn,
+                """INSERT INTO crm_groups
+                   (name, location, status, notes, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (name, location, status, notes, now, now),
+            )
+        else:
+            conn.execute(
+                """UPDATE crm_groups
+                   SET name = ?, location = ?, status = ?, notes = ?, updated_at = ?
+                   WHERE id = ?""",
+                (name, location, status, notes, now, item_id),
+            )
+    return jsonify(crm_state())
+
+
+def _save_person(item_id: int | None):
+    api = _api()
+    data = request.get_json(silent=True) or {}
+    name = api.clean_field(data.get("name"), 80)
+    if not name:
+        return jsonify({"error": "Falta el nombre"}), 400
+    location = api.clean_field(data.get("location"), 80)
+    contact = api.clean_field(data.get("contact"), 80)
+    notes = api.clean_field(data.get("notes"), 400)
+    status = data.get("status") if data.get("status") in PEOPLE_STATUSES else "interesado"
+    now = api.now_iso()
+    with api.db() as conn:
+        if item_id is None:
+            _insert_id(
+                conn,
+                """INSERT INTO crm_people
+                   (name, location, contact, status, notes, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (name, location, contact, status, notes, now, now),
+            )
+        else:
+            conn.execute(
+                """UPDATE crm_people
+                   SET name = ?, location = ?, contact = ?, status = ?, notes = ?,
+                       updated_at = ?
+                   WHERE id = ?""",
+                (name, location, contact, status, notes, now, item_id),
+            )
+    return jsonify(crm_state())
+
+
+CRM_CSS = """
+.tabs { display:flex; gap:6px; }
+.tabs button { width:auto; padding:7px 14px; font-size:13px; font-weight:550;
+  background:#161b22; border:1px solid #262c36; color:#8b949e; border-radius:8px;
+  cursor:pointer; }
+.tabs button:hover { background:#1c2230; color:#e6edf3; }
+.tabs button[aria-pressed="true"] { background:#e6edf3; border-color:#e6edf3; color:#0e1116; }
+#tab-hoy h2 { margin-top:28px; }
+.goal { padding:22px 22px 18px; }
+.goal h3 { margin:0 0 6px; font-size:22px; letter-spacing:-.02em; font-weight:650; }
+.goal .lead { color:#8b949e; margin:0 0 18px; font-size:14px; max-width:62ch; }
+.goal-grid { display:grid; gap:12px; }
+.goal-item { border:1px solid #262c36; background:#0e1116; border-radius:10px; padding:14px 16px; }
+.goal-item.done { border-color:#1c4428; background:#0f2417; }
+.goal-item b { display:block; font-size:15px; font-weight:600; }
+.goal-item p { margin:4px 0 12px; color:#8b949e; font-size:13px; }
+.ticks { display:flex; gap:8px; }
+.ticks button, .choice button, .crm-form button, .crm-list button, .reach-form button,
+.missed button {
+  width:auto; margin:0; padding:8px 12px; border-radius:8px; border:1px solid #30363d;
+  background:#161b22; color:#e6edf3; font-size:13px; font-weight:500; cursor:pointer; }
+.ticks button:hover, .choice button:hover, .crm-form button:hover, .reach-form button:hover {
+  background:#1c2230; }
+.ticks button.on { background:#238636; border-color:#238636; color:#fff; }
+.choice { display:flex; flex-wrap:wrap; gap:8px; }
+.choice button.on { background:#1f6feb; border-color:#1f6feb; color:#fff; }
+.choice button.on.alt { background:#6e7681; border-color:#6e7681; }
+.cal-wrap { margin-top:20px; }
+.cal-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  align-items:baseline; margin-bottom:10px; }
+.cal-head strong { font-size:13px; font-weight:600; }
+.cal-weekdays, .cal { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+.cal-weekdays span { text-align:center; font-size:10px; color:#6e7681;
+  text-transform:uppercase; letter-spacing:.04em; }
+.cal button { width:100%; aspect-ratio:1; max-height:42px; padding:0; margin:0;
+  border-radius:7px; border:1px solid #21262d; background:#161b22; color:#8b949e;
+  font-size:11px; font-variant-numeric:tabular-nums; cursor:pointer; }
+.cal button.ok { background:#0f2417; border-color:#1c4428; color:#3fb950; }
+.cal button.miss { background:#2a1215; border-color:#3d1c21; color:#f85149; }
+.cal button.today { box-shadow:0 0 0 2px #1f6feb; color:#e6edf3; }
+.cal button.today.ok { box-shadow:0 0 0 2px #3fb950; }
+.missed { margin:12px 0 0; color:#f85149; font-size:13px; }
+.missed span { color:#8b949e; }
+.crm-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:0 24px; }
+.crm-form, .reach-form { display:grid; gap:8px; margin:0 0 12px; }
+.crm-form .row2, .reach-form .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.crm-form input, .crm-form select, .crm-form textarea,
+.reach-form input, .reach-form select, .reach-form textarea {
+  width:100%; margin:0; padding:9px 11px; border-radius:8px; border:1px solid #30363d;
+  background:#0d1117; color:#e6edf3; font:13px/1.4 inherit; }
+.crm-form textarea, .reach-form textarea { min-height:64px; resize:vertical; }
+.crm-form .actions, .reach-form .actions { display:flex; gap:8px; flex-wrap:wrap; }
+.crm-form button[type="submit"], .reach-form button[type="submit"] {
+  background:#238636; border-color:#238636; color:#fff; }
+.crm-form button[type="submit"]:hover, .reach-form button[type="submit"]:hover {
+  background:#2ea043; }
+.crm-list { display:grid; }
+.crm-list article { padding:14px 16px; border-bottom:1px solid #1c222b; }
+.crm-list article:last-child { border-bottom:none; }
+.crm-list header { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+.crm-list h4 { margin:0; font-size:14px; font-weight:600; }
+.crm-list p { margin:4px 0 0; color:#8b949e; font-size:13px; }
+.crm-list .meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.crm-list .actions { margin-top:10px; display:flex; gap:6px; }
+.crm-list button.danger:hover { background:#3d1c21; color:#f85149; }
+.pill.wait { color:#d29922; border-color:#4a3d16; background:#241d08; }
+.pill.live { color:#3fb950; border-color:#1c4428; background:#0f2417; }
+#tab-uso { margin-top:8px; }
+@media (max-width:640px) {
+  .crm-form .row2, .reach-form .row2 { grid-template-columns:1fr; }
+}
+"""
+
+CRM_MARKUP = """
+<section id="tab-hoy">
+  <div class="card goal" id="goal"></div>
+  <div class="crm-grid">
+    <div>
+      <h2>Grupos de WhatsApp</h2>
+      <form class="crm-form" id="group-form" autocomplete="off">
+        <input type="hidden" name="item_id" value="">
+        <input name="name" required maxlength="80" placeholder="Nombre del grupo">
+        <div class="row2">
+          <input name="location" maxlength="80" placeholder="Zona o tema · p.ej. psicólogos Santiago">
+          <select name="status">
+            <option value="por_crear">Por crear</option>
+            <option value="creado">Creado</option>
+            <option value="activo">Activo</option>
+            <option value="archivado">Archivado</option>
+          </select>
+        </div>
+        <textarea name="notes" maxlength="400" placeholder="Para qué es, quién lo admin, o el siguiente paso"></textarea>
+        <div class="actions">
+          <button type="submit">Añadir grupo</button>
+          <button type="button" id="group-cancel" hidden>Cancelar</button>
+        </div>
+      </form>
+      <div class="card crm-list" id="groups"></div>
+    </div>
+    <div>
+      <h2>Personas interesadas</h2>
+      <form class="crm-form" id="person-form" autocomplete="off">
+        <input type="hidden" name="item_id" value="">
+        <input name="name" required maxlength="80" placeholder="Nombre">
+        <div class="row2">
+          <input name="location" maxlength="80" placeholder="Comuna o ciudad">
+          <input name="contact" maxlength="80" placeholder="WhatsApp o correo">
+        </div>
+        <div class="row2">
+          <select name="status">
+            <option value="interesado">Interesado</option>
+            <option value="conversando">Conversando</option>
+            <option value="demo">Vio demo</option>
+            <option value="usando">Usa Telar</option>
+            <option value="pausa">En pausa</option>
+          </select>
+          <span></span>
+        </div>
+        <textarea name="notes" maxlength="400" placeholder="De dónde salió, qué le interesa, cuándo seguir"></textarea>
+        <div class="actions">
+          <button type="submit">Añadir persona</button>
+          <button type="button" id="person-cancel" hidden>Cancelar</button>
+        </div>
+      </form>
+      <div class="card crm-list" id="people"></div>
+    </div>
+  </div>
+  <h2>Alcances</h2>
+  <p class="note" style="margin:0 0 12px">Cada vez que escribas en un grupo —o a alguien— déjalo acá. No es un funnel: es para no repetir el mismo lado y ver los días en que sí apareciste.</p>
+  <form class="reach-form" id="reach-form" autocomplete="off">
+    <div class="row2">
+      <select name="kind">
+        <option value="grupo">Escribí en un grupo</option>
+        <option value="persona">Escribí a alguien</option>
+        <option value="otro">Otro alcance</option>
+      </select>
+      <select name="ref" id="reach-target"></select>
+    </div>
+    <input name="where_text" maxlength="160" placeholder="Si no está en la lista, escríbelo acá">
+    <textarea name="note" maxlength="400" placeholder="Qué publicaste o a quién le escribiste (opcional)"></textarea>
+    <div class="actions">
+      <button type="submit">Registrar alcance</button>
+    </div>
+  </form>
+  <div class="card crm-list" id="reaches"></div>
+</section>
+"""
+
+CRM_SCRIPT = r"""
+const WEEKDAYS = ['L','M','M','J','V','S','D'];
+let crm = null;
+let crmTab = sessionStorage.getItem('telar-panel-tab') || 'hoy';
+
+function prettyDay(iso, withWeekday) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const opts = withWeekday
+    ? { weekday: 'long', day: 'numeric', month: 'long' }
+    : { day: 'numeric', month: 'short' };
+  return dt.toLocaleDateString('es-CL', opts);
+}
+
+function shortMissed(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-CL', {
+    weekday: 'short', day: 'numeric', month: 'short'
+  });
+}
+
+function pillClass(status) {
+  if (status === 'activo' || status === 'usando' || status === 'demo') return 'ok';
+  if (status === 'por_crear' || status === 'interesado' || status === 'conversando') return 'wait';
+  if (status === 'creado') return 'live';
+  return '';
+}
+
+function fillSelect(sel, items, placeholder) {
+  const current = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>` + items.map((it) =>
+    `<option value="${it.id}">${esc(it.name)}</option>`).join('');
+  if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+}
+
+function renderGoal(d) {
+  const g = d.goal;
+  const msgDone = g.messages >= 3;
+  const ticks = [1,2,3].map((n) =>
+    `<button type="button" data-n="${n}" class="${g.messages >= n ? 'on' : ''}">${n}</button>`
+  ).join('');
+  const miss = g.missed.slice().reverse();
+  const missHtml = miss.length
+    ? `<p class="missed">No cumplido: ${miss.map((day) => esc(shortMissed(day))).join(' · ')}</p>`
+    : `<p class="missed"><span>Sin días pendientes en estas ${g.history_days} jornadas.</span></p>`;
+  const first = d.history[0]?.day;
+  const pad = first ? (new Date(+first.slice(0,4), +first.slice(5,7)-1, +first.slice(8,10)).getDay() + 6) % 7 : 0;
+  const cells = Array(pad).fill('<span></span>').join('') + d.history.map((h) => {
+    const cls = [
+      h.complete ? 'ok' : (h.is_today || h.blank ? '' : 'miss'),
+      h.is_today ? 'today' : '',
+    ].filter(Boolean).join(' ');
+    const title = h.complete ? 'cumplido' : (h.is_today ? 'en curso' : (h.blank ? 'sin registro' : 'no cumplido'));
+    return `<button type="button" class="${cls}" data-day="${h.day}" title="${h.day}: ${title}">${h.day.slice(8)}</button>`;
+  }).join('');
+
+  $('goal').innerHTML = `
+    <h3>${esc(prettyDay(d.today, true))}</h3>
+    <p class="lead">El objetivo de hoy es chico a propósito. No es conseguir usuarios ni cobrar: son tres gestos que sí controlas.</p>
+    <div class="goal-grid">
+      <div class="goal-item ${msgDone ? 'done' : ''}">
+        <b>Enviar 3 mensajes personales</b>
+        <p>Uno a uno, a alguien concreto. Un copiar y pegar masivo no cuenta.</p>
+        <div class="ticks" data-field="messages">${ticks}</div>
+      </div>
+      <div class="goal-item ${g.posted ? 'done' : ''}">
+        <b>Publicar una cosa útil</b>
+        <p>Un comentario, una nota, una respuesta. Algo que ayude, no un pitch.</p>
+        <div class="choice">
+          <button type="button" data-field="posted" data-on="${g.posted ? 0 : 1}" class="${g.posted ? 'on' : ''}">${
+            g.posted ? 'Hecho' : 'Marcar hecho'}</button>
+        </div>
+      </div>
+      <div class="goal-item ${g.demo || g.demo_na ? 'done' : ''}">
+        <b>Si alguien responde, una demo corta</b>
+        <p>Diez minutos bastan. Si nadie respondió, márcalo: el día igual cuenta.</p>
+        <div class="choice">
+          <button type="button" data-demo="1" class="${g.demo ? 'on' : ''}">Hice una demo</button>
+          <button type="button" data-demo-na="1" class="${g.demo_na ? 'on alt' : ''}">Nadie respondió</button>
+        </div>
+      </div>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-head">
+        <strong>Últimas 6 semanas</strong>
+        <span class="sub">Esta semana ${g.week_done} de ${g.week_total} · racha ${g.streak} ${g.streak === 1 ? 'día' : 'días'}</span>
+      </div>
+      <div class="cal-weekdays">${WEEKDAYS.map((w) => `<span>${w}</span>`).join('')}</div>
+      <div class="cal" id="cal">${cells}</div>
+      ${missHtml}
+    </div>`;
+}
+
+function renderGroups(d) {
+  if (!d.groups.length) {
+    $('groups').innerHTML = '<p class="empty">Anota los grupos que quieres crear. Con el nombre basta.</p>';
+    return;
+  }
+  $('groups').innerHTML = d.groups.map((g) => `<article>
+    <header>
+      <h4>${esc(g.name)}</h4>
+      <span class="pill ${pillClass(g.status)}">${esc(d.labels.groups[g.status] || g.status)}</span>
+    </header>
+    <p>${esc([g.location, g.notes].filter(Boolean).join(' · ') || 'Sin nota')}</p>
+    <div class="meta">
+      ${g.last_reach_at ? `<span class="sub">Último alcance ${esc(ago(g.last_reach_at))}</span>` : '<span class="sub">Sin alcances aún</span>'}
+    </div>
+    <div class="actions">
+      <button type="button" data-edit-group="${g.id}">Editar</button>
+      <button type="button" class="danger" data-del-group="${g.id}">Quitar</button>
+    </div>
+  </article>`).join('');
+}
+
+function renderPeople(d) {
+  if (!d.people.length) {
+    $('people').innerHTML = '<p class="empty">Cuando alguien muestre interés, anótalo con nombre y dónde está.</p>';
+    return;
+  }
+  $('people').innerHTML = d.people.map((p) => `<article>
+    <header>
+      <h4>${esc(p.name)}</h4>
+      <span class="pill ${pillClass(p.status)}">${esc(d.labels.people[p.status] || p.status)}</span>
+    </header>
+    <p>${esc([p.location, p.contact, p.notes].filter(Boolean).join(' · ') || 'Sin nota')}</p>
+    <div class="actions">
+      <button type="button" data-edit-person="${p.id}">Editar</button>
+      <button type="button" class="danger" data-del-person="${p.id}">Quitar</button>
+    </div>
+  </article>`).join('');
+}
+
+function renderReaches(d) {
+  const form = $('reach-form');
+  const kind = form.kind.value;
+  const target = $('reach-target');
+  if (kind === 'grupo') fillSelect(target, d.groups.filter((g) => g.status !== 'archivado'), 'Elegir grupo');
+  else if (kind === 'persona') fillSelect(target, d.people, 'Elegir persona');
+  else fillSelect(target, [], 'No aplica');
+  target.disabled = kind === 'otro';
+
+  if (!d.reaches.length) {
+    $('reaches').innerHTML = '<p class="empty">Todavía no hay alcances registrados.</p>';
+    return;
+  }
+  $('reaches').innerHTML = d.reaches.map((r) => `<article>
+    <header>
+      <h4>${esc(r.where_text)}</h4>
+      <span class="pill">${esc(d.labels.reaches[r.kind] || r.kind)}</span>
+    </header>
+    <p>${esc(prettyDay(r.day, false))}${r.note ? ' · ' + esc(r.note) : ''}</p>
+    <div class="actions">
+      <button type="button" class="danger" data-del-reach="${r.id}">Quitar</button>
+    </div>
+  </article>`).join('');
+}
+
+function renderCrm(d) {
+  crm = d;
+  renderGoal(d);
+  renderGroups(d);
+  renderPeople(d);
+  renderReaches(d);
+}
+
+async function crmFetch(path, opts) {
+  const res = await fetch(path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (res.status === 401) { location.reload(); return null; }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'No se pudo guardar');
+  }
+  return res.json();
+}
+
+async function patchGoal(payload) {
+  try {
+    const data = await crmFetch('/api/admin/crm/today', {
+      method: 'PATCH', body: JSON.stringify(payload),
+    });
+    if (data) renderCrm(data);
+  } catch (err) { alert(err.message); }
+}
+
+function formData(form) {
+  return Object.fromEntries(new FormData(form).entries());
+}
+
+function itemField(form) {
+  return form.querySelector('[name="item_id"]');
+}
+
+function resetForm(form, cancelId, submitLabel) {
+  form.reset();
+  itemField(form).value = '';
+  $(cancelId).hidden = true;
+  form.querySelector('[type="submit"]').textContent = submitLabel;
+}
+
+function fillForm(form, item, cancelId, submitLabel) {
+  for (const el of form.elements) {
+    if (!el.name || el.name === 'item_id') continue;
+    if (item[el.name] != null) el.value = item[el.name];
+  }
+  itemField(form).value = item.id;
+  $(cancelId).hidden = false;
+  form.querySelector('[type="submit"]').textContent = submitLabel;
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function setTab(name) {
+  crmTab = name;
+  sessionStorage.setItem('telar-panel-tab', name);
+  $('tab-hoy').hidden = name !== 'hoy';
+  $('tab-uso').hidden = name !== 'uso';
+  document.querySelectorAll('.tabs button').forEach((btn) => {
+    btn.setAttribute('aria-pressed', btn.dataset.tab === name ? 'true' : 'false');
+  });
+  $('live-hint').hidden = name !== 'uso';
+}
+
+$('tabs').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-tab]');
+  if (btn) setTab(btn.dataset.tab);
+});
+
+$('goal').addEventListener('click', (event) => {
+  if (!crm) return;
+  const tick = event.target.closest('.ticks button[data-n]');
+  if (tick) {
+    const n = Number(tick.dataset.n);
+    const next = crm.goal.messages === n ? n - 1 : n;
+    patchGoal({ messages: next });
+    return;
+  }
+  const posted = event.target.closest('[data-field="posted"]');
+  if (posted) {
+    patchGoal({ posted: posted.dataset.on === '1' });
+    return;
+  }
+  const demo = event.target.closest('[data-demo]');
+  if (demo) {
+    patchGoal({ demo: crm.goal.demo ? false : true, demo_na: false });
+    return;
+  }
+  const demoNa = event.target.closest('[data-demo-na]');
+  if (demoNa) {
+    patchGoal({ demo: false, demo_na: crm.goal.demo_na ? false : true });
+  }
+});
+
+$('group-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const body = formData(event.target);
+  const id = body.item_id;
+  delete body.item_id;
+  try {
+    const data = await crmFetch(id ? `/api/admin/crm/groups/${id}` : '/api/admin/crm/groups', {
+      method: id ? 'PATCH' : 'POST', body: JSON.stringify(body),
+    });
+    if (data) {
+      resetForm(event.target, 'group-cancel', 'Añadir grupo');
+      renderCrm(data);
+    }
+  } catch (err) { alert(err.message); }
+});
+$('group-cancel').addEventListener('click', () => resetForm($('group-form'), 'group-cancel', 'Añadir grupo'));
+
+$('person-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const body = formData(event.target);
+  const id = body.item_id;
+  delete body.item_id;
+  try {
+    const data = await crmFetch(id ? `/api/admin/crm/people/${id}` : '/api/admin/crm/people', {
+      method: id ? 'PATCH' : 'POST', body: JSON.stringify(body),
+    });
+    if (data) {
+      resetForm(event.target, 'person-cancel', 'Añadir persona');
+      renderCrm(data);
+    }
+  } catch (err) { alert(err.message); }
+});
+$('person-cancel').addEventListener('click', () => resetForm($('person-form'), 'person-cancel', 'Añadir persona'));
+
+$('reach-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const raw = formData(event.target);
+  const payload = { kind: raw.kind, where_text: raw.where_text, note: raw.note };
+  if (raw.kind === 'grupo' && raw.ref) payload.group_id = Number(raw.ref);
+  if (raw.kind === 'persona' && raw.ref) payload.person_id = Number(raw.ref);
+  try {
+    const data = await crmFetch('/api/admin/crm/reaches', {
+      method: 'POST', body: JSON.stringify(payload),
+    });
+    if (data) {
+      event.target.reset();
+      renderCrm(data);
+    }
+  } catch (err) { alert(err.message); }
+});
+$('reach-form').kind.addEventListener('change', () => { if (crm) renderReaches(crm); });
+
+$('groups').addEventListener('click', async (event) => {
+  const edit = event.target.closest('[data-edit-group]');
+  if (edit) {
+    const item = crm.groups.find((g) => String(g.id) === edit.dataset.editGroup);
+    if (item) fillForm($('group-form'), item, 'group-cancel', 'Guardar grupo');
+    return;
+  }
+  const del = event.target.closest('[data-del-group]');
+  if (del && confirm('¿Quitar este grupo?')) {
+    const data = await crmFetch(`/api/admin/crm/groups/${del.dataset.delGroup}`, { method: 'DELETE' });
+    if (data) renderCrm(data);
+  }
+});
+
+$('people').addEventListener('click', async (event) => {
+  const edit = event.target.closest('[data-edit-person]');
+  if (edit) {
+    const item = crm.people.find((p) => String(p.id) === edit.dataset.editPerson);
+    if (item) fillForm($('person-form'), item, 'person-cancel', 'Guardar persona');
+    return;
+  }
+  const del = event.target.closest('[data-del-person]');
+  if (del && confirm('¿Quitar a esta persona?')) {
+    const data = await crmFetch(`/api/admin/crm/people/${del.dataset.delPerson}`, { method: 'DELETE' });
+    if (data) renderCrm(data);
+  }
+});
+
+$('reaches').addEventListener('click', async (event) => {
+  const del = event.target.closest('[data-del-reach]');
+  if (del && confirm('¿Quitar este alcance?')) {
+    const data = await crmFetch(`/api/admin/crm/reaches/${del.dataset.delReach}`, { method: 'DELETE' });
+    if (data) renderCrm(data);
+  }
+});
+
+async function loadCrm() {
+  try {
+    const data = await crmFetch('/api/admin/crm');
+    if (data) renderCrm(data);
+  } catch (e) {
+    $('goal').innerHTML = '<p class="err" style="padding:18px">No se pudo cargar el CRM.</p>';
+  }
+}
+
+setTab(crmTab);
+loadCrm();
+"""

@@ -34,6 +34,14 @@
     {
       "source": "/api/admin/landing",
       "destination": "https://telar-api-aim8.onrender.com/api/admin/landing"
+    },
+    {
+      "source": "/api/admin/crm",
+      "destination": "https://telar-api-aim8.onrender.com/api/admin/crm"
+    },
+    {
+      "source": "/api/admin/crm/:path*",
+      "destination": "https://telar-api-aim8.onrender.com/api/admin/crm/:path*"
     }
   ],
   "headers": [

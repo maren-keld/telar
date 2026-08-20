@@ -17,7 +17,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import app as api_module
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "").strip()
-TABLES = ("subscriptions", "usage_opens", "landing_events")
+TABLES = (
+    "crm_reaches",
+    "crm_people",
+    "crm_groups",
+    "crm_days",
+    "subscriptions",
+    "usage_opens",
+    "landing_events",
+)
 
 
 @pytest.fixture(params=["sqlite", "postgres"])
