@@ -278,17 +278,19 @@
 .workspace-center__scroll {
   flex: 1;
   overflow-y: auto;
-  overflow-x: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto;
   min-height: 0;
+  min-width: 0;
   width: 100%;
 }
 
 .workspace-center__inner {
-  width: 720px;
-  min-width: 720px;
+  width: 100%;
+  min-width: 0;
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 32px 40px;
+  padding: 24px 24px 40px;
   box-sizing: border-box;
 }
 
@@ -310,6 +312,8 @@
 .center-module-card {
   position: relative;
   margin: 10px 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .center-add-module {

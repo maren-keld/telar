@@ -27,6 +27,18 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
   'tcc_preocupaciones',
   'tcc_gratitud',
   'tcc_estres',
+  'tcc_registro_pensamientos',
+  'tcc_exposicion',
+  'tcc_experimento',
+  'tcc_monitoreo_actividades',
+  'tcc_prevencion_recaida',
+  'sig_externalizacion',
+  'sig_resultados_unicos',
+  'sig_linea_vida',
+  'sig_carta_problema',
+  'sig_condiciones_valia',
+  'sig_felt_sense',
+  'sig_pregunta_milagro',
   'dass21',
   'gad7',
   'asrs',
@@ -70,7 +82,8 @@ function legacyDefFor(type) {
   return {
     label: handout?.title || moduleLabelI18n(type, FALLBACK_LABELS[type] || type.replace(/_/g, ' ')),
     description: intro ? intro.split('.')[0] + (intro.includes('.') ? '.' : '') : 'Módulo clínico.',
-    oncePerTreatment: ONCE_PER_TREATMENT.has(type) || Boolean(handout),
+    oncePerTreatment: ONCE_PER_TREATMENT.has(type) || (Boolean(handout) && handout.oncePerTreatment !== false),
+    category: handout?.category,
   };
 }
 

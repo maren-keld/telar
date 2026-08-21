@@ -1,4 +1,4 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, formPayload } from '../autobind.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
@@ -68,8 +68,9 @@ export async function renderTccPlanSeguridad(host, moduleRow) {
     </div>`;
 
   const persist = async () => {
-    const fd = collectFormData(host.querySelector('#tcc-plan-form'));
-    await syncModuleReadableText(moduleRow, Object.fromEntries(fd.entries()), 'completado');
+    const form = host.querySelector('#tcc-plan-form');
+    if (!form?.isConnected) return;
+    await syncModuleReadableText(moduleRow, formPayload(collectFormData(form)), 'completado');
   };
 
   bindAutoSave(host.querySelector('#tcc-plan-form'), persist, workspaceAutoSaveStatus());

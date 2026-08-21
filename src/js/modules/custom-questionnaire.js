@@ -93,6 +93,7 @@ export async function renderCustomQuestionnaire(host, moduleRow, ctx) {
 
   const persist = async () => {
     const form = host.querySelector('form');
+    if (!form?.isConnected) return;
     const next = { answers: {} };
     def.questions.forEach((q) => {
       if (q.type === 'info') return;

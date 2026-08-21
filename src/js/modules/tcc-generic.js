@@ -1,4 +1,4 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, formPayload } from '../autobind.js';
 import { tccHandoutDef } from '../tcc-handout-defs.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
@@ -17,9 +17,9 @@ function quizScore(quizDef, answers) {
   return { correct, answered, total: quizDef.length };
 }
 
-function sectionFieldHtml(s, data) {
+function sectionFieldHtml(s, data, moduleId) {
   const val = data[s.key] ?? '';
-  const id = `tcc-${s.key}`;
+  const id = `tcc-${moduleId}-${s.key}`;
   if (s.type === 'radio') {
     return `
       <div class="tcc-section tcc-section--choice">
@@ -94,7 +94,7 @@ export async function renderTccGeneric(host, moduleRow) {
       <div class="module-card-head">
         <div>
           <h2 class="module-title" style="margin:0">${escapeHtml(def.title)}</h2>
-          <p class="module-card-head__sub">Material TCC Telar — elaboración propia</p>
+          <p class="module-card-head__sub">${escapeHtml(def.subtitle || 'Material TCC Telar — elaboración propia')}</p>
         </div>
         ${
           score.answered > 0
@@ -115,8 +115,8 @@ export async function renderTccGeneric(host, moduleRow) {
         </section>`,
         )
         .join('')}
-      <form id="tcc-generic-form">
-        ${(def.sections || []).map((s) => sectionFieldHtml(s, data)).join('')}
+      <form id="tcc-generic-form-${moduleRow.id}">
+        ${(def.sections || []).map((s) => sectionFieldHtml(s, data, moduleRow.id)).join('')}
         ${
           quizDef.length
             ? `
@@ -130,11 +130,11 @@ export async function renderTccGeneric(host, moduleRow) {
       </form>
     </div>`;
 
-  const form = host.querySelector('#tcc-generic-form');
+  const form = host.querySelector(`#tcc-generic-form-${moduleRow.id}`);
 
   const persist = async () => {
-    const fd = collectFormData(form);
-    const payload = Object.fromEntries(fd.entries());
+    if (!form?.isConnected) return;
+    const payload = formPayload(collectFormData(form));
     const quiz = { ...(data.quiz || {}) };
     for (const q of quizDef) {
       if (payload[q.key] != null) quiz[q.key] = payload[q.key];

@@ -4,6 +4,7 @@ import {
   AI_QUICK_PROMPTS,
   buildAiSystemPrompt,
   humanizeModuleRefs,
+  isHomeworkHandout,
   markAiActionApplied,
   markupModuleRefs,
   parseAiActions,
@@ -108,6 +109,7 @@ test('el prompt incluye los encabezados de ámbito y prohíbe ids inventados', (
   assert.match(prompt, /"En Telar:"/);
   assert.match(prompt, /"Fuera de Telar:"/);
   assert.match(prompt, /No inventes ids/);
+  assert.match(prompt, /escala 1 a 100|1 a 100/);
   assert.match(prompt, /markdown ligero/);
   assert.match(prompt, /CONTEXTO/);
   assert.match(prompt, /Felipe Uppen/);
@@ -160,6 +162,19 @@ test('markupModuleRefs no duplica el mismo módulo citado dos veces seguidas', (
   const hits = html.match(/data-module-type="tcc_sesgos"/g) || [];
   assert.equal(hits.length, 1);
   assert.doesNotMatch(html, /\[tcc_sesgos\]/);
+});
+
+test('markupModuleRefs colapsa citas duplicadas envueltas en cursiva o en líneas distintas', () => {
+  const italic = markupModuleRefs(
+    'El módulo <em>Identificando sesgos</em> [tcc_sesgos] <em>Identificando sesgos</em> [tcc_sesgos] es útil.',
+  );
+  assert.equal((italic.match(/data-module-type="tcc_sesgos"/g) || []).length, 1);
+
+  const stacked = markupModuleRefs(
+    'ej. <em>Exploración de autoconceptos</em> [tcc_autoconceptos]<br><em>Exploración de autoconceptos</em> [tcc_autoconceptos] o <em>Exploración de preocupaciones</em> [tcc_preocupaciones]<br><em>Exploración de preocupaciones</em> [tcc_preocupaciones].',
+  );
+  assert.equal((stacked.match(/data-module-type="tcc_autoconceptos"/g) || []).length, 1);
+  assert.equal((stacked.match(/data-module-type="tcc_preocupaciones"/g) || []).length, 1);
 });
 
 test('markupModuleRefs conserva el mismo módulo si aparece en frases distintas', () => {
@@ -269,6 +284,24 @@ test('el plan parseado deja el handout TCC solo en la primera sesión', () => {
   const { actions } = parseAiActions(raw);
   assert.deepEqual(actions[0].plan.sessions[0].modules, ['tcc_abc', 'gad7']);
   assert.deepEqual(actions[0].plan.sessions[1].modules, ['dass21']);
+});
+
+test('registros reiterables no cuentan como handout de una sola entrega', () => {
+  assert.equal(isHomeworkHandout('tcc_abc'), true);
+  assert.equal(isHomeworkHandout('sig_externalizacion'), true);
+  assert.equal(isHomeworkHandout('tcc_registro_pensamientos'), false);
+  assert.equal(isHomeworkHandout('tcc_experimento'), false);
+  assert.equal(isHomeworkHandout('tcc_monitoreo_actividades'), false);
+  assert.equal(isHomeworkHandout('sig_felt_sense'), false);
+});
+
+test('planModuleInserts sí permite repetir un registro de pensamientos', () => {
+  const { rows } = planModuleInserts(
+    [{ modules: ['tcc_registro_pensamientos'] }, { modules: ['tcc_registro_pensamientos'] }],
+    [10, 11],
+    [],
+  );
+  assert.equal(rows.filter((r) => r.type === 'tcc_registro_pensamientos').length, 2);
 });
 
 test('isModelPresent tolera el tag :latest de Ollama', () => {

@@ -1,4 +1,4 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, formPayload } from '../autobind.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
@@ -122,8 +122,8 @@ export async function renderTccActivacion(host, moduleRow) {
   const form = host.querySelector('#tcc-act-form');
 
   const persist = async () => {
-    const fd = collectFormData(form);
-    const payload = Object.fromEntries(fd.entries());
+    if (!form?.isConnected) return;
+    const payload = formPayload(collectFormData(form));
     const quiz = {};
     for (const q of QUIZ) {
       if (payload[q.key] != null) quiz[q.key] = payload[q.key];

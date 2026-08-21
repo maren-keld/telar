@@ -75,15 +75,16 @@ FORMATO
 - Cuando propongas intervenciones, separa siempre con estos dos encabezados literales:
   "En Telar:" para lo que se registra en módulos de la app.
   "Fuera de Telar:" para lo que ocurre en sesión presencial, material impreso, derivaciones o coordinación.
-- Al citar un módulo de Telar escribe su etiqueta y su id entre corchetes, por ejemplo: GAD-7 [gad7]. Usa solo ids del catálogo.
+- Al citar un módulo de Telar escribe una sola vez su etiqueta y su id entre corchetes, por ejemplo: GAD-7 [gad7]. No repitas la etiqueta ni el id. Usa solo ids del catálogo.
 
 MÓDULOS DISPONIBLES EN TELAR
 ${buildModuleCatalogText()}
 
 CÓMO ARMAR UN PROGRAMA
-- Las escalas (gad7, dass21, pcl5, asrs y similares) se aplican EN sesión y sí pueden repetirse (p. ej. inicio y cierre).
-- Los handouts TCC (ids que empiezan con tcc_) son tarea ENTRE sesiones, no trabajo en sesión. Asigna cada handout como máximo UNA vez en todo el programa. No repitas activación conductual, ABC, probabilidades, etc. en dos sesiones distintas.
-- Si un handout ya está en el caso (aparece en el contexto), no lo vuelvas a proponer.
+- Las escalas subjetivas de ánimo y ansiedad van de 1 a 100. Nunca las interpretes como 0–10 ni inventes un ejemplo si el contexto trae el número.
+- Los handouts TCC (ids que empiezan con tcc_) son sobre todo tarea ENTRE sesiones. Asigna cada uno como máximo UNA vez, salvo registros que se reiteran: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades.
+- Los módulos sig_ (significado, narrativa, humanista) se trabajan EN sesión. No los trates como psicoeducación TCC. sig_felt_sense sí puede repetirse; el resto, una vez y se reabre.
+- Si un handout ya está en el caso (aparece en el contexto), no lo vuelvas a proponer salvo los reiterables.
 
 MÓDULOS NUEVOS (telar-module)
 Redacta ítems genéricos y reutilizables, pensados para la variable clínica (ansiedad, evitación, pánico…), no para la anécdota del caso.
@@ -186,6 +187,31 @@ function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const WRAP_OR_BREAK = '(?:\\s|&nbsp;|<br\\s*/?>|</?(?:em|strong)>)*';
+
+function collapseAdjacentSameModuleTags(html) {
+  const tag =
+    '<button type="button" class="ai-mod-tag" data-module-type="([^"]+)">([^<]*)</button>';
+  const ign = WRAP_OR_BREAK;
+  let out = String(html);
+  let prev = '';
+  while (out !== prev) {
+    prev = out;
+    out = out.replace(
+      new RegExp(`(${tag})${ign}<button type="button" class="ai-mod-tag" data-module-type="\\2">[^<]*</button>`, 'gi'),
+      '$1',
+    );
+    out = out.replace(
+      new RegExp(
+        `(${tag})${ign}\\3${ign}<button type="button" class="ai-mod-tag" data-module-type="\\2">[^<]*</button>`,
+        'gi',
+      ),
+      '$1',
+    );
+  }
+  return out;
+}
+
 /**
  * Convierte ids de módulo (`tcc_sesgos`, `[gad7]`) en botones-tag con el nombre.
  * Recibe HTML ya escapado.
@@ -215,9 +241,9 @@ export function markupModuleRefs(html = '') {
   for (const m of mods) {
     const idRe = escapeRegExp(m.id);
     const labelRe = escapeRegExp(m.label);
-    // Nombre + [id], aunque el markdown haya envuelto el nombre en em/strong.
+    const wrappedLabel = `(?:<(?:em|strong)>)?${labelRe}(?:</(?:em|strong)>)?`;
     out = out.replace(
-      new RegExp(`${labelRe}(?:\\s|</?(?:em|strong)>)*\\[${idRe}\\]`, 'gi'),
+      new RegExp(`${wrappedLabel}${WRAP_OR_BREAK}\\[${idRe}\\]`, 'gi'),
       () => stash(m.id, m.label),
     );
     out = out.replace(new RegExp(`\\[${idRe}\\]`, 'g'), () => stash(m.id, m.label));
@@ -229,15 +255,14 @@ export function markupModuleRefs(html = '') {
     );
   }
 
-  // La IA a menudo deja el nombre y el [id] como dos citas: "GAD-7" + tag.
   for (let i = 0; i < placeholders.length; i++) {
     const lab = escapeRegExp(placeholders[i].label);
-    out = out.replace(new RegExp(`${lab}\\s*%%TELARMOD${i}%%`, 'gi'), `%%TELARMOD${i}%%`);
+    const wrapped = `(?:<(?:em|strong)>)?${lab}(?:</(?:em|strong)>)?`;
+    out = out.replace(new RegExp(`${wrapped}${WRAP_OR_BREAK}%%TELARMOD${i}%%`, 'gi'), `%%TELARMOD${i}%%`);
   }
 
-  // Dos tags seguidos del mismo módulo (Nombre [id] y otra vez [id]).
   out = out.replace(
-    /(%%TELARMOD\d+%%)(?:(?:\s|&nbsp;|<br\s*\/?>)*%%TELARMOD\d+%%)+/gi,
+    new RegExp(`(%%TELARMOD\\d+%%)(?:${WRAP_OR_BREAK}%%TELARMOD\\d+%%)+`, 'gi'),
     (chunk) => {
       const idxs = [...chunk.matchAll(/TELARMOD(\d+)/g)].map((m) => Number(m[1]));
       const kept = [];
@@ -252,7 +277,8 @@ export function markupModuleRefs(html = '') {
     },
   );
 
-  return out.replace(/%%TELARMOD(\d+)%%/g, (_m, n) => placeholders[Number(n)]?.html || '');
+  out = out.replace(/%%TELARMOD(\d+)%%/g, (_m, n) => placeholders[Number(n)]?.html || '');
+  return collapseAdjacentSameModuleTags(out);
 }
 
 function tryParseJson(raw) {
@@ -353,9 +379,12 @@ function sanitizePlan(raw) {
   };
 }
 
-/** Handouts TCC: se entregan una vez como tarea, no se repiten sesión a sesión. */
+/** Handouts de una sola entrega. Los registros reiterables (oncePerTreatment: false) no cuentan. */
 export function isHomeworkHandout(type) {
-  return String(type || '').startsWith('tcc_');
+  const id = String(type || '');
+  if (!id.startsWith('tcc_') && !id.startsWith('sig_')) return false;
+  const def = resolveModuleDef(id);
+  return def?.oncePerTreatment !== false;
 }
 
 /**

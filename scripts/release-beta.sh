@@ -13,8 +13,6 @@ fi
 VERSION="$(node -p "require('./package.json').version")"
 TAG="v${VERSION}"
 REPO="${GITHUB_REPO:-maren-keld/telar}"
-GH_EMAIL="${GIT_AUTHOR_EMAIL:-47905566+maren-keld@users.noreply.github.com}"
-GH_NAME="${GIT_AUTHOR_NAME:-maren-keld}"
 
 echo "→ Versión: $VERSION ($TAG) · rama main"
 
@@ -49,24 +47,18 @@ App completa con packs clínicos, neurofeedback Muse 2, IA opcional con consenti
 EOF
 )"
 
-echo "→ Tag $TAG (dispara CI)…"
-GIT_COMMITTER_NAME="$GH_NAME" GIT_COMMITTER_EMAIL="$GH_EMAIL" \
-  git -c user.name="$GH_NAME" -c user.email="$GH_EMAIL" \
-  tag -a "$TAG" -m "Telar ${TAG}"
-GIT_COMMITTER_NAME="$GH_NAME" GIT_COMMITTER_EMAIL="$GH_EMAIL" \
-  git -c user.name="$GH_NAME" -c user.email="$GH_EMAIL" \
-  push origin "$TAG"
+# Draft + packs ANTES de que exista el tag en origin. Si se pushea el tag
+# primero, CI arranca sin bundle y Windows puede quedarse en tauri-action
+# creando el release a la vez que este script.
+echo "→ Release draft $TAG con bundle de packs (el tag dispara CI)…"
+gh release create "$TAG" "$ROOT/dist/telar-packs-bundle.tar.gz" \
+  --repo "$REPO" \
+  --draft \
+  --target "$(git rev-parse HEAD)" \
+  --title "Telar ${TAG}" \
+  --notes "$NOTES"
 
-echo "→ Release draft con bundle de packs…"
-if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-  gh release upload "$TAG" "$ROOT/dist/telar-packs-bundle.tar.gz" --repo "$REPO" --clobber
-else
-  gh release create "$TAG" "$ROOT/dist/telar-packs-bundle.tar.gz" \
-    --repo "$REPO" \
-    --draft \
-    --title "Telar ${TAG}" \
-    --notes "$NOTES"
-fi
+git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
 
 echo ""
 echo "✓ CI Mac + Windows en curso"

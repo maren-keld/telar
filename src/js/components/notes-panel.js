@@ -1,9 +1,4 @@
 import { NOTE_COLORS } from '../config.js';
-import { mountThinkingOrb } from '../thinking-orb.js';
-
-const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
-  <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
 import {
   addClinicalNote,
   deleteClinicalNote,
@@ -35,6 +30,11 @@ import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
 import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
 import { ICON_COPY, ICON_PALETTE } from '../icons.js';
+import { mountThinkingOrb } from '../thinking-orb.js';
+
+const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+  <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
 const PERFIL_ONLY_SELECTED_KEY = (treatmentId) => `telar.perfil.onlySelected.${treatmentId}`;
 
@@ -134,7 +134,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           .join('')}
       </nav>
       <div class="space-tools__content">
-        <div class="notes-scroll" id="notes-list"></div>
+        <div class="notes-scroll notes-scroll--prejump" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
         <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
@@ -148,6 +148,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         </div>
         <div class="ai-dock__input-row">
           <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" rows="1"></textarea>
+          <p class="ai-dock__thinking" id="ai-dock-thinking" hidden aria-live="polite">
+            <span class="ai-dock__thinking-orb" id="ai-dock-thinking-orb"></span>
+            <span class="ai-dock__thinking-label" id="ai-dock-thinking-label">Pensando...</span>
+          </p>
           <button type="button" class="ai-dock__send" id="ai-dock-send" title="Enviar" aria-label="Enviar">
             <span class="ai-dock__arrow-wrap">${AI_SEND_ARROW}</span>
             <span class="ai-dock__orb" hidden></span>
@@ -158,10 +162,17 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     </div>`;
 
   const listEl = container.querySelector('#notes-list');
+  const initialNotesScroll = Number(toolsOpts.initialNotesScroll) || 0;
 
-  const scrollNotesToBottom = () => {
+  const revealNotes = () => {
+    listEl.classList.remove('notes-scroll--prejump');
+  };
+
+  const jumpNotesToEnd = () => {
+    listEl.scrollTop = listEl.scrollHeight;
     requestAnimationFrame(() => {
       listEl.scrollTop = listEl.scrollHeight;
+      revealNotes();
     });
   };
 
@@ -173,6 +184,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       );
       if (!sorted.length) {
         listEl.innerHTML = `<p class="notes-empty">Pulsa + Nota para añadir un comentario. También puedes seleccionar texto en un módulo para crear una anotación.</p>`;
+        revealNotes();
         return;
       }
       const savedScroll = listEl.scrollTop;
@@ -182,11 +194,15 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         onApplied: toolsOpts.onTemplateApplied || null,
         onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
       });
-      if (scrollBottom) scrollNotesToBottom();
-      else listEl.scrollTop = savedScroll;
+      if (scrollBottom) jumpNotesToEnd();
+      else {
+        listEl.scrollTop = savedScroll;
+        revealNotes();
+      }
       return;
     }
 
+    revealNotes();
     if (activeTab === 'puntajes') {
       const sessions = await getSessionsWithModules(treatmentId);
       const moduleTypes = [
@@ -214,7 +230,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       container.querySelectorAll('.space-tab2').forEach((b) => b.classList.toggle('active', b === btn));
       const fab = container.querySelector('#btn-add-note');
       if (fab) fab.hidden = activeTab !== 'notas';
-      await refreshList();
+      if (activeTab === 'notas') listEl.classList.add('notes-scroll--prejump');
+      await refreshList({ scrollBottom: activeTab === 'notas' });
     });
   });
 
@@ -228,11 +245,17 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     listEl.querySelector(`[data-note-id="${id}"]`)?.focus();
   });
 
-  await refreshList();
+  await refreshList({ scrollBottom: initialNotesScroll <= 0 });
+  if (initialNotesScroll > 0 && activeTab === 'notas') {
+    listEl.scrollTop = initialNotesScroll;
+    revealNotes();
+  }
 
   const aiInput = container.querySelector('#ai-dock-input');
   const aiSend = container.querySelector('#ai-dock-send');
   const aiHint = container.querySelector('#ai-dock-hint');
+  const aiThinking = container.querySelector('#ai-dock-thinking');
+  const aiThinkingLabel = container.querySelector('#ai-dock-thinking-label');
   const aiCfg = resolveAiConfig(profile);
 
   const aiChips = container.querySelector('#ai-dock-chips');
@@ -258,7 +281,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     };
     aiInput.addEventListener('input', autoGrow);
 
-    // Disabled cuando vacío (solo evalúa si no estamos en estado "pensando")
     const syncSendState = () => {
       if (aiSend.dataset.busy === '1') return;
       aiSend.disabled = aiInput.value.trim() === '';
@@ -273,18 +295,51 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       syncSendState();
     };
 
+    const thinkingCopy = (seconds, tick) => {
+      const dots = '.'.repeat((tick % 3) + 1);
+      if (seconds < 1) return `Pensando${dots}`;
+      return seconds === 1 ? `Pensando por 1 segundo${dots}` : `Pensando por ${seconds} segundos${dots}`;
+    };
+
+    const setThinking = (on) => {
+      if (aiThinking) aiThinking.hidden = !on;
+      aiInput.hidden = on;
+      aiSend.hidden = on;
+      if (aiChips) aiChips.classList.toggle('ai-dock__chips--busy', on);
+    };
+
+    let thinkingTimer = null;
+    let stopThinkOrb = () => {};
+    const startThinking = () => {
+      const started = Date.now();
+      let tick = 0;
+      if (aiThinkingLabel) aiThinkingLabel.textContent = thinkingCopy(0, 0);
+      setThinking(true);
+      const orbHost = container.querySelector('#ai-dock-thinking-orb');
+      stopThinkOrb();
+      stopThinkOrb = mountThinkingOrb(orbHost, { state: 'composing', size: 22 });
+      thinkingTimer = setInterval(() => {
+        tick += 1;
+        const secs = Math.floor((Date.now() - started) / 1000);
+        if (aiThinkingLabel) aiThinkingLabel.textContent = thinkingCopy(secs, tick);
+      }, 400);
+    };
+    const stopThinking = () => {
+      if (thinkingTimer) {
+        clearInterval(thinkingTimer);
+        thinkingTimer = null;
+      }
+      stopThinkOrb();
+      stopThinkOrb = () => {};
+      setThinking(false);
+    };
+
     const sendAiQuestion = async () => {
       const q = aiInput.value.trim();
-      if (!q) return;
-      aiInput.disabled = true;
-      aiSend.disabled = true;
+      if (!q || aiSend.dataset.busy === '1') return;
+      resetInput();
       aiSend.dataset.busy = '1';
-      const arrowWrap = aiSend.querySelector('.ai-dock__arrow-wrap');
-      const orbHost = aiSend.querySelector('.ai-dock__orb');
-      if (arrowWrap) arrowWrap.hidden = true;
-      if (orbHost) orbHost.hidden = false;
-      const stopOrb = mountThinkingOrb(orbHost, { state: 'working', size: 20 });
-      await new Promise((r) => requestAnimationFrame(r));
+      startThinking();
       try {
         const context = await buildCaseContextText(treatmentId);
         await confirmClinicalAiSend({
@@ -310,11 +365,12 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        resetInput();
         await refreshList({ scrollBottom: true });
       } catch (err) {
         const msg = err?.message || 'Error al consultar la IA.';
         if (/cancelado/i.test(msg)) {
+          aiInput.value = q;
+          autoGrow();
           return;
         }
         await addClinicalNote(treatmentId, {
@@ -326,14 +382,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         });
         await refreshList({ scrollBottom: true });
       } finally {
-        stopOrb();
-        aiInput.disabled = false;
+        stopThinking();
         delete aiSend.dataset.busy;
-        if (arrowWrap) arrowWrap.hidden = false;
-        if (orbHost) {
-          orbHost.hidden = true;
-          orbHost.replaceChildren();
-        }
         syncSendState();
       }
     };
@@ -348,6 +398,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
     aiChips?.querySelectorAll('[data-quick-prompt]').forEach((chip) => {
       chip.addEventListener('click', () => {
+        if (aiSend.dataset.busy === '1') return;
         const spec = AI_QUICK_PROMPTS.find((p) => p.id === chip.dataset.quickPrompt);
         if (!spec) return;
         aiInput.value = spec.prompt;
@@ -367,6 +418,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     });
     const fab = container.querySelector('#btn-add-note');
     if (fab) fab.hidden = false;
+    listEl.classList.add('notes-scroll--prejump');
     await refreshList({ scrollBottom: true });
   };
 

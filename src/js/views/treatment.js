@@ -54,12 +54,12 @@ export async function renderTreatment(container, { treatmentId, onNavigate }) {
       const sessionId = btn.dataset.sessionId;
       const { getSessionModules } = await import('../db.js');
       const mods = await getSessionModules(sessionId);
-      const first = mods[0];
+      const last = mods[mods.length - 1];
       onNavigate({
         view: 'workspace',
         treatmentId,
         sessionId,
-        moduleId: first?.id,
+        moduleId: last?.id,
       });
     });
   });

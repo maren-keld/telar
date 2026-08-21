@@ -352,10 +352,10 @@ export async function bootstrapDefaultTreatment(treatmentId) {
 export async function resolveWorkspaceEntry(treatmentId) {
   await bootstrapDefaultTreatment(treatmentId);
   const sessions = await getSessionsWithModules(treatmentId);
-  const session = sessions[0];
+  const session = sessions[sessions.length - 1];
   if (!session) return { sessionId: null, moduleId: null };
-  const registro = session.modules.find((m) => m.module_type === 'registro_inicial');
-  const mod = registro || session.modules[0];
+  const mods = session.modules || [];
+  const mod = mods[mods.length - 1] || null;
   return { sessionId: session.id, moduleId: mod?.id ?? null };
 }
 

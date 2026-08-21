@@ -7,9 +7,27 @@ export function debounce(fn, ms = 450) {
   };
 }
 
+const pendingAutoSaves = new Set();
+
+/** Guarda inmediatamente los formularios con debounce pendiente (antes de un re-render). */
+export async function flushPendingAutoSaves() {
+  const jobs = [...pendingAutoSaves];
+  await Promise.all(jobs.map((job) => job.flush()));
+}
+
 export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) {
   if (!root) return () => {};
-  const run = debounce(async () => {
+  let timer = null;
+
+  const saveNow = async () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (!root.isConnected) {
+      pendingAutoSaves.delete(handle);
+      return;
+    }
     try {
       onStatus?.('guardando');
       await saveFn();
@@ -18,7 +36,18 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
       console.error(e);
       onStatus?.('error');
     }
-  }, debounceMs);
+  };
+
+  const handle = { flush: saveNow };
+  pendingAutoSaves.add(handle);
+
+  const run = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      void saveNow();
+    }, debounceMs);
+  };
 
   const handler = (e) => {
     const t = e.target;
@@ -35,6 +64,7 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
 
 export function collectFormData(root) {
   const data = {};
+  if (!root) return data;
   root.querySelectorAll('input, textarea, select').forEach((el) => {
     const name = el.name;
     if (!name || el.type === 'submit') return;
@@ -43,5 +73,28 @@ export function collectFormData(root) {
       if (el.checked) data[name] = el.value;
     } else data[name] = el.value;
   });
+  // Compat: Object.fromEntries(fd.entries()) no debe romper el autoguardado.
+  Object.defineProperty(data, 'entries', {
+    enumerable: false,
+    value() {
+      return Object.entries(this);
+    },
+  });
   return data;
+}
+
+/** Unifica FormData y el objeto plano de collectFormData. */
+export function formPayload(data) {
+  if (!data) return {};
+  if (typeof FormData !== 'undefined' && data instanceof FormData) {
+    return Object.fromEntries(data.entries());
+  }
+  if (typeof data.entries === 'function') {
+    try {
+      return Object.fromEntries(data.entries());
+    } catch {
+      /* objeto plano */
+    }
+  }
+  return { ...data };
 }

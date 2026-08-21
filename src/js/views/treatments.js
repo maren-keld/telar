@@ -2,7 +2,7 @@ import { TREATMENT_STATUS, TREATMENT_TAG_DEFS } from '../config.js';
 import { openAgendaCardMenu } from '../components/agenda-menu.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { createTreatment, getAgendaGroups, upsertPatient } from '../db.js';
-import { STATUS_GLYPH_INNER, TAG_GLYPHS } from '../glyphs.js';
+import { TAG_GLYPHS } from '../glyphs.js';
 import { ICON_MORE_VERT } from '../icons.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
@@ -33,14 +33,7 @@ function tagBadges(row) {
   return parts.join('');
 }
 
-function statusGlyph(statusKey, index) {
-  const meta = TREATMENT_STATUS[statusKey] || { label: statusKey };
-  const inner = STATUS_GLYPH_INNER[statusKey] || STATUS_GLYPH_INNER.en_tratamiento;
-  const delay = `${Number(index) * 80}ms`;
-  return `<span class="patient-card__status patient-card__status--${escapeHtml(statusKey)}" role="img" aria-label="${escapeHtml(meta.label)}" style="--status-stagger:${delay}">${inner}</span>`;
-}
-
-function patientCard(row, statusKey, index = 0) {
+function patientCard(row, statusKey) {
   const n = Number(row.treatment_number);
   const tn =
     n > 1
@@ -52,7 +45,6 @@ function patientCard(row, statusKey, index = 0) {
   const meta = quiet ? `<div class="patient-card__meta">${quiet}</div>` : '';
   return `
     <div class="patient-card" data-treatment-id="${row.treatment_id}" data-status="${escapeHtml(statusKey)}">
-      ${statusGlyph(statusKey, index)}
       <div class="patient-card__body">
         <div class="patient-card__main">
           <strong data-sensitive>${escapeHtml(row.name)}</strong>
@@ -67,7 +59,7 @@ function patientCard(row, statusKey, index = 0) {
 export function treatmentSectionHtml(statusKey, rows, collapsed = false) {
   const meta = TREATMENT_STATUS[statusKey] || { label: statusKey };
   const body =
-    rows.map((row, i) => patientCard(row, statusKey, i)).join('') ||
+    rows.map((row) => patientCard(row, statusKey)).join('') ||
     '<p class="text-muted reportes-empty">Sin pacientes en esta sección.</p>';
   return `
     <section class="section-accordion" data-status="${statusKey}">

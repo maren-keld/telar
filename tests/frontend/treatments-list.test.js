@@ -35,34 +35,11 @@ test('T1 pill is omitted; T2+ appears to the right of the name', () => {
   assert.doesNotMatch(t2, /<span class="badge">Tratamiento/);
 });
 
-test('status glyph has section-matching accessible name and status class', () => {
+test('cards keep section status without a status glyph', () => {
   const html = treatmentSectionHtml('en_tratamiento', [row], false);
-  assert.match(html, /patient-card__status--en_tratamiento/);
-  assert.match(html, /role="img" aria-label="En tratamiento"/);
   assert.match(html, /data-status="en_tratamiento"/);
-  assert.match(html, /--status-stagger:0ms/);
-});
-
-test('later cards stagger the working animation', () => {
-  const html = treatmentSectionHtml('en_tratamiento', [row, { ...row, treatment_id: 8, name: 'B' }], false);
-  assert.match(html, /--status-stagger:80ms/);
-});
-
-test('completed glyph is a static circle with a check', () => {
-  const done = treatmentSectionHtml('completado', [row], false);
-  assert.match(done, /aria-label="Completado"/);
-  assert.match(done, /patient-card__status--completado/);
-  assert.match(done, /<circle cx="12" cy="12"/);
-  assert.doesNotMatch(done, /patient-status-work/);
-
-  const archived = treatmentSectionHtml('archivado', [row], true);
-  assert.match(archived, /aria-label="Archivado"/);
-  assert.match(archived, /patient-card__status--archivado/);
-
-  const left = treatmentSectionHtml('abandonado', [row], false);
-  assert.match(left, /aria-label="Abandonados"/);
-  assert.match(left, /patient-card__status--abandonado/);
-  assert.match(left, /status-glyph__svg/);
+  assert.doesNotMatch(html, /patient-card__status/);
+  assert.doesNotMatch(html, /status-glyph__svg/);
 });
 
 test('card menu uses vertical three-dots icon', () => {

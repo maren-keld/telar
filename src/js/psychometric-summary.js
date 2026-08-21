@@ -45,6 +45,20 @@ function latestPsychByType(sessions, type) {
   return null;
 }
 
+function latestSubjectiveLine(sessions, type, field, label) {
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    const mod = sessions[i].modules.find((m) => m.module_type === type);
+    if (!mod) continue;
+    const data = parseJsonSafe(mod.data, {});
+    const raw = data[field] ?? data.value;
+    if (raw == null || raw === '') continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) continue;
+    return `${label} (sesión ${sessions[i].number}): ${n}/100 (escala 1–100)`;
+  }
+  return null;
+}
+
 /** Bloque resumen psicométrico TDAH/trauma para PDF o export IA. */
 export function buildPsychometricSummaryBlock(sessions) {
   const lines = [];
@@ -53,6 +67,15 @@ export function buildPsychometricSummaryBlock(sessions) {
     if (!entry) continue;
     lines.push(`${entry.label} (sesión ${entry.sessionNumber})\n${entry.text}`);
   }
+  const animo = latestSubjectiveLine(sessions, 'escala_animo', 'mood_score', 'Ánimo subjetivo');
+  const ansiedad = latestSubjectiveLine(
+    sessions,
+    'escala_ansiedad',
+    'anxiety_score',
+    'Ansiedad subjetiva',
+  );
+  if (animo) lines.push(animo);
+  if (ansiedad) lines.push(ansiedad);
   return lines.join('\n\n');
 }
 

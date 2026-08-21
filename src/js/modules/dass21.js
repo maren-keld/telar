@@ -18,7 +18,9 @@ const ITEMS = [
   'Me costó iniciar cosas',
   'Reaccioné en exceso a situaciones',
   'Sentí temblores (por ejemplo, en las manos)',
-  'Sentí que estaba usando mucha energía nerviosa',
+  // DASS-21 ítem 8 (estrés). Original: "I felt that I was using a lot of nervous energy".
+  // En español de Chile/LatAm (Daza et al., 2002; validaciones chilenas): no se calca «energía nerviosa».
+  'Sentí que tenía muchos nervios',
   'Me preocupé por situaciones en que podría entrar en pánico',
   'Sentí que no tenía nada por lo que entusiasmarme',
   'Me sentí inquieto/a',

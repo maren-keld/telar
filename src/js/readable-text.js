@@ -1,6 +1,6 @@
 import { getModuleDef } from './config.js';
 import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
-import { formatTccHandoutReadable } from './tcc-handout-defs.js';
+import { formatTccHandoutReadable, tccHandoutDef } from './tcc-handout-defs.js';
 import { saveModuleData } from './db.js';
 import { asrsSummary } from './asrs-scoring.js';
 import { pcl5Summary } from './pcl5-scoring.js';
@@ -25,6 +25,14 @@ function formatAnswersTotal(answers, label, max) {
   if (!answers?.some((v) => v !== null && v !== '')) return '';
   const total = answers.reduce((a, v) => a + (Number(v) || 0), 0);
   return `${label}: ${total}${max != null ? `/${max}` : ''}`;
+}
+
+function formatSubjectiveScore(d, field, label) {
+  const raw = d?.[field] ?? d?.value;
+  if (raw == null || raw === '') return '';
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return '';
+  return `${label}: ${n}/100 (escala 1–100)`;
 }
 
 function formatDass21(d) {
@@ -331,10 +339,11 @@ export function buildReadableText(moduleType, data) {
     case 'escala_fer':
       return formatAnswersTotal(d.answers, 'EFR (suma ítems)', 48);
     case 'escala_animo':
-      return d.value != null && d.value !== '' ? `Ánimo subjetivo: ${d.value}/100` : '';
+      return formatSubjectiveScore(d, 'mood_score', 'Ánimo subjetivo');
     case 'escala_ansiedad':
-      return d.value != null && d.value !== '' ? `Ansiedad subjetiva: ${d.value}/100` : '';
+      return formatSubjectiveScore(d, 'anxiety_score', 'Ansiedad subjetiva');
     default:
+      if (tccHandoutDef(moduleType)) return formatTccHandoutReadable(moduleType, d);
       if (isCustomModuleType(moduleType)) return formatCustomModule(moduleType, d);
       // Escalas aportadas por packs clínicos.
       return getScorer(moduleType)?.readable?.(d) || '';

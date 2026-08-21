@@ -6,14 +6,14 @@
  */
 import { mountOrb } from '../vendor/thinking-orbs/index.js';
 
-export function mountThinkingOrb(host, { state = 'working', size = 20 } = {}) {
+export function mountThinkingOrb(host, { state = 'working', size = 20, paused = false } = {}) {
   if (!host) return () => {};
   host.replaceChildren();
   const handle = mountOrb(host, {
     state,
     size,
     theme: 'auto',
-    paused: false,
+    paused: Boolean(paused),
   });
   return () => {
     try {

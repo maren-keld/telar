@@ -26,6 +26,7 @@ import { ICON_DOWNLOAD, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
 import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
 import { initWorkspaceSidebarResizers } from '../components/workspace-layout.js';
 import { isTauriApp, getInvoke } from '../tauri-bridge.js';
+import { flushPendingAutoSaves } from '../autobind.js';
 
 /** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
 const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
@@ -94,9 +95,10 @@ export async function renderWorkspace(
     }
   }
   if (!activeModule && sessions.length) {
-    const s = sessions.find((x) => String(x.id) === String(sessionId)) || sessions[0];
+    const s = sessions.find((x) => String(x.id) === String(sessionId)) || sessions[sessions.length - 1];
     activeSessionId = s.id;
-    activeModule = s.modules[0] || null;
+    const mods = s.modules || [];
+    activeModule = mods[mods.length - 1] || null;
   }
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
@@ -112,6 +114,8 @@ export async function renderWorkspace(
   ) {
     return;
   }
+
+  await flushPendingAutoSaves();
 
   const prevTreatmentId = container.dataset.workspaceTreatmentId;
   const prevModuleId = container.dataset.workspaceModuleId;
@@ -172,8 +176,10 @@ export async function renderWorkspace(
   const leftSidebarEl = container.querySelector('#leftsidebar');
   const rightSidebarEl = container.querySelector('#rightsidebar');
   const centerScrollEl = container.querySelector('#workspace-center-scroll');
-  if (preserveCenterScroll && centerScrollEl) {
+  const firstPaint = !sameTreatment;
+  if ((preserveCenterScroll || firstPaint) && centerScrollEl) {
     centerScrollEl.style.visibility = 'hidden';
+    centerScrollEl.style.scrollBehavior = 'auto';
   }
   if (layoutEl && leftSidebarEl && rightSidebarEl) {
     initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSidebarEl });
@@ -257,16 +263,24 @@ export async function renderWorkspace(
           : null;
 
     if (root) {
+      const reveal = () => {
+        if (!root.isConnected) return;
+        root.style.visibility = '';
+      };
       if (y != null) {
         root.scrollTop = y;
         requestAnimationFrame(() => {
           if (!root.isConnected) return;
           root.scrollTop = y;
-          root.style.visibility = '';
+          reveal();
         });
       } else {
         syncScrollToModule(container, activeModule.id);
-        root.style.visibility = '';
+        requestAnimationFrame(() => {
+          if (!root.isConnected) return;
+          syncScrollToModule(container, activeModule.id);
+          reveal();
+        });
       }
     }
     setActiveModuleHighlight(container, activeModule.id);
@@ -377,17 +391,16 @@ export async function renderWorkspace(
 
   bindSessionCollapse(container, activeModule, treatmentId);
 
-  const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, toolsOpts);
+  const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, {
+    ...toolsOpts,
+    initialNotesScroll: savedNotesScroll,
+  });
 
-  // Restaurar tab activo y scroll de notas después de re-render.
+  // Restaurar tab activo después de re-render.
   if (savedNotesTab && savedNotesTab !== 'notas') {
     const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
     if (tabBtn) tabBtn.click();
   }
-  requestAnimationFrame(() => {
-    const notesList = container.querySelector('#notes-list');
-    if (notesList && savedNotesScroll > 0) notesList.scrollTop = savedNotesScroll;
-  });
 
   unmountHighlight = mountTextHighlight(centerHost, {
     treatmentId,

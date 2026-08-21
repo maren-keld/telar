@@ -16,6 +16,9 @@ permissions:
 
 jobs:
   build-release:
+    # Windows se ha quedado esperando (updater signing / creación del release).
+    # 40 min cubre un build sano (~20 min) y corta el cuelgue.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -130,8 +133,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # No pasar clave de updater: createUpdaterArtifacts ya es false, y en
+          # Windows tauri-action se queda esperando un prompt de firma.
         with:
           projectPath: src-tauri
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', inputs.version) }}

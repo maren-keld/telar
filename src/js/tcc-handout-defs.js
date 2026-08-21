@@ -1,4 +1,5 @@
 /** Definiciones TCC — packs registran vía pack-registry; fallback legacy embebido. */
+import { EXTRA_HANDOUT_DEFS } from './extra-handout-defs.js';
 import { getHandoutDef, getSearchExtra, getTccVariables } from './pack-registry.js';
 
 const LEGACY_TCC_HANDOUT_DEFS = {
@@ -487,6 +488,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
     variables: ['Regulación del estrés', 'Recursos de afrontamiento', 'Psicoeducación fisiológica'],
     searchTags: ['tcc', 'estrés', 'trauma', 'tdah', 'regulación', 'respiración'],
   },
+  ...EXTRA_HANDOUT_DEFS,
 };
 
 export function tccHandoutDef(moduleType) {
@@ -505,8 +507,10 @@ export function formatTccHandoutReadable(moduleType, data) {
   for (const s of def.sections || []) {
     const v = d[s.key];
     if (v == null || v === '') continue;
-    if (s.type === 'radio') parts.push(`${s.title}: ${v}`);
-    else if (s.type === 'number') parts.push(`${s.title}: ${v}`);
+    if (s.type === 'radio') {
+      const label = s.options?.find((o) => o.v === v)?.label || v;
+      parts.push(`${s.title}: ${label}`);
+    } else if (s.type === 'number') parts.push(`${s.title}: ${v}`);
     else parts.push(`${s.title}:\n${String(v).trim()}`);
   }
 

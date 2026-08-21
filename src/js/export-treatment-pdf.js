@@ -56,9 +56,14 @@ function moduleSummary(type, data) {
       const total = answers.reduce((a, v) => a + (Number(v) || 0), 0);
       return `GAD-7 total: ${total}/21`;
     }
-    case 'escala_animo':
-    case 'escala_ansiedad':
-      return d.value != null ? `Puntaje: ${d.value}/100` : 'Sin puntaje.';
+    case 'escala_animo': {
+      const n = d.mood_score ?? d.value;
+      return n != null && n !== '' ? `Puntaje: ${n}/100` : 'Sin puntaje.';
+    }
+    case 'escala_ansiedad': {
+      const n = d.anxiety_score ?? d.value;
+      return n != null && n !== '' ? `Puntaje: ${n}/100` : 'Sin puntaje.';
+    }
     default:
       if (d.readable_text) return stripMarkdownHeaders(d.readable_text);
       return '';

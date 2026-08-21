@@ -77,9 +77,19 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
     }
     if (text) {
       hasContent = true;
-      y = pdfText(doc, text, MARGIN, y, { size: 10, maxWidth: maxW });
+      const shown =
+        section.type === 'radio'
+          ? section.options?.find((o) => o.v === text)?.label || text
+          : text;
+      y = pdfText(doc, shown, MARGIN, y, { size: 10, maxWidth: maxW });
+    } else if (section.type === 'radio' && section.options?.length) {
+      for (const opt of section.options) {
+        y = ensurePdfSpace(doc, y, 8);
+        y = pdfText(doc, `☐  ${opt.label}`, MARGIN, y, { size: 9, maxWidth: maxW });
+        y += 1;
+      }
     } else {
-      y = drawAnswerBox(doc, MARGIN, y, maxW, boxH);
+      y = drawAnswerBox(doc, MARGIN, y, maxW, section.type === 'number' ? 18 : boxH);
     }
     y += 4;
   }
@@ -124,6 +134,14 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
 export function handoutPdfFilename(def, patientName) {
   const shown = displayPatientName(patientName);
   const safe = (shown || 'paciente').replace(/[^\w\s-]/gi, '').trim() || 'paciente';
-  const slug = def.title.replace(/\s+/g, '-').toLowerCase();
+  const slug =
+    String(def.title || 'handout')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s-]/gi, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase()
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'handout';
   return `${slug}-${safe}.pdf`;
 }

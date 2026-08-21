@@ -48,6 +48,7 @@ export async function renderSubjectiveScale(host, moduleRow, meta) {
   const input = form.querySelector('input');
 
   const persist = async () => {
+    if (!form.isConnected) return;
     const fd = collectFormData(form);
     let v = fd[meta.field];
     if (v === undefined || v === '') {

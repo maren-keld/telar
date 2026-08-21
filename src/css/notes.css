@@ -86,12 +86,17 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
   padding: 8px 12px 12px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.notes-scroll--prejump {
+  visibility: hidden;
 }
 
 .notes-scroll > * {
@@ -762,6 +767,41 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   margin-bottom: 8px;
 }
 
+.ai-dock__chips--busy {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.ai-dock__thinking {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.ai-dock__thinking-orb {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.ai-dock__thinking-orb canvas {
+  display: block;
+}
+
+.ai-dock__thinking-label {
+  min-width: 0;
+}
+
 .ai-dock__chip {
   font-size: 0.7rem;
   line-height: 1.2;
@@ -823,8 +863,11 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 }
 
 .ai-dock__orb[hidden],
-.ai-dock__arrow-wrap[hidden] {
-  display: none;
+.ai-dock__arrow-wrap[hidden],
+.ai-dock__send[hidden],
+.ai-dock__input[hidden],
+.ai-dock__thinking[hidden] {
+  display: none !important;
 }
 
 .ai-dock__orb canvas {

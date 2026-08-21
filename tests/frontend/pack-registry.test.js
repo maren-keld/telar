@@ -37,6 +37,10 @@ test('getModuleDefs includes legacy clinical modules without packs', async () =>
   const defs = getModuleDefs();
   assert.ok(defs.gad7?.label);
   assert.ok(defs.tcc_abc?.label);
+  assert.ok(defs.tcc_registro_pensamientos?.label);
+  assert.ok(defs.sig_pregunta_milagro?.label);
+  assert.equal(defs.tcc_registro_pensamientos.oncePerTreatment, false);
+  assert.equal(defs.sig_externalizacion.oncePerTreatment, true);
   assert.ok(defs.bilateral_stimulation?.label);
 });
 

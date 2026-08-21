@@ -28,7 +28,7 @@ export async function buildCaseContextText(treatmentId) {
     for (const mod of session.modules) {
       if (mod.module_type === 'selector_modulo') continue;
       const data = parseJsonSafe(mod.data, {});
-      const readable = data.readable_text || buildReadableText(mod.module_type, data);
+      const readable = buildReadableText(mod.module_type, data) || data.readable_text || '';
       if (!readable) continue;
       parts.push(`\n#### ${moduleLabelFor(mod.module_type)} (${mod.status || 'pendiente'})`);
       parts.push(readable.replace(/^#\s+.+\n?/gm, '').trim());
