@@ -180,6 +180,23 @@ def test_graph_links_person_to_group_and_reaches(panel):
     assert (f"p-{person['id']}", f"g-{group['id']}", "member") in links
 
 
+def test_lost_people_sit_in_the_deep_ring_with_a_reason(panel):
+    person = panel.post(
+        f"/api/admin/crm/people?secret={PANEL_PASSWORD}",
+        json={
+            "name": "Alumna del curso",
+            "status": "no_instalo",
+            "lost_reason": "modulo",
+            "notes": "Hizo el curso, pidió tests de trauma que aún no estaban.",
+        },
+    ).json["people"][0]
+    assert person["status"] == "no_instalo"
+    assert person["lost_reason"] == "modulo"
+    node = next(n for n in crm_get(panel).json["graph"]["nodes"] if n["kind"] == "person")
+    assert node["ring"] == "deep"
+    assert node["lost"] is True
+
+
 def test_day_outside_the_window_is_rejected(panel):
     assert crm_patch(panel, {"day": "2020-01-01", "messages": 3}).status_code == 400
     assert crm_patch(panel, {"day": "no-es-fecha", "messages": 1}).status_code == 400

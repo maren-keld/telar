@@ -28,7 +28,22 @@ PEOPLE_STATUSES = {
     "conversando": "Conversando",
     "demo": "Vio demo",
     "usando": "Usa Telar",
+    "curso": "Hizo el curso",
+    "no_instalo": "Curso, no instaló",
+    "abandono": "Instaló y no volvió",
+    "perdido": "Desapareció",
+    "no_interesado": "No se interesó",
     "pausa": "En pausa",
+}
+LOST_STATUSES = frozenset({
+    "no_instalo", "abandono", "perdido", "no_interesado", "pausa",
+})
+LOST_REASONS = {
+    "nf": "El neurofeedback no mostraba lo que esperaban",
+    "modulo": "Pedían un módulo que aún no estaba",
+    "nunca_uso": "Instaló, usó poco y no volvió",
+    "desaparecio": "Desapareció",
+    "otro": "Otro",
 }
 REACH_KINDS = {
     "grupo": "Grupo",
@@ -152,6 +167,7 @@ def ensure_schema(conn, autoincrement: str) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_reaches_day ON crm_reaches(day)")
     _ensure_column(conn, "crm_people", "group_id", "INTEGER")
+    _ensure_column(conn, "crm_people", "lost_reason", "TEXT NOT NULL DEFAULT ''")
 
 
 def _ensure_column(conn, table: str, column: str, spec: str) -> None:
@@ -271,7 +287,12 @@ PEOPLE_RINGS = {
     "usando": "inner",
     "demo": "inner",
     "conversando": "work",
+    "curso": "work",
     "interesado": "outer",
+    "no_instalo": "deep",
+    "abandono": "deep",
+    "perdido": "deep",
+    "no_interesado": "deep",
     "pausa": "deep",
 }
 GROUP_RINGS = {
@@ -336,6 +357,8 @@ def build_graph(groups: list[dict], people: list[dict], reaches: list[dict]) -> 
             "name": person["name"],
             "location": person.get("location") or "",
             "status": person["status"],
+            "lost": person["status"] in LOST_STATUSES,
+            "lost_reason": person.get("lost_reason") or "",
             "ring": PEOPLE_RINGS.get(person["status"], "outer"),
             "weight": weight.get(key, 0),
         })
@@ -378,9 +401,11 @@ def crm_state() -> dict:
         people = _rows(
             conn.execute(
                 """SELECT id, name, location, contact, status, notes, group_id,
-                          created_at, updated_at
+                          lost_reason, created_at, updated_at
                    FROM crm_people
-                   ORDER BY CASE status WHEN 'pausa' THEN 1 ELSE 0 END,
+                   ORDER BY CASE WHEN status IN
+                     ('no_instalo','abandono','perdido','no_interesado','pausa')
+                     THEN 1 ELSE 0 END,
                             updated_at DESC"""
             )
         )
@@ -403,7 +428,9 @@ def crm_state() -> dict:
             "groups": GROUP_STATUSES,
             "people": PEOPLE_STATUSES,
             "reaches": REACH_KINDS,
+            "reasons": LOST_REASONS,
         },
+        "lost_statuses": sorted(LOST_STATUSES),
     }
 
 
@@ -616,6 +643,9 @@ def _save_person(item_id: int | None):
     notes = api.clean_field(data.get("notes"), 400)
     status = data.get("status") if data.get("status") in PEOPLE_STATUSES else "interesado"
     group_id = _optional_id(data.get("group_id"))
+    lost_reason = data.get("lost_reason") if data.get("lost_reason") in LOST_REASONS else ""
+    if status not in LOST_STATUSES:
+        lost_reason = lost_reason or ""
     now = api.now_iso()
     with api.db() as conn:
         if group_id:
@@ -628,17 +658,18 @@ def _save_person(item_id: int | None):
             _insert_id(
                 conn,
                 """INSERT INTO crm_people
-                   (name, location, contact, status, notes, group_id, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (name, location, contact, status, notes, group_id, now, now),
+                   (name, location, contact, status, notes, group_id, lost_reason,
+                    created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (name, location, contact, status, notes, group_id, lost_reason, now, now),
             )
         else:
             conn.execute(
                 """UPDATE crm_people
                    SET name = ?, location = ?, contact = ?, status = ?, notes = ?,
-                       group_id = ?, updated_at = ?
+                       group_id = ?, lost_reason = ?, updated_at = ?
                    WHERE id = ?""",
-                (name, location, contact, status, notes, group_id, now, item_id),
+                (name, location, contact, status, notes, group_id, lost_reason, now, item_id),
             )
     return jsonify(crm_state())
 
@@ -711,6 +742,10 @@ CRM_CSS = """
 .crm-list button.danger:hover { background:#3d1c21; color:#f85149; }
 .pill.wait { color:#d29922; border-color:#4a3d16; background:#241d08; }
 .pill.live { color:#3fb950; border-color:#1c4428; background:#0f2417; }
+.pill.lost { color:#f85149; border-color:#3d1c21; background:#2a1215; }
+.crm-sub { padding:12px 16px 4px; font-size:11px; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:#8b949e; }
+.crm-list article.lost h4 { color:#c9c4bc; }
 .map-card { background:#f4efe6; border-color:#e6dccb; overflow:hidden; }
 .map-card svg { display:block; width:100%; height:auto;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
@@ -725,7 +760,7 @@ CRM_MARKUP = """
 <section id="tab-hoy">
   <div class="card goal" id="goal"></div>
   <h2>Red</h2>
-  <p class="map-hint">Cerca del centro: ya usan Telar o vieron una demo. Más afuera: interesados, grupos por crear, en pausa. Las líneas aparecen cuando registras un alcance o dices de qué grupo viene alguien.</p>
+  <p class="map-hint">Cerca del centro: usan Telar o vieron una demo. Afuera, en gris: hicieron el curso y no instalaron, usaron dos días o desaparecieron. Anotarlos importa tanto como a los interesados: ahí se ve el patrón (por ahora, el NF y los módulos que faltan).</p>
   <div class="card map-card" id="map"></div>
   <div class="crm-grid">
     <div>
@@ -751,7 +786,7 @@ CRM_MARKUP = """
       <div class="card crm-list" id="groups"></div>
     </div>
     <div>
-      <h2>Personas interesadas</h2>
+      <h2>Personas</h2>
       <form class="crm-form" id="person-form" autocomplete="off">
         <input type="hidden" name="item_id" value="">
         <input name="name" required maxlength="80" placeholder="Nombre">
@@ -761,17 +796,34 @@ CRM_MARKUP = """
         </div>
         <div class="row2">
           <select name="status">
-            <option value="interesado">Interesado</option>
-            <option value="conversando">Conversando</option>
-            <option value="demo">Vio demo</option>
-            <option value="usando">Usa Telar</option>
-            <option value="pausa">En pausa</option>
+            <optgroup label="En juego">
+              <option value="interesado">Interesado</option>
+              <option value="conversando">Conversando</option>
+              <option value="demo">Vio demo</option>
+              <option value="usando">Usa Telar</option>
+              <option value="curso">Hizo el curso</option>
+            </optgroup>
+            <optgroup label="No se quedaron">
+              <option value="no_instalo">Curso, no instaló</option>
+              <option value="abandono">Instaló y no volvió</option>
+              <option value="perdido">Desapareció</option>
+              <option value="no_interesado">No se interesó</option>
+              <option value="pausa">En pausa</option>
+            </optgroup>
           </select>
-          <select name="group_id">
-            <option value="">Sin grupo de origen</option>
+          <select name="lost_reason">
+            <option value="">Si no se quedó, ¿por qué?</option>
+            <option value="nf">El NF no mostraba lo que esperaban</option>
+            <option value="modulo">Pedían un módulo que no estaba</option>
+            <option value="nunca_uso">Usó poco y no volvió</option>
+            <option value="desaparecio">Desapareció</option>
+            <option value="otro">Otro</option>
           </select>
         </div>
-        <textarea name="notes" maxlength="400" placeholder="De dónde salió, qué le interesa, cuándo seguir"></textarea>
+        <select name="group_id">
+          <option value="">Sin grupo de origen</option>
+        </select>
+        <textarea name="notes" maxlength="400" placeholder="De dónde salió, qué le interesa, cuándo seguir — o por qué no se quedó"></textarea>
         <div class="actions">
           <button type="submit">Añadir persona</button>
           <button type="button" id="person-cancel" hidden>Cancelar</button>
@@ -824,8 +876,9 @@ function shortMissed(iso) {
 
 function pillClass(status) {
   if (status === 'activo' || status === 'usando' || status === 'demo') return 'ok';
-  if (status === 'por_crear' || status === 'interesado' || status === 'conversando') return 'wait';
+  if (status === 'por_crear' || status === 'interesado' || status === 'conversando' || status === 'curso') return 'wait';
   if (status === 'creado') return 'live';
+  if (status === 'no_instalo' || status === 'abandono' || status === 'perdido' || status === 'no_interesado') return 'lost';
   return '';
 }
 
@@ -891,7 +944,8 @@ function renderMap(d) {
 
   const rim = `
     <text x="34" y="${MAP_CY}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle" transform="rotate(-90 34 ${MAP_CY})">GRUPOS</text>
-    <text x="${MAP_VB - 34}" y="${MAP_CY}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle" transform="rotate(90 ${MAP_VB - 34} ${MAP_CY})">PERSONAS</text>`;
+    <text x="${MAP_VB - 34}" y="${MAP_CY}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle" transform="rotate(90 ${MAP_VB - 34} ${MAP_CY})">PERSONAS</text>
+    <text x="${MAP_CX}" y="${MAP_VB - 28}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle">NO SE QUEDARON</text>`;
 
   const edges = (graph.edges || []).map((e) => {
     const a = placed[e.from] || placed.telar;
@@ -910,13 +964,15 @@ function renderMap(d) {
     const label = firstName(n.name);
     const lx = p.x + (p.x >= MAP_CX ? 9 : -9);
     const anchor = p.x >= MAP_CX ? 'start' : 'end';
+    const fill = n.lost ? '#9a9084' : '#2c2824';
     const mark = n.kind === 'group'
-      ? `<rect x="${(p.x - rad).toFixed(1)}" y="${(p.y - rad).toFixed(1)}" width="${(rad * 2).toFixed(1)}" height="${(rad * 2).toFixed(1)}" rx="1.6" fill="#2c2824"/>`
-      : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad}" fill="#2c2824"/>`;
+      ? `<rect x="${(p.x - rad).toFixed(1)}" y="${(p.y - rad).toFixed(1)}" width="${(rad * 2).toFixed(1)}" height="${(rad * 2).toFixed(1)}" rx="1.6" fill="${fill}"/>`
+      : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad}" fill="${fill}"/>`;
+    const tip = [n.name, n.location, n.lost ? 'no se quedó' : ''].filter(Boolean).join(' · ');
     return `<g class="map-node" data-node="${n.kind}:${n.ref}" style="cursor:pointer">
-      <title>${esc(n.name)}${n.location ? ' · ' + esc(n.location) : ''}</title>
+      <title>${esc(tip)}</title>
       ${mark}
-      <text x="${lx.toFixed(1)}" y="${(p.y - rad - 5).toFixed(1)}" text-anchor="${anchor}" fill="#2c2824" font-size="11">${esc(label)}</text>
+      <text x="${lx.toFixed(1)}" y="${(p.y - rad - 5).toFixed(1)}" text-anchor="${anchor}" fill="${fill}" font-size="11">${esc(label)}</text>
     </g>`;
   }).join('');
 
@@ -1015,15 +1071,14 @@ function renderGroups(d) {
 function renderPeople(d) {
   const origin = $('person-form').querySelector('[name="group_id"]');
   fillSelect(origin, d.groups.filter((g) => g.status !== 'archivado'), 'Sin grupo de origen');
-  if (!d.people.length) {
-    $('people').innerHTML = '<p class="empty">Cuando alguien muestre interés, anótalo con nombre y dónde está.</p>';
-    return;
-  }
+  const lostSet = new Set(d.lost_statuses || []);
   const groupsById = Object.fromEntries(d.groups.map((g) => [String(g.id), g]));
-  $('people').innerHTML = d.people.map((p) => {
+  const card = (p) => {
     const from = p.group_id ? groupsById[String(p.group_id)] : null;
-    const bits = [p.location, p.contact, from ? 'Grupo: ' + from.name : '', p.notes].filter(Boolean);
-    return `<article>
+    const why = p.lost_reason && d.labels.reasons ? d.labels.reasons[p.lost_reason] : '';
+    const bits = [p.location, p.contact, from ? 'Grupo: ' + from.name : '', why, p.notes].filter(Boolean);
+    const lost = lostSet.has(p.status);
+    return `<article class="${lost ? 'lost' : ''}">
     <header>
       <h4>${esc(p.name)}</h4>
       <span class="pill ${pillClass(p.status)}">${esc(d.labels.people[p.status] || p.status)}</span>
@@ -1034,7 +1089,18 @@ function renderPeople(d) {
       <button type="button" class="danger" data-del-person="${p.id}">Quitar</button>
     </div>
   </article>`;
-  }).join('');
+  };
+  if (!d.people.length) {
+    $('people').innerHTML = '<p class="empty">Anota también a quienes hicieron el curso y no instalaron, o desaparecieron. El patrón se ve después.</p>';
+    return;
+  }
+  const live = d.people.filter((p) => !lostSet.has(p.status));
+  const lost = d.people.filter((p) => lostSet.has(p.status));
+  $('people').innerHTML =
+      `<div class="crm-sub">En juego · ${live.length}</div>`
+    + (live.length ? live.map(card).join('') : '<p class="empty">Nadie en juego ahora.</p>')
+    + `<div class="crm-sub">No se quedaron · ${lost.length}</div>`
+    + (lost.length ? lost.map(card).join('') : '<p class="empty">Cuando alguien no instale, use dos días o desaparezca, anótalo. El NF que no muestra lo esperado ya es un patrón.</p>');
 }
 
 function renderReaches(d) {
@@ -1113,7 +1179,7 @@ function fillForm(form, item, cancelId, submitLabel) {
   for (const el of form.elements) {
     if (!el.name || el.name === 'item_id') continue;
     if (item[el.name] != null) el.value = item[el.name];
-    else if (el.name === 'group_id') el.value = '';
+    else if (el.name === 'group_id' || el.name === 'lost_reason') el.value = '';
   }
   itemField(form).value = item.id;
   $(cancelId).hidden = false;
