@@ -47,10 +47,10 @@ App completa con packs clínicos, neurofeedback Muse 2, IA opcional con consenti
 EOF
 )"
 
-# Draft + packs ANTES de que exista el tag en origin. Si se pushea el tag
-# primero, CI arranca sin bundle y Windows puede quedarse en tauri-action
-# creando el release a la vez que este script.
-echo "→ Release draft $TAG con bundle de packs (el tag dispara CI)…"
+# Draft + packs ANTES de pushear el tag. Un `gh release create --draft` no
+# crea el git tag (queda untagged-…); el push del tag asocia el draft y dispara
+# CI cuando el bundle ya está en el release.
+echo "→ Release draft $TAG con bundle de packs…"
 gh release create "$TAG" "$ROOT/dist/telar-packs-bundle.tar.gz" \
   --repo "$REPO" \
   --draft \
@@ -58,7 +58,9 @@ gh release create "$TAG" "$ROOT/dist/telar-packs-bundle.tar.gz" \
   --title "Telar ${TAG}" \
   --notes "$NOTES"
 
-git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" 2>/dev/null || true
+echo "→ Push tag $TAG (dispara CI con packs ya en el draft)…"
+git tag -a "$TAG" -m "Telar ${TAG}"
+git push origin "$TAG"
 
 echo ""
 echo "✓ CI Mac + Windows en curso"
