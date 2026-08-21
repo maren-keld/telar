@@ -347,6 +347,10 @@
       },
       { capture: true, passive: true }
     );
+    document.addEventListener('telar:video-play', () => {
+      send('cta:video');
+      reachStep('step:explore');
+    });
   }
 
   /** Corre cuando el navegador ya no tiene nada urgente que hacer.

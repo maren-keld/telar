@@ -409,6 +409,108 @@ li a.card {
   height: auto;
 }
 
+.video-stage {
+  position: relative;
+  background: #0e1116;
+}
+
+.app-shot--video iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  background: #0e1116;
+}
+
+.app-shot--video .app-shot-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.video-sound {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font: 600 0.8rem/1 inherit;
+  cursor: pointer;
+}
+
+.video-sound:hover,
+.video-sound:focus-visible {
+  border-color: var(--accent);
+}
+
+.video-facade {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #0e1116;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.video-facade img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  pointer-events: none;
+}
+
+.video-facade__play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: 999px;
+  background: var(--accent, #2f6fed);
+  color: #fff;
+  font: 600 0.95rem/1 var(--font, inherit);
+  box-shadow: 0 8px 24px rgba(15, 40, 90, 0.28);
+  pointer-events: none;
+}
+
+.video-facade__play::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 7px 0 7px 12px;
+  border-color: transparent transparent transparent #fff;
+}
+
+.video-facade:hover .video-facade__play,
+.video-facade:focus-visible .video-facade__play {
+  filter: brightness(1.08);
+}
+
+.video-facade:focus-visible {
+  outline: 2px solid var(--accent, #2f6fed);
+  outline-offset: 3px;
+}
+
 .hero-screenshot .app-shot-caption,
 .nf-showcase .app-shot-caption {
   padding: 0.75rem 1rem;

@@ -68,6 +68,16 @@
         ]
       },
       {
+        "@type": "VideoObject",
+        "name": "Telar en 90 segundos",
+        "description": "Una sesión breve en Telar: escala con puntuación automática, ficha local y herramientas de la consulta.",
+        "thumbnailUrl": "https://telarapp.cl/assets/demo-90s.jpg",
+        "uploadDate": "2026-08-21",
+        "duration": "PT1M30S",
+        "embedUrl": "https://www.youtube-nocookie.com/embed/QVJam92d0fA",
+        "contentUrl": "https://www.youtube.com/watch?v=QVJam92d0fA"
+      },
+      {
         "@type": "FAQPage",
         "mainEntity": [
           {
@@ -115,7 +125,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260816a">
+  <link rel="stylesheet" href="css/style.css?v=20260821c">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -180,7 +190,7 @@
             <img src="assets/hero-cloud-asrs-chart.png" alt="Curva de evolución por sesión de la escala ASRS en Telar" width="830" height="514" loading="lazy" decoding="async">
             <div>
               <strong>Catálogo de 33 módulos clínicos</strong>
-              <span>13 escalas con puntuación automática y 11 materiales de trabajo, ficha por ficha</span>
+              <span>13 escalas con puntuación automática y 23 materiales de trabajo, ficha por ficha</span>
             </div>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
@@ -188,26 +198,27 @@
       </aside>
     </section>
 
-    <section class="hero-screenshot">
+    <section class="hero-screenshot" id="demo">
       <div class="container">
-        <figure class="app-shot app-shot--hero">
-        <picture>
-          <source
-            type="image/webp"
-            srcset="assets/telar-app-screenshot-920.webp 920w, assets/telar-app-screenshot-1840.webp 1840w"
-            sizes="(max-width: 968px) calc(100vw - 3rem), 920px"
-          >
-          <img
-            src="assets/telar-app-screenshot.png"
-            alt="Telar mostrando una escala GAD-7 con puntuación automática y neurofeedback Muse 2 en sesión clínica"
-            width="2688"
-            height="1524"
-            loading="eager"
-            fetchpriority="high"
-            decoding="async"
-          >
-        </picture>
-        <figcaption class="app-shot-caption">Captura real: escala con scoring automático y conversación con la IA sobre el caso.</figcaption>
+        <figure class="app-shot app-shot--hero app-shot--video">
+          <div class="video-stage">
+            <button type="button" class="video-facade" data-youtube="QVJam92d0fA" aria-label="Reproducir: Telar en 90 segundos">
+              <img
+                src="assets/demo-90s.jpg"
+                alt="Telar con un GAD-7 puntuado: ansiedad moderada, 11 puntos"
+                width="1280"
+                height="720"
+                loading="eager"
+                fetchpriority="high"
+                decoding="async"
+              >
+              <span class="video-facade__play" aria-hidden="true">Ver 90 segundos</span>
+            </button>
+          </div>
+          <figcaption class="app-shot-caption">
+            <span>Una sesión de 90 segundos.</span>
+            <button type="button" class="video-sound" hidden>Activar sonido</button>
+          </figcaption>
         </figure>
       </div>
     </section>
@@ -216,7 +227,7 @@
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
         <h2 class="section-title">Lo que Telar te devuelve.</h2>
-        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>escalas longitudinales</strong> en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>. Menos planillas, seguimiento medible y la ficha clínica bajo tu control.</p>
+        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>escalas longitudinales</strong> en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>.</p>
 
         <div class="value-grid">
           <article class="value-card">
@@ -224,7 +235,7 @@
             <p class="value-kicker">Tiempo</p>
             <p class="value-figure">Al instante</p>
             <h3>Crea programas de psicoterapia</h3>
-            <p>La <a href="ia.html">IA</a> lee el caso y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento. Armar eso a mano suele costar más de veinte minutos.</p>
+            <p>La <a href="ia.html">IA</a> lee el caso y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento.</p>
           </article>
 
           <article class="value-card">
@@ -254,7 +265,7 @@
             <p class="value-kicker">Prestación opcional</p>
             <p class="value-figure" data-geo-session-fee>$50.000</p>
             <h3>Si además haces neurofeedback</h3>
-            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa. Requiere una banda Muse 2 (~<span data-geo-muse-cost>$320.000</span>: <a href="precio.html#costos">ver todos los costos</a>).</p>
+            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
           </article>
         </div>
       </div>
@@ -274,7 +285,7 @@
           <article class="feature-card">
             <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m3 7 6-4 6 5 6-5"/></svg></div>
             <h3><a href="modules/index.html#cat-pruebas">13 escalas con puntuación automática</a></h3>
-            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 11 módulos de material de trabajo clínico y estimulación bilateral. El <a href="modules/index.html">catálogo completo suma 33 módulos</a> entre todos los packs. Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
+            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 23 materiales de trabajo clínico. El <a href="modules/index.html">catálogo de módulos</a> lista cada ficha con autor y validez. Puntuar una PCL-5 a mano toma ~10 minutos; Telar lo hace al instante y muestra la curva longitudinal.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
@@ -309,7 +320,7 @@
           <article class="feature-card">
             <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/><path d="m8 9 1 1 2-2"/></svg></div>
             <h3><a href="modules/index.html#cat-tcc">Material de trabajo clínico</a></h3>
-            <p>11 materiales de psicoeducación y práctica entre sesiones (modelo ABC, activación conductual, plan de seguridad, etc.) incluidos en el pack base — exportables a PDF.</p>
+            <p>23 materiales de psicoeducación y práctica entre sesiones (modelo ABC, registro de pensamientos, plan de seguridad, jerarquía de exposición, etc.) incluidos en el pack base — exportables a PDF.</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon blue"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/></svg></div>
@@ -629,7 +640,8 @@
   <script src="js/download.js?v=20260803a"></script>
   <script src="js/geo-pricing.js?v=20260804a"></script>
   <script src="js/install-carousel.js?v=20260806a"></script>
-  <script src="js/track.js?v=20260803a"></script>
+  <script src="js/demo-video.js?v=20260821c"></script>
+  <script src="js/track.js?v=20260821c"></script>
   <script src="js/nav.js?v=20260803a"></script>
 </body>
 </html>
