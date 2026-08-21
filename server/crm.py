@@ -681,7 +681,11 @@ CRM_CSS = """
   cursor:pointer; }
 .tabs button:hover { background:#1c2230; color:#e6edf3; }
 .tabs button[aria-pressed="true"] { background:#e6edf3; border-color:#e6edf3; color:#0e1116; }
-#tab-hoy h2 { margin-top:28px; }
+.tabs-sub { margin:0 0 18px; }
+.tabs-sub button { padding:5px 11px; font-size:12px; }
+.tabs-sub button[aria-pressed="true"] { background:#1f6feb; border-color:#1f6feb; color:#fff; }
+#tab-crm h2 { margin-top:28px; }
+#tab-crm [data-crm-pane] > h2:first-child { margin-top:4px; }
 .goal { padding:22px 22px 18px; }
 .goal h3 { margin:0 0 6px; font-size:22px; letter-spacing:-.02em; font-weight:650; }
 .goal .lead { color:#8b949e; margin:0 0 18px; font-size:14px; max-width:62ch; }
@@ -757,11 +761,22 @@ CRM_CSS = """
 """
 
 CRM_MARKUP = """
-<section id="tab-hoy">
+<section id="tab-crm">
+  <nav class="tabs tabs-sub" id="crm-tabs">
+    <button type="button" data-pane="hoy" aria-pressed="true">Hoy</button>
+    <button type="button" data-pane="red">Red</button>
+    <button type="button" data-pane="gente">Gente</button>
+    <button type="button" data-pane="alcances">Alcances</button>
+  </nav>
+  <div data-crm-pane="hoy">
   <div class="card goal" id="goal"></div>
+  </div>
+  <div data-crm-pane="red" hidden>
   <h2>Red</h2>
   <p class="map-hint">Cerca del centro: usan Telar o vieron una demo. Afuera, en gris: hicieron el curso y no instalaron, usaron dos días o desaparecieron. Anotarlos importa tanto como a los interesados: ahí se ve el patrón (por ahora, el NF y los módulos que faltan).</p>
   <div class="card map-card" id="map"></div>
+  </div>
+  <div data-crm-pane="gente" hidden>
   <div class="crm-grid">
     <div>
       <h2>Grupos de WhatsApp</h2>
@@ -832,6 +847,8 @@ CRM_MARKUP = """
       <div class="card crm-list" id="people"></div>
     </div>
   </div>
+  </div>
+  <div data-crm-pane="alcances" hidden>
   <h2>Alcances</h2>
   <p class="note" style="margin:0 0 12px">Cada vez que escribas en un grupo —o a alguien— déjalo acá. No es un funnel: es para no repetir el mismo lado y ver los días en que sí apareciste.</p>
   <form class="reach-form" id="reach-form" autocomplete="off">
@@ -850,13 +867,16 @@ CRM_MARKUP = """
     </div>
   </form>
   <div class="card crm-list" id="reaches"></div>
+  </div>
 </section>
 """
 
 CRM_SCRIPT = r"""
 const WEEKDAYS = ['L','M','M','J','V','S','D'];
 let crm = null;
-let crmTab = sessionStorage.getItem('telar-panel-tab') || 'hoy';
+let crmTab = sessionStorage.getItem('telar-panel-tab') || 'crm';
+if (crmTab === 'hoy') crmTab = 'crm';
+let crmPane = sessionStorage.getItem('telar-crm-pane') || 'hoy';
 
 function prettyDay(iso, withWeekday) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -1190,17 +1210,33 @@ function fillForm(form, item, cancelId, submitLabel) {
 function setTab(name) {
   crmTab = name;
   sessionStorage.setItem('telar-panel-tab', name);
-  $('tab-hoy').hidden = name !== 'hoy';
+  $('tab-crm').hidden = name !== 'crm';
   $('tab-uso').hidden = name !== 'uso';
-  document.querySelectorAll('.tabs button').forEach((btn) => {
+  document.querySelectorAll('#tabs > button').forEach((btn) => {
     btn.setAttribute('aria-pressed', btn.dataset.tab === name ? 'true' : 'false');
   });
   $('live-hint').hidden = name !== 'uso';
 }
 
+function setCrmPane(name) {
+  crmPane = name;
+  sessionStorage.setItem('telar-crm-pane', name);
+  document.querySelectorAll('[data-crm-pane]').forEach((el) => {
+    el.hidden = el.dataset.crmPane !== name;
+  });
+  document.querySelectorAll('#crm-tabs button').forEach((btn) => {
+    btn.setAttribute('aria-pressed', btn.dataset.pane === name ? 'true' : 'false');
+  });
+}
+
 $('tabs').addEventListener('click', (event) => {
   const btn = event.target.closest('button[data-tab]');
   if (btn) setTab(btn.dataset.tab);
+});
+
+$('crm-tabs').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-pane]');
+  if (btn) setCrmPane(btn.dataset.pane);
 });
 
 $('map').addEventListener('click', (event) => {
@@ -1209,10 +1245,18 @@ $('map').addEventListener('click', (event) => {
   const [kind, id] = node.dataset.node.split(':');
   if (kind === 'group') {
     const item = crm.groups.find((g) => String(g.id) === id);
-    if (item) fillForm($('group-form'), item, 'group-cancel', 'Guardar grupo');
+    if (item) {
+      setTab('crm');
+      setCrmPane('gente');
+      fillForm($('group-form'), item, 'group-cancel', 'Guardar grupo');
+    }
   } else if (kind === 'person') {
     const item = crm.people.find((p) => String(p.id) === id);
-    if (item) fillForm($('person-form'), item, 'person-cancel', 'Guardar persona');
+    if (item) {
+      setTab('crm');
+      setCrmPane('gente');
+      fillForm($('person-form'), item, 'person-cancel', 'Guardar persona');
+    }
   }
 });
 
@@ -1339,5 +1383,6 @@ async function loadCrm() {
 }
 
 setTab(crmTab);
+setCrmPane(crmPane);
 loadCrm();
 """

@@ -1143,7 +1143,7 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
     <div><h1>Telar · panel</h1><p class="sub" id="stamp">Cargando…</p></div>
     <div>
       <nav class="tabs" id="tabs">
-        <button type="button" data-tab="hoy" aria-pressed="true">Hoy</button>
+        <button type="button" data-tab="crm" aria-pressed="true">CRM</button>
         <button type="button" data-tab="uso">Uso</button>
       </nav>
       <p class="sub" id="live-hint" hidden>Se actualiza solo cada 20 s</p>

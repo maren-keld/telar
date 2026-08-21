@@ -1,22 +1,37 @@
 User-agent: *
 Allow: /
+Disallow: /panel
+Disallow: /panel/
+Disallow: /api/admin
 
 User-agent: GPTBot
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 User-agent: Claude-Web
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /panel
+Disallow: /api/admin
 
 Sitemap: https://telarapp.cl/sitemap.xml
