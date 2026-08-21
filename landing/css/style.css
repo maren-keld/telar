@@ -1174,6 +1174,27 @@ section {
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.value-card__shot {
+  display: block;
+  width: calc(100% + 3rem);
+  max-width: none;
+  height: auto;
+  margin: -1.5rem -1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  object-fit: cover;
+  object-position: top center;
+}
+
+.value-card__shot--gad {
+  max-height: 160px;
+}
+
+.value-card__shot--nf {
+  max-height: 160px;
+  object-position: center 20%;
 }
 
 .value-kicker {

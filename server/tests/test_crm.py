@@ -145,6 +145,41 @@ def test_group_name_is_required(panel):
     assert res.status_code == 400
 
 
+def test_empty_graph_is_just_the_center(panel):
+    graph = crm_get(panel).json["graph"]
+    assert [n["id"] for n in graph["nodes"]] == ["telar"]
+    assert graph["edges"] == []
+
+
+def test_graph_links_person_to_group_and_reaches(panel):
+    group = panel.post(
+        f"/api/admin/crm/groups?secret={PANEL_PASSWORD}",
+        json={"name": "Psicólogos Chile", "status": "por_crear"},
+    ).json["groups"][0]
+    person = panel.post(
+        f"/api/admin/crm/people?secret={PANEL_PASSWORD}",
+        json={
+            "name": "Ana Pérez",
+            "location": "Ñuñoa",
+            "status": "interesado",
+            "group_id": group["id"],
+        },
+    ).json["people"][0]
+    assert person["group_id"] == group["id"]
+
+    panel.post(
+        f"/api/admin/crm/reaches?secret={PANEL_PASSWORD}",
+        json={"kind": "persona", "person_id": person["id"], "note": "Le escribí"},
+    )
+    graph = crm_get(panel).json["graph"]
+    by_id = {n["id"]: n for n in graph["nodes"]}
+    assert by_id[f"g-{group['id']}"]["ring"] == "outer"
+    assert by_id[f"p-{person['id']}"]["ring"] == "outer"
+    links = {(e["from"], e["to"], e["kind"]) for e in graph["edges"]}
+    assert ("telar", f"p-{person['id']}", "reach") in links
+    assert (f"p-{person['id']}", f"g-{group['id']}", "member") in links
+
+
 def test_day_outside_the_window_is_rejected(panel):
     assert crm_patch(panel, {"day": "2020-01-01", "messages": 3}).status_code == 400
     assert crm_patch(panel, {"day": "no-es-fecha", "messages": 1}).status_code == 400

@@ -77,7 +77,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </p>
         `}
         <footer class="subscribe-pro-modal__foot">
-          <a href="tel:+56920509726" class="subscribe-pro-modal__link">¿Tienes alguna pregunta? +56 9 2050 9726</a>
+          <a href="tel:+56945383084" class="subscribe-pro-modal__link">¿Tienes alguna pregunta? +56 9 4538 3084</a>
           <button type="button" class="subscribe-pro-modal__link subscribe-pro-modal__link--btn" id="subscribe-pro-help">
             ¿Problemas con la suscripción?
           </button>

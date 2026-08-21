@@ -46,6 +46,6 @@ Telar no diagnostica, no prescribe ni sustituye el juicio profesional. No es un 
 
 ## Contacto
 
-- [WhatsApp](https://wa.me/56920509726): +56 9 2050 9726
+- [WhatsApp](https://wa.me/56945383084): +56 9 4538 3084
 - [Descargas](https://github.com/maren-keld/telar/releases/latest): instaladores para macOS y Windows.
 - [Código fuente](https://github.com/maren-keld/telar): repositorio open-core, licencia AGPL-3.0.

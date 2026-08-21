@@ -151,6 +151,24 @@ def ensure_schema(conn, autoincrement: str) -> None:
         )"""
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_reaches_day ON crm_reaches(day)")
+    _ensure_column(conn, "crm_people", "group_id", "INTEGER")
+
+
+def _ensure_column(conn, table: str, column: str, spec: str) -> None:
+    api = _api()
+    if api.USE_POSTGRES:
+        exists = conn.execute(
+            """SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'public' AND table_name = ? AND column_name = ?""",
+            (table, column),
+        ).fetchone()
+        if not exists:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
+        return
+    info = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    names = {dict(row)["name"] for row in info}
+    if column not in names:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {spec}")
 
 
 def _insert_id(conn, sql: str, params) -> int:
@@ -249,6 +267,98 @@ def _goal_summary(history: list[dict], today: str) -> dict:
     }
 
 
+PEOPLE_RINGS = {
+    "usando": "inner",
+    "demo": "inner",
+    "conversando": "work",
+    "interesado": "outer",
+    "pausa": "deep",
+}
+GROUP_RINGS = {
+    "activo": "inner",
+    "creado": "work",
+    "por_crear": "outer",
+    "archivado": "deep",
+}
+
+
+def build_graph(groups: list[dict], people: list[dict], reaches: list[dict]) -> dict:
+    """Nodos en órbita (cerca = más caliente) y aristas de alcances + origen."""
+    group_ids = {int(g["id"]) for g in groups}
+    person_ids = {int(p["id"]) for p in people}
+    weight: dict[str, int] = {}
+    reach_edges: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    latest = None
+    for reach in reaches:
+        target = None
+        gid = reach.get("group_id")
+        pid = reach.get("person_id")
+        if gid and int(gid) in group_ids:
+            target = f"g-{int(gid)}"
+        elif pid and int(pid) in person_ids:
+            target = f"p-{int(pid)}"
+        if not target:
+            continue
+        weight[target] = weight.get(target, 0) + 1
+        key = ("telar", target)
+        if key not in seen:
+            seen.add(key)
+            reach_edges.append(key)
+        if latest is None:
+            latest = key
+
+    nodes = [{
+        "id": "telar",
+        "kind": "center",
+        "name": "Telar",
+        "ring": "center",
+        "weight": 0,
+    }]
+    for group in groups:
+        key = f"g-{int(group['id'])}"
+        nodes.append({
+            "id": key,
+            "kind": "group",
+            "ref": int(group["id"]),
+            "name": group["name"],
+            "location": group.get("location") or "",
+            "status": group["status"],
+            "ring": GROUP_RINGS.get(group["status"], "outer"),
+            "weight": weight.get(key, 0),
+        })
+    for person in people:
+        key = f"p-{int(person['id'])}"
+        nodes.append({
+            "id": key,
+            "kind": "person",
+            "ref": int(person["id"]),
+            "name": person["name"],
+            "location": person.get("location") or "",
+            "status": person["status"],
+            "ring": PEOPLE_RINGS.get(person["status"], "outer"),
+            "weight": weight.get(key, 0),
+        })
+
+    edges = [{
+        "from": src,
+        "to": dst,
+        "kind": "reach",
+        "latest": (src, dst) == latest,
+    } for src, dst in reach_edges]
+    for person in people:
+        gid = person.get("group_id")
+        if not gid or int(gid) not in group_ids:
+            continue
+        edges.append({
+            "from": f"p-{int(person['id'])}",
+            "to": f"g-{int(gid)}",
+            "kind": "member",
+            "latest": False,
+        })
+    return {"nodes": nodes, "edges": edges}
+
+
 def crm_state() -> dict:
     api = _api()
     today = today_chile()
@@ -267,7 +377,7 @@ def crm_state() -> dict:
         )
         people = _rows(
             conn.execute(
-                """SELECT id, name, location, contact, status, notes,
+                """SELECT id, name, location, contact, status, notes, group_id,
                           created_at, updated_at
                    FROM crm_people
                    ORDER BY CASE status WHEN 'pausa' THEN 1 ELSE 0 END,
@@ -288,6 +398,7 @@ def crm_state() -> dict:
         "groups": groups,
         "people": people,
         "reaches": reaches,
+        "graph": build_graph(groups, people, reaches),
         "labels": {
             "groups": GROUP_STATUSES,
             "people": PEOPLE_STATUSES,
@@ -376,6 +487,10 @@ def register_routes(app) -> None:
         with api.db() as conn:
             conn.execute(
                 "UPDATE crm_reaches SET group_id = NULL WHERE group_id = ?",
+                (item_id,),
+            )
+            conn.execute(
+                "UPDATE crm_people SET group_id = NULL WHERE group_id = ?",
                 (item_id,),
             )
             conn.execute("DELETE FROM crm_groups WHERE id = ?", (item_id,))
@@ -500,23 +615,30 @@ def _save_person(item_id: int | None):
     contact = api.clean_field(data.get("contact"), 80)
     notes = api.clean_field(data.get("notes"), 400)
     status = data.get("status") if data.get("status") in PEOPLE_STATUSES else "interesado"
+    group_id = _optional_id(data.get("group_id"))
     now = api.now_iso()
     with api.db() as conn:
+        if group_id:
+            row = conn.execute(
+                "SELECT id FROM crm_groups WHERE id = ?", (group_id,)
+            ).fetchone()
+            if not row:
+                group_id = None
         if item_id is None:
             _insert_id(
                 conn,
                 """INSERT INTO crm_people
-                   (name, location, contact, status, notes, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (name, location, contact, status, notes, now, now),
+                   (name, location, contact, status, notes, group_id, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (name, location, contact, status, notes, group_id, now, now),
             )
         else:
             conn.execute(
                 """UPDATE crm_people
                    SET name = ?, location = ?, contact = ?, status = ?, notes = ?,
-                       updated_at = ?
+                       group_id = ?, updated_at = ?
                    WHERE id = ?""",
-                (name, location, contact, status, notes, now, item_id),
+                (name, location, contact, status, notes, group_id, now, item_id),
             )
     return jsonify(crm_state())
 
@@ -589,6 +711,10 @@ CRM_CSS = """
 .crm-list button.danger:hover { background:#3d1c21; color:#f85149; }
 .pill.wait { color:#d29922; border-color:#4a3d16; background:#241d08; }
 .pill.live { color:#3fb950; border-color:#1c4428; background:#0f2417; }
+.map-card { background:#f4efe6; border-color:#e6dccb; overflow:hidden; }
+.map-card svg { display:block; width:100%; height:auto;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+.map-hint { margin:0 0 12px; color:#8b949e; font-size:13px; max-width:72ch; }
 #tab-uso { margin-top:8px; }
 @media (max-width:640px) {
   .crm-form .row2, .reach-form .row2 { grid-template-columns:1fr; }
@@ -598,6 +724,9 @@ CRM_CSS = """
 CRM_MARKUP = """
 <section id="tab-hoy">
   <div class="card goal" id="goal"></div>
+  <h2>Red</h2>
+  <p class="map-hint">Cerca del centro: ya usan Telar o vieron una demo. Más afuera: interesados, grupos por crear, en pausa. Las líneas aparecen cuando registras un alcance o dices de qué grupo viene alguien.</p>
+  <div class="card map-card" id="map"></div>
   <div class="crm-grid">
     <div>
       <h2>Grupos de WhatsApp</h2>
@@ -638,7 +767,9 @@ CRM_MARKUP = """
             <option value="usando">Usa Telar</option>
             <option value="pausa">En pausa</option>
           </select>
-          <span></span>
+          <select name="group_id">
+            <option value="">Sin grupo de origen</option>
+          </select>
         </div>
         <textarea name="notes" maxlength="400" placeholder="De dónde salió, qué le interesa, cuándo seguir"></textarea>
         <div class="actions">
@@ -703,6 +834,103 @@ function fillSelect(sel, items, placeholder) {
   sel.innerHTML = `<option value="">${placeholder}</option>` + items.map((it) =>
     `<option value="${it.id}">${esc(it.name)}</option>`).join('');
   if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+}
+
+const MAP_RINGS = { inner: 102, work: 188, outer: 274, deep: 360 };
+const MAP_CX = 460, MAP_CY = 460, MAP_VB = 920;
+
+function hash01(s) {
+  let h = 2166136261;
+  for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return ((h >>> 0) % 1000) / 1000;
+}
+
+function firstName(name) {
+  return String(name || '').split(/\s+/)[0].slice(0, 14);
+}
+
+function curvePath(x1, y1, x2, y2, bend) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const dx = x2 - x1, dy = y2 - y1;
+  return `M${x1.toFixed(1)},${y1.toFixed(1)} Q${(mx - dy * bend).toFixed(1)},${(my + dx * bend).toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+}
+
+function renderMap(d) {
+  const graph = d.graph || { nodes: [], edges: [] };
+  const placed = { telar: { x: MAP_CX, y: MAP_CY } };
+  ['inner', 'work', 'outer', 'deep'].forEach((ring, ri) => {
+    const list = graph.nodes.filter((n) => n.ring === ring);
+    const r = MAP_RINGS[ring];
+    const start = ri * 0.45;
+    list.forEach((n, i) => {
+      const t = (i + 0.5) / Math.max(list.length, 1);
+      const ang = start + t * Math.PI * 2 + (hash01(n.id) - 0.5) * 0.14;
+      placed[n.id] = { x: MAP_CX + Math.cos(ang) * r, y: MAP_CY + Math.sin(ang) * r };
+    });
+  });
+
+  const dust = Array.from({ length: 90 }, (_, i) => {
+    const a = hash01('a' + i) * Math.PI * 2;
+    const r = 48 + hash01('r' + i) * 340;
+    const o = 0.07 + hash01('o' + i) * 0.16;
+    return `<circle cx="${(MAP_CX + Math.cos(a) * r).toFixed(1)}" cy="${(MAP_CY + Math.sin(a) * r).toFixed(1)}" r="${hash01('s' + i) < 0.12 ? 1.5 : 0.7}" fill="#2c2824" opacity="${o.toFixed(2)}"/>`;
+  }).join('');
+
+  const rings = Object.values(MAP_RINGS).map((r) =>
+    `<circle cx="${MAP_CX}" cy="${MAP_CY}" r="${r}" fill="none" stroke="#cbbfa8" stroke-width="1"/>`
+  ).join('');
+
+  const ringLabels = [
+    [102, 'Círculo cercano'],
+    [188, 'En trabajo'],
+    [274, 'Órbita'],
+    [360, 'Afuera'],
+  ].map(([r, label]) =>
+    `<text x="${MAP_CX}" y="${MAP_CY - r - 10}" text-anchor="middle" fill="#8a7f70" font-size="11" font-weight="600" letter-spacing="1.8">${label.toUpperCase()}</text>`
+  ).join('');
+
+  const rim = `
+    <text x="34" y="${MAP_CY}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle" transform="rotate(-90 34 ${MAP_CY})">GRUPOS</text>
+    <text x="${MAP_VB - 34}" y="${MAP_CY}" fill="#8a7f70" font-size="11" letter-spacing="2.4" text-anchor="middle" transform="rotate(90 ${MAP_VB - 34} ${MAP_CY})">PERSONAS</text>`;
+
+  const edges = (graph.edges || []).map((e) => {
+    const a = placed[e.from] || placed.telar;
+    const b = placed[e.to];
+    if (!b) return '';
+    const bend = e.kind === 'member' ? 0.22 : 0.13;
+    const sw = e.latest ? 2.4 : (e.kind === 'member' ? 1.15 : 0.95);
+    const op = e.latest ? 0.92 : 0.28;
+    return `<path d="${curvePath(a.x, a.y, b.x, b.y, bend)}" fill="none" stroke="#c45c32" stroke-width="${sw}" opacity="${op}"/>`;
+  }).join('');
+
+  const nodes = graph.nodes.filter((n) => n.kind !== 'center').map((n) => {
+    const p = placed[n.id];
+    if (!p) return '';
+    const rad = 4.5 + Math.min(n.weight || 0, 6) * 1.25;
+    const label = firstName(n.name);
+    const lx = p.x + (p.x >= MAP_CX ? 9 : -9);
+    const anchor = p.x >= MAP_CX ? 'start' : 'end';
+    const mark = n.kind === 'group'
+      ? `<rect x="${(p.x - rad).toFixed(1)}" y="${(p.y - rad).toFixed(1)}" width="${(rad * 2).toFixed(1)}" height="${(rad * 2).toFixed(1)}" rx="1.6" fill="#2c2824"/>`
+      : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad}" fill="#2c2824"/>`;
+    return `<g class="map-node" data-node="${n.kind}:${n.ref}" style="cursor:pointer">
+      <title>${esc(n.name)}${n.location ? ' · ' + esc(n.location) : ''}</title>
+      ${mark}
+      <text x="${lx.toFixed(1)}" y="${(p.y - rad - 5).toFixed(1)}" text-anchor="${anchor}" fill="#2c2824" font-size="11">${esc(label)}</text>
+    </g>`;
+  }).join('');
+
+  const empty = graph.nodes.length <= 1
+    ? `<text x="${MAP_CX}" y="${MAP_CY + 30}" text-anchor="middle" fill="#8a7f70" font-size="13">Aún vacío. Las órbitas se llenan al anotar grupos y personas.</text>`
+    : '';
+
+  $('map').innerHTML = `<svg viewBox="0 0 ${MAP_VB} ${MAP_VB}" role="img" aria-label="Mapa de la red Telar">
+    <rect width="${MAP_VB}" height="${MAP_VB}" fill="#f4efe6"/>
+    ${dust}${rings}${ringLabels}${rim}${edges}
+    <circle cx="${MAP_CX}" cy="${MAP_CY}" r="9" fill="#c45c32"/>
+    <text x="${MAP_CX}" y="${MAP_CY + 24}" text-anchor="middle" fill="#c45c32" font-size="11" font-weight="700" letter-spacing="1.6">TELAR</text>
+    ${nodes}${empty}
+  </svg>`;
 }
 
 function renderGoal(d) {
@@ -785,21 +1013,28 @@ function renderGroups(d) {
 }
 
 function renderPeople(d) {
+  const origin = $('person-form').querySelector('[name="group_id"]');
+  fillSelect(origin, d.groups.filter((g) => g.status !== 'archivado'), 'Sin grupo de origen');
   if (!d.people.length) {
     $('people').innerHTML = '<p class="empty">Cuando alguien muestre interés, anótalo con nombre y dónde está.</p>';
     return;
   }
-  $('people').innerHTML = d.people.map((p) => `<article>
+  const groupsById = Object.fromEntries(d.groups.map((g) => [String(g.id), g]));
+  $('people').innerHTML = d.people.map((p) => {
+    const from = p.group_id ? groupsById[String(p.group_id)] : null;
+    const bits = [p.location, p.contact, from ? 'Grupo: ' + from.name : '', p.notes].filter(Boolean);
+    return `<article>
     <header>
       <h4>${esc(p.name)}</h4>
       <span class="pill ${pillClass(p.status)}">${esc(d.labels.people[p.status] || p.status)}</span>
     </header>
-    <p>${esc([p.location, p.contact, p.notes].filter(Boolean).join(' · ') || 'Sin nota')}</p>
+    <p>${esc(bits.join(' · ') || 'Sin nota')}</p>
     <div class="actions">
       <button type="button" data-edit-person="${p.id}">Editar</button>
       <button type="button" class="danger" data-del-person="${p.id}">Quitar</button>
     </div>
-  </article>`).join('');
+  </article>`;
+  }).join('');
 }
 
 function renderReaches(d) {
@@ -830,6 +1065,7 @@ function renderReaches(d) {
 function renderCrm(d) {
   crm = d;
   renderGoal(d);
+  renderMap(d);
   renderGroups(d);
   renderPeople(d);
   renderReaches(d);
@@ -877,6 +1113,7 @@ function fillForm(form, item, cancelId, submitLabel) {
   for (const el of form.elements) {
     if (!el.name || el.name === 'item_id') continue;
     if (item[el.name] != null) el.value = item[el.name];
+    else if (el.name === 'group_id') el.value = '';
   }
   itemField(form).value = item.id;
   $(cancelId).hidden = false;
@@ -898,6 +1135,19 @@ function setTab(name) {
 $('tabs').addEventListener('click', (event) => {
   const btn = event.target.closest('button[data-tab]');
   if (btn) setTab(btn.dataset.tab);
+});
+
+$('map').addEventListener('click', (event) => {
+  const node = event.target.closest('[data-node]');
+  if (!node || !crm) return;
+  const [kind, id] = node.dataset.node.split(':');
+  if (kind === 'group') {
+    const item = crm.groups.find((g) => String(g.id) === id);
+    if (item) fillForm($('group-form'), item, 'group-cancel', 'Guardar grupo');
+  } else if (kind === 'person') {
+    const item = crm.people.find((p) => String(p.id) === id);
+    if (item) fillForm($('person-form'), item, 'person-cancel', 'Guardar persona');
+  }
 });
 
 $('goal').addEventListener('click', (event) => {
