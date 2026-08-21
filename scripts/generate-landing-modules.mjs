@@ -12,11 +12,12 @@ import { ANSIEDAD_DEPRESION_MODULE_DEFS } from '../src/packs/ansiedad-depresion/
 import { MODULE_PSYCHOMETRICS } from '../src/js/module-psychometrics.js';
 import { ANSIEDAD_DEPRESION_PSYCHOMETRICS } from '../src/packs/ansiedad-depresion/psychometrics.js';
 import { TCC_HANDOUT_DEFS } from '../src/js/tcc-handout-defs.js';
+import { EXTRA_HANDOUT_DEFS } from '../src/js/extra-handout-defs.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'landing/modules');
-const CSS_V = '20260803a';
+const CSS_V = '20260821d';
 
 const SKIP = new Set(['selector_modulo']);
 
@@ -24,10 +25,11 @@ const CATEGORY_LABELS = {
   conceptualizacion: 'Conceptualización del caso',
   intervencion: 'Intervención',
   tcc: 'Psicoeducación y material de trabajo',
+  significado: 'Significado e identidad',
   pruebas: 'Pruebas psicométricas',
 };
 
-const CATEGORY_ORDER = ['conceptualizacion', 'intervencion', 'tcc', 'pruebas'];
+const CATEGORY_ORDER = ['conceptualizacion', 'intervencion', 'tcc', 'significado', 'pruebas'];
 
 const PACK_LABELS = {
   core: 'Telar (core)',
@@ -80,6 +82,90 @@ const EXTRA_PSYCH = {
     validity: 'Problemas, indicadores y objetivos por tratamiento.',
     learnMore: 'Soporta conceptualización e informes del programa.',
   },
+  tcc_registro_pensamientos: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Registro clínico TCC; sin estandarización psicométrica.',
+    validity: 'Herramienta de reestructuración cognitiva orientativa; no sustituye formulación del caso.',
+    learnMore: 'Siete columnas. Se puede repetir por episodio.',
+  },
+  tcc_exposicion: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Jerarquía clínica; SUDS subjetivo.',
+    validity: 'Apoyo a exposición gradual acordada en sesión; no es un protocolo de trauma.',
+    learnMore: 'Seis peldaños + primer paso. No usar para trauma no procesado sin supervisión.',
+  },
+  tcc_experimento: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Diseño de experimento conductual; uso clínico.',
+    validity: 'Pone a prueba creencias en la vida real; no sustituye exposición ni formulación.',
+    learnMore: 'Se puede repetir: una hoja por experimento.',
+  },
+  tcc_monitoreo_actividades: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Autorregistro semanal; no es instrumento estandarizado.',
+    validity: 'Complementa activación conductual y seguimiento del ánimo.',
+    learnMore: 'Una hoja por semana. Ánimo 0–10 junto a las actividades del día.',
+  },
+  tcc_prevencion_recaida: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Plan clínico de cierre o mantenimiento.',
+    validity: 'Orientativo; no reemplaza plan de seguridad si hay riesgo vital.',
+    learnMore: 'Señales tempranas, alto riesgo y plan de 24–48 h.',
+  },
+  sig_externalizacion: {
+    authors: 'Telar — elaboración propia (tradición narrativa, White)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Conversación estructurada; no es instrumento psicométrico.',
+    validity: 'Apoya separar persona y problema; no diagnostica.',
+    learnMore: 'Nombre del problema, efectos, posición personal.',
+  },
+  sig_resultados_unicos: {
+    authors: 'Telar — elaboración propia (tradición narrativa)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Exploración de excepciones; uso clínico.',
+    validity: 'Identifica momentos en que el problema no mandó.',
+    learnMore: 'Un episodio concreto y qué dice de la identidad preferida.',
+  },
+  sig_linea_vida: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Mapa narrativo; no es línea de vida estandarizada.',
+    validity: 'Distingue historia dominante e identidad preferida.',
+    learnMore: 'Hitos, giros, testigos y próximo capítulo.',
+  },
+  sig_carta_problema: {
+    authors: 'Telar — elaboración propia',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Escritura terapéutica; uso clínico.',
+    validity: 'Toma de posición frente al problema; no es técnica de exposición.',
+    learnMore: 'Carta con destinatario, lo que ya no se acepta y cómo sigue.',
+  },
+  sig_condiciones_valia: {
+    authors: 'Telar — elaboración propia (tradición humanista, Rogers)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Exploración de introyectos; no es escala de autoestima.',
+    validity: 'Complementa Rosenberg u otras medidas; no las sustituye.',
+    learnMore: 'Mensajes de valía condicional y momentos de congruencia.',
+  },
+  sig_felt_sense: {
+    authors: 'Telar — elaboración propia (Focusing, Gendlin)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Registro de proceso; se puede repetir sesión a sesión.',
+    validity: 'Apoya conciencia corporal del “todo eso”; no es mindfulness protocolizado.',
+    learnMore: 'Sensación, asa, resonancia, preguntar y recibir.',
+  },
+  sig_pregunta_milagro: {
+    authors: 'Telar — elaboración propia (centrado en soluciones, de Shazer)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Entrevista estructurada; escala 0–10 subjetiva.',
+    validity: 'Orienta hacia excepciones y un paso +1; no niega el problema.',
+    learnMore: 'Milagro, testigos, excepciones ya ocurridas y escalamiento.',
+  },
 };
 
 function mergeModules() {
@@ -93,6 +179,20 @@ function mergeModules() {
   assign(CORE_MODULE_DEFS, 'core');
   assign(CLINICAL_MODULE_DEFS, 'clinical-shared');
   assign(ANSIEDAD_DEPRESION_MODULE_DEFS, 'ansiedad-depresion');
+  for (const [id, handout] of Object.entries(EXTRA_HANDOUT_DEFS)) {
+    if (SKIP.has(id) || merged[id]) continue;
+    const intro = String(handout.intro || '').trim();
+    const first = intro.split('.')[0];
+    const cat = handout.category === 'significado' ? 'significado' : 'tcc';
+    merged[id] = {
+      label: handout.title,
+      category: cat,
+      description: first ? `${first}.` : 'Material de trabajo clínico.',
+      oncePerTreatment: handout.oncePerTreatment === true,
+      allowMultipleInSession: false,
+      packId: 'clinical-shared',
+    };
+  }
   return merged;
 }
 
@@ -110,6 +210,7 @@ const NAV_ITEMS = [
   ['index.html#funciones', 'Funciones'],
   ['modules/index.html', 'Módulos'],
   ['neurofeedback.html', 'Neurofeedback'],
+  ['ia.html', 'IA'],
   ['blog/index.html', 'Blog'],
   ['precio.html', 'Precio'],
   ['index.html#contacto', 'Contacto'],
@@ -119,6 +220,8 @@ const FOOTER_ITEMS = [
   ['index.html', 'Inicio'],
   ['modules/index.html', 'Módulos'],
   ['neurofeedback.html', 'Neurofeedback'],
+  ['ia.html', 'IA'],
+  ['instituciones.html', 'Instituciones'],
   ['precio.html', 'Precio'],
   ['blog/index.html', 'Blog'],
   ['equipo.html', 'Equipo'],
@@ -162,8 +265,8 @@ function footerHtml(depth) {
     <div class="container footer-grid">
       <div>
         <strong>Telar</strong><br>
-        Software open-core · Datos clínicos 100 % locales<br>
-        Hecho en Chile · 2026
+        Software de código libre · Datos clínicos 100% locales<br>
+        2026
       </div>
       <nav class="footer-links" aria-label="Enlaces del pie">
 ${links}
@@ -369,7 +472,7 @@ function indexPage(grouped, total) {
       <div class="cta-box">
         <div>
           <h2>Prueba los módulos en un caso de ejemplo</h2>
-          <p>Plan Demo gratis, hasta 8 pacientes activos.</p>
+          <p>Plan Demo gratis, hasta 3 pacientes activos (los archivados y en pausa no cuentan).</p>
         </div>
         <div class="cta-actions">
           <a data-download href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg"><span class="btn-label">Descargar Telar</span></a>
@@ -446,7 +549,7 @@ writeFileSync(join(OUT_DIR, 'index.html'), indexPage(grouped, ids.length), 'utf8
 for (const id of ids) {
   const def = modules[id];
   const psych = PSYCH[id] || null;
-  const handout = TCC_HANDOUT_DEFS[id] || null;
+  const handout = EXTRA_HANDOUT_DEFS[id] || TCC_HANDOUT_DEFS[id] || null;
   writeFileSync(join(OUT_DIR, `${id}.html`), detailPage(id, def, psych, handout), 'utf8');
 }
 

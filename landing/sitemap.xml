@@ -2,9 +2,21 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://telarapp.cl/</loc>
-    <lastmod>2026-08-02</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/ia</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/instituciones</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/neurofeedback</loc>
@@ -20,7 +32,7 @@
   </url>
   <url>
     <loc>https://telarapp.cl/modules</loc>
-    <lastmod>2026-08-02</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -57,199 +69,271 @@
   <!-- modules:start -->
   <url>
     <loc>https://telarapp.cl/modules/ades</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_activacion</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/asrs</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_carta_problema</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_condiciones_valia</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_socratico</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/diagnostico</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/rosenberg</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/qols</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/eed</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/dass21</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/escala_fer</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/escala_animo</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/escala_ansiedad</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/bilateral_stimulation</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/tcc_experimento</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_autoconceptos</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_preocupaciones</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_externalizacion</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_felt_sense</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/gad7</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_sesgos</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/iesr</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/tcc_exposicion</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_linea_vida</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_abc</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/tcc_monitoreo_actividades</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/motivo_consulta</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/neurofeedback</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/oasis</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/odsis</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/pcl5</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/phq9</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_plan_seguridad</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_pregunta_milagro</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/tcc_prevencion_recaida</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_probabilidades</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/redes_apoyo</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/tcc_registro_pensamientos</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/registro_inicial</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://telarapp.cl/modules/sig_resultados_unicos</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_flexibilidad</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_gratitud</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_estres</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://telarapp.cl/modules/sprint_ecl</loc>
-    <lastmod>2026-08-04</lastmod>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -277,12 +277,6 @@ li a.card {
   margin: 1.25rem 0 0;
 }
 
-.hero-proof {
-  margin: 1.25rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
 .hero-main h1 {
   font-size: clamp(2.2rem, 4.2vw, 3.5rem);
   font-weight: 800;
