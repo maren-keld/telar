@@ -36,7 +36,7 @@ test('getModuleDefs includes legacy clinical modules without packs', async () =>
   const { getModuleDefs } = await import('../../src/js/config.js');
   const defs = getModuleDefs();
   assert.ok(defs.gad7?.label);
-  assert.ok(defs.tcc_abc?.label);
+  assert.doesNotMatch(defs.tcc_abc?.label || '', /demo/i);
   assert.ok(defs.tcc_registro_pensamientos?.label);
   assert.ok(defs.sig_pregunta_milagro?.label);
   assert.equal(defs.tcc_registro_pensamientos.oncePerTreatment, false);
@@ -56,6 +56,24 @@ test('treatment templates prefer pack programs over legacy', async () => {
   const tpl = await import('../../src/js/treatment-templates.js');
   const list = tpl.listTreatmentTemplates();
   assert.ok(list.some((t) => t.label === 'From pack'));
+});
+
+test('demo pack does not overwrite clinical module defs', async () => {
+  const registry = await import('../../src/js/pack-registry.js');
+  registry.resetRegistry();
+  registry.registerModuleDef('tcc_abc', { label: 'Modelo ABC (versión simple)' }, { packId: 'clinical-shared' });
+  registry.registerModuleDef('tcc_abc', { label: 'Modelo ABC — demo' }, { packId: 'demo' });
+  assert.equal(registry.getModuleDef('tcc_abc')?.label, 'Modelo ABC (versión simple)');
+  registry.registerModuleDef('escala_animo', { label: 'Escala subjetiva de ánimo (demo)' }, { packId: 'demo' });
+  assert.equal(registry.getModuleDef('escala_animo')?.label, 'Escala subjetiva de ánimo (demo)');
+});
+
+test('getModuleDefs ignores demo labels when the type already exists', async () => {
+  const registry = await import('../../src/js/pack-registry.js');
+  registry.resetRegistry();
+  registry.registerModuleDef('tcc_abc', { label: 'Modelo ABC — demo' }, { packId: 'demo' });
+  const { getModuleDefs } = await import('../../src/js/config.js');
+  assert.equal(getModuleDefs().tcc_abc.label, 'Modelo ABC (versión simple)');
 });
 
 test('missing pack module type does not crash renderer resolution', async () => {

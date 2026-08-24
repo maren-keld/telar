@@ -288,7 +288,9 @@ test('el plan parseado deja el handout TCC solo en la primera sesión', () => {
 
 test('registros reiterables no cuentan como handout de una sola entrega', () => {
   assert.equal(isHomeworkHandout('tcc_abc'), true);
-  assert.equal(isHomeworkHandout('sig_externalizacion'), true);
+  assert.equal(isHomeworkHandout('sig_externalizacion'), false);
+  assert.equal(isHomeworkHandout('tcc_autoconceptos'), false);
+  assert.equal(isHomeworkHandout('tcc_plan_seguridad'), false);
   assert.equal(isHomeworkHandout('tcc_registro_pensamientos'), false);
   assert.equal(isHomeworkHandout('tcc_experimento'), false);
   assert.equal(isHomeworkHandout('tcc_monitoreo_actividades'), false);

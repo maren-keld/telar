@@ -4,6 +4,7 @@ import {
   itemTypeNeedsOptions,
 } from '../custom-module-items.js';
 import { customModuleTypeId, newCustomModuleId, saveCustomModule } from '../custom-modules.js';
+import { playOverlayOpen, animateAndRemove } from '../transitions.js';
 
 function newQuestion(index) {
   return {
@@ -55,6 +56,7 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
     </div>`;
 
   document.body.appendChild(overlay);
+  playOverlayOpen(overlay);
 
   const questionsEl = overlay.querySelector('#cm-questions');
   let questionCount = 0;
@@ -150,7 +152,9 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
     overlay.querySelector('#cm-title').value = existing.title || '';
   }
 
-  const close = () => overlay.remove();
+  const close = () => {
+    void animateAndRemove(overlay);
+  };
 
   overlay.querySelector('.modal-close')?.addEventListener('click', close);
   overlay.querySelector('#cm-cancel')?.addEventListener('click', close);

@@ -241,7 +241,7 @@ function renderCasePdf(data) {
   }
 
   if (data.motivo) {
-    y = section(doc, y, 'Motivo de consulta');
+    y = section(doc, y, 'Anamnesis');
     y = pdfText(doc, data.motivo, MARGIN, y, { size: 9.5 });
   }
 

@@ -10,8 +10,15 @@ const loadedPacks = new Map();
 const packSearchExtra = new Map();
 const tccVariables = new Map();
 
+function skipDemoOverwrite(map, type, packId) {
+  if (packId !== 'demo') return false;
+  const existing = map.get(type);
+  return Boolean(existing?.packId && existing.packId !== 'demo');
+}
+
 export function registerModuleDef(type, def, { packId } = {}) {
   if (!type || !def) return;
+  if (skipDemoOverwrite(moduleDefs, type, packId)) return;
   moduleDefs.set(type, { ...def, packId: packId || def.packId });
 }
 
@@ -24,11 +31,13 @@ export function registerModuleDefs(defs, { packId } = {}) {
 
 export function registerRenderer(type, fn, { packId } = {}) {
   if (!type || typeof fn !== 'function') return;
+  if (packId === 'demo' && renderers.get(type)?.packId && renderers.get(type).packId !== 'demo') return;
   renderers.set(type, { fn, packId });
 }
 
 export function registerHandout(type, def, { packId } = {}) {
   if (!type || !def) return;
+  if (skipDemoOverwrite(handoutDefs, type, packId)) return;
   handoutDefs.set(type, { ...def, packId });
 }
 
@@ -53,6 +62,7 @@ export function registerPrograms(defs, { packId } = {}) {
 
 export function registerPsychometric(type, meta, { packId } = {}) {
   if (!type || !meta) return;
+  if (skipDemoOverwrite(psychometrics, type, packId)) return;
   psychometrics.set(type, { ...meta, packId });
 }
 

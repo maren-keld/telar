@@ -5,6 +5,7 @@ import {
   formatSubscriptionPriceCLP,
 } from '../subscription-config.js';
 import { openExternalUrl } from '../tauri-bridge.js';
+import { playOverlayOpen, animateAndRemove } from '../transitions.js';
 import {
   activateDevPro,
   fetchSubscriptionHealth,
@@ -86,7 +87,10 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
     </div>`;
 
   document.body.appendChild(overlay);
-  const close = () => overlay.remove();
+  playOverlayOpen(overlay);
+  const close = () => {
+    void animateAndRemove(overlay);
+  };
 
   overlay.querySelector('.modal-close')?.addEventListener('click', close);
   overlay.addEventListener('click', (e) => {

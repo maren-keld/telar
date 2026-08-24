@@ -19,7 +19,7 @@ export const CORE_MODULE_DEFS = {
     oncePerTreatment: true,
   },
   motivo_consulta: {
-    label: 'Motivo de consulta',
+    label: 'Anamnesis',
     category: 'conceptualizacion',
     description: 'Anamnesis de la primera sesión: motivo acotado, expectativas y antecedentes.',
     oncePerTreatment: true,
@@ -41,9 +41,15 @@ export const CORE_MODULE_DEFS = {
   },
 };
 
-/** Core + legacy embebido + packs cargados (pack gana en conflicto). */
+/** Core + legacy embebido + packs cargados (pack gana en conflicto; demo no pisa lo que ya existe). */
 export function getModuleDefs() {
-  return { ...CORE_MODULE_DEFS, ...getLegacyModuleDefs(), ...getPackModuleDefs() };
+  const packs = getPackModuleDefs();
+  const merged = { ...CORE_MODULE_DEFS, ...getLegacyModuleDefs() };
+  for (const [type, def] of Object.entries(packs)) {
+    if (def?.packId === 'demo' && merged[type]) continue;
+    merged[type] = def;
+  }
+  return merged;
 }
 
 export function getModuleDef(type) {

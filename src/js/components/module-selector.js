@@ -14,73 +14,9 @@ import {
   treatmentHasModuleType,
 } from '../db.js';
 import { escapeHtml, toast } from '../utils.js';
+import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 
-const CATEGORIES = [
-  {
-    id: 'conceptualizacion',
-    label: 'Conceptualización del caso',
-    types: ['registro_inicial', 'motivo_consulta', 'redes_apoyo', 'diagnostico'],
-  },
-  {
-    id: 'intervencion',
-    label: 'Intervención',
-    types: ['neurofeedback', 'bilateral_stimulation'],
-  },
-  {
-    id: 'tcc',
-    label: 'Psicoeducación',
-    types: [
-      'tcc_abc',
-      'tcc_plan_seguridad',
-      'tcc_activacion',
-      'tcc_socratico',
-      'tcc_flexibilidad',
-      'tcc_probabilidades',
-      'tcc_sesgos',
-      'tcc_autoconceptos',
-      'tcc_preocupaciones',
-      'tcc_gratitud',
-      'tcc_estres',
-      'tcc_registro_pensamientos',
-      'tcc_exposicion',
-      'tcc_experimento',
-      'tcc_monitoreo_actividades',
-      'tcc_prevencion_recaida',
-    ],
-  },
-  {
-    id: 'significado',
-    label: 'Significado y proceso',
-    types: [
-      'sig_externalizacion',
-      'sig_resultados_unicos',
-      'sig_linea_vida',
-      'sig_carta_problema',
-      'sig_condiciones_valia',
-      'sig_felt_sense',
-      'sig_pregunta_milagro',
-    ],
-  },
-  {
-    id: 'pruebas',
-    label: 'Pruebas psicométricas',
-    types: [
-      'dass21',
-      'gad7',
-      'asrs',
-      'pcl5',
-      'sprint_ecl',
-      'iesr',
-      'ades',
-      'eed',
-      'qols',
-      'rosenberg',
-      'escala_animo',
-      'escala_ansiedad',
-      'escala_fer',
-    ],
-  },
-];
+export { CATEGORIES };
 
 function searchTextForType(type, def, psych, customTitle) {
   if (customTitle) {
@@ -99,7 +35,7 @@ function variablesRow(type) {
     </div>`;
 }
 
-function previewHtml(type, def, psych) {
+export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar' } = {}) {
   const hasPsych = Boolean(psych);
   const rows = hasPsych
     ? `
@@ -128,12 +64,12 @@ function previewHtml(type, def, psych) {
       ${psych?.learnMore ? `<p class="mod-info__note">${escapeHtml(psych.learnMore)}</p>` : ''}
       <div class="mod-info__actions">
         <span class="mod-info__learn">Más información en Ajustes / manual</span>
-        <button type="button" class="btn btn-primary" id="mod-select-btn">Seleccionar</button>
+        <button type="button" class="btn btn-primary" id="mod-select-btn">${escapeHtml(actionLabel)}</button>
       </div>
     </div>`;
 }
 
-function applyModuleSearch(listEl, query) {
+export function applyModuleSearch(listEl, query) {
   const q = query.trim().toLowerCase();
   listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
     const hay = !q || (btn.dataset.search || '').includes(q);
@@ -212,31 +148,23 @@ export async function mountModuleSelector(host, ctx) {
   });
 }
 
-async function loadSelectorList(ctx) {
-  const sessionMods = await getSessionModules(ctx.sessionId);
-  const inSession = new Set(
-    sessionMods.filter((m) => m.module_type !== 'selector_modulo').map((m) => m.module_type),
-  );
-  const inTreatment = new Set();
-  const oncePerTreatmentBlocked = {};
-  for (const [type, def] of Object.entries(getModuleDefs())) {
-    if (type === 'selector_modulo') continue;
-    const used = await treatmentHasModuleType(ctx.treatmentId, type);
-    if (used) inTreatment.add(type);
-    if (def.oncePerTreatment && used) {
-      oncePerTreatmentBlocked[type] = true;
-    }
-  }
-
-  const customMods = listCustomModules();
-
-  const { listEl, previewEl, searchInput } = ctx;
-  let selectedType = null;
-  let selecting = false;
+/** Lista de categorías + ítems, igual en el selector del centro y en el modal de índice. */
+export function selectorListInnerHtml({
+  filterCategoryId = null,
+  inTreatment = new Set(),
+  inSession = new Set(),
+  onceBlocked = {},
+} = {}) {
+  const cats = filterCategoryId
+    ? CATEGORIES.filter((c) => c.id === filterCategoryId)
+    : CATEGORIES;
+  const includeCustom = !filterCategoryId || filterCategoryId === 'otros';
+  const customMods = includeCustom ? listCustomModules() : [];
 
   const customCategoryHtml = customMods.length
     ? `<div class="mod-selector-cat" data-cat="custom">
-        <h4>Mis módulos</h4>
+        <h4>${escapeHtml(CUSTOM_CATEGORY_LABEL)}</h4>
+        <p class="mod-selector-cat__blurb">${escapeHtml(CUSTOM_CATEGORY_BLURB)}</p>
         ${customMods
           .map((cm) => {
             const type = `custom_${cm.id}`;
@@ -253,9 +181,8 @@ async function loadSelectorList(ctx) {
       </div>`
     : '';
 
-  listEl.innerHTML =
-    customCategoryHtml +
-    CATEGORIES.map((cat) => {
+  const catsHtml = cats
+    .map((cat) => {
       const available = getModuleDefs();
       const types = cat.types.filter((type) => available[type]);
       if (!types.length) return '';
@@ -263,7 +190,7 @@ async function loadSelectorList(ctx) {
         .map((type) => {
           const def = resolveModuleDef(type) || { label: type, description: '' };
           const psych = psychometricsFor(type);
-          const blocked = def.oncePerTreatment && oncePerTreatmentBlocked[type];
+          const blocked = def.oncePerTreatment && onceBlocked[type];
           const inUse = inTreatment.has(type) || inSession.has(type);
           const search = searchTextForType(type, def, psych);
           return `
@@ -273,8 +200,41 @@ async function loadSelectorList(ctx) {
           </button>`;
         })
         .join('');
-      return `<div class="mod-selector-cat" data-cat="${cat.id}"><h4>${escapeHtml(cat.label)}</h4>${items}</div>`;
-    }).join('');
+      const blurb = cat.blurb
+        ? `<p class="mod-selector-cat__blurb">${escapeHtml(cat.blurb)}</p>`
+        : '';
+      return `<div class="mod-selector-cat" data-cat="${cat.id}"><h4>${escapeHtml(cat.label)}</h4>${blurb}${items}</div>`;
+    })
+    .join('');
+
+  return customCategoryHtml + catsHtml;
+}
+
+async function loadSelectorList(ctx) {
+  const sessionMods = await getSessionModules(ctx.sessionId);
+  const inSession = new Set(
+    sessionMods.filter((m) => m.module_type !== 'selector_modulo').map((m) => m.module_type),
+  );
+  const inTreatment = new Set();
+  const oncePerTreatmentBlocked = {};
+  for (const [type, def] of Object.entries(getModuleDefs())) {
+    if (type === 'selector_modulo') continue;
+    const used = await treatmentHasModuleType(ctx.treatmentId, type);
+    if (used) inTreatment.add(type);
+    if (def.oncePerTreatment && used) {
+      oncePerTreatmentBlocked[type] = true;
+    }
+  }
+
+  const { listEl, previewEl, searchInput } = ctx;
+  let selectedType = null;
+  let selecting = false;
+
+  listEl.innerHTML = selectorListInnerHtml({
+    inTreatment,
+    inSession,
+    onceBlocked: oncePerTreatmentBlocked,
+  });
 
   if (searchInput?.value) {
     applyModuleSearch(listEl, searchInput.value);

@@ -16,7 +16,7 @@ Psicólogos interesados en:
 ## Qué incluye
 
 - 13 escalas con puntuación automática: ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER, entre otras
-- 23 materiales de trabajo clínico (psicoeducación TCC, registro de pensamientos, exposición, plan de seguridad, ejercicios de significado, etc.), exportables a PDF
+- 23 materiales de trabajo clínico (habilidades y tareas entre sesiones, significado en la hora, plan de seguridad en conceptualización), exportables a PDF
 - Estimulación bilateral visual integrada al registro clínico
 - Neurofeedback con Muse 2: sesiones en vivo (Demo); grabación, análisis y export (Plan Pro)
 - IA opcional desactivada por defecto: BYOK (p. ej. Mistral) u Ollama local. Los datos no pasan por servidores de Telar.

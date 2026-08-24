@@ -123,10 +123,10 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
   tcc_plan_seguridad: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos en riesgo o estrés elevado',
-    reliability: 'Material de apoyo clínico; no es un instrumento estandarizado.',
+    reliability: 'Encuadre de riesgo; no es un handout de psicoeducación ni un instrumento estandarizado.',
     validity:
       'Plan de seguridad orientativo. La evaluación de riesgo vital y las decisiones de contención son responsabilidad del profesional.',
-    learnMore: 'Basado en prácticas habituales de planificación de crisis; no reemplaza protocolos institucionales.',
+    learnMore: 'Una vez por tratamiento, junto a redes de apoyo. No reemplaza protocolos institucionales.',
   },
   tcc_activacion: {
     authors: 'Telar — elaboración propia',
@@ -166,9 +166,9 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
   tcc_autoconceptos: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Ejercicio de visualización del mejor yo posible.',
-    validity: 'Uso en regulación emocional y planificación de metas.',
-    learnMore: 'Dominios personal, profesional y social.',
+    reliability: 'Trabajo de identidad en sesión; no es material psicoeducativo TCC.',
+    validity: 'Mejor yo posible en dominios personal, profesional y social.',
+    learnMore: 'Se trabaja en la hora, junto a los módulos de significado. Una vez y se reabre.',
   },
   tcc_preocupaciones: {
     authors: 'Telar — elaboración propia',
@@ -201,16 +201,16 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
   tcc_exposicion: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Jerarquía clínica; SUDS subjetivo.',
+    reliability: 'Jerarquía clínica de evitación; no es material psicoeducativo TCC ni un protocolo de trauma.',
     validity: 'Apoyo a exposición gradual acordada en sesión; no es un protocolo de trauma.',
-    learnMore: 'Seis peldaños + primer paso. No usar para trauma no procesado sin supervisión.',
+    learnMore: 'Seis peldaños + primer paso. Brazo conductual de las habilidades, no un procedimiento de sala.',
   },
   tcc_experimento: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Diseño de experimento conductual; uso clínico.',
+    reliability: 'Diseño de experimento conductual; no es material psicoeducativo TCC.',
     validity: 'Pone a prueba creencias en la vida real; no sustituye exposición ni formulación.',
-    learnMore: 'Se puede repetir: una hoja por experimento.',
+    learnMore: 'Se puede repetir: una hoja por experimento. Habilidad entre sesiones, no intervención de sala.',
   },
   tcc_monitoreo_actividades: {
     authors: 'Telar — elaboración propia',
@@ -266,7 +266,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     ageRange: 'Adolescentes y adultos',
     reliability: 'Registro de proceso; se puede repetir sesión a sesión.',
     validity: 'Apoya conciencia corporal del “todo eso”; no es mindfulness protocolizado.',
-    learnMore: 'Sensación, asa, resonancia, preguntar y recibir.',
+    learnMore: 'Registro de proceso en sesión; no es tarea. Sensación, asa, resonancia, preguntar y recibir.',
   },
   sig_pregunta_milagro: {
     authors: 'Telar — elaboración propia (centrado en soluciones, de Shazer)',

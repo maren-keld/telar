@@ -62,6 +62,17 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
   return run;
 }
 
+function flushOnLeave() {
+  void flushPendingAutoSaves();
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushOnLeave();
+  });
+  window.addEventListener('pagehide', flushOnLeave);
+}
+
 export function collectFormData(root) {
   const data = {};
   if (!root) return data;

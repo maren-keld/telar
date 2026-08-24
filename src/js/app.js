@@ -20,6 +20,7 @@ import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLoca
 import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './components/practitioner-onboarding.js';
 import { scheduleAutoCloudBackup } from './cloud-backup.js';
 import { toast } from './utils.js';
+import { initMotion } from './transitions.js';
 
 const app = document.getElementById('app');
 let lastRenderedView = '';
@@ -69,6 +70,10 @@ async function render() {
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
     teardownNeurofeedback();
     teardownBilateralStimulation();
+    delete app.dataset.workspaceTreatmentId;
+    delete app.dataset.workspaceModuleId;
+    delete app.dataset.workspaceIndexMode;
+    delete app.dataset.workspaceIndexType;
   }
   lastRenderedView = view;
 
@@ -200,6 +205,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   stage('init:theme');
   safe('theme', initThemeFromProfile);
+  stage('init:motion');
+  safe('motion', initMotion);
   stage('init:locale');
   safe('locale', initLocaleFromProfile);
   stage('init:updates');

@@ -8,6 +8,11 @@ import {
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { escapeHtml, toast } from '../utils.js';
+import { setToggle } from '../transitions.js';
+import {
+  dispatchWorkspaceIndexMode,
+  getWorkspaceIndexMode,
+} from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
 const LEFT_FOCUS_CSS_THRESHOLD = 90;
@@ -30,6 +35,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
   const rect = anchorEl.getBoundingClientRect();
   const profile = loadProfile();
   const currentMode = getCurrentWorkspaceMode();
+  const indexMode = getWorkspaceIndexMode();
   const isDark = profile.darkMode;
 
   const statusItems = Object.entries(TREATMENT_STATUS)
@@ -45,7 +51,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
 
   root.innerHTML = `
     <div class="dropdown-backdrop" id="workspace-patient-menu-backdrop">
-      <div class="dropdown-menu patient-menu" style="top:${Math.min(rect.bottom + 4, window.innerHeight - 380)}px;left:${Math.min(rect.left, window.innerWidth - 280)}px">
+      <div class="dropdown-menu patient-menu t-dropdown" data-origin="top-left" style="top:${rect.bottom + 4}px;left:${Math.max(8, Math.min(rect.left, window.innerWidth - 276))}px;max-height:${Math.max(160, window.innerHeight - rect.bottom - 12)}px">
         <p class="dropdown-menu__title">${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` · T${treatment.number}` : ''}</p>
 
         <label class="dropdown-label">Estado del tratamiento</label>
@@ -69,12 +75,23 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         </div>
 
         <div class="patient-menu-divider"></div>
-        <label class="patient-menu-toggle-row" id="patient-menu-dark-toggle">
+        <label class="dropdown-label">Índice</label>
+        <div class="patient-menu-mode-row">
+          <button type="button" class="patient-menu-mode-btn${indexMode === 'chrono' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="chrono">
+            Cronológica
+          </button>
+          <button type="button" class="patient-menu-mode-btn${indexMode === 'category' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="category">
+            Por categoría
+          </button>
+        </div>
+
+        <div class="patient-menu-divider"></div>
+        <div class="patient-menu-toggle-row" id="patient-menu-dark-toggle">
           <span class="patient-menu-toggle-label">Modo oscuro</span>
-          <span class="patient-menu-toggle-switch${isDark ? ' patient-menu-toggle-switch--on' : ''}">
-            <span class="patient-menu-toggle-thumb"></span>
-          </span>
-        </label>
+          <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="Modo oscuro">
+            <span class="t-toggle-thumb"></span>
+          </button>
+        </div>
       </div>
     </div>`;
 
@@ -134,14 +151,25 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     });
   });
 
+  root.querySelectorAll('[data-index-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.indexMode;
+      root.querySelectorAll('[data-index-mode]').forEach((b) => {
+        b.classList.toggle('patient-menu-mode-btn--active', b.dataset.indexMode === mode);
+      });
+      dispatchWorkspaceIndexMode(mode);
+      close();
+    });
+  });
+
   // Dark mode toggle
   const darkToggle = root.querySelector('#patient-menu-dark-toggle');
   if (darkToggle) {
     let dark = isDark;
     darkToggle.addEventListener('click', () => {
       dark = !dark;
-      const sw = darkToggle.querySelector('.patient-menu-toggle-switch');
-      sw?.classList.toggle('patient-menu-toggle-switch--on', dark);
+      const sw = darkToggle.querySelector('.t-toggle');
+      setToggle(sw, dark);
       saveProfile({ darkMode: dark });
     });
   }

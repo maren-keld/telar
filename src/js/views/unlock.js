@@ -8,6 +8,7 @@ import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-up
 import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
 import { scheduleAutoCloudBackup } from '../cloud-backup.js';
 import { toast, escapeHtml } from '../utils.js';
+import { shakeEl } from '../transitions.js';
 
 export async function renderUnlock(host, { onNavigate }) {
   host.innerHTML = `
@@ -128,11 +129,13 @@ export async function renderUnlock(host, { onNavigate }) {
 
     if (!isValidPin(p1)) {
       toast('El PIN debe tener 6 dígitos');
+      shakeEl(host.querySelector('[data-pin-row="pin1"]'));
       focusFirstEmpty(host, 'pin1');
       return;
     }
     if (status.needs_setup && p1 !== p2) {
       toast('Los PIN no coinciden');
+      shakeEl(host.querySelector('[data-pin-row="pin2"]'));
       focusFirstEmpty(host, 'pin2');
       return;
     }
@@ -165,6 +168,7 @@ export async function renderUnlock(host, { onNavigate }) {
       console.error(e);
       hint.textContent = '';
       toast(e?.message || String(e));
+      shakeEl(host.querySelector('[data-pin-row="pin1"]'));
       if (unlockBtn) unlockBtn.disabled = false;
       if (touchIdBtn) touchIdBtn.disabled = false;
     }

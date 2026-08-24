@@ -70,7 +70,7 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
 
   root.innerHTML = `
     <div class="dropdown-backdrop" id="agenda-menu-backdrop">
-      <div class="dropdown-menu patient-menu" style="top:${Math.min(rect.bottom + 4, window.innerHeight - 420)}px;left:${Math.min(rect.left, window.innerWidth - 280)}px">
+      <div class="dropdown-menu patient-menu t-dropdown" data-origin="top-left" style="top:${Math.min(rect.bottom + 4, window.innerHeight - 420)}px;left:${Math.min(rect.left, window.innerWidth - 280)}px">
         <p class="dropdown-menu__title">${escapeHtml(row.name)}${tn}</p>
 
         <label class="dropdown-label">Estado del tratamiento</label>

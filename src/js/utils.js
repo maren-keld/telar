@@ -1,3 +1,5 @@
+import { tokenMs } from './transitions.js';
+
 export function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -32,11 +34,22 @@ export function formatDate(iso) {
 
 export function toast(message, ms = 3200) {
   const root = document.getElementById('toast-root');
+  if (!root) return;
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = 'toast t-toast';
   el.textContent = message;
   root.appendChild(el);
-  setTimeout(() => el.remove(), ms);
+  const reduce = Boolean(
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+  );
+  const open = () => el.classList.add('is-open');
+  if (reduce) open();
+  else requestAnimationFrame(() => requestAnimationFrame(open));
+  const closeMs = reduce ? 0 : tokenMs('--toast-close', 250);
+  setTimeout(() => {
+    el.classList.remove('is-open');
+    setTimeout(() => el.remove(), closeMs);
+  }, ms);
 }
 
 export function parseJsonSafe(raw, fallback = {}) {

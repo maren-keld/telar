@@ -5,6 +5,7 @@ import { getHandoutDef, getSearchExtra, getTccVariables } from './pack-registry.
 const LEGACY_TCC_HANDOUT_DEFS = {
   tcc_abc: {
     title: 'Modelo ABC (versión simple)',
+    category: 'tcc',
     intro:
       'El modelo ABC explora pensamientos, emociones, conductas y creencias antes, durante y luego de una situación difícil.',
     sections: [
@@ -32,6 +33,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_plan_seguridad: {
     title: 'Plan de seguridad vital',
+    category: 'conceptualizacion',
     intro:
       'Herramienta de apoyo clínico para identificar y gestionar situaciones de crisis y mantener un entorno seguro. La evaluación de riesgo vital es responsabilidad del profesional.',
     sections: [
@@ -73,10 +75,11 @@ const LEGACY_TCC_HANDOUT_DEFS = {
       },
     ],
     variables: ['Regulación de crisis', 'Red de apoyo', 'Seguridad vital'],
-    searchTags: ['tcc', 'seguridad', 'crisis', 'suicidio', 'estrés'],
+    searchTags: ['encuadre', 'seguridad', 'crisis', 'suicidio', 'estrés', 'riesgo'],
   },
   tcc_activacion: {
     title: 'Activación conductual',
+    category: 'tcc',
     intro:
       'El estado de ánimo refleja la disposición previa a ciertas actividades y puede fluctuar durante el día. Se recomienda incorporar al menos 3 actividades por semana con potencial de mejorar el ánimo.',
     activityGroups: [
@@ -146,6 +149,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_socratico: {
     title: 'Cuestionamiento socrático',
+    category: 'tcc',
     intro:
       'El cerebro realiza predicciones constantes; en situaciones inciertas aparece ansiedad. Registrar pensamientos por escrito reduce incertidumbre. Este módulo explora suposiciones y evidencia que sustentan un pensamiento.',
     sections: [
@@ -191,6 +195,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_flexibilidad: {
     title: 'Rutinas de flexibilidad cognitiva',
+    category: 'tcc',
     intro:
       'La flexibilidad cognitiva permite adaptarse a eventos, pensamientos y conductas. Aunque no siempre controlamos cómo nos sentimos, podemos ser flexibles con nuestros esquemas para modular la influencia de las emociones.',
     sections: [
@@ -258,6 +263,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_probabilidades: {
     title: 'Probabilidades vs posibilidades',
+    category: 'tcc',
     intro:
       'La ansiedad implica preocupación persistente ante situaciones potencialmente dañinas, con probabilidad baja o incierta. La probabilidad (0–100) estima qué tan posible es un evento; la posibilidad indica si puede ocurrir aunque sea poco probable. Objetivo: reajustar estimaciones para disminuir ansiedad elevada.',
     sections: [
@@ -304,6 +310,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_sesgos: {
     title: 'Identificando sesgos',
+    category: 'tcc',
     intro:
       'Un sesgo es un error sistemático al procesar información; afecta decisiones y juicios. Este ejercicio ayuda a identificar sesgos para disminuir su poder y sustituirlos por pensamientos más equilibrados.',
     sections: [
@@ -351,6 +358,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_autoconceptos: {
     title: 'Exploración de autoconceptos',
+    category: 'significado',
     intro:
       '¿Cómo sería su vida en un futuro perfecto? ¿Cómo pasaría su tiempo? ¿Quiénes estarían a su lado? Imagine su mejor yo posible en dominios personal, profesional y social.',
     sections: [
@@ -374,10 +382,11 @@ const LEGACY_TCC_HANDOUT_DEFS = {
       },
     ],
     variables: ['Autoconcepto', 'Identidad', 'Esquemas de futuro'],
-    searchTags: ['tcc', 'trauma', 'esquemas', 'autoconcepto', 'futuro'],
+    searchTags: ['significado', 'identidad', 'esquemas', 'autoconcepto', 'futuro'],
   },
   tcc_preocupaciones: {
     title: 'Exploración de preocupaciones',
+    category: 'tcc',
     intro:
       'El cerebro predice constantemente; la incertidumbre al no registrar preocupaciones aumenta ansiedad. Este módulo ayuda a descubrir qué preocupaciones podrían estar generando síntomas.',
     activityGroups: [
@@ -437,6 +446,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_gratitud: {
     title: 'Rutinas de gratitud',
+    category: 'tcc',
     intro:
       'El estado de ánimo refleja la disposición previa a actividades y puede fluctuar según contexto y actividades del día. Estas rutinas refuerzan conexiones con recuerdos y deseos agradables.',
     sections: [
@@ -456,6 +466,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_estres: {
     title: 'Rutinas de reducción de estrés',
+    category: 'tcc',
     intro:
       'El estrés es una respuesta fisiológica y psicológica ante desafíos reales o percibidos. Comparte con la ansiedad insomnio, tensión e irritabilidad; la ansiedad añade preocupación persistente. Estas rutinas buscan reducir estrés a corto plazo (SOS) y a mediano/largo plazo.',
     activityGroups: [
@@ -492,7 +503,11 @@ const LEGACY_TCC_HANDOUT_DEFS = {
 };
 
 export function tccHandoutDef(moduleType) {
-  return getHandoutDef(moduleType) || LEGACY_TCC_HANDOUT_DEFS[moduleType] || null;
+  const pack = getHandoutDef(moduleType);
+  if (pack?.packId === 'demo' && LEGACY_TCC_HANDOUT_DEFS[moduleType]) {
+    return LEGACY_TCC_HANDOUT_DEFS[moduleType];
+  }
+  return pack || LEGACY_TCC_HANDOUT_DEFS[moduleType] || null;
 }
 
 /** @deprecated — usar tccHandoutDef() */

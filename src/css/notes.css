@@ -1014,6 +1014,14 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 }
 
 /* Herramientas — pestaña derecha */
+.workspace-tools-tab {
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+  padding: 12px 14px 16px;
+  box-sizing: border-box;
+}
+
 .workspace-tools-tab__list {
   list-style: none;
   margin: 0;

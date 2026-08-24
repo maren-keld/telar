@@ -73,7 +73,7 @@ const FALLBACK_LABELS = {
   redes_apoyo: 'Redes de apoyo',
   diagnostico: 'Diagnósticos',
   registro_inicial: 'Registro inicial',
-  motivo_consulta: 'Motivo de consulta',
+  motivo_consulta: 'Anamnesis',
 };
 
 function legacyDefFor(type) {

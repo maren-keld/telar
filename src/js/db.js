@@ -349,13 +349,22 @@ export async function bootstrapDefaultTreatment(treatmentId) {
   }
 }
 
+function firstWorkspaceModule(session) {
+  const mods = session?.modules || [];
+  return (
+    mods.find((m) => m.module_type === 'registro_inicial') ||
+    mods.find((m) => m.module_type !== 'selector_modulo') ||
+    mods[0] ||
+    null
+  );
+}
+
 export async function resolveWorkspaceEntry(treatmentId) {
   await bootstrapDefaultTreatment(treatmentId);
   const sessions = await getSessionsWithModules(treatmentId);
-  const session = sessions[sessions.length - 1];
+  const session = sessions[0];
   if (!session) return { sessionId: null, moduleId: null };
-  const mods = session.modules || [];
-  const mod = mods[mods.length - 1] || null;
+  const mod = firstWorkspaceModule(session);
   return { sessionId: session.id, moduleId: mod?.id ?? null };
 }
 

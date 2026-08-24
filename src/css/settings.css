@@ -520,3 +520,66 @@
   gap: 10px;
   margin-top: 20px;
 }
+
+.add-mod-modal__hint,
+.add-mod-modal__note {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.add-mod-modal__label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.add-mod-modal .input {
+  margin-bottom: 14px;
+}
+
+.add-mod-modal__note {
+  color: var(--danger, #b42318);
+}
+
+.add-mod-modal--catalog {
+  width: min(720px, 94vw);
+  max-height: min(88vh, 840px);
+  display: flex;
+  flex-direction: column;
+}
+
+.add-mod-modal--catalog .add-mod-modal__grid {
+  flex: 1 1 auto;
+  min-height: 280px;
+  max-height: min(52vh, 440px);
+  margin: 0 0 12px;
+  overflow: hidden;
+  align-items: stretch;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.add-mod-modal--catalog #add-mod-list,
+.add-mod-modal--catalog #add-mod-preview {
+  overflow-y: auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.add-mod-modal__session {
+  margin-top: 4px;
+}
+
+.add-mod-modal--catalog .add-mod-modal__session .input {
+  margin-bottom: 6px;
+}
+
+.add-mod-modal__session-hint {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}

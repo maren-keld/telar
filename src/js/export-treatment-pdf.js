@@ -190,7 +190,7 @@ export async function exportTreatmentPdf(treatmentId) {
   if (motivo) {
     const md = parseJsonSafe(motivo.data, {});
     const blocks = [
-      ['Motivo de consulta', md.motivo],
+      ['Motivo principal', md.motivo],
       ['Expectativas del tratamiento', md.expectativas],
       ['Antecedentes relevantes', md.antecedentes],
     ].filter(([, v]) => String(v || '').trim());
@@ -235,27 +235,6 @@ export async function exportTreatmentPdf(treatmentId) {
     y = pdfText(doc, psychBlock, MARGIN, y, { size: 9 });
   }
 
-  let chartImages = [];
-  try {
-    chartImages = await captureScoreChartImages(sessions);
-  } catch {
-    chartImages = [];
-  }
-  if (chartImages.length) {
-    y += 8;
-    y = ensurePdfSpace(doc, y, 28);
-    y = pdfText(doc, 'Evolución de puntajes', MARGIN, y, { size: 12, style: 'bold' });
-    y += 2;
-    const imgH = 58;
-    for (const img of chartImages) {
-      y = ensurePdfSpace(doc, y, imgH + 14);
-      y = pdfText(doc, img.title, MARGIN, y, { size: 10, style: 'bold', maxWidth: MAX_W });
-      y += 2;
-      doc.addImage(img.dataUrl, 'PNG', MARGIN, y, MAX_W, imgH);
-      y += imgH + 8;
-    }
-  }
-
   y += 8;
   y = ensurePdfSpace(doc, y, 20);
   y = pdfText(doc, 'Sesiones y módulos', MARGIN, y, { size: 12, style: 'bold' });
@@ -294,6 +273,27 @@ export async function exportTreatmentPdf(treatmentId) {
       y += 2;
     }
     y += 2;
+  }
+
+  let chartImages = [];
+  try {
+    chartImages = await captureScoreChartImages(sessions);
+  } catch {
+    chartImages = [];
+  }
+  if (chartImages.length) {
+    y += 8;
+    y = ensurePdfSpace(doc, y, 28);
+    y = pdfText(doc, 'Evolución de puntajes', MARGIN, y, { size: 12, style: 'bold' });
+    y += 2;
+    const imgH = 58;
+    for (const img of chartImages) {
+      y = ensurePdfSpace(doc, y, imgH + 14);
+      y = pdfText(doc, img.title, MARGIN, y, { size: 10, style: 'bold', maxWidth: MAX_W });
+      y += 2;
+      doc.addImage(img.dataUrl, 'PNG', MARGIN, y, MAX_W, imgH);
+      y += imgH + 8;
+    }
   }
 
 

@@ -1,4 +1,5 @@
 import { getModuleDefs } from '../config.js';
+import { CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openCreateModuleModal } from '../components/create-module-modal.js';
 import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
@@ -43,7 +44,8 @@ export async function renderModulesLibrary(container, { onNavigate }) {
         ${
           customMods.length
             ? `<section class="modules-library-section">
-          <h2 class="modules-library-section__title">Mis módulos</h2>
+          <h2 class="modules-library-section__title">${CUSTOM_CATEGORY_LABEL}</h2>
+          <p class="modules-library-section__blurb">${CUSTOM_CATEGORY_BLURB}</p>
           <div class="modules-library-grid">
             ${customMods
               .map((cm) => {

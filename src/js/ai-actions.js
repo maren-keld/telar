@@ -6,6 +6,7 @@
  * módulos y se aplican al tratamiento. El bloque se conserva en el contenido
  * de la nota (persiste sin migración de esquema) y se oculta al renderizar.
  */
+import { categoryLabel } from './module-categories.js';
 import { getModuleDefs } from './config.js';
 import { CUSTOM_ITEM_TYPES, isValidItemType, itemTypeNeedsOptions } from './custom-module-items.js';
 import {
@@ -47,7 +48,7 @@ export function buildModuleCatalogText() {
     byCategory.get(mod.category).push(`${mod.label} [${mod.id}]`);
   }
   return [...byCategory.entries()]
-    .map(([cat, items]) => `- ${cat}: ${items.join(', ')}`)
+    .map(([cat, items]) => `- ${categoryLabel(cat)}: ${items.join(', ')}`)
     .join('\n');
 }
 
@@ -82,8 +83,8 @@ ${buildModuleCatalogText()}
 
 CÓMO ARMAR UN PROGRAMA
 - Las escalas subjetivas de ánimo y ansiedad van de 1 a 100. Nunca las interpretes como 0–10 ni inventes un ejemplo si el contexto trae el número.
-- Los handouts TCC (ids que empiezan con tcc_) son sobre todo tarea ENTRE sesiones. Asigna cada uno como máximo UNA vez, salvo registros que se reiteran: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades.
-- Los módulos sig_ (significado, narrativa, humanista) se trabajan EN sesión. No los trates como psicoeducación TCC. sig_felt_sense sí puede repetirse; el resto, una vez y se reabre.
+- Los ids tcc_* son habilidades y tareas entre sesiones. Asigna cada uno como máximo UNA vez, salvo registros reiterables: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades. Excepciones: tcc_plan_seguridad es encuadre de riesgo (conceptualización, no tarea ni psicoeducación); tcc_autoconceptos es trabajo de identidad EN sesión, no handout TCC.
+- Los ids sig_* y tcc_autoconceptos se trabajan EN sesión. No los trates como handout TCC. sig_felt_sense sí puede repetirse; el resto de significado, una vez y se reabre.
 - Si un handout ya está en el caso (aparece en el contexto), no lo vuelvas a proponer salvo los reiterables.
 
 MÓDULOS NUEVOS (telar-module)
@@ -379,10 +380,12 @@ function sanitizePlan(raw) {
   };
 }
 
-/** Handouts de una sola entrega. Los registros reiterables (oncePerTreatment: false) no cuentan. */
+/** Tareas entre sesiones de una sola entrega. No incluye encuadre de riesgo ni significado. */
 export function isHomeworkHandout(type) {
   const id = String(type || '');
-  if (!id.startsWith('tcc_') && !id.startsWith('sig_')) return false;
+  if (id === 'tcc_plan_seguridad' || id === 'tcc_autoconceptos') return false;
+  if (id.startsWith('sig_')) return false;
+  if (!id.startsWith('tcc_')) return false;
   const def = resolveModuleDef(id);
   return def?.oncePerTreatment !== false;
 }

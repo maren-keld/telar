@@ -1,5 +1,6 @@
 import { loadProfile, saveProfile } from '../profile.js';
 import { escapeHtml, toast } from '../utils.js';
+import { playOverlayOpen, animateAndRemove, shakeEl } from '../transitions.js';
 
 function isValidEmail(raw) {
   const email = String(raw || '').trim();
@@ -58,6 +59,7 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
     </div>`;
 
   document.body.appendChild(overlay);
+  playOverlayOpen(overlay);
 
   const nameInput = overlay.querySelector('#onboard-name');
   const emailInput = overlay.querySelector('#onboard-email');
@@ -69,17 +71,19 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
     const email = emailInput?.value?.trim().toLowerCase() || '';
     if (!name) {
       hint.textContent = 'Ingresa tu nombre.';
+      shakeEl(nameInput);
       nameInput?.focus();
       return;
     }
     if (!isValidEmail(email)) {
       hint.textContent = 'Ingresa un email válido (obligatorio).';
+      shakeEl(emailInput);
       emailInput?.focus();
       return;
     }
     saveProfile({ name, email, onboardingComplete: true });
     toast('Perfil guardado');
-    overlay.remove();
+    void animateAndRemove(overlay);
     onDone?.();
   });
 }

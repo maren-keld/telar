@@ -3,6 +3,10 @@ import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
 import { bindWorkspaceModuleDnD } from '../components/workspace-dnd.js';
 import { mountTextHighlight } from '../components/text-highlight.js';
+import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
+import { initWorkspaceSidebarResizers } from '../components/workspace-layout.js';
+import { isTauriApp, getInvoke } from '../tauri-bridge.js';
+import { flushPendingAutoSaves } from '../autobind.js';
 import {
   addModuleToSession,
   addSession,
@@ -23,10 +27,22 @@ import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { t } from '../i18n.js';
 import { tccHandoutDef } from '../tcc-handout-defs.js';
 import { ICON_DOWNLOAD, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
-import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
-import { initWorkspaceSidebarResizers } from '../components/workspace-layout.js';
-import { isTauriApp, getInvoke } from '../tauri-bridge.js';
-import { flushPendingAutoSaves } from '../autobind.js';
+import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
+import {
+  bindCategoryCollapse,
+  canAddAnotherOfType,
+  dispatchWorkspaceIndexMode,
+  getWorkspaceIndexMode,
+  resolveIndexType,
+  sessionRuleHtml,
+  sessionsWithTypeOnly,
+  setWorkspaceIndexType,
+  sidebarCategoryHtml,
+  snapshotCategoryCollapse,
+} from '../workspace-index-mode.js';
+
+/** Un solo listener de índice; se reasigna en cada render para no filtrar. */
+let workspaceIndexModeListener = null;
 
 /** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
 const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
@@ -94,14 +110,42 @@ export async function renderWorkspace(
       break;
     }
   }
+  const prevTreatmentId = container.dataset.workspaceTreatmentId;
+  const sameTreatment = prevTreatmentId === String(treatmentId);
+
   if (!activeModule && sessions.length) {
-    const s = sessions.find((x) => String(x.id) === String(sessionId)) || sessions[sessions.length - 1];
+    const s = sessions.find((x) => String(x.id) === String(sessionId)) || sessions[0];
     activeSessionId = s.id;
     const mods = s.modules || [];
-    activeModule = mods[mods.length - 1] || null;
+    if (sessionId) {
+      activeModule = mods[mods.length - 1] || null;
+    } else {
+      activeModule =
+        mods.find((m) => m.module_type === 'registro_inicial') ||
+        mods.find((m) => m.module_type !== 'selector_modulo') ||
+        mods[0] ||
+        null;
+    }
   }
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
+  const indexMode = getWorkspaceIndexMode();
+  const indexType = indexMode === 'category' ? resolveIndexType(sessions, activeModule) : '';
+  if (indexType) setWorkspaceIndexType(indexType);
+  if (
+    sameTreatment &&
+    indexMode === 'category' &&
+    indexType &&
+    activeModule?.module_type !== indexType
+  ) {
+    const match = sessions
+      .flatMap((s) => (s.modules || []).map((m) => ({ session: s, module: m })))
+      .find((row) => row.module.module_type === indexType);
+    if (match) {
+      activeModule = match.module;
+      activeSessionId = match.session.id;
+    }
+  }
 
   if (
     !forceFullRender &&
@@ -110,6 +154,8 @@ export async function renderWorkspace(
       sessionId: activeSessionId,
       moduleId: activeModule?.id,
       activeModule,
+      indexMode,
+      indexType,
     })
   ) {
     return;
@@ -117,12 +163,11 @@ export async function renderWorkspace(
 
   await flushPendingAutoSaves();
 
-  const prevTreatmentId = container.dataset.workspaceTreatmentId;
   const prevModuleId = container.dataset.workspaceModuleId;
   const prevScrollRoot = container.querySelector('#workspace-center-scroll');
   const prevScrollTop = prevScrollRoot?.scrollTop ?? 0;
-  const sameTreatment = prevTreatmentId === String(treatmentId);
   snapshotSessionCollapse(container, treatmentId);
+  snapshotCategoryCollapse(container, treatmentId);
   if (expandSessionId != null) {
     rememberSessionCollapsed(treatmentId, expandSessionId, false);
   }
@@ -143,10 +188,28 @@ export async function renderWorkspace(
           <button type="button" class="workspace-patient-menu" id="btn-patient-menu" title="Opciones del paciente" aria-label="Opciones del paciente">${ICON_MORE_VERT}</button>
         </header>
         <div class="workspace-sidebar__scroll">
-          ${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
-          <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>
+          ${
+            indexMode === 'category'
+              ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, { treatmentId })
+              : `${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
+          <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>`
+          }
         </div>
         <footer class="workspace-sidebar__footer">
+          <button type="button" class="workspace-sidebar-toggle${indexMode === 'chrono' ? ' is-active' : ''}" data-sidebar-index-mode="chrono"
+            title="Índice cronológico" aria-label="Índice cronológico" aria-pressed="${indexMode === 'chrono' ? 'true' : 'false'}">
+            <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+              <circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+          <button type="button" class="workspace-sidebar-toggle${indexMode === 'category' ? ' is-active' : ''}" data-sidebar-index-mode="category"
+            title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
+            <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </button>
           <button type="button" class="workspace-sidebar-toggle" id="btn-sidebar-toggle"
             title="Contraer o expandir sesiones" aria-label="Contraer o expandir sesiones">
             <svg class="workspace-sidebar-toggle__icon workspace-sidebar-toggle__icon--collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -192,6 +255,8 @@ export async function renderWorkspace(
       treatmentId,
       activeSessionId,
       activeModule,
+      indexMode,
+      indexType,
       onNavigate,
       refreshWorkspace: async (moduleId, sessionId) => {
         await renderWorkspace(container, {
@@ -241,7 +306,10 @@ export async function renderWorkspace(
     });
   }
 
-  if (activeModule && !moduleId) {
+  if (
+    activeModule &&
+    (!moduleId || (indexMode === 'category' && String(activeModule.id) !== String(moduleId)))
+  ) {
     onNavigate({
       view: 'workspace',
       treatmentId,
@@ -274,6 +342,9 @@ export async function renderWorkspace(
           root.scrollTop = y;
           reveal();
         });
+      } else if (firstPaint) {
+        root.scrollTop = 0;
+        reveal();
       } else {
         syncScrollToModule(container, activeModule.id);
         requestAnimationFrame(() => {
@@ -283,8 +354,8 @@ export async function renderWorkspace(
         });
       }
     }
-    setActiveModuleHighlight(container, activeModule.id);
-    scrollSidebarToModule(container, activeModule.id);
+    setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
+    if (!firstPaint) scrollSidebarToModule(container, activeModule.id);
   } else {
     pendingCenterScrollRestore = null;
     const root = container.querySelector('#workspace-center-scroll');
@@ -305,9 +376,20 @@ export async function renderWorkspace(
     });
   });
 
+  container.querySelectorAll('[data-sidebar-index-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      dispatchWorkspaceIndexMode(btn.dataset.sidebarIndexMode);
+    });
+  });
+
   container.querySelectorAll('.module-link').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
+      const type = link.dataset.indexType;
+      if (type) setWorkspaceIndexType(type);
+      if (type && activeModule?.module_type === type) {
+        return;
+      }
       const mid = link.dataset.moduleId;
       onNavigate({
         view: 'workspace',
@@ -318,9 +400,42 @@ export async function renderWorkspace(
     });
   });
 
-  container.querySelectorAll('.btn-add-module, .center-add-module').forEach((btn) => {
+  container.querySelectorAll('.btn-add-module[data-session-id], .center-add-module').forEach((btn) => {
     btn.addEventListener('click', async () => {
       await openSessionSelector(treatmentId, Number(btn.dataset.sessionId), onNavigate);
+    });
+  });
+
+  const goToAdded = (added) => {
+    if (!added) return;
+    if (added.moduleType) setWorkspaceIndexType(added.moduleType);
+    onNavigate({
+      view: 'workspace',
+      treatmentId,
+      sessionId: added.sessionId,
+      moduleId: added.moduleId,
+    });
+  };
+
+  container.querySelectorAll('.btn-add-module[data-category-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      void openAddModuleSessionModal({
+        treatmentId,
+        categoryId: btn.dataset.categoryId,
+        preferredSessionId: activeSessionId,
+        onAdded: goToAdded,
+      });
+    });
+  });
+
+  container.querySelectorAll('.center-add-same-type').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      void openAddModuleSessionModal({
+        treatmentId,
+        presetType: btn.dataset.moduleType,
+        preferredSessionId: activeSessionId,
+        onAdded: goToAdded,
+      });
     });
   });
 
@@ -371,25 +486,28 @@ export async function renderWorkspace(
     },
   };
 
-  bindWorkspaceModuleDnD(container, {
-    treatmentId,
-    activeModuleId: activeModule?.id,
-    onNavigate,
-    onMoved: async ({ sessionId: movedSessionId, moduleId: movedModuleId }) => {
-      const root = container.querySelector('#workspace-center-scroll');
-      pendingCenterScrollRestore = root?.scrollTop ?? 0;
-      await renderWorkspace(container, {
-        treatmentId,
-        sessionId: movedSessionId,
-        moduleId: movedModuleId ?? activeModule?.id,
-        onNavigate,
-        forceFullRender: true,
-        expandSessionId: movedSessionId,
-      });
-    },
-  });
+  if (indexMode !== 'category') {
+    bindWorkspaceModuleDnD(container, {
+      treatmentId,
+      activeModuleId: activeModule?.id,
+      onNavigate,
+      onMoved: async ({ sessionId: movedSessionId, moduleId: movedModuleId }) => {
+        const root = container.querySelector('#workspace-center-scroll');
+        pendingCenterScrollRestore = root?.scrollTop ?? 0;
+        await renderWorkspace(container, {
+          treatmentId,
+          sessionId: movedSessionId,
+          moduleId: movedModuleId ?? activeModule?.id,
+          onNavigate,
+          forceFullRender: true,
+          expandSessionId: movedSessionId,
+        });
+      },
+    });
+  }
 
   bindSessionCollapse(container, activeModule, treatmentId);
+  bindCategoryCollapse(container, activeModule, treatmentId);
 
   const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, {
     ...toolsOpts,
@@ -411,12 +529,40 @@ export async function renderWorkspace(
 
   container.dataset.workspaceTreatmentId = String(treatmentId);
   container.dataset.workspaceModuleId = activeModule ? String(activeModule.id) : '';
+  container.dataset.workspaceIndexMode = indexMode;
+  container.dataset.workspaceIndexType = indexType || '';
+
+  if (workspaceIndexModeListener) {
+    document.removeEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
+  }
+  workspaceIndexModeListener = () => {
+    if (!container.isConnected) return;
+    renderWorkspace(container, {
+      treatmentId,
+      sessionId: activeSessionId,
+      moduleId: activeModule?.id,
+      onNavigate,
+      forceFullRender: true,
+    });
+  };
+  document.addEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
 }
 
-async function tryFastModuleNavigation(container, { treatmentId, sessionId, moduleId, activeModule }) {
+async function tryFastModuleNavigation(container, {
+  treatmentId,
+  sessionId,
+  moduleId,
+  activeModule,
+  indexMode,
+  indexType,
+}) {
   if (!moduleId || !activeModule) return false;
   if (container.dataset.workspaceTreatmentId !== String(treatmentId)) return false;
   if (!container.querySelector('#workspace-layout')) return false;
+  if ((container.dataset.workspaceIndexMode || 'chrono') !== (indexMode || 'chrono')) return false;
+  if (indexMode === 'category' && (container.dataset.workspaceIndexType || '') !== (indexType || '')) {
+    return false;
+  }
   const card = container.querySelector(`#module-${moduleId}`);
   if (!card) return false;
 
@@ -433,7 +579,8 @@ async function tryFastModuleNavigation(container, { treatmentId, sessionId, modu
   if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
 
   bindSessionCollapse(container, activeModule, treatmentId);
-  setActiveModuleHighlight(container, moduleId);
+  bindCategoryCollapse(container, activeModule, treatmentId);
+  setActiveModuleHighlight(container, moduleId, activeModule.module_type);
   syncScrollToModule(container, moduleId);
   scrollSidebarToModule(container, moduleId);
   return true;
@@ -449,10 +596,14 @@ function syncScrollToModule(container, moduleId, pad = 20) {
   root.scrollTop = Math.max(0, root.scrollTop + (elRect.top - rootRect.top) - pad);
 }
 
-function setActiveModuleHighlight(container, moduleId) {
+function setActiveModuleHighlight(container, moduleId, moduleType = '') {
   if (!moduleId) return;
   container.querySelectorAll('.module-link').forEach((link) => {
-    link.classList.toggle('active', link.dataset.moduleId === String(moduleId));
+    if (link.dataset.indexType) {
+      link.classList.toggle('active', Boolean(moduleType) && link.dataset.indexType === moduleType);
+    } else {
+      link.classList.toggle('active', link.dataset.moduleId === String(moduleId));
+    }
   });
   container.querySelectorAll('.session-block').forEach((block) => {
     const hasActive = Boolean(
@@ -479,7 +630,7 @@ function scrollToModule(container, moduleId, { force = false, smooth = false } =
     const isBelow = elRect.bottom > rootRect.bottom - pad;
 
     if (!force && !isAbove && !isBelow) {
-      setActiveModuleHighlight(container, moduleId);
+      setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
       return;
     }
 
@@ -494,12 +645,12 @@ function scrollToModule(container, moduleId, { force = false, smooth = false } =
       top: Math.max(0, next),
       behavior: force || !smooth ? 'auto' : 'smooth',
     });
-    setActiveModuleHighlight(container, moduleId);
+    setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
   };
 
   if (force) {
     syncScrollToModule(container, moduleId);
-    setActiveModuleHighlight(container, moduleId);
+    setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
   } else {
     requestAnimationFrame(run);
   }
@@ -543,7 +694,7 @@ function bindModuleScrollSpy(container) {
       }
     });
     if (best?.dataset.moduleId) {
-      setActiveModuleHighlight(container, best.dataset.moduleId);
+      setActiveModuleHighlight(container, best.dataset.moduleId, best.dataset.moduleType);
     }
   };
 
@@ -564,11 +715,14 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
   teardownBilateralStimulation();
   host.innerHTML = '';
 
-  for (let si = 0; si < sessions.length; si++) {
-    const session = sessions[si];
-    if (si > 0) {
-      host.insertAdjacentHTML('beforeend', '<hr class="session-module-separator" aria-hidden="true" />');
-    }
+  const indexMode = ctx.indexMode || 'chrono';
+  const indexType = ctx.indexType || '';
+  const displaySessions =
+    indexMode === 'category' ? sessionsWithTypeOnly(sessions, indexType) : sessions;
+
+  for (let si = 0; si < displaySessions.length; si++) {
+    const session = displaySessions[si];
+    host.insertAdjacentHTML('beforeend', sessionRuleHtml(session.number));
 
     for (const mod of session.modules) {
       const deletable = canDeleteModule(mod, session.modules);
@@ -691,7 +845,11 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
     }
 
     const lastMod = session.modules[session.modules.length - 1];
-    if (lastMod && lastMod.module_type !== 'selector_modulo') {
+    if (
+      indexMode !== 'category' &&
+      lastMod &&
+      lastMod.module_type !== 'selector_modulo'
+    ) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'btn btn-secondary btn-block center-add-module';
@@ -701,8 +859,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       host.appendChild(addBtn);
     }
 
-    // Botón "+ Agregar sesión" al final de la última sesión
-    if (si === sessions.length - 1 && ctx.onAddSession) {
+    if (indexMode !== 'category' && si === displaySessions.length - 1 && ctx.onAddSession) {
       const addSessionBtn = document.createElement('button');
       addSessionBtn.type = 'button';
       addSessionBtn.className = 'btn btn-ghost btn-block center-add-session';
@@ -711,6 +868,16 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       addSessionBtn.addEventListener('click', () => ctx.onAddSession());
       host.appendChild(addSessionBtn);
     }
+  }
+
+  if (indexMode === 'category' && indexType && canAddAnotherOfType(indexType)) {
+    const addSame = document.createElement('button');
+    addSame.type = 'button';
+    addSame.className = 'btn btn-secondary btn-block center-add-same-type';
+    addSame.dataset.moduleType = indexType;
+    addSame.title = `Agregar otro ${moduleLabel(indexType)}`;
+    addSame.textContent = `+ Agregar ${moduleLabel(indexType)}`;
+    host.appendChild(addSame);
   }
 
   if (!host.children.length) {

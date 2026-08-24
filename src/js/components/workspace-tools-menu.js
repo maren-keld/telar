@@ -1,9 +1,14 @@
 import { isProUser, loadProfile, saveProfile } from '../profile.js';
 import { SETTINGS_ICONS } from '../icons.js';
 import { toast } from '../utils.js';
+import { setToggle } from '../transitions.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { applyTemplateFromTools } from './treatment-templates-modal.js';
+import {
+  dispatchWorkspaceIndexMode,
+  getWorkspaceIndexMode,
+} from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
 const LEFT_FOCUS_CSS_THRESHOLD = 90;
@@ -106,6 +111,7 @@ function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresenta
 export function mountWorkspaceToolsTab(host, opts) {
   const profile = loadProfile();
   const currentMode = getCurrentWorkspaceMode();
+  const indexMode = getWorkspaceIndexMode();
   const isDark = profile.darkMode;
 
   host.innerHTML = `
@@ -120,12 +126,19 @@ export function mountWorkspaceToolsTab(host, opts) {
       </div>
 
       <div class="tools-section-divider"></div>
-      <label class="tools-toggle-row" id="tools-dark-toggle">
+      <p class="tools-section-label">Índice</p>
+      <div class="tools-mode-row">
+        <button type="button" class="tools-mode-btn${indexMode === 'chrono' ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono">Cronológica</button>
+        <button type="button" class="tools-mode-btn${indexMode === 'category' ? ' tools-mode-btn--active' : ''}" data-index-mode="category">Por categoría</button>
+      </div>
+
+      <div class="tools-section-divider"></div>
+      <div class="tools-toggle-row" id="tools-dark-toggle">
         <span class="tools-toggle-label">Modo oscuro</span>
-        <span class="tools-toggle-switch${isDark ? ' tools-toggle-switch--on' : ''}">
-          <span class="tools-toggle-thumb"></span>
-        </span>
-      </label>
+        <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="Modo oscuro">
+          <span class="t-toggle-thumb"></span>
+        </button>
+      </div>
     </div>`;
 
   bindToolsActions(host, opts);
@@ -133,8 +146,8 @@ export function mountWorkspaceToolsTab(host, opts) {
   let dark = isDark;
   host.querySelector('#tools-dark-toggle')?.addEventListener('click', () => {
     dark = !dark;
-    const sw = host.querySelector('.tools-toggle-switch');
-    sw?.classList.toggle('tools-toggle-switch--on', dark);
+    const sw = host.querySelector('.t-toggle');
+    setToggle(sw, dark);
     saveProfile({ darkMode: dark });
   });
 
@@ -145,6 +158,16 @@ export function mountWorkspaceToolsTab(host, opts) {
         b.classList.toggle('tools-mode-btn--active', b.dataset.mode === mode);
       });
       dispatchWorkspaceMode(mode);
+    });
+  });
+
+  host.querySelectorAll('[data-index-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.indexMode;
+      host.querySelectorAll('[data-index-mode]').forEach((b) => {
+        b.classList.toggle('tools-mode-btn--active', b.dataset.indexMode === mode);
+      });
+      dispatchWorkspaceIndexMode(mode);
     });
   });
 }

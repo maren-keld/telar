@@ -71,7 +71,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   tcc_exposicion: {
     title: 'Jerarquía de exposición',
-    subtitle: 'Material TCC Telar — elaboración propia',
+    subtitle: 'Habilidades y tareas Telar — elaboración propia',
     category: 'tcc',
     intro:
       'Lista ordenada de situaciones evitadas, de menor a mayor malestar (SUDS 0–100). Se usa para diseñar exposiciones graduales acordadas en sesión.',
@@ -119,7 +119,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   tcc_experimento: {
     title: 'Experimento conductual',
-    subtitle: 'Material TCC Telar — elaboración propia',
+    subtitle: 'Habilidades y tareas Telar — elaboración propia',
     category: 'tcc',
     oncePerTreatment: false,
     intro:
@@ -480,7 +480,7 @@ export const EXTRA_HANDOUT_DEFS = {
     category: 'significado',
     oncePerTreatment: false,
     intro:
-      'Focusing (Gendlin): una sensación corporal de “todo eso”, todavía no verbal. Se puede repetir: cada sesión puede tener un felt sense distinto.',
+      'Focusing (Gendlin): una sensación corporal de “todo eso”, todavía no verbal. Registro de proceso en sesión; no es tarea. Se puede repetir: cada sesión puede tener un felt sense distinto.',
     activityGroups: [
       {
         title: 'Antes de escribir',

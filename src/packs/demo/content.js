@@ -1,13 +1,13 @@
 /** Pack demo público — escala subjetiva + ABC mínimo. */
 export const DEMO_MODULE_DEFS = {
   escala_animo: {
-    label: 'Escala subjetiva de ánimo (demo)',
+    label: 'Escala subjetiva de ánimo',
     category: 'pruebas',
     description: 'Estimación subjetiva de ánimo (1–100). Versión demo del motor Telar.',
     allowMultipleInSession: false,
   },
   tcc_abc: {
-    label: 'Modelo ABC — demo',
+    label: 'Modelo ABC (versión simple)',
     category: 'tcc',
     description: 'Registro activador–creencias–consecuencias (ejemplo genérico).',
     allowMultipleInSession: false,
@@ -16,7 +16,7 @@ export const DEMO_MODULE_DEFS = {
 
 export const DEMO_HANDOUTS = {
   tcc_abc: {
-    title: 'Modelo ABC (demo)',
+    title: 'Modelo ABC (versión simple)',
     intro: 'Ejemplo genérico del motor Telar. El contenido clínico completo está en el instalador oficial.',
     sections: [
       {

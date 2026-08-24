@@ -2586,7 +2586,14 @@ section {
 
 .modules-category .section-title {
   font-size: 1.35rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.modules-category__blurb {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .modules-grid {

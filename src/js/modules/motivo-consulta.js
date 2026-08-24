@@ -85,7 +85,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
     <div class="card">
       <div class="form-group-head module-anamnesis-head">
         <div>
-          <h2 class="module-title">Motivo de consulta</h2>
+          <h2 class="module-title">Anamnesis</h2>
           <p class="module-title-hint">Anamnesis de la primera sesión: el motivo queda acotado para presentar el caso; antecedentes y expectativas se separan abajo.</p>
         </div>
         ${reorderButtonHtml()}

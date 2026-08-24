@@ -43,3 +43,28 @@ test('el registro de pensamientos formatea columnas con datos', () => {
   assert.match(text, /Reunión de equipo/);
   assert.match(text, /Van a notar/);
 });
+
+test('las categorías agrupan por función en la hora, no por escuela', async () => {
+  const { CATEGORIES, CATEGORY_LABELS } = await import('../../src/js/module-categories.js');
+  const byId = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+
+  assert.equal(CATEGORY_LABELS.conceptualizacion, 'Conceptualización');
+  assert.equal(CATEGORY_LABELS.tcc, 'Habilidades y tareas');
+  assert.equal(CATEGORY_LABELS.significado, 'Significado');
+  assert.equal(CATEGORY_LABELS.intervencion, 'Intervención en sesión');
+  assert.ok(byId.conceptualizacion.types.includes('tcc_plan_seguridad'));
+  assert.ok(byId.significado.types.includes('tcc_autoconceptos'));
+  assert.ok(byId.significado.types.includes('sig_felt_sense'));
+  assert.ok(byId.tcc.types.includes('tcc_exposicion'));
+  assert.ok(byId.tcc.types.includes('tcc_experimento'));
+  assert.ok(!byId.intervencion.types.includes('tcc_exposicion'));
+  assert.ok(!byId.tcc.types.includes('tcc_plan_seguridad'));
+  assert.ok(!byId.tcc.types.includes('tcc_autoconceptos'));
+  assert.equal(byId.conceptualizacion.blurb, 'Encuadre y formulación del caso');
+  assert.equal(
+    byId.tcc.blurb,
+    'Psicoeducación y práctica, recomendado para traer como tarea entre sesiones.',
+  );
+  assert.equal(byId.significado.blurb, 'Narrativa e identidad, se trabaja en sesión');
+  assert.equal(byId.intervencion.blurb, 'Entrenar habilidades en sesión');
+});

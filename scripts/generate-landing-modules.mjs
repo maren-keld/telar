@@ -7,6 +7,7 @@ import { writeFileSync, readFileSync, mkdirSync, rmSync, readdirSync } from 'nod
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CORE_MODULE_DEFS } from '../src/js/config.js';
+import { CATEGORY_BLURBS, CATEGORY_LABELS, CATEGORY_ORDER } from '../src/js/module-categories.js';
 import { CLINICAL_MODULE_DEFS } from '../src/packs/clinical-shared/module-defs.js';
 import { ANSIEDAD_DEPRESION_MODULE_DEFS } from '../src/packs/ansiedad-depresion/module-defs.js';
 import { MODULE_PSYCHOMETRICS } from '../src/js/module-psychometrics.js';
@@ -17,19 +18,9 @@ import { EXTRA_HANDOUT_DEFS } from '../src/js/extra-handout-defs.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'landing/modules');
-const CSS_V = '20260821d';
+const CSS_V = '20260824a';
 
 const SKIP = new Set(['selector_modulo']);
-
-const CATEGORY_LABELS = {
-  conceptualizacion: 'Conceptualización del caso',
-  intervencion: 'Intervención',
-  tcc: 'Psicoeducación y material de trabajo',
-  significado: 'Significado e identidad',
-  pruebas: 'Pruebas psicométricas',
-};
-
-const CATEGORY_ORDER = ['conceptualizacion', 'intervencion', 'tcc', 'significado', 'pruebas'];
 
 const PACK_LABELS = {
   core: 'Telar (core)',
@@ -92,16 +83,16 @@ const EXTRA_PSYCH = {
   tcc_exposicion: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Jerarquía clínica; SUDS subjetivo.',
+    reliability: 'Jerarquía clínica de evitación; no es material psicoeducativo TCC ni un protocolo de trauma.',
     validity: 'Apoyo a exposición gradual acordada en sesión; no es un protocolo de trauma.',
-    learnMore: 'Seis peldaños + primer paso. No usar para trauma no procesado sin supervisión.',
+    learnMore: 'Seis peldaños + primer paso. Brazo conductual de las habilidades, no un procedimiento de sala.',
   },
   tcc_experimento: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Diseño de experimento conductual; uso clínico.',
+    reliability: 'Diseño de experimento conductual; no es material psicoeducativo TCC.',
     validity: 'Pone a prueba creencias en la vida real; no sustituye exposición ni formulación.',
-    learnMore: 'Se puede repetir: una hoja por experimento.',
+    learnMore: 'Se puede repetir: una hoja por experimento. Habilidad entre sesiones, no intervención de sala.',
   },
   tcc_monitoreo_actividades: {
     authors: 'Telar — elaboración propia',
@@ -155,9 +146,9 @@ const EXTRA_PSYCH = {
   sig_felt_sense: {
     authors: 'Telar — elaboración propia (Focusing, Gendlin)',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Registro de proceso; se puede repetir sesión a sesión.',
+    reliability: 'Registro de proceso en sesión; no es tarea. Se puede repetir sesión a sesión.',
     validity: 'Apoya conciencia corporal del “todo eso”; no es mindfulness protocolizado.',
-    learnMore: 'Sensación, asa, resonancia, preguntar y recibir.',
+    learnMore: 'Registro de proceso en sesión; no es tarea. Sensación, asa, resonancia, preguntar y recibir.',
   },
   sig_pregunta_milagro: {
     authors: 'Telar — elaboración propia (centrado en soluciones, de Shazer)',
@@ -183,10 +174,10 @@ function mergeModules() {
     if (SKIP.has(id) || merged[id]) continue;
     const intro = String(handout.intro || '').trim();
     const first = intro.split('.')[0];
-    const cat = handout.category === 'significado' ? 'significado' : 'tcc';
+    const knownCat = handout.category && CATEGORY_LABELS[handout.category] ? handout.category : 'tcc';
     merged[id] = {
       label: handout.title,
-      category: cat,
+      category: knownCat,
       description: first ? `${first}.` : 'Material de trabajo clínico.',
       oncePerTreatment: handout.oncePerTreatment === true,
       allowMultipleInSession: false,
@@ -443,9 +434,13 @@ function indexPage(grouped, total) {
           </a>`
       )
       .join('');
+    const blurb = CATEGORY_BLURBS[cat]
+      ? `<p class="modules-category__blurb">${escapeHtml(CATEGORY_BLURBS[cat])}</p>`
+      : '';
     return `
         <section class="modules-category" id="cat-${cat}">
           <h2 class="section-title">${escapeHtml(CATEGORY_LABELS[cat])}</h2>
+          ${blurb}
           <div class="modules-grid">${cards}</div>
         </section>`;
   }).join('');
@@ -455,7 +450,7 @@ function indexPage(grouped, total) {
       <div class="container">
         <p class="section-label">Catálogo clínico</p>
         <h1 class="section-title">Módulos incluidos en Telar</h1>
-        <p class="page-hero-lead">${total} módulos con metadatos clínicos: escalas con scoring automático, material de trabajo TCC, estimulación bilateral, Neurofeedback y registros de conceptualización. Misma ficha que ves al seleccionar un módulo en la app.</p>
+        <p class="page-hero-lead">${total} módulos con metadatos clínicos: escalas, habilidades y tareas, significado, conceptualización e intervención en sesión. Misma ficha que ves al seleccionar un módulo en la app.</p>
       </div>
     </section>
     <section class="modules-index">
@@ -482,7 +477,7 @@ function indexPage(grouped, total) {
 
   return pageShell({
     title: 'Módulos clínicos — Telar | Escalas, TCC, trauma, TDAH',
-    description: `Catálogo de ${total} módulos clínicos en Telar: GAD-7, PCL-5, ASRS, material TCC, estimulación bilateral y Neurofeedback. Con autor, confiabilidad y validez.`,
+    description: `Catálogo de ${total} módulos clínicos en Telar: GAD-7, PCL-5, ASRS, habilidades y tareas, significado, estimulación bilateral y Neurofeedback. Con autor, confiabilidad y validez.`,
     canonical: 'https://telarapp.cl/modules',
     depth: 1,
     body,

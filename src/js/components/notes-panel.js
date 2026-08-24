@@ -8,10 +8,11 @@ import {
   setSpaceCheck,
   updateClinicalNote,
 } from '../db.js';
-import { debounce } from '../autobind.js';
+import { bindAutoSave, flushPendingAutoSaves } from '../autobind.js';
 import { spaceCheckDescription } from '../space-check-descriptions.js';
 import { loadProfile } from '../profile.js';
 import { escapeHtml, practitionerInitials, toast } from '../utils.js';
+import { bindSlidingTabs, revealStreaming } from '../transitions.js';
 import { resolveAiConfig } from '../ai-config.js';
 import { chatCompletion } from '../ai-client.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
@@ -121,6 +122,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   container.innerHTML = `
     <div class="space-tools" data-active-tab="${activeTab}">
       <nav class="space-tools__tabs2" role="tablist">
+        <span class="t-tabs-pill" aria-hidden="true"></span>
         ${[
           ['notas', 'Bitácora'],
           ['puntajes', 'Puntajes'],
@@ -129,7 +131,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         ]
           .map(
             ([id, label]) =>
-              `<button type="button" class="space-tab2${id === activeTab ? ' active' : ''}" data-tab="${id}" title="${escapeHtml(label)}"><span>${escapeHtml(label)}</span></button>`,
+              `<button type="button" class="space-tab2${id === activeTab ? ' active' : ''}" data-tab="${id}" role="tab" aria-selected="${id === activeTab ? 'true' : 'false'}" title="${escapeHtml(label)}"><span>${escapeHtml(label)}</span></button>`,
           )
           .join('')}
       </nav>
@@ -150,7 +152,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" rows="1"></textarea>
           <p class="ai-dock__thinking" id="ai-dock-thinking" hidden aria-live="polite">
             <span class="ai-dock__thinking-orb" id="ai-dock-thinking-orb"></span>
-            <span class="ai-dock__thinking-label" id="ai-dock-thinking-label">Pensando...</span>
+            <span class="ai-dock__thinking-label t-shimmer" id="ai-dock-thinking-label" data-text="Pensando...">Pensando...</span>
           </p>
           <button type="button" class="ai-dock__send" id="ai-dock-send" title="Enviar" aria-label="Enviar">
             <span class="ai-dock__arrow-wrap">${AI_SEND_ARROW}</span>
@@ -176,7 +178,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     });
   };
 
-  refreshList = async ({ scrollBottom = false } = {}) => {
+  refreshList = async ({ scrollBottom = false, streamNoteId = null } = {}) => {
+    await flushPendingAutoSaves();
     if (activeTab === 'notas') {
       const all = await getClinicalNotes(treatmentId);
       const sorted = [...all].sort((a, b) =>
@@ -194,6 +197,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         onApplied: toolsOpts.onTemplateApplied || null,
         onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
       });
+      if (streamNoteId) {
+        const answer = listEl.querySelector(`[data-id="${streamNoteId}"] .kindle-note__ai-answer`);
+        revealStreaming(answer);
+      }
       if (scrollBottom) jumpNotesToEnd();
       else {
         listEl.scrollTop = savedScroll;
@@ -227,13 +234,19 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       activeTab = btn.dataset.tab;
       const tools = container.querySelector('.space-tools');
       if (tools) tools.dataset.activeTab = activeTab;
-      container.querySelectorAll('.space-tab2').forEach((b) => b.classList.toggle('active', b === btn));
+      container.querySelectorAll('.space-tab2').forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      container.querySelector('.space-tools__tabs2')?._moveTabsPill?.(true);
       const fab = container.querySelector('#btn-add-note');
       if (fab) fab.hidden = activeTab !== 'notas';
       if (activeTab === 'notas') listEl.classList.add('notes-scroll--prejump');
       await refreshList({ scrollBottom: activeTab === 'notas' });
     });
   });
+  bindSlidingTabs(container.querySelector('.space-tools__tabs2'));
 
   container.querySelector('#btn-add-note')?.addEventListener('click', async () => {
     const id = await addClinicalNote(treatmentId, {
@@ -313,7 +326,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     const startThinking = () => {
       const started = Date.now();
       let tick = 0;
-      if (aiThinkingLabel) aiThinkingLabel.textContent = thinkingCopy(0, 0);
+      if (aiThinkingLabel) {
+        aiThinkingLabel.textContent = thinkingCopy(0, 0);
+        aiThinkingLabel.dataset.text = aiThinkingLabel.textContent;
+      }
       setThinking(true);
       const orbHost = container.querySelector('#ai-dock-thinking-orb');
       stopThinkOrb();
@@ -321,7 +337,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       thinkingTimer = setInterval(() => {
         tick += 1;
         const secs = Math.floor((Date.now() - started) / 1000);
-        if (aiThinkingLabel) aiThinkingLabel.textContent = thinkingCopy(secs, tick);
+        if (aiThinkingLabel) {
+          aiThinkingLabel.textContent = thinkingCopy(secs, tick);
+          aiThinkingLabel.dataset.text = aiThinkingLabel.textContent;
+        }
       }, 400);
     };
     const stopThinking = () => {
@@ -358,14 +377,14 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
             'La IA devolvió una respuesta vacía. Con modelos locales pequeños suele ayudar reformular la pregunta o usar un modelo mayor.',
           );
         }
-        await addClinicalNote(treatmentId, {
+        const noteId = await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'teal',
           content: text,
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        await refreshList({ scrollBottom: true });
+        await refreshList({ scrollBottom: true, streamNoteId: noteId });
       } catch (err) {
         const msg = err?.message || 'Error al consultar la IA.';
         if (/cancelado/i.test(msg)) {
@@ -414,8 +433,11 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     const tools = container.querySelector('.space-tools');
     if (tools) tools.dataset.activeTab = 'notas';
     container.querySelectorAll('.space-tab2').forEach((b) => {
-      b.classList.toggle('active', b.dataset.tab === 'notas');
+      const on = b.dataset.tab === 'notas';
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
+    container.querySelector('.space-tools__tabs2')?._moveTabsPill?.(true);
     const fab = container.querySelector('#btn-add-note');
     if (fab) fab.hidden = false;
     listEl.classList.add('notes-scroll--prejump');
@@ -787,10 +809,11 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
       };
     };
 
-    const save = debounce(async () => {
+    const save = async () => {
       const f = readFields();
       await updateClinicalNote(id, f);
-    }, 400);
+    };
+    bindAutoSave(card, save);
 
     card.querySelectorAll('.ai-mod-tag').forEach((tag) => {
       tag.addEventListener('click', () => {
@@ -798,8 +821,6 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
         if (type) void onJumpToModuleType?.(type);
       });
     });
-
-    ta?.addEventListener('input', save);
 
     card.querySelector('.kindle-note__copy')?.addEventListener('click', async () => {
       const text = card.querySelector('.kindle-note__ai-answer')?.innerText?.trim();

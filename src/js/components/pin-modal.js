@@ -1,5 +1,6 @@
 import { escapeHtml } from '../utils.js';
 import { bindPinBoxes, focusFirstEmpty, isValidPin, pinBoxesHtml, readPin } from './pin-input.js';
+import { shakeEl } from '../transitions.js';
 
 /**
  * Modal para pedir PIN de 6 dígitos.
@@ -41,6 +42,7 @@ export function openPinModal({ title, submitLabel = 'Confirmar', onSubmit, onCan
   const doSubmit = async () => {
     const pin = readPin(card, pinId);
     if (!isValidPin(pin)) {
+      shakeEl(card.querySelector('.pinbox-row'));
       focusFirstEmpty(card, pinId);
       return;
     }
