@@ -514,6 +514,46 @@ li a.card {
   text-align: center;
 }
 
+.product-gallery {
+  padding: 2.5rem 0 3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.product-gallery .section-title {
+  margin-bottom: 1.5rem;
+}
+
+.product-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.product-gallery__shot {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.product-gallery__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1024 / 619;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.product-gallery__shot figcaption {
+  padding: 0.7rem 0.85rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
 .nf-showcase {
   padding: 0 0 3rem;
 }
@@ -2113,6 +2153,10 @@ section {
 
   .value-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .product-gallery__grid {
+    grid-template-columns: 1fr;
   }
 
   .req-card {
