@@ -14,6 +14,19 @@
   margin: 0 0 6px;
 }
 
+.anamnesis-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 720px) {
+  .anamnesis-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 .module-title-hint {
   margin: 0;
   max-width: 42rem;
@@ -602,8 +615,19 @@
 .dx-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.dx-head .module-title {
+  margin: 0;
+}
+
+.dx-head .dx-help {
+  flex-shrink: 0;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
 }
 
 .dx-tabs {
@@ -917,7 +941,7 @@
 
 .dx-custom-input {
   width: 100%;
-  min-height: 220px;
+  min-height: 140px;
   font-family: inherit;
   font-size: 0.9rem;
   line-height: 1.5;
@@ -2826,6 +2850,7 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
 .dx-structured__field {

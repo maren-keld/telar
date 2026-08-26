@@ -30,12 +30,18 @@ TARGETS = [
     ("muse-headband-hero.png", [512, 1024]),
     # Miniatura del destacado: ya está a medida, solo cambia de formato.
     ("muse-headband-thumb.png", [224, 448]),
+    # Carrusel de la home: se muestra a ~1200 px CSS; 2400 es el 2x retina.
+    ("gallery-significado.png", [2400]),
+    ("gallery-puntajes.png", [2400]),
+    ("gallery-neurofeedback.png", [2400]),
     # Fotos del equipo: se muestran a 150 px, recortadas en cuadrado.
     ("team-felipe.png", [150, 300], True),
     ("team-debbie.png", [150, 300], True),
 ]
 
 QUALITY = 82
+# Las capturas de UI (texto chico) se destrozan a 82; el carrusel de la home va a 90.
+QUALITY_UI = 90
 
 
 def variants(name: str, widths: list[int], square: bool = False) -> None:
@@ -52,7 +58,8 @@ def variants(name: str, widths: list[int], square: bool = False) -> None:
         height = round(original.height * width / original.width)
         resized = original.resize((width, height), Image.LANCZOS)
         out = ASSETS / f"{stem}-{width}.webp"
-        resized.save(out, "WEBP", quality=QUALITY, method=6)
+        quality = QUALITY_UI if stem.startswith("gallery-") else QUALITY
+        resized.save(out, "WEBP", quality=quality, method=6)
         print(f"{out.name:38} {width}x{height}  {out.stat().st_size / 1024:6.1f} KiB")
 
 

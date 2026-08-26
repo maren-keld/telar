@@ -102,6 +102,9 @@ function formatDxItems(items) {
 function formatDiagnostico(d) {
   const structured = d.structured || {};
   const structLines = linesFromObject(structured, [
+    { key: 'hipotesis', label: 'Hipótesis' },
+    { key: 'factores_mantenedores', label: 'Factores mantenedores' },
+    { key: 'recursos', label: 'Recursos' },
     { key: 'comorbidities', label: 'Comorbilidades' },
     { key: 'trauma_events', label: 'Eventos traumáticos / antecedentes' },
     { key: 'medication', label: 'Medicación psicotrópica' },
@@ -282,6 +285,10 @@ export function buildReadableText(moduleType, data) {
         d.motivo ? `Motivo: ${d.motivo}` : null,
         d.expectativas ? `Expectativas: ${d.expectativas}` : null,
         d.antecedentes ? `Antecedentes: ${d.antecedentes}` : null,
+        d.tratamientos_previos ? `Tratamientos previos: ${d.tratamientos_previos}` : null,
+        d.medicacion ? `Medicación: ${d.medicacion}` : null,
+        d.psiquiatra ? `Psiquiatra / médico tratante: ${d.psiquiatra}` : null,
+        d.consumo ? `Consumo: ${d.consumo}` : null,
         d.urgencia ? `Urgencia: ${d.urgencia}` : null,
       ]
         .filter(Boolean)

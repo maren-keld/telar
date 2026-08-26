@@ -68,3 +68,13 @@ test('las categorías agrupan por función en la hora, no por escuela', async ()
   assert.equal(byId.significado.blurb, 'Narrativa e identidad, se trabaja en sesión');
   assert.equal(byId.intervencion.blurb, 'Entrenar habilidades en sesión');
 });
+
+test('Mis módulos van al final del selector', async () => {
+  const { selectorListInnerHtml } = await import('../../src/js/components/module-selector.js');
+  const html = selectorListInnerHtml();
+  const cats = [...html.matchAll(/data-cat="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(cats.includes('conceptualizacion'));
+  if (cats.includes('custom')) {
+    assert.equal(cats.at(-1), 'custom');
+  }
+});

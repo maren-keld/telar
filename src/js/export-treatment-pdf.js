@@ -82,6 +82,9 @@ function renderDiagnosticoBlock(doc, y, data) {
   const d = data || {};
   const structured = d.structured || {};
   const structFields = [
+    ['hipotesis', 'Hipótesis'],
+    ['factores_mantenedores', 'Factores mantenedores'],
+    ['recursos', 'Recursos'],
     ['comorbidities', 'Comorbilidades'],
     ['trauma_events', 'Eventos traumáticos / antecedentes'],
     ['medication', 'Medicación psicotrópica'],
@@ -193,6 +196,10 @@ export async function exportTreatmentPdf(treatmentId) {
       ['Motivo principal', md.motivo],
       ['Expectativas del tratamiento', md.expectativas],
       ['Antecedentes relevantes', md.antecedentes],
+      ['Tratamientos previos', md.tratamientos_previos],
+      ['Medicación', md.medicacion],
+      ['Psiquiatra / médico tratante', md.psiquiatra],
+      ['Consumo', md.consumo],
     ].filter(([, v]) => String(v || '').trim());
     for (const [title, body] of blocks) {
       y += 6;

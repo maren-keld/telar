@@ -520,38 +520,29 @@ li a.card {
 }
 
 .product-gallery .section-title {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
-.product-gallery__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.product-gallery__shot {
+.install-carousel--gallery {
   margin: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-card);
 }
 
-.product-gallery__shot img {
-  display: block;
+.install-carousel--gallery .install-carousel__viewport {
+  aspect-ratio: auto;
+  max-height: none;
+}
+
+.install-carousel--gallery .install-carousel__slide img {
+  flex: 0 0 auto;
   width: 100%;
   height: auto;
-  aspect-ratio: 1024 / 619;
-  object-fit: cover;
+  max-height: min(calc(100dvh - 16rem), 800px);
+  object-fit: contain;
   object-position: top center;
 }
 
-.product-gallery__shot figcaption {
-  padding: 0.7rem 0.85rem 0.85rem;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
+.install-carousel--gallery .install-carousel__slide figcaption {
+  font-size: 0.9rem;
 }
 
 .nf-showcase {
@@ -2153,10 +2144,6 @@ section {
 
   .value-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .product-gallery__grid {
-    grid-template-columns: 1fr;
   }
 
   .req-card {

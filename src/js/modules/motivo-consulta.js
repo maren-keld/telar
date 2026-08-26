@@ -104,6 +104,24 @@ export async function renderMotivoConsulta(host, moduleRow) {
           <textarea name="antecedentes" rows="3">${escapeHtml(data.antecedentes || '')}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
+          <label for="motivo-tratamientos">Tratamientos previos</label>
+          <textarea name="tratamientos_previos" id="motivo-tratamientos" rows="3" placeholder="Terapias, hospitalizaciones; qué sirvió y qué no.">${escapeHtml(data.tratamientos_previos || '')}</textarea>
+        </div>
+        <div class="anamnesis-pair">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="motivo-medicacion">Medicación</label>
+            <textarea name="medicacion" id="motivo-medicacion" rows="2" placeholder="Fármaco, dosis, adherencia">${escapeHtml(data.medicacion || '')}</textarea>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label for="motivo-psiquiatra">Psiquiatra / médico tratante</label>
+            <textarea name="psiquiatra" id="motivo-psiquiatra" rows="2" placeholder="Quién indica, especialidad, contacto">${escapeHtml(data.psiquiatra || '')}</textarea>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+          <label for="motivo-consumo">Consumo</label>
+          <input type="text" name="consumo" id="motivo-consumo" placeholder="Alcohol, cannabis, estimulantes…" value="${escapeHtml(data.consumo || '')}" />
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
           <label for="motivo-urgencia">Urgencia / prioridad</label>
           <select name="urgencia" id="motivo-urgencia">
             <option value="baja" ${urgencia === 'baja' ? 'selected' : ''}>Baja</option>

@@ -95,7 +95,8 @@ const BUILTIN_PROBLEMS = [
 const BUILTIN_NAMES = new Set(BUILTIN_PROBLEMS.map((p) => p.name));
 
 function normalizeView(view) {
-  if (view === 'conceptualizacion' || view === 'personalizado' || view === 'matriz') return view;
+  if (view === 'personalizado' || view === 'matriz') return view;
+  if (view === 'conceptualizacion') return 'personalizado';
   return 'matriz';
 }
 
@@ -148,10 +149,8 @@ export async function renderDiagnostico(host, moduleRow) {
   host.innerHTML = `
     <div class="card dx-card-wrap">
       <div class="dx-head">
-        <h2 class="module-title" style="margin:0">Diagnósticos</h2>
-        <div class="dx-actions">
-          <button type="button" class="btn btn-ghost" title="Ayuda" disabled>?</button>
-        </div>
+        <h2 class="module-title">Diagnósticos</h2>
+        <button type="button" class="btn btn-ghost dx-help" title="Ayuda" disabled>?</button>
       </div>
 
       <div class="dx-tabs" data-no-autobind>
@@ -159,39 +158,30 @@ export async function renderDiagnostico(host, moduleRow) {
           Matriz de Problemas
           <span class="dx-tab__badge" id="dx-assigned-count">${assignedCount}</span>
         </button>
-        <button type="button" class="dx-tab ${view === 'conceptualizacion' ? 'active' : ''}" data-view="conceptualizacion">Conceptualización TDAH</button>
         <button type="button" class="dx-tab ${view === 'personalizado' ? 'active' : ''}" data-view="personalizado">Personalizado</button>
       </div>
 
       <form id="dx-form">
         <input type="hidden" name="view" value="${escapeHtml(view)}" />
 
-        <section class="dx-panel" id="dx-panel-conceptualizacion" ${view === 'conceptualizacion' ? '' : 'hidden'}>
-          <h3 class="dx-structured__title">Conceptualización TDAH / trauma</h3>
+        <section class="dx-panel" id="dx-panel-personalizado" ${view === 'personalizado' ? '' : 'hidden'}>
           <div class="dx-structured__grid">
-            <label class="dx-structured__field">
-              <span>Comorbilidades</span>
-              <textarea name="structured_comorbidities" rows="2" placeholder="p. ej. ansiedad, TEPT, consumo">${escapeHtml(structured.comorbidities || '')}</textarea>
-            </label>
-            <label class="dx-structured__field">
-              <span>Eventos traumáticos / antecedentes</span>
-              <textarea name="structured_trauma_events" rows="2" placeholder="Eventos relevantes, edad, contexto">${escapeHtml(structured.trauma_events || '')}</textarea>
-            </label>
-            <label class="dx-structured__field">
-              <span>Medicación psicotrópica</span>
-              <textarea name="structured_medication" rows="2" placeholder="Fármaco, dosis, adherencia">${escapeHtml(structured.medication || '')}</textarea>
-            </label>
             <label class="dx-structured__field dx-structured__field--wide">
-              <span>Notas clínicas estructuradas</span>
-              <textarea name="structured_dx_notes" rows="3" placeholder="Hipótesis, factores mantenedores, recursos">${escapeHtml(structured.dx_notes || '')}</textarea>
+              <span>Hipótesis</span>
+              <textarea name="structured_hipotesis" rows="3" placeholder="Qué está pasando y por qué ahora">${escapeHtml(structured.hipotesis || structured.dx_notes || '')}</textarea>
+            </label>
+            <label class="dx-structured__field">
+              <span>Factores mantenedores</span>
+              <textarea name="structured_factores_mantenedores" rows="3" placeholder="Qué lo sostiene: evitación, creencias, contexto…">${escapeHtml(structured.factores_mantenedores || '')}</textarea>
+            </label>
+            <label class="dx-structured__field">
+              <span>Recursos</span>
+              <textarea name="structured_recursos" rows="3" placeholder="Fortalezas, apoyos, lo que ya funciona">${escapeHtml(structured.recursos || '')}</textarea>
             </label>
           </div>
-        </section>
-
-        <section class="dx-panel" id="dx-panel-personalizado" ${view === 'personalizado' ? '' : 'hidden'}>
           <label class="dx-custom-label">
             <span>Diagnóstico personalizado</span>
-            <textarea name="custom_diagnosis" rows="10" class="dx-custom-input" placeholder="Escriba aquí el diagnóstico o formulación clínica personalizada…">${escapeHtml(customDiagnosis)}</textarea>
+            <textarea name="custom_diagnosis" rows="8" class="dx-custom-input" placeholder="Formulación o diagnóstico en tus palabras…">${escapeHtml(customDiagnosis)}</textarea>
           </label>
         </section>
       </form>
@@ -232,10 +222,13 @@ export async function renderDiagnostico(host, moduleRow) {
       query: mfd.query || '',
       custom_diagnosis: sfd.custom_diagnosis || '',
       structured: {
-        comorbidities: sfd.structured_comorbidities || '',
-        trauma_events: sfd.structured_trauma_events || '',
-        medication: sfd.structured_medication || '',
-        dx_notes: sfd.structured_dx_notes || '',
+        comorbidities: structured.comorbidities || '',
+        trauma_events: structured.trauma_events || '',
+        medication: structured.medication || '',
+        dx_notes: structured.dx_notes || '',
+        hipotesis: sfd.structured_hipotesis || '',
+        factores_mantenedores: sfd.structured_factores_mantenedores || '',
+        recursos: sfd.structured_recursos || '',
       },
       problems: matrixForm ? parseProblemsFromForm(mfd) : problems,
     };
@@ -267,7 +260,6 @@ export async function renderDiagnostico(host, moduleRow) {
     host.querySelectorAll('.dx-tab').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
     structForm.querySelector('[name="view"]').value = v;
     matrixForm?.querySelector('[name="view"]')?.setAttribute('value', v);
-    host.querySelector('#dx-panel-conceptualizacion').hidden = v !== 'conceptualizacion';
     host.querySelector('#dx-panel-personalizado').hidden = v !== 'personalizado';
     if (matrixForm) matrixForm.hidden = v !== 'matriz';
   };

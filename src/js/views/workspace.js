@@ -196,20 +196,20 @@ export async function renderWorkspace(
           }
         </div>
         <footer class="workspace-sidebar__footer">
-          <button type="button" class="workspace-sidebar-toggle${indexMode === 'chrono' ? ' is-active' : ''}" data-sidebar-index-mode="chrono"
-            title="Índice cronológico" aria-label="Índice cronológico" aria-pressed="${indexMode === 'chrono' ? 'true' : 'false'}">
-            <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-              <circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/>
-            </svg>
-          </button>
-          <button type="button" class="workspace-sidebar-toggle${indexMode === 'category' ? ' is-active' : ''}" data-sidebar-index-mode="category"
-            title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
-            <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </button>
+          <div class="workspace-index-switch" role="group" aria-label="Orden del índice">
+            <button type="button" class="workspace-sidebar-toggle${indexMode === 'chrono' ? ' is-active' : ''}" data-sidebar-index-mode="chrono"
+              title="Índice cronológico" aria-label="Índice cronológico" aria-pressed="${indexMode === 'chrono' ? 'true' : 'false'}">
+              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>
+              </svg>
+            </button>
+            <button type="button" class="workspace-sidebar-toggle${indexMode === 'category' ? ' is-active' : ''}" data-sidebar-index-mode="category"
+              title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
+              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+              </svg>
+            </button>
+          </div>
           <button type="button" class="workspace-sidebar-toggle" id="btn-sidebar-toggle"
             title="Contraer o expandir sesiones" aria-label="Contraer o expandir sesiones">
             <svg class="workspace-sidebar-toggle__icon workspace-sidebar-toggle__icon--collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

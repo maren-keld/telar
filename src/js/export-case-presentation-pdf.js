@@ -75,6 +75,9 @@ function diagnosticoLines(data) {
   const out = [];
   const structured = d.structured || {};
   for (const [key, label] of [
+    ['hipotesis', 'Hipótesis'],
+    ['factores_mantenedores', 'Factores mantenedores'],
+    ['recursos', 'Recursos'],
     ['comorbidities', 'Comorbilidades'],
     ['trauma_events', 'Eventos traumáticos / antecedentes'],
     ['medication', 'Medicación psicotrópica'],

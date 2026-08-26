@@ -207,7 +207,7 @@ export function selectorListInnerHtml({
     })
     .join('');
 
-  return customCategoryHtml + catsHtml;
+  return catsHtml + customCategoryHtml;
 }
 
 async function loadSelectorList(ctx) {

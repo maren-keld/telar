@@ -126,7 +126,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260824a">
+  <link rel="stylesheet" href="css/style.css?v=20260824f">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -168,7 +168,7 @@
       <div class="hero-main">
         <div class="hero-main__copy">
           <h1><span>La evolución del paciente</span> <span>deja de ser una impresión clínica.</span></h1>
-          <p class="hero-lead-main">Escalas validadas con puntuación automática, curva longitudinal sesión a sesión y programas por objetivos. <a href="ia.html">IA</a> que ya leyó la ficha, <a href="neurofeedback.html">neurofeedback</a> en consulta, y los datos cifrados en tu computador.</p>
+          <p class="hero-lead-main">Escalas validadas con puntuación automática, curva longitudinal sesión a sesión y programas por objetivos. Asistencia con <a href="ia.html">IA</a> del tratamiento. Da un salto al futuro con <a href="neurofeedback.html">Neurofeedback</a>, y los datos cifrados en tu computador.</p>
           <div class="hero-actions">
             <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
               <span class="btn-label">Descargar Telar</span>
@@ -227,49 +227,75 @@
       <div class="container">
         <p class="section-label">Así se ve</p>
         <h2 class="section-title" id="galeria-titulo">Tres momentos de una consulta.</h2>
-        <div class="product-gallery__grid">
-          <figure class="product-gallery__shot">
-            <picture>
-              <source type="image/webp" srcset="assets/gallery-significado.webp">
-              <img
-                src="assets/gallery-significado.png"
-                alt="Telar en sesión: pregunta milagro al centro, bitácora e IA a la derecha"
-                width="1024"
-                height="619"
-                loading="lazy"
-                decoding="async"
-              >
-            </picture>
-            <figcaption>Material de significado en la ficha: la bitácora y la IA siguen a la vista.</figcaption>
-          </figure>
-          <figure class="product-gallery__shot">
-            <picture>
-              <source type="image/webp" srcset="assets/gallery-puntajes.webp">
-              <img
-                src="assets/gallery-puntajes.png"
-                alt="PCL-5 puntuada en Telar, con curva de evolución por sesión"
-                width="1024"
-                height="619"
-                loading="lazy"
-                decoding="async"
-              >
-            </picture>
-            <figcaption>Escala puntuada y curva sesión a sesión. El corte sale solo.</figcaption>
-          </figure>
-          <figure class="product-gallery__shot">
-            <picture>
-              <source type="image/webp" srcset="assets/gallery-neurofeedback.webp">
-              <img
-                src="assets/gallery-neurofeedback.png"
-                alt="Sesión de neurofeedback Muse 2 en Telar, calculando línea base de atención"
-                width="1024"
-                height="619"
-                loading="lazy"
-                decoding="async"
-              >
-            </picture>
-            <figcaption>Neurofeedback con Muse 2: línea base de atención, dentro de la consulta.</figcaption>
-          </figure>
+        <div class="install-carousel install-carousel--gallery" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Capturas de Telar en consulta">
+          <div class="install-carousel__viewport">
+            <figure class="install-carousel__slide is-active">
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="assets/gallery-significado-2400.webp"
+                >
+                <img
+                  src="assets/gallery-significado.png?v=20260824e"
+                  alt="Telar en sesión: pregunta milagro al centro, bitácora e IA a la derecha"
+                  width="2400"
+                  height="1452"
+                  loading="eager"
+                  decoding="async"
+                >
+              </picture>
+              <figcaption>Material de significado en la ficha: la bitácora y la IA siguen a la vista.</figcaption>
+            </figure>
+            <figure class="install-carousel__slide" hidden>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="assets/gallery-puntajes-2400.webp"
+                >
+                <img
+                  src="assets/gallery-puntajes.png?v=20260824e"
+                  alt="PCL-5 puntuada en Telar, con curva de evolución por sesión"
+                  width="2400"
+                  height="1452"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </picture>
+              <figcaption>Escala puntuada y curva sesión a sesión. El corte sale solo.</figcaption>
+            </figure>
+            <figure class="install-carousel__slide" hidden>
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="assets/gallery-neurofeedback-2400.webp"
+                >
+                <img
+                  src="assets/gallery-neurofeedback.png?v=20260824e"
+                  alt="Sesión de neurofeedback Muse 2 en Telar, calculando línea base de atención"
+                  width="2400"
+                  height="1452"
+                  loading="lazy"
+                  decoding="async"
+                >
+              </picture>
+              <figcaption>Neurofeedback con Muse 2: línea base de atención, dentro de la consulta.</figcaption>
+            </figure>
+          </div>
+          <div class="install-carousel__controls">
+            <button type="button" class="install-carousel__arrow install-carousel__prev" aria-label="Imagen anterior">
+              <span class="install-carousel__arrow-symbol" aria-hidden="true">‹</span>
+              <span class="install-carousel__arrow-label">Imagen anterior</span>
+            </button>
+            <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar captura">
+              <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Material de significado" aria-selected="true"></button>
+              <button type="button" class="install-carousel__dot" role="tab" aria-label="Escala y curva" aria-selected="false"></button>
+              <button type="button" class="install-carousel__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
+            </div>
+            <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
+              <span class="install-carousel__arrow-label">Imagen siguiente</span>
+              <span class="install-carousel__arrow-symbol" aria-hidden="true">›</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
