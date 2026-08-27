@@ -7,7 +7,7 @@ import { getLegacyModuleDefs } from './legacy-module-defs.js';
 
 export const CORE_MODULE_DEFS = {
   selector_modulo: {
-    label: 'Seleccionar módulo',
+    label: 'Librería de módulos',
     category: 'meta',
     description: 'Elige qué módulo añadir a esta sesión.',
     allowMultipleInSession: false,
@@ -67,11 +67,21 @@ export const TREATMENT_STATUS = {
   archivado: { label: 'Archivado', order: 4 },
 };
 
+export const TAG_COLOR_PRESETS = [
+  { id: 'coral', label: 'Coral', hex: '#e05d4f' },
+  { id: 'amber', label: 'Ámbar', hex: '#e8a317' },
+  { id: 'mint', label: 'Menta', hex: '#3cb371' },
+  { id: 'azure', label: 'Azul', hex: '#4c8dff' },
+  { id: 'lilac', label: 'Lila', hex: '#9b7ed9' },
+  { id: 'rose', label: 'Rosa', hex: '#e07aa5' },
+  { id: 'slate', label: 'Pizarra', hex: '#64748b' },
+];
+
 export const TREATMENT_TAG_DEFS = {
-  derivado: { label: 'Derivado', legacyReferral: true, glyph: 'derivado' },
-  necesita_supervision: { label: 'Supervisado', legacySupervised: true, glyph: 'supervisado' },
-  estudiar_caso: { label: 'Necesita más estudio', glyph: 'masEstudio' },
-  alerta: { label: 'En alerta', auto: true, glyph: 'alerta' },
+  derivado: { label: 'Derivado', legacyReferral: true, glyph: 'derivado', color: '#4c8dff' },
+  necesita_supervision: { label: 'Supervisado', legacySupervised: true, glyph: 'supervisado', color: '#9b7ed9' },
+  estudiar_caso: { label: 'Necesita más estudio', glyph: 'masEstudio', color: '#e8a317' },
+  alerta: { label: 'En alerta', auto: true, glyph: 'alerta', color: '#c4473a' },
 };
 
 export function selectableTreatmentTags() {

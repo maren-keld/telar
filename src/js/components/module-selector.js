@@ -35,7 +35,7 @@ function variablesRow(type) {
     </div>`;
 }
 
-export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar' } = {}) {
+export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', showAction = true } = {}) {
   const hasPsych = Boolean(psych);
   const rows = hasPsych
     ? `
@@ -62,10 +62,16 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar' } = 
       <h3 class="mod-info__title">${escapeHtml(def.label)}</h3>
       ${rows}
       ${psych?.learnMore ? `<p class="mod-info__note">${escapeHtml(psych.learnMore)}</p>` : ''}
-      <div class="mod-info__actions">
+      ${
+        showAction
+          ? `<div class="mod-info__actions">
         <span class="mod-info__learn">Más información en Ajustes / manual</span>
         <button type="button" class="btn btn-primary" id="mod-select-btn">${escapeHtml(actionLabel)}</button>
-      </div>
+      </div>`
+          : `<div class="mod-info__actions">
+        <span class="mod-info__learn">Más información en Ajustes / manual</span>
+      </div>`
+      }
     </div>`;
 }
 
@@ -92,10 +98,9 @@ export async function mountModuleSelector(host, ctx) {
       <div class="module-selector-head">
         <div class="module-selector-head__text">
           <div class="module-selector-title-row">
-            <h2 class="module-title" style="margin:0">Seleccionar módulo</h2>
+            <h2 class="module-title" style="margin:0">Librería de módulos</h2>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-create-module" title="Diseñar un cuestionario propio">Crear módulo</button>
           </div>
-          <p class="module-card-head__sub module-selector-sub">Elige un módulo para esta sesión. Al seleccionarlo, este espacio mostrará el módulo elegido.</p>
         </div>
       </div>
       <div class="mod-selector-search-wrap">

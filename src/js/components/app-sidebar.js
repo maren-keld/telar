@@ -12,7 +12,6 @@ const ICONS = {
 
 const NAV = [
   { id: 'treatments', labelKey: 'nav.treatments' },
-  { id: 'agenda', labelKey: 'nav.agenda' },
   { id: 'reportes', labelKey: 'nav.reportes' },
   { id: 'goals', labelKey: 'nav.goals' },
   { id: 'modules', labelKey: 'nav.modules' },

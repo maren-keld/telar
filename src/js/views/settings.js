@@ -154,33 +154,8 @@ function row({
     </${tag}>`;
 }
 
-export async function renderSettings(container, { onNavigate }) {
-  const renderGen = ++settingsRenderGen;
-  const profile = loadProfile();
-  let touchIdAvailable = false;
-  if (isTauriApp()) {
-    try {
-      touchIdAvailable = await getInvoke()('touch_id_available');
-    } catch {
-      touchIdAvailable = false;
-    }
-  }
-
-  const isLinux = navigator.platform.toLowerCase().includes('linux');
-  const locale = getLocale();
-  let planUsageSub = isProUser()
-    ? 'Suscripción activa · pacientes ilimitados'
-    : `Demo · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
-  try {
-    const usage = await getActivePatientUsage();
-    planUsageSub = usage.pro
-      ? `Suscripción activa · ${usage.count} pacientes activos`
-      : `Demo · ${usage.count}/${usage.limit} pacientes activos`;
-  } catch {
-    /* DB aún no disponible */
-  }
-
-  let cloudBackupState = {
+function defaultCloudBackupState() {
+  return {
     status: 'idle',
     subtitle: t('settings.cloudBackupPro'),
     hasIdentity: false,
@@ -188,21 +163,65 @@ export async function renderSettings(container, { onNavigate }) {
     enabled: false,
     folderStatus: null,
   };
-  if (isTauriApp()) {
+}
+
+function defaultPlanUsageSub() {
+  return isProUser()
+    ? 'Suscripción activa · pacientes ilimitados'
+    : `Demo · hasta ${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos`;
+}
+
+async function loadSettingsExtras() {
+  const touchP = (async () => {
+    if (!isTauriApp()) return false;
     try {
-      cloudBackupState = await fetchCloudBackupState();
+      return await getInvoke()('touch_id_available');
+    } catch {
+      return false;
+    }
+  })();
+
+  const usageP = (async () => {
+    try {
+      const usage = await getActivePatientUsage();
+      return usage.pro
+        ? `Suscripción activa · ${usage.count} pacientes activos`
+        : `Demo · ${usage.count}/${usage.limit} pacientes activos`;
+    } catch {
+      return defaultPlanUsageSub();
+    }
+  })();
+
+  const cloudP = (async () => {
+    if (!isTauriApp()) return defaultCloudBackupState();
+    try {
+      const state = await fetchCloudBackupState();
       if (!isProUser()) {
-        cloudBackupState = {
-          ...cloudBackupState,
+        return {
+          ...state,
           status: 'idle',
           subtitle: t('settings.cloudBackupPro'),
           enabled: false,
         };
       }
+      return state;
     } catch {
-      /* ignore */
+      return defaultCloudBackupState();
     }
-  }
+  })();
+
+  const [touchIdAvailable, planUsageSub, cloudBackupState] = await Promise.all([touchP, usageP, cloudP]);
+  return { touchIdAvailable, planUsageSub, cloudBackupState };
+}
+
+export async function renderSettings(container, { onNavigate, extras } = {}) {
+  const renderGen = ++settingsRenderGen;
+  const profile = loadProfile();
+  const touchIdAvailable = extras?.touchIdAvailable ?? false;
+  const isLinux = navigator.platform.toLowerCase().includes('linux');
+  const locale = getLocale();
+  const planUsageSub = extras?.planUsageSub ?? defaultPlanUsageSub();
+  let cloudBackupState = extras?.cloudBackupState ?? defaultCloudBackupState();
 
   const cloudBackupEnabled = isProUser() && isCloudBackupEnabled();
   const cloudBackupShowManage = ['active', 'error', 'folder_missing', 'backing_up'].includes(
@@ -407,20 +426,27 @@ export async function renderSettings(container, { onNavigate }) {
 
   bindAppSidebar(container, { onNavigate });
 
-  syncProFromServer().then(({ changed, revoked }) => {
-    if (renderGen !== settingsRenderGen) return;
-    if (!isSettingsRoute()) return;
-    if (!changed) return;
-    if (revoked) {
-      toast(
-        t(
-          'settings.proRevoked',
-          'La suscripción Profesional no está activa. Algunas funciones quedaron limitadas.',
-        ),
-      );
-    }
-    renderSettings(container, { onNavigate });
-  });
+  if (!extras) {
+    void loadSettingsExtras().then((loaded) => {
+      if (renderGen !== settingsRenderGen) return;
+      if (!isSettingsRoute()) return;
+      return renderSettings(container, { onNavigate, extras: loaded });
+    });
+
+    syncProFromServer().then(({ changed, revoked }) => {
+      if (!isSettingsRoute()) return;
+      if (!changed) return;
+      if (revoked) {
+        toast(
+          t(
+            'settings.proRevoked',
+            'La suscripción Profesional no está activa. Algunas funciones quedaron limitadas.',
+          ),
+        );
+      }
+      renderSettings(container, { onNavigate });
+    });
+  }
 
   container.querySelector('#btn-settings-plan')?.addEventListener('click', () => {
     openSubscribeProModal({

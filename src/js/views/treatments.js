@@ -1,36 +1,41 @@
-import { TREATMENT_STATUS, TREATMENT_TAG_DEFS } from '../config.js';
+import { TREATMENT_STATUS } from '../config.js';
 import { openAgendaCardMenu } from '../components/agenda-menu.js';
+import { openTagPicker } from '../components/tag-picker.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { createTreatment, getAgendaGroups, upsertPatient } from '../db.js';
-import { TAG_GLYPHS } from '../glyphs.js';
+import { allTagDefs } from '../custom-tags.js';
 import { ICON_MORE_VERT } from '../icons.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { toast } from '../utils.js';
 import { escapeHtml } from '../utils.js';
 
-function tagChip(tagKey) {
-  const def = TREATMENT_TAG_DEFS[tagKey];
-  if (!def) return '';
-  const glyph = TAG_GLYPHS[def.glyph] || '';
-  const icon =
-    tagKey === 'alerta'
-      ? `<span class="tag-glyph tag-glyph--pulse">${glyph}<span class="tag-glyph__ping" aria-hidden="true"></span></span>`
-      : glyph;
-  return `<span class="patient-card__tag patient-card__tag--${escapeHtml(tagKey)}">${icon}<span>${escapeHtml(def.label)}</span></span>`;
+function convenioChip(row) {
+  if (!row.convenio_name) return '';
+  return `<span class="badge badge--info patient-card__convenio">${escapeHtml(row.convenio_name)}</span>`;
 }
 
-function tagBadges(row) {
+function tagChip(tagKey) {
+  const def = allTagDefs()[tagKey];
+  if (!def) return '';
+  const color = def.color || '#64748b';
+  const pulse =
+    tagKey === 'alerta'
+      ? `<span class="patient-card__tag-dot tag-glyph--pulse" style="--tag-color:${escapeHtml(color)}"><span class="tag-glyph__ping" aria-hidden="true"></span></span>`
+      : `<span class="patient-card__tag-dot" style="--tag-color:${escapeHtml(color)}"></span>`;
+  return `<span class="patient-card__tag patient-card__tag--${escapeHtml(tagKey)}">${pulse}<span>${escapeHtml(def.label)}</span></span>`;
+}
+
+export function tagPillsHtml(row) {
   const tags = row.tags || [];
   const parts = [];
   const showAlerta = row.clinical_alert || tags.includes('alerta');
   if (showAlerta) parts.push(tagChip('alerta'));
   for (const t of tags) {
     if (t === 'alerta') continue;
-    const def = TREATMENT_TAG_DEFS[t];
-    if (def) parts.push(tagChip(t));
+    parts.push(tagChip(t));
   }
-  return parts.join('');
+  return parts.filter(Boolean).join('');
 }
 
 function patientCard(row, statusKey) {
@@ -39,18 +44,18 @@ function patientCard(row, statusKey) {
     n > 1
       ? `<span class="patient-card__tn" title="Tratamiento ${n}">T${n}</span>`
       : '';
-  const quiet = [row.convenio_name ? `<span class="badge badge--info">${escapeHtml(row.convenio_name)}</span>` : '', tagBadges(row)]
-    .join('')
-    .trim();
-  const meta = quiet ? `<div class="patient-card__meta">${quiet}</div>` : '';
   return `
     <div class="patient-card" data-treatment-id="${row.treatment_id}" data-status="${escapeHtml(statusKey)}">
       <div class="patient-card__body">
         <div class="patient-card__main">
           <strong data-sensitive>${escapeHtml(row.name)}</strong>
           ${tn}
+          <div class="patient-card__tags">
+            ${convenioChip(row)}
+            ${tagPillsHtml(row)}
+            <button type="button" class="tag-add-btn" data-tag-picker aria-haspopup="dialog" aria-label="Añadir o quitar etiquetas" title="Etiquetas">+ Etiqueta</button>
+          </div>
         </div>
-        ${meta}
       </div>
       <button type="button" class="patient-card__menu" data-menu aria-label="Opciones del tratamiento" title="Opciones del tratamiento">${ICON_MORE_VERT}</button>
     </div>`;
@@ -70,6 +75,14 @@ export function treatmentSectionHtml(statusKey, rows, collapsed = false) {
       </div>
       <div class="section-accordion__body" ${collapsed ? 'hidden' : ''}>${body}</div>
     </section>`;
+}
+
+function refreshCardTags(card, row) {
+  const wrap = card.querySelector('.patient-card__tags');
+  const addBtn = wrap?.querySelector('[data-tag-picker]');
+  if (!wrap || !addBtn) return;
+  wrap.querySelectorAll('.patient-card__tag, .patient-card__convenio').forEach((el) => el.remove());
+  addBtn.insertAdjacentHTML('beforebegin', `${convenioChip(row)}${tagPillsHtml(row)}`);
 }
 
 export async function renderTreatments(container, { search = '', onNavigate, expandStatus = null }) {
@@ -116,8 +129,27 @@ export async function renderTreatments(container, { search = '', onNavigate, exp
 
   container.querySelectorAll('.patient-card').forEach((el) => {
     el.addEventListener('click', (e) => {
-      if (e.target.closest('[data-menu]')) return;
+      if (e.target.closest('[data-menu], [data-tag-picker]')) return;
       openTreatmentWorkspace(el.dataset.treatmentId, onNavigate);
+    });
+  });
+
+  container.querySelectorAll('[data-tag-picker]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = btn.closest('.patient-card');
+      const treatmentId = Number(card?.dataset.treatmentId);
+      if (!card || !treatmentId) return;
+      let row;
+      for (const list of Object.values(groups)) {
+        row = list.find((r) => r.treatment_id === treatmentId);
+        if (row) break;
+      }
+      if (!row) return;
+      void openTagPicker(btn, row, {
+        onChange: () => refreshCardTags(card, row),
+      });
     });
   });
 

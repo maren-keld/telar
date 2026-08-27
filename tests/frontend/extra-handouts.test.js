@@ -78,3 +78,25 @@ test('Mis módulos van al final del selector', async () => {
     assert.equal(cats.at(-1), 'custom');
   }
 });
+
+test('al seleccionar Diagnósticos o Redes de apoyo el preview muestra descripción', async () => {
+  const { previewHtml } = await import('../../src/js/components/module-selector.js');
+  const { getModuleDef } = await import('../../src/js/config.js');
+  const redes = getModuleDef('redes_apoyo');
+  const dx = getModuleDef('diagnostico');
+  assert.ok(redes?.description && redes.description !== 'Módulo clínico.');
+  assert.ok(dx?.description && dx.description !== 'Módulo clínico.');
+  const redesPreview = previewHtml('redes_apoyo', redes, null);
+  const dxPreview = previewHtml('diagnostico', dx, null);
+  assert.match(redesPreview, /Mapa de personas/);
+  assert.match(dxPreview, /Problemas, indicadores/);
+  assert.doesNotMatch(redesPreview, /mod-selector-item__desc/);
+});
+
+test('el preview del selector puede ocultar el botón de acción', async () => {
+  const { previewHtml } = await import('../../src/js/components/module-selector.js');
+  const withBtn = previewHtml('gad7', { label: 'GAD-7' }, null);
+  const withoutBtn = previewHtml('gad7', { label: 'GAD-7' }, null, { showAction: false });
+  assert.match(withBtn, /id="mod-select-btn"/);
+  assert.doesNotMatch(withoutBtn, /id="mod-select-btn"/);
+});

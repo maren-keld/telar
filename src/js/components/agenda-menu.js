@@ -1,4 +1,5 @@
-import { TREATMENT_STATUS, selectableTreatmentTags } from '../config.js';
+import { TREATMENT_STATUS } from '../config.js';
+import { allTagEntries } from '../custom-tags.js';
 import {
   copyModuleDataBetweenTreatments,
   createTreatment,
@@ -50,9 +51,11 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
     )
     .join('');
 
-  const tagItems = selectableTreatmentTags()
+  const tagItems = allTagEntries()
     .map(([k, v]) => {
-      const glyphRaw = TAG_GLYPHS[v.glyph] || '';
+      const glyphRaw =
+        TAG_GLYPHS[v.glyph] ||
+        (v.color ? `<span class="patient-card__tag-dot" style="--tag-color:${escapeHtml(v.color)}"></span>` : '');
       const glyph =
         k === 'alerta' && glyphRaw
           ? `<span class="tag-glyph tag-glyph--pulse">${glyphRaw}<span class="tag-glyph__ping" aria-hidden="true"></span></span>`

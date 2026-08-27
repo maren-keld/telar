@@ -33,6 +33,9 @@ test('T1 pill is omitted; T2+ appears to the right of the name', () => {
   const t2 = treatmentSectionHtml('en_tratamiento', [{ ...row, treatment_number: 2, name: 'Ana' }], false);
   assert.match(t2, /class="patient-card__tn" title="Tratamiento 2">T2</);
   assert.doesNotMatch(t2, /<span class="badge">Tratamiento/);
+  const nameAt = t2.indexOf('Ana');
+  const tnAt = t2.indexOf('patient-card__tn');
+  assert.ok(nameAt > 0 && tnAt > nameAt);
 });
 
 test('cards keep section status without a status glyph', () => {
@@ -49,16 +52,22 @@ test('card menu uses vertical three-dots icon', () => {
   assert.doesNotMatch(html, />⋯</);
 });
 
-test('tag glyphs sit to the left of the label', () => {
+test('tags sit to the right of the name with add-label control', () => {
   const html = treatmentSectionHtml('en_pausa', [
-    { ...row, convenio_name: 'Isapre', tags: ['estudiar_caso', 'necesita_supervision'] },
+    { ...row, name: 'Ana Pérez', convenio_name: 'Isapre', tags: ['estudiar_caso', 'necesita_supervision'] },
   ]);
+  const nameAt = html.indexOf('Ana Pérez');
+  const tagsAt = html.indexOf('patient-card__tags');
+  assert.ok(nameAt > 0 && tagsAt > nameAt);
   assert.match(html, /patient-card__tag--estudiar_caso/);
   assert.match(html, /Necesita más estudio/);
   assert.match(html, /patient-card__tag--necesita_supervision/);
   assert.match(html, /Supervisado/);
-  assert.match(html, /tag-glyph__svg/);
+  assert.match(html, /patient-card__tag-dot/);
+  assert.match(html, /data-tag-picker/);
+  assert.match(html, /\+ Etiqueta/);
   assert.match(html, /Isapre/);
+  assert.doesNotMatch(html, /patient-card__meta/);
   assert.doesNotMatch(html, /patient-card__tn/);
 });
 

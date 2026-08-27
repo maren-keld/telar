@@ -55,7 +55,6 @@ export function openAddModuleSessionModal({
       <div class="modal-backdrop" data-close>
         <div class="modal-card add-mod-modal add-mod-modal--catalog" role="dialog" aria-labelledby="add-mod-title">
           <h2 id="add-mod-title" class="modal-card__title">Añadir módulo</h2>
-          <p class="add-mod-modal__hint">Mismo catálogo que en el espacio central. Indica en qué sesión quedará.</p>
           <div class="mod-selector-search-wrap">
             <input type="search" class="mod-selector-search input" id="add-mod-search"
               placeholder="Buscar por nombre, categoría, tags…" autocomplete="off" />
@@ -159,10 +158,7 @@ export function openAddModuleSessionModal({
       selectedType = type;
       const def = resolveModuleDef(type) || { label: type, description: 'Módulo clínico.' };
       const psych = def.custom ? null : psychometricsFor(type);
-      previewEl.innerHTML = previewHtml(type, def, psych, { actionLabel: 'Añadir' });
-      previewEl.querySelector('#mod-select-btn')?.addEventListener('click', () => {
-        confirmBtn?.click();
-      });
+      previewEl.innerHTML = previewHtml(type, def, psych, { showAction: false });
       listEl.querySelectorAll('.mod-selector-item').forEach((b) => {
         b.classList.toggle('active', b.dataset.type === type);
       });

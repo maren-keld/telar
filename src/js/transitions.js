@@ -269,6 +269,7 @@ function initTooltips() {
     (e) => {
       const el = e.target.closest?.('[title], [data-tooltip]');
       if (!el || el === tip) return;
+      if (el.classList.contains('ai-dock__chip') || el.closest('.ai-dock__chip')) return;
       if (el.closest('textarea, select, option, .kindle-note__comment')) return;
       const raw = el.getAttribute('data-tooltip') || el.getAttribute('title') || '';
       const text = raw.trim();

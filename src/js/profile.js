@@ -19,6 +19,7 @@ const DEFAULTS = {
   /** true = no mostrar la previsualización del contexto antes de cada consulta API. */
   aiPreviewSkip: false,
   customModules: [],
+  customTags: [],
   hiddenDxProblems: [],
   cloudBackupDestDir: '',
   cloudBackupEnabled: false,

@@ -145,7 +145,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <div class="ai-dock__chips" id="ai-dock-chips">
           ${AI_QUICK_PROMPTS.map(
             (p) =>
-              `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" title="${escapeHtml(p.hint || p.label)}">${escapeHtml(p.label)}</button>`,
+              `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" data-tooltip="${escapeHtml(p.hint || p.label)}" aria-label="${escapeHtml(p.label)}. ${escapeHtml(p.hint || '')}">${escapeHtml(p.label)}</button>`,
           ).join('')}
         </div>
         <div class="ai-dock__input-row">

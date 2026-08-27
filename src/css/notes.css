@@ -731,9 +731,12 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   width: 100%;
   padding: 10px 12px 12px;
   box-sizing: border-box;
+  overflow: visible;
 }
 
 .ai-dock__input-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 8px;
   align-items: flex-end;
@@ -761,10 +764,13 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 
 /* Prompts sugeridos sobre el input */
 .ai-dock__chips {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 8px;
+  overflow: visible;
 }
 
 .ai-dock__chips--busy {
@@ -803,6 +809,7 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 }
 
 .ai-dock__chip {
+  position: relative;
   font-size: 0.7rem;
   line-height: 1.2;
   padding: 4px 8px;
@@ -814,6 +821,37 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   transition:
     border-color 0.15s ease,
     color 0.15s ease;
+}
+
+.ai-dock__chip[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(220px, 70vw);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--tt-bg, #0f2347);
+  color: var(--tt-fg, #fff);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  text-align: center;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.05),
+    0 4px 24px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.ai-dock__chip[data-tooltip]:hover::after,
+.ai-dock__chip[data-tooltip]:focus-visible::after {
+  opacity: 1;
 }
 
 .ai-dock__chip:hover {

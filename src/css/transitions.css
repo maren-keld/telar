@@ -304,6 +304,8 @@
 }
 .t-tt--fixed {
   position: fixed;
+  left: 0;
+  top: 0;
   white-space: nowrap;
   max-width: min(260px, calc(100vw - 24px));
   bottom: auto;

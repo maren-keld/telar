@@ -54,6 +54,15 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
   'escala_fer',
 ];
 
+const FALLBACK_DESCRIPTIONS = {
+  redes_apoyo: 'Mapa de personas, tipo de vínculo y áreas de apoyo.',
+  diagnostico: 'Problemas, indicadores y objetivos por tratamiento.',
+  registro_inicial: 'Datos demográficos y de contacto del paciente.',
+  motivo_consulta: 'Anamnesis de la primera sesión: motivo acotado, expectativas y antecedentes.',
+  neurofeedback: 'Sesión en vivo con Muse, FFT y análisis local.',
+  bilateral_stimulation: 'Estímulo visual alternado (EMDR-adjacent).',
+};
+
 const FALLBACK_LABELS = {
   bilateral_stimulation: 'Estimulación bilateral (BLS)',
   neurofeedback: 'Neurofeedback',
@@ -81,7 +90,9 @@ function legacyDefFor(type) {
   const intro = handout?.intro?.trim();
   return {
     label: handout?.title || moduleLabelI18n(type, FALLBACK_LABELS[type] || type.replace(/_/g, ' ')),
-    description: intro ? intro.split('.')[0] + (intro.includes('.') ? '.' : '') : 'Módulo clínico.',
+    description: intro
+      ? intro.split('.')[0] + (intro.includes('.') ? '.' : '')
+      : FALLBACK_DESCRIPTIONS[type] || 'Módulo clínico.',
     oncePerTreatment: ONCE_PER_TREATMENT.has(type) || (Boolean(handout) && handout.oncePerTreatment !== false),
     category: handout?.category,
   };
