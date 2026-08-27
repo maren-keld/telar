@@ -271,10 +271,13 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
 
   host.querySelector('#btn-copy-email')?.addEventListener('click', async () => {
     const email = host.querySelector('[name="email"]').value.trim();
-    if (!email) return;
+    if (!email) {
+      toast('No hay correo para copiar');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(email);
-      toast('Email copiado');
+      toast('Correo copiado');
     } catch {
       toast('No se pudo copiar');
     }

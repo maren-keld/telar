@@ -138,7 +138,7 @@ export async function renderRosenberg(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">Escala de Autoestima de Rosenberg (EAR)</h2>
+            <h2 class="module-title">Escala de Autoestima de Rosenberg (EAR)</h2>
             <p class="module-card-head__sub">
               10 ítems · escala 1–4 · la puntuación se actualiza al responder.
             </p>

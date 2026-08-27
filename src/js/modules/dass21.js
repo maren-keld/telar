@@ -119,7 +119,7 @@ export async function renderDass21(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">DASS-21</h2>
+            <h2 class="module-title">DASS-21</h2>
             <p class="module-card-head__sub">
               Últimos 7 días · Marca una opción por reactivo.
             </p>

@@ -449,7 +449,7 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
     <div class="nf-panel" id="neurofeedback">
       <div class="nf-header">
         <div class="nf-header__intro">
-          <h2 class="module-title" style="margin:0">Neurofeedback</h2>
+          <h2 class="module-title">Neurofeedback</h2>
         </div>
       </div>
       <div class="tabs" id="nf-tabs">

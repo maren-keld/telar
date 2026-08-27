@@ -410,7 +410,10 @@
 
 .module-card-head {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
   /* Espacio para hasta 3 iconos de acción (swap + print/help + delete) */
   padding-right: 116px;
@@ -423,11 +426,10 @@
 }
 
 .module-card-head__badge {
-  position: absolute;
-  top: 0;
-  right: 116px;
+  position: static;
   flex-shrink: 0;
-  margin: 0;
+  margin: 10px 0 0;
+  margin-left: auto;
 }
 
 .center-module-card__body > .card:not(.module-scroll),
@@ -442,7 +444,7 @@
 
 .module-card-actions {
   position: absolute;
-  top: 24px;
+  top: 34px;
   right: 24px;
   z-index: 2;
   display: flex;

@@ -444,6 +444,28 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     await refreshList({ scrollBottom: true });
   };
 
+  container._telarScoresAbort?.abort();
+  const scoresAbort = new AbortController();
+  container._telarScoresAbort = scoresAbort;
+  let scoresRefreshing = false;
+  document.addEventListener(
+    'telar:module-data-saved',
+    () => {
+      if (!container.isConnected) {
+        scoresAbort.abort();
+        return;
+      }
+      if (activeTab !== 'puntajes' || scoresRefreshing) return;
+      scoresRefreshing = true;
+      void refreshList()
+        .catch(() => {})
+        .finally(() => {
+          scoresRefreshing = false;
+        });
+    },
+    { signal: scoresAbort.signal },
+  );
+
   return {
     refresh: refreshList,
     focusNotasTab,

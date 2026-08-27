@@ -183,9 +183,18 @@ function formatAdes(d) {
 }
 
 function formatBilateral(d) {
+  const sudLine = (key, label) => {
+    const raw = d[key];
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    return `${label}: ${n}/10`;
+  };
   const parts = [
     d.speed_hz != null ? `Velocidad: ${d.speed_hz} Hz` : null,
     d.elapsed_sec != null && d.elapsed_sec > 0 ? `Tiempo: ${d.elapsed_sec} s` : null,
+    sudLine('sud_pre', 'SUD pre'),
+    sudLine('sud_post', 'SUD post'),
     d.target?.trim() ? `Objetivo: ${d.target.trim()}` : null,
     d.notes?.trim() ? `Notas: ${d.notes.trim()}` : null,
   ].filter(Boolean);
@@ -366,5 +375,12 @@ export async function syncModuleReadableText(moduleRow, payload, status) {
   const header = `# ${label}\n`;
   merged.readable_text = readable ? `${header}${readable}` : header;
   await saveModuleData(moduleRow.id, merged, status || moduleRow.status || 'pendiente');
+  if (typeof document !== 'undefined') {
+    document.dispatchEvent(
+      new CustomEvent('telar:module-data-saved', {
+        detail: { moduleId: moduleRow.id, moduleType: moduleRow.module_type },
+      }),
+    );
+  }
   return merged;
 }

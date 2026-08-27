@@ -43,7 +43,7 @@ export async function renderTccPlanSeguridad(host, moduleRow) {
     <div class="card tcc-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">Plan de seguridad vital</h2>
+          <h2 class="module-title">Plan de seguridad vital</h2>
           <p class="module-card-head__sub">Material TCC Telar — elaboración propia</p>
         </div>
       </div>

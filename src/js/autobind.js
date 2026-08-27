@@ -53,6 +53,12 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
     const t = e.target;
     if (!t.matches('input, textarea, select')) return;
     if (t.type === 'submit' || t.closest('[data-no-autobind]')) return;
+    const instant =
+      e.type === 'change' && (t.type === 'radio' || t.type === 'checkbox' || t.tagName === 'SELECT');
+    if (instant) {
+      void saveNow();
+      return;
+    }
     run();
   };
 

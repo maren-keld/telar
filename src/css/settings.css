@@ -510,7 +510,7 @@
 }
 
 .modal-card__title {
-  margin: 0 0 16px;
+  margin: 10px 0 16px;
   font-size: 1.1rem;
 }
 
@@ -574,6 +574,8 @@
 }
 
 .add-mod-modal--catalog .add-mod-modal__session .input {
+  height: 40px;
+  box-sizing: border-box;
   margin-bottom: 6px;
 }
 

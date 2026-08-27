@@ -132,7 +132,7 @@ export async function renderEscalaFer(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">Escala de Fortalezas y Riesgos (EFR)</h2>
+            <h2 class="module-title">Escala de Fortalezas y Riesgos (EFR)</h2>
             <p class="module-card-head__sub">
               Situación actual del paciente · Selecciona una opción por ítem.
             </p>

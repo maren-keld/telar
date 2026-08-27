@@ -105,6 +105,28 @@ function buildNfSeries(sessions) {
   return { calm, att };
 }
 
+function sudPoint(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildBlsSudSeries(sessions) {
+  const pre = [];
+  const post = [];
+  sessions.forEach((s) => {
+    const mod = s.modules.find((m) => m.module_type === 'bilateral_stimulation');
+    if (!mod) return;
+    const data = parseJsonSafe(mod.data, {});
+    const label = `S${s.number}`;
+    const preV = sudPoint(data.sud_pre);
+    const postV = sudPoint(data.sud_post);
+    if (preV != null) pre.push({ label, value: preV });
+    if (postV != null) post.push({ label, value: postV });
+  });
+  return { pre, post };
+}
+
 function rosenbergTotal(answers) {
   const reverseIdx = new Set([2, 4, 7, 8, 9]);
   let sum = 0;
@@ -382,6 +404,22 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     }
   }
 
+  if (types.has('bilateral_stimulation')) {
+    const { pre, post } = buildBlsSudSeries(sessions);
+    const hasSud = pre.length || post.length;
+    sections.push(
+      accordionHtml(
+        'chart-bls-sud',
+        'Estimulación bilateral — SUD',
+        'SUD pre y post (0–10) por sesión',
+        hasSud
+          ? lineChartHtml('chart-bls-sud', 10)
+          : '<p class="scores-empty">Sin SUD de estimulación bilateral registrados aún.</p>',
+        !sections.length,
+      ),
+    );
+  }
+
   if (!sections.length) {
     listEl.innerHTML =
       '<p class="scores-empty">Añade módulos de pruebas o neurofeedback al tratamiento para ver gráficos aquí.</p>';
@@ -449,6 +487,10 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     }
     if (types.has('escala_ansiedad')) {
       paintSubjective(listEl, 'chart-ansiedad', sessions, 'escala_ansiedad', 'anxiety_score');
+    }
+    if (types.has('bilateral_stimulation')) {
+      const { pre, post } = buildBlsSudSeries(sessions);
+      paintBlsSud(listEl, 'chart-bls-sud', pre, post);
     }
   };
 
@@ -584,6 +626,45 @@ function paintNfChart(root, id, calm, att) {
       responsive: true,
       maintainAspectRatio: false,
       scales: { y: { min: 0, max: 100 } },
+    },
+  });
+}
+
+function paintBlsSud(root, id, pre, post) {
+  const canvas = canvasIn(root, id);
+  if (!canvas) return;
+  const labels = [...new Set([...pre, ...post].map((p) => p.label))];
+  if (!labels.length) return;
+  const prev = Chart.getChart(canvas);
+  if (prev) prev.destroy();
+  const preMap = Object.fromEntries(pre.map((p) => [p.label, p.value]));
+  const postMap = Object.fromEntries(post.map((p) => [p.label, p.value]));
+  // eslint-disable-next-line no-new
+  new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'SUD pre',
+          data: labels.map((l) => preMap[l] ?? null),
+          borderColor: '#c0392b',
+          backgroundColor: 'rgba(192, 57, 43, 0.12)',
+          tension: 0.25,
+        },
+        {
+          label: 'SUD post',
+          data: labels.map((l) => postMap[l] ?? null),
+          borderColor: '#2e7d32',
+          backgroundColor: 'rgba(46, 125, 50, 0.12)',
+          tension: 0.25,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { min: 0, max: 10 } },
     },
   });
 }
@@ -829,6 +910,22 @@ function collectPdfChartJobs(sessions) {
       jobs.push({
         title: 'Escala subjetiva de ansiedad',
         paint: (c) => paintPdfSimpleLine(c, series, 100, '#2f6fed'),
+      });
+    }
+  }
+
+  if (types.has('bilateral_stimulation')) {
+    const { pre, post } = buildBlsSudSeries(sessions);
+    if (pre.length) {
+      jobs.push({
+        title: 'Estimulación bilateral — SUD pre',
+        paint: (c) => paintPdfSimpleLine(c, pre, 10, '#c0392b'),
+      });
+    }
+    if (post.length) {
+      jobs.push({
+        title: 'Estimulación bilateral — SUD post',
+        paint: (c) => paintPdfSimpleLine(c, post, 10, '#2e7d32'),
       });
     }
   }

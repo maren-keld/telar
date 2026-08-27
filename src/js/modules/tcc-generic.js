@@ -93,7 +93,7 @@ export async function renderTccGeneric(host, moduleRow) {
     <div class="card tcc-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">${escapeHtml(def.title)}</h2>
+          <h2 class="module-title">${escapeHtml(def.title)}</h2>
           <p class="module-card-head__sub">${escapeHtml(def.subtitle || 'Material TCC Telar — elaboración propia')}</p>
         </div>
         ${

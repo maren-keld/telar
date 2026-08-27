@@ -5,13 +5,17 @@
   margin: 10px 0 20px;
 }
 
+.module-card-head .module-title {
+  margin: 10px 0 0;
+}
+
 .module-anamnesis-head {
   align-items: flex-start;
   margin-bottom: 16px;
 }
 
 .module-anamnesis-head .module-title {
-  margin: 0 0 6px;
+  margin: 10px 0 6px;
 }
 
 .anamnesis-pair {
@@ -245,6 +249,10 @@
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+
+.nf-header .module-title {
+  margin: 10px 0 0;
 }
 
 .nf-header__intro {
@@ -620,7 +628,7 @@
 }
 
 .dx-head .module-title {
-  margin: 0;
+  margin: 10px 0 0;
 }
 
 .dx-head .dx-help {
@@ -955,6 +963,10 @@
   margin-top: 12px;
 }
 
+.module-selector-head .module-title {
+  margin: 10px 0 0;
+}
+
 .module-selector-title-row {
   display: flex;
   align-items: center;
@@ -966,7 +978,7 @@
 .module-selector-head {
   flex-shrink: 0;
   padding-right: 0;
-  padding-top: 2px;
+  padding-top: 0;
 }
 
 .module-selector-title-row #btn-create-module {
@@ -1001,12 +1013,12 @@
 }
 
 .center-module-card--selector .module-card-actions {
-  top: 16px;
+  top: 26px;
   right: 16px;
 }
 
 .center-module-card--selector .module-selector-inline {
-  padding-top: 8px;
+  padding-top: 14px;
   padding-right: 48px;
 }
 
@@ -2736,8 +2748,26 @@ body.is-dragging-module .session-block__title {
   gap: 16px;
 }
 
+.bls-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bls-timer {
+  display: block;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .bls-stage {
   position: relative;
+  width: 100%;
   height: 120px;
   border-radius: 12px;
   background: var(--accent-soft);
@@ -2766,6 +2796,70 @@ body.is-dragging-module .session-block__title {
   left: calc(92% - 28px);
 }
 
+.bls-fs-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+
+.bls-fs-btn:hover {
+  color: var(--text-primary);
+}
+
+.bls-fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background: #0d1526;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 12px;
+}
+
+.bls-fs-close {
+  align-self: flex-end;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bls-stage--fs {
+  flex: 1;
+  height: auto;
+  min-height: 240px;
+  border: none;
+  background: #0d1526;
+}
+
+.bls-stage--fs .bls-dot {
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+}
+
+.bls-stage--fs .bls-dot--right {
+  left: calc(92% - 48px);
+}
+
 .bls-form {
   display: flex;
   flex-direction: column;
@@ -2788,12 +2882,18 @@ body.is-dragging-module .session-block__title {
 .bls-field input[type='number'],
 .bls-field textarea {
   width: 100%;
+  height: 40px;
+  box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
   font-family: inherit;
+}
+
+.bls-field textarea {
+  height: auto;
 }
 
 .bls-field input[type='number']::placeholder,
@@ -2810,12 +2910,6 @@ body.is-dragging-module .session-block__title {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.bls-note {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
 }
 
 html[data-presentation='on'] .bls-stage--active {

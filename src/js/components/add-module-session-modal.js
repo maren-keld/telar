@@ -54,7 +54,7 @@ export function openAddModuleSessionModal({
     root.innerHTML = `
       <div class="modal-backdrop" data-close>
         <div class="modal-card add-mod-modal add-mod-modal--catalog" role="dialog" aria-labelledby="add-mod-title">
-          <h2 id="add-mod-title" class="modal-card__title">Añadir módulo</h2>
+          <h2 id="add-mod-title" class="modal-card__title">Librería de módulos</h2>
           <div class="mod-selector-search-wrap">
             <input type="search" class="mod-selector-search input" id="add-mod-search"
               placeholder="Buscar por nombre, categoría, tags…" autocomplete="off" />

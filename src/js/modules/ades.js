@@ -99,7 +99,7 @@ export async function renderAdes(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">${escapeHtml(t('ades.title', 'A-DES — Disociación adolescente'))}</h2>
+            <h2 class="module-title">${escapeHtml(t('ades.title', 'A-DES — Disociación adolescente'))}</h2>
             <p class="module-card-head__sub">${escapeHtml(t('ades.subtitle', '30 ítems · escala 0–10 (nunca → siempre) · 10–21 años · dominio público.'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="ades-progress" title="${escapeHtml(t('ades.progress', 'Ítems respondidos'))}">${answeredCount}/${ADES_TOTAL}</div>

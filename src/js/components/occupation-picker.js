@@ -32,17 +32,16 @@ export function bindOccupationPicker(host, { options, getSelected, onChange }) {
     const menuEl = portal.querySelector('.occupation-picker__menu');
     if (!menuEl) return;
     const gap = 4;
-    const maxH = 220;
-    let top = r.bottom + gap;
-    if (top + maxH > window.innerHeight - 8) {
-      top = Math.max(8, r.top - maxH - gap);
-    }
+    const spaceBelow = Math.max(80, window.innerHeight - r.bottom - 8);
+    const maxH = Math.min(220, spaceBelow);
     menuEl.style.position = 'fixed';
-    menuEl.style.top = `${top}px`;
+    menuEl.style.top = `${r.bottom + gap}px`;
     menuEl.style.left = `${r.left}px`;
     menuEl.style.width = `${r.width}px`;
     menuEl.style.right = 'auto';
     menuEl.style.transform = 'none';
+    menuEl.style.maxHeight = `${maxH}px`;
+    menuEl.style.overflowY = 'auto';
   };
 
   const openMenu = () => {

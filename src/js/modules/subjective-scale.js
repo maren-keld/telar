@@ -20,7 +20,7 @@ export async function renderSubjectiveScale(host, moduleRow, meta) {
     <div class="card subjective-scale-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">${escapeHtml(meta.title)}</h2>
+          <h2 class="module-title">${escapeHtml(meta.title)}</h2>
           <p class="module-card-head__sub">${escapeHtml(meta.subtitle)}</p>
         </div>
       </div>

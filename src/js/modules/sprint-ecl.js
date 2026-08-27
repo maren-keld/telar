@@ -137,7 +137,7 @@ export async function renderSprintEcl(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">${escapeHtml(t('sprint.title', 'SPRINT-E-CL — Trauma breve'))}</h2>
+            <h2 class="module-title">${escapeHtml(t('sprint.title', 'SPRINT-E-CL — Trauma breve'))}</h2>
             <p class="module-card-head__sub">${escapeHtml(t('sprint.subtitle', '12 ítems · escala 0–4 · validación Chile (27-F) · una vez por sesión.'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="sprint-progress" title="${escapeHtml(t('sprint.progress', 'Ítems respondidos'))}">${answeredCount}/${SPRINT_LIKERT_COUNT}</div>

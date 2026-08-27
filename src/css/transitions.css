@@ -306,10 +306,12 @@
   position: fixed;
   left: 0;
   top: 0;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
   max-width: min(260px, calc(100vw - 24px));
   bottom: auto;
   transform: scale(var(--tt-scale));
+  z-index: 12000;
 }
 .t-tt--fixed.is-open {
   opacity: 1;

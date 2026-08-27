@@ -1,17 +1,14 @@
 import { TREATMENT_STATUS } from '../config.js';
-import { allTagEntries } from '../custom-tags.js';
 import {
   copyModuleDataBetweenTreatments,
   createTreatment,
   listConvenios,
   updateTreatmentConvenio,
   updateTreatmentStatus,
-  updateTreatmentTags,
 } from '../db.js';
-import { TAG_GLYPHS } from '../glyphs.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
-import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+import { escapeHtml, toast } from '../utils.js';
 
 function menuCheckItem({ checked, label, attrs, glyph = '' }) {
   return `
@@ -35,11 +32,8 @@ function paintChecks(root, selector, key, current) {
 export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate }) {
   const root = document.getElementById('modal-root');
   const rect = anchorEl.getBoundingClientRect();
-  const tags = Array.isArray(row.tags) ? [...row.tags] : parseJsonSafe(row.tags, []);
-  const selectedTags = new Set(tags);
   const convenios = await listConvenios();
   let currentStatus = row.status;
-  const tagIsOn = (key) => selectedTags.has(key) || (key === 'alerta' && row.clinical_alert);
 
   const statusItems = Object.entries(TREATMENT_STATUS)
     .map(([k, v]) =>
@@ -49,24 +43,6 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
         attrs: `data-status="${k}"`,
       }),
     )
-    .join('');
-
-  const tagItems = allTagEntries()
-    .map(([k, v]) => {
-      const glyphRaw =
-        TAG_GLYPHS[v.glyph] ||
-        (v.color ? `<span class="patient-card__tag-dot" style="--tag-color:${escapeHtml(v.color)}"></span>` : '');
-      const glyph =
-        k === 'alerta' && glyphRaw
-          ? `<span class="tag-glyph tag-glyph--pulse">${glyphRaw}<span class="tag-glyph__ping" aria-hidden="true"></span></span>`
-          : glyphRaw;
-      return menuCheckItem({
-        checked: tagIsOn(k),
-        label: v.label,
-        glyph,
-        attrs: `data-tag="${k}" aria-pressed="${tagIsOn(k) ? 'true' : 'false'}"`,
-      });
-    })
     .join('');
 
   const tn = Number(row.treatment_number) > 1 ? ` · T${row.treatment_number}` : '';
@@ -96,11 +72,6 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
             )
             .join('')}
         </select>
-
-        <label class="dropdown-label">Etiquetas</label>
-        <div class="patient-menu-status-list" id="menu-tags">
-          ${tagItems}
-        </div>
       </div>
     </div>`;
 
@@ -124,17 +95,6 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
       paintChecks(root, '[data-status]', 'status', status);
       await updateTreatmentStatus(row.treatment_id, status);
       onUpdated?.({ status });
-    });
-  });
-
-  root.querySelectorAll('[data-tag]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const key = btn.dataset.tag;
-      if (selectedTags.has(key)) selectedTags.delete(key);
-      else selectedTags.add(key);
-      paintChecks(root, '[data-tag]', 'tag', (el) => tagIsOn(el.dataset.tag));
-      await updateTreatmentTags(row.treatment_id, [...selectedTags]);
-      onUpdated?.({ status: currentStatus });
     });
   });
 

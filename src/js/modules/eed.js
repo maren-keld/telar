@@ -89,7 +89,7 @@ export async function renderEed(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">Escala de estilos defensivos (EED)</h2>
+            <h2 class="module-title">Escala de estilos defensivos (EED)</h2>
             <p class="module-card-head__sub">26 ítems · escala 1 a 5 · una vez por tratamiento.</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="eed-progress" title="Ítems respondidos">${answeredCount}/26</div>

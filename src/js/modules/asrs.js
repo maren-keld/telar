@@ -131,7 +131,7 @@ export async function renderAsrs(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">${escapeHtml(t('asrs.title', 'ASRS v1.1 — TDAH en adultos'))}</h2>
+            <h2 class="module-title">${escapeHtml(t('asrs.title', 'ASRS v1.1 — TDAH en adultos'))}</h2>
             <p class="module-card-head__sub">${escapeHtml(t('asrs.subtitle', '18 ítems · escala 0–4 · últimos 6 meses · tamizaje WHO (Parte A).'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="asrs-progress" title="${escapeHtml(t('asrs.progress', 'Ítems respondidos'))}">${answeredCount}/${ASRS_TOTAL}</div>

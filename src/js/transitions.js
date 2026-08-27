@@ -232,6 +232,7 @@ function initTooltips() {
     const th = Math.max(tip.offsetHeight, 1);
     const r = el.getBoundingClientRect();
     const gap = 8;
+    const dockChip = el.classList.contains('ai-dock__chip') || el.closest('.ai-dock__chip');
     const sidebarLink = el.classList.contains('module-link') && el.closest('#leftsidebar');
     const headerBtn = el.closest('.workspace-sidebar__header');
     const footerBtn = el.closest('.workspace-sidebar__footer');
@@ -246,6 +247,10 @@ function initTooltips() {
       left = r.left;
       top = r.top - gap - th;
       tip.style.transformOrigin = '0 100%';
+    } else if (dockChip) {
+      left = r.left + r.width / 2 - tw / 2;
+      top = r.top - gap - th;
+      tip.style.transformOrigin = '50% 100%';
     } else if (headerBtn || r.top < 72) {
       left = r.left + r.width / 2 - tw / 2;
       top = r.bottom + gap;
@@ -269,7 +274,6 @@ function initTooltips() {
     (e) => {
       const el = e.target.closest?.('[title], [data-tooltip]');
       if (!el || el === tip) return;
-      if (el.classList.contains('ai-dock__chip') || el.closest('.ai-dock__chip')) return;
       if (el.closest('textarea, select, option, .kindle-note__comment')) return;
       const raw = el.getAttribute('data-tooltip') || el.getAttribute('title') || '';
       const text = raw.trim();

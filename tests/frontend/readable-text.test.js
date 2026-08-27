@@ -13,6 +13,16 @@ test('escalas subjetivas se leen en 1–100, no como value/10', () => {
   assert.doesNotMatch(ansiedad, /\/10\b/);
 });
 
+test('estimulación bilateral incluye SUD pre y post 0–10', () => {
+  const text = buildReadableText('bilateral_stimulation', {
+    speed_hz: 1,
+    sud_pre: 8,
+    sud_post: 3,
+  });
+  assert.match(text, /SUD pre: 8\/10/);
+  assert.match(text, /SUD post: 3\/10/);
+});
+
 test('el resumen psicométrico incluye ánimo y ansiedad subjetivos', () => {
   const block = buildPsychometricSummaryBlock([
     {

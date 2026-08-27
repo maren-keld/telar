@@ -31,6 +31,9 @@ export const ICON_WAND = svg(
 export const ICON_SPARKLE = `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.4 13.85 9.15 20.6 11 13.85 12.85 12 19.6 10.15 12.85 3.4 11 10.15 9.15 12 2.4z"/></svg>`;
 
 /** Iconos Ajustes — misma familia que app-sidebar */
+export const ICON_EXPAND = svg(
+  '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+);
 export const ICON_SWAP = svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>');
 
 export const SETTINGS_ICONS = {

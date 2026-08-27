@@ -28,7 +28,7 @@ export async function renderTccAbc(host, moduleRow) {
     <div class="card tcc-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">Modelo ABC (versión simple)</h2>
+          <h2 class="module-title">Modelo ABC (versión simple)</h2>
           <p class="module-card-head__sub">Material TCC Telar — elaboración propia</p>
         </div>
       </div>

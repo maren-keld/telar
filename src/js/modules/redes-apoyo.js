@@ -29,7 +29,7 @@ export async function renderRedesApoyo(host, moduleRow) {
   host.innerHTML = `
     <div class="card support-module">
       <div class="support-module__head">
-        <h2 class="module-title" style="margin:0">Redes de apoyo</h2>
+        <h2 class="module-title">Redes de apoyo</h2>
         <button type="button" class="btn btn-ghost" id="btn-add-person" title="Añadir persona">+ Añadir persona</button>
       </div>
 

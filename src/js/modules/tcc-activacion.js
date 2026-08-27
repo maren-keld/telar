@@ -81,7 +81,7 @@ export async function renderTccActivacion(host, moduleRow) {
     <div class="card tcc-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">Activación conductual</h2>
+          <h2 class="module-title">Activación conductual</h2>
           <p class="module-card-head__sub">Material TCC · casos prácticos con retroalimentación para el profesional</p>
         </div>
         ${

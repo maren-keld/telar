@@ -11,7 +11,7 @@ function fakeRoot() {
     },
     emit(type, target) {
       for (const l of listeners) {
-        if (l.type === type) l.fn({ target });
+        if (l.type === type) l.fn({ type, target });
       }
     },
   };
@@ -49,4 +49,26 @@ test('flushPendingAutoSaves no pierde el write si el nodo sigue conectado', asyn
   root.emit('change', fakeField('input'));
   await flushPendingAutoSaves();
   assert.deepEqual(saved, ['ok']);
+});
+
+test('bindAutoSave guarda de inmediato al marcar un radio', async () => {
+  const root = fakeRoot();
+  let writes = 0;
+  bindAutoSave(
+    root,
+    async () => {
+      writes += 1;
+    },
+    { debounceMs: 10_000 },
+  );
+
+  root.emit('change', {
+    type: 'radio',
+    tagName: 'INPUT',
+    matches: (sel) => sel.includes('input'),
+    closest: () => null,
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(writes, 1);
 });

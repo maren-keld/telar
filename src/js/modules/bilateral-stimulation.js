@@ -1,10 +1,17 @@
 import { bindAutoSave, collectFormData } from '../autobind.js';
+import { ICON_EXPAND } from '../icons.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
 import { t } from '../i18n.js';
 
+const BLS_CHANNEL = 'telar-bls-stage';
+const BLS_POPUP_NAME = 'telar-bls-stage';
+
 let activeAnim = null;
+let blsPopup = null;
+let blsOverlay = null;
+let blsKeyHandler = null;
 
 export function teardownBilateralStimulation() {
   if (activeAnim) {
@@ -12,12 +19,145 @@ export function teardownBilateralStimulation() {
     clearInterval(activeAnim.timer);
     activeAnim = null;
   }
+  closeBlsFullscreen();
 }
 
 function formatDuration(sec) {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const m = Math.floor(Math.max(0, sec) / 60);
+  const s = Math.max(0, sec) % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function parseSud(raw) {
+  if (raw === '' || raw == null) return '';
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return '';
+  return String(Math.min(10, Math.max(0, Math.round(n))));
+}
+
+function sudValue(raw) {
+  if (raw === '' || raw == null) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function popupHtml() {
+  return `<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8" />
+<title>Estimulación bilateral</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0d1526; }
+  .stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  .dot {
+    position: absolute; top: 50%; left: 8%;
+    width: 48px; height: 48px; margin-top: -24px;
+    border-radius: 50%; background: #2f6fed;
+    box-shadow: 0 0 22px rgba(47, 111, 237, 0.7);
+    transition: left 0.35s ease-in-out;
+  }
+  .dot.right { left: calc(92% - 48px); }
+</style>
+</head><body>
+  <div class="stage"><div class="dot" id="dot"></div></div>
+</body></html>`;
+}
+
+function postBlsSide(right) {
+  try {
+    const ch = new BroadcastChannel(BLS_CHANNEL);
+    ch.postMessage({ type: 'side', right: Boolean(right) });
+    ch.close();
+  } catch {
+    /* ignore */
+  }
+  const popupDot = blsPopup?.document?.getElementById('dot');
+  popupDot?.classList.toggle('right', Boolean(right));
+  blsOverlay?.querySelector('.bls-dot')?.classList.toggle('bls-dot--right', Boolean(right));
+}
+
+function closeBlsFullscreen() {
+  if (blsKeyHandler) {
+    document.removeEventListener('keydown', blsKeyHandler);
+    blsKeyHandler = null;
+  }
+  if (blsPopup && !blsPopup.closed) {
+    try {
+      blsPopup.close();
+    } catch {
+      /* ignore */
+    }
+  }
+  blsPopup = null;
+  if (blsOverlay) {
+    if (document.fullscreenElement === blsOverlay) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+    blsOverlay.remove();
+    blsOverlay = null;
+  }
+}
+
+function openBlsOverlay(onClose) {
+  closeBlsFullscreen();
+  blsOverlay = document.createElement('div');
+  blsOverlay.className = 'bls-fs-overlay';
+  blsOverlay.innerHTML = `
+    <button type="button" class="bls-fs-close" aria-label="Cerrar pantalla completa">Cerrar</button>
+    <div class="bls-stage bls-stage--fs bls-stage--active">
+      <div class="bls-dot"></div>
+    </div>`;
+  document.body.appendChild(blsOverlay);
+  const close = () => {
+    closeBlsFullscreen();
+    onClose?.();
+  };
+  blsOverlay.querySelector('.bls-fs-close')?.addEventListener('click', close);
+  blsKeyHandler = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', blsKeyHandler);
+  blsOverlay.requestFullscreen?.().catch(() => {});
+}
+
+function openBlsWindow(onClose) {
+  closeBlsFullscreen();
+  let win = null;
+  try {
+    win = window.open('', BLS_POPUP_NAME, 'popup=yes,width=1100,height=640,menubar=no,toolbar=no,location=no,status=no');
+  } catch {
+    win = null;
+  }
+  if (win) {
+    try {
+      if (win.document?.getElementById('app')) {
+        win.close();
+        win = null;
+      }
+    } catch {
+      win = null;
+    }
+  }
+  if (win) {
+    try {
+      win.document.open();
+      win.document.write(popupHtml());
+      win.document.close();
+      blsPopup = win;
+      win.addEventListener('beforeunload', () => {
+        if (blsPopup === win) blsPopup = null;
+        onClose?.();
+      });
+      return;
+    } catch {
+      try {
+        win.close();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  openBlsOverlay(onClose);
 }
 
 export async function renderBilateralStimulation(host, moduleRow) {
@@ -29,19 +169,24 @@ export async function renderBilateralStimulation(host, moduleRow) {
   const target = data.target || '';
   const notes = data.notes || '';
   const elapsed = Number(data.elapsed_sec) || 0;
+  const sudPre = parseSud(data.sud_pre);
+  const sudPost = parseSud(data.sud_post);
 
   host.innerHTML = `
     <div class="card bilateral-module">
       <div class="module-card-head">
         <div>
-          <h2 class="module-title" style="margin:0">${escapeHtml(t('bls.title', 'Estimulación bilateral'))}</h2>
+          <h2 class="module-title">${escapeHtml(t('bls.title', 'Estimulación bilateral'))}</h2>
           <p class="module-card-head__sub">${escapeHtml(t('bls.subtitle', 'Estímulo visual alternado (EMDR-adjacent). No sustituye protocolo EMDR completo.'))}</p>
         </div>
-        <div class="badge badge--info" id="bls-timer">${formatDuration(elapsed)}</div>
       </div>
 
-      <div class="bls-stage" id="bls-stage" aria-hidden="true">
-        <div class="bls-dot" id="bls-dot"></div>
+      <div class="bls-stage-wrap">
+        <span class="bls-timer" id="bls-timer" aria-live="polite">${formatDuration(elapsed)}</span>
+        <div class="bls-stage" id="bls-stage" aria-hidden="true">
+          <div class="bls-dot" id="bls-dot"></div>
+          <button type="button" class="bls-fs-btn" id="bls-fullscreen" title="Pantalla completa (ventana nueva)" aria-label="Pantalla completa">${ICON_EXPAND}</button>
+        </div>
       </div>
 
       <form id="bls-form" class="bls-form">
@@ -56,6 +201,16 @@ export async function renderBilateralStimulation(host, moduleRow) {
             <input type="number" name="duration_sec" min="15" max="600" step="15" value="${durationSec}" />
           </label>
         </div>
+        <div class="bls-controls bls-controls--sud">
+          <label class="bls-field">
+            <span>SUD pre (0–10)</span>
+            <input type="number" name="sud_pre" min="0" max="10" step="1" inputmode="numeric" value="${escapeHtml(sudPre)}" placeholder="—" />
+          </label>
+          <label class="bls-field">
+            <span>SUD post (0–10)</span>
+            <input type="number" name="sud_post" min="0" max="10" step="1" inputmode="numeric" value="${escapeHtml(sudPost)}" placeholder="—" />
+          </label>
+        </div>
         <label class="bls-field bls-field--full">
           <span>${escapeHtml(t('bls.target', 'Objetivo / recuerdo (opcional)'))}</span>
           <textarea name="target" rows="2" placeholder="${escapeHtml(t('bls.targetPh', 'Fragmento a procesar…'))}">${escapeHtml(target)}</textarea>
@@ -66,24 +221,22 @@ export async function renderBilateralStimulation(host, moduleRow) {
         </label>
         <input type="hidden" name="elapsed_sec" id="bls-elapsed" value="${elapsed}" />
         <div class="bls-actions">
-          <button type="button" class="btn btn-primary" id="bls-start">${escapeHtml(t('bls.start', 'Iniciar'))}</button>
-          <button type="button" class="btn btn-secondary" id="bls-pause" disabled>${escapeHtml(t('bls.pause', 'Pausar'))}</button>
+          <button type="button" class="btn btn-primary" id="bls-toggle">${escapeHtml(t('bls.start', 'Iniciar'))}</button>
           <button type="button" class="btn btn-ghost" id="bls-reset">${escapeHtml(t('bls.reset', 'Reiniciar'))}</button>
         </div>
       </form>
-      <p class="bls-note">${escapeHtml(t('bls.note', 'Herramienta de apoyo para regulación y procesamiento; el profesional mantiene el juicio clínico y el marco terapéutico.'))}</p>
     </div>`;
 
   const form = host.querySelector('#bls-form');
   const stage = host.querySelector('#bls-stage');
   const dot = host.querySelector('#bls-dot');
   const timerEl = host.querySelector('#bls-timer');
-  const startBtn = host.querySelector('#bls-start');
-  const pauseBtn = host.querySelector('#bls-pause');
+  const toggleBtn = host.querySelector('#bls-toggle');
   const resetBtn = host.querySelector('#bls-reset');
   const speedInput = form.querySelector('[name="speed_hz"]');
   const speedVal = host.querySelector('#bls-speed-val');
   const elapsedInput = host.querySelector('#bls-elapsed');
+  const fsBtn = host.querySelector('#bls-fullscreen');
 
   let running = false;
   let elapsedLocal = elapsed;
@@ -99,8 +252,16 @@ export async function renderBilateralStimulation(host, moduleRow) {
       target: fd.target || '',
       notes: fd.notes || '',
       elapsed_sec: Number(fd.elapsed_sec) || 0,
+      sud_pre: sudValue(fd.sud_pre),
+      sud_post: sudValue(fd.sud_post),
     };
-    const status = payload.notes.trim() || payload.elapsed_sec > 0 ? 'completado' : 'pendiente';
+    const status =
+      payload.notes.trim() ||
+      payload.elapsed_sec > 0 ||
+      payload.sud_pre != null ||
+      payload.sud_post != null
+        ? 'completado'
+        : 'pendiente';
     await syncModuleReadableText(moduleRow, payload, status);
   };
 
@@ -109,6 +270,15 @@ export async function renderBilateralStimulation(host, moduleRow) {
   speedInput?.addEventListener('input', () => {
     if (speedVal) speedVal.textContent = Number(speedInput.value).toFixed(1);
   });
+
+  const setToggleLabel = () => {
+    if (!toggleBtn) return;
+    toggleBtn.textContent = running
+      ? t('bls.pause', 'Pausar')
+      : t('bls.start', 'Iniciar');
+    toggleBtn.classList.toggle('btn-secondary', running);
+    toggleBtn.classList.toggle('btn-primary', !running);
+  };
 
   const updateTimer = () => {
     if (timerEl) timerEl.textContent = formatDuration(elapsedLocal);
@@ -125,6 +295,7 @@ export async function renderBilateralStimulation(host, moduleRow) {
     if (phase >= period) {
       phase = 0;
       dot?.classList.toggle('bls-dot--right');
+      postBlsSide(dot?.classList.contains('bls-dot--right'));
     }
     activeAnim.raf = requestAnimationFrame(animate);
   };
@@ -139,9 +310,8 @@ export async function renderBilateralStimulation(host, moduleRow) {
       cancelAnimationFrame(activeAnim.raf);
       activeAnim.raf = null;
     }
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
     stage?.classList.remove('bls-stage--active');
+    setToggleLabel();
   };
 
   const startAnim = () => {
@@ -149,9 +319,8 @@ export async function renderBilateralStimulation(host, moduleRow) {
     running = true;
     lastTs = 0;
     phase = 0;
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
     stage?.classList.add('bls-stage--active');
+    setToggleLabel();
     activeAnim = activeAnim || {};
     activeAnim.raf = requestAnimationFrame(animate);
     tickTimer = setInterval(() => {
@@ -166,16 +335,25 @@ export async function renderBilateralStimulation(host, moduleRow) {
     activeAnim.timer = tickTimer;
   };
 
-  startBtn?.addEventListener('click', startAnim);
-  pauseBtn?.addEventListener('click', () => {
-    stopAnim();
-    persist();
+  toggleBtn?.addEventListener('click', () => {
+    if (running) {
+      stopAnim();
+      persist();
+    } else {
+      startAnim();
+    }
   });
   resetBtn?.addEventListener('click', () => {
     stopAnim();
     elapsedLocal = 0;
     dot?.classList.remove('bls-dot--right');
+    postBlsSide(false);
     updateTimer();
     persist();
+  });
+  fsBtn?.addEventListener('click', () => {
+    openBlsWindow(() => {});
+    postBlsSide(dot?.classList.contains('bls-dot--right'));
+    if (running) stage?.classList.add('bls-stage--active');
   });
 }

@@ -88,7 +88,7 @@ export async function renderQols(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">Escala de calidad de vida (QOLS)</h2>
+            <h2 class="module-title">Escala de calidad de vida (QOLS)</h2>
             <p class="module-card-head__sub">16 ítems · escala 1 a 7 · satisfacción con áreas de la vida.</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="qols-progress" title="Ítems respondidos">${answeredCount}/16</div>
