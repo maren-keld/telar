@@ -6,8 +6,8 @@
   document.querySelectorAll('[data-install-carousel]').forEach((root) => {
     const slides = [...root.querySelectorAll('.install-carousel__slide')];
     const dots = [...root.querySelectorAll('.install-carousel__dot')];
-    const prevBtn = root.querySelector('.install-carousel__prev');
-    const nextBtn = root.querySelector('.install-carousel__next');
+    const prevBtns = [...root.querySelectorAll('.install-carousel__prev')];
+    const nextBtns = [...root.querySelectorAll('.install-carousel__next')];
     if (!slides.length) return;
 
     let index = slides.findIndex((s) => s.classList.contains('is-active'));
@@ -18,8 +18,18 @@
     // que nadie está mirando.
     const disclosure = root.closest('details');
 
+    function closeHotspots() {
+      root.querySelectorAll('[data-shot-pin]').forEach((pin) => {
+        pin.setAttribute('aria-expanded', 'false');
+        pin.closest('.shot-pin')?.classList.remove('is-open');
+        const card = document.getElementById(pin.getAttribute('aria-controls'));
+        if (card) card.hidden = true;
+      });
+    }
+
     function show(nextIndex) {
       index = (nextIndex + slides.length) % slides.length;
+      closeHotspots();
       slides.forEach((slide, i) => {
         const active = i === index;
         slide.classList.toggle('is-active', active);
@@ -41,8 +51,12 @@
     function startAuto() {
       stopAuto();
       if (reducedMotion || paused || slides.length < 2) return;
+      if (root.hasAttribute('data-carousel-static')) return;
       if (disclosure && !disclosure.open) return;
-      timer = setInterval(() => show(index + 1), AUTO_MS);
+      timer = setInterval(() => {
+        if (root.querySelector('[data-shot-pin][aria-expanded="true"]')) return;
+        show(index + 1);
+      }, AUTO_MS);
     }
 
     disclosure?.addEventListener('toggle', () => {
@@ -50,13 +64,17 @@
       else stopAuto();
     });
 
-    prevBtn?.addEventListener('click', () => {
-      show(index - 1);
-      startAuto();
+    prevBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        show(index - 1);
+        startAuto();
+      });
     });
-    nextBtn?.addEventListener('click', () => {
-      show(index + 1);
-      startAuto();
+    nextBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        show(index + 1);
+        startAuto();
+      });
     });
     dots.forEach((dot, i) => {
       dot.addEventListener('click', () => {

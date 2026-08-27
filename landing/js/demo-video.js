@@ -5,7 +5,7 @@
   var host = document.querySelector('[data-youtube]');
   var section = document.getElementById('demo');
   var soundBtn = document.querySelector('.video-sound');
-  if (!host || !section) return;
+  if (!host || !section || section.hidden) return;
 
   var id = host.getAttribute('data-youtube');
   var iframe = null;

@@ -126,7 +126,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260824f">
+  <link rel="stylesheet" href="css/style.css?v=20260827a">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -140,7 +140,7 @@
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
-        <a href="#funciones">Funciones</a>
+        <a href="#valor">Funciones</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="modules/index.html">Módulos</a>
         <span class="nav-divider" aria-hidden="true"></span>
@@ -164,41 +164,83 @@
   </header>
 
   <main id="contenido">
-    <section class="hero-panel">
+    <section class="hero-panel hero-panel--modules">
       <div class="hero-main">
         <div class="hero-main__copy">
           <h1><span>La evolución del paciente</span> <span>deja de ser una impresión clínica.</span></h1>
-          <p class="hero-lead-main">Escalas validadas con puntuación automática, curva longitudinal sesión a sesión y programas por objetivos. Asistencia con <a href="ia.html">IA</a> del tratamiento. Da un salto al futuro con <a href="neurofeedback.html">Neurofeedback</a>, y los datos cifrados en tu computador.</p>
+          <p class="hero-lead-main">Telar es una aplicación de escritorio para Windows y macOS para construir programas de psicoterapia con asistencia de la <a href="ia.html">IA</a>, con escalas validadas con puntuaciones automáticas y decenas de módulos terapéuticos para ayudar a tus pacientes. Además, da un salto al futuro incorporando <a href="neurofeedback.html">Neurofeedback</a> a tu consulta.</p>
           <div class="hero-actions">
             <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
               <span class="btn-label">Descargar Telar</span>
             </a>
             <a href="https://wa.me/56945383084?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Hablemos por Whatsapp</a>
           </div>
+          <div class="hero-badges">
+            <span class="badge badge-chile">Desarrollado en Latam</span>
+            <span class="badge badge-encrypted">Datos clínicos cifrados localmente</span>
+            <span class="badge badge-law">Para profesionales bajo Ley 19.628</span>
+          </div>
         </div>
       </div>
-      <aside class="hero-sidebar">
-        <p class="hero-mission">Aplicación de escritorio para psicólogos: 13 escalas con scoring automático (ASRS, GAD-7, PCL-5, IES-R, DASS-21) y 45 módulos clínicos para TDAH adulto, trauma y regulación emocional.</p>
-        <div class="hero-badges">
-          <span class="badge badge-chile">Desarrollado en Latam</span>
-          <span class="badge badge-encrypted">Datos clínicos cifrados localmente</span>
-          <span class="badge badge-law">Para profesionales bajo Ley 19.628</span>
+      <div class="hero-camera" data-hero-camera>
+        <div class="hero-camera__viewport">
+          <div class="hero-camera__scene">
+            <article class="hero-cam-card is-active" data-frame="ia">
+              <div class="hero-cam-card__stage">
+                <canvas data-visual="lego" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
+              </div>
+              <div class="hero-cam-card__body">
+                <h3>Construye programas de psicoterapia con IA</h3>
+                <p>Ahorra tiempo con decenas de módulos con asistencia de la IA.</p>
+                <a class="hero-cam-card__go" href="ia.html">Ver IA</a>
+              </div>
+            </article>
+            <article class="hero-cam-card" data-frame="score">
+              <div class="hero-cam-card__stage">
+                <canvas data-visual="score" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
+              </div>
+              <div class="hero-cam-card__body">
+                <h3>Puntajes instantáneos</h3>
+                <p>Obtén puntajes e interpretaciones al instante con corrección de escalas.</p>
+                <a class="hero-cam-card__go" href="modules/index.html#cat-pruebas">Ver escalas</a>
+              </div>
+            </article>
+            <article class="hero-cam-card" data-frame="neuro">
+              <div class="hero-cam-card__stage">
+                <canvas data-visual="orb" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
+              </div>
+              <div class="hero-cam-card__body">
+                <h3>Neurofeedback</h3>
+                <p>Da un salto al futuro con entrenamientos de avanzada.</p>
+                <a class="hero-cam-card__go" href="neurofeedback.html">Ver módulo</a>
+              </div>
+            </article>
+            <article class="hero-cam-card" data-frame="lock">
+              <div class="hero-cam-card__stage">
+                <canvas data-visual="lock" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
+              </div>
+              <div class="hero-cam-card__body">
+                <h3>Todo encriptado</h3>
+                <p>Toda la información encriptada en tu computadora y con respaldo cifrado en tu nube personal.</p>
+                <a class="hero-cam-card__go" href="privacidad.html">Ver privacidad</a>
+              </div>
+            </article>
+          </div>
         </div>
-        <div class="hero-featured">
-          <p class="hero-featured-label">DESTACADO</p>
-          <a href="modules/index.html" class="hero-featured-card">
-            <img src="assets/hero-cloud-asrs-chart.png" alt="Curva de evolución por sesión de la escala ASRS en Telar" width="830" height="514" loading="lazy" decoding="async">
-            <div>
-              <strong>Catálogo de 45 módulos clínicos</strong>
-              <span>13 escalas con puntuación automática y 23 materiales de trabajo, ficha por ficha</span>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </a>
+        <div class="hero-camera__controls">
+          <button type="button" class="hero-camera__nav" data-cam-dir="-1" aria-label="Módulo anterior">‹</button>
+          <div class="hero-camera__dots" role="tablist" aria-label="Seleccionar módulo">
+            <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="Programas con IA" aria-selected="true"></button>
+            <button type="button" class="hero-camera__dot" role="tab" aria-label="Puntajes instantáneos" aria-selected="false"></button>
+            <button type="button" class="hero-camera__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
+            <button type="button" class="hero-camera__dot" role="tab" aria-label="Todo encriptado" aria-selected="false"></button>
+          </div>
+          <button type="button" class="hero-camera__nav" data-cam-dir="1" aria-label="Módulo siguiente">›</button>
         </div>
-      </aside>
+      </div>
     </section>
 
-    <section class="hero-screenshot" id="demo">
+    <section class="hero-screenshot" id="demo" hidden>
       <div class="container">
         <figure class="app-shot app-shot--hero app-shot--video">
           <div class="video-stage">
@@ -215,53 +257,104 @@
               <span class="video-facade__play" aria-hidden="true">Ver 90 segundos</span>
             </button>
           </div>
-          <figcaption class="app-shot-caption">
-            <span>Una sesión de 90 segundos.</span>
-            <button type="button" class="video-sound" hidden>Activar sonido</button>
-          </figcaption>
         </figure>
       </div>
     </section>
 
-    <section class="product-gallery" id="galeria" aria-labelledby="galeria-titulo">
+    <section class="product-gallery" id="galeria" aria-label="Capturas de Telar en consulta">
       <div class="container">
-        <p class="section-label">Así se ve</p>
-        <h2 class="section-title" id="galeria-titulo">Tres momentos de una consulta.</h2>
-        <div class="install-carousel install-carousel--gallery" data-install-carousel role="region" aria-roledescription="carousel" aria-label="Capturas de Telar en consulta">
+        <div class="install-carousel install-carousel--gallery" data-install-carousel data-carousel-static role="region" aria-roledescription="carousel" aria-label="Capturas de Telar en consulta">
           <div class="install-carousel__viewport">
             <figure class="install-carousel__slide is-active">
-              <picture>
-                <source
-                  type="image/webp"
-                  srcset="assets/gallery-significado-2400.webp"
-                >
-                <img
-                  src="assets/gallery-significado.png?v=20260824e"
-                  alt="Telar en sesión: pregunta milagro al centro, bitácora e IA a la derecha"
-                  width="2400"
-                  height="1452"
-                  loading="eager"
-                  decoding="async"
-                >
-              </picture>
-              <figcaption>Material de significado en la ficha: la bitácora y la IA siguen a la vista.</figcaption>
+              <div class="shot-map" data-shot-map>
+                <div class="shot-map__frame">
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcset="assets/gallery-significado-2400.webp"
+                    >
+                    <img
+                      src="assets/gallery-significado.png?v=20260824e"
+                      alt="Telar en sesión: índice a la izquierda, módulo al centro, bitácora e IA a la derecha"
+                      width="2400"
+                      height="1452"
+                      loading="eager"
+                      decoding="async"
+                    >
+                  </picture>
+                  <ul class="shot-map__pins">
+                    <li class="shot-pin shot-pin--left" style="--x: 12.7%; --y: 46%;">
+                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-indice">
+                        <span class="shot-pin__dot" aria-hidden="true"></span>
+                        <span class="shot-pin__title">Índice</span>
+                      </button>
+                      <div class="shot-pin__card" id="shot-pin-indice" hidden>
+                        <p>A la izquierda, el índice de sesiones con los módulos a trabajar en cada sesión.</p>
+                      </div>
+                    </li>
+                    <li class="shot-pin shot-pin--center" style="--x: 43.3%; --y: 38%;">
+                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-modulo">
+                        <span class="shot-pin__dot" aria-hidden="true"></span>
+                        <span class="shot-pin__title">Módulo</span>
+                      </button>
+                      <div class="shot-pin__card" id="shot-pin-modulo" hidden>
+                        <p>En el centro, el espacio de trabajo con el módulo de la sesión — aquí corre el ejercicio con el paciente.</p>
+                      </div>
+                    </li>
+                    <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 40%;">
+                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-bitacora">
+                        <span class="shot-pin__dot" aria-hidden="true"></span>
+                        <span class="shot-pin__title">Bitácora</span>
+                      </button>
+                      <div class="shot-pin__card" id="shot-pin-bitacora" hidden>
+                        <p>A la derecha, la bitácora para añadir notas, resaltar anotaciones y consultar a la IA por el tratamiento.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <figcaption>Pulsa un círculo para ver el índice, el módulo o la bitácora.</figcaption>
             </figure>
             <figure class="install-carousel__slide" hidden>
-              <picture>
-                <source
-                  type="image/webp"
-                  srcset="assets/gallery-puntajes-2400.webp"
-                >
-                <img
-                  src="assets/gallery-puntajes.png?v=20260824e"
-                  alt="PCL-5 puntuada en Telar, con curva de evolución por sesión"
-                  width="2400"
-                  height="1452"
-                  loading="lazy"
-                  decoding="async"
-                >
-              </picture>
-              <figcaption>Escala puntuada y curva sesión a sesión. El corte sale solo.</figcaption>
+              <div class="shot-map" data-shot-map>
+                <div class="shot-map__frame">
+                  <picture>
+                    <source
+                      type="image/webp"
+                      srcset="assets/gallery-puntajes-2400.webp"
+                    >
+                    <img
+                      src="assets/gallery-puntajes.png?v=20260824e"
+                      alt="PCL-5 puntuada en Telar, con interpretación automática y curva de evolución por sesión"
+                      width="2400"
+                      height="1452"
+                      loading="lazy"
+                      decoding="async"
+                    >
+                  </picture>
+                  <ul class="shot-map__pins">
+                    <li class="shot-pin shot-pin--center" style="--x: 42.3%; --y: 31.6%;">
+                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-interpretacion">
+                        <span class="shot-pin__dot" aria-hidden="true"></span>
+                        <span class="shot-pin__title">Interpretación</span>
+                      </button>
+                      <div class="shot-pin__card" id="shot-pin-interpretacion" hidden>
+                        <p>En el módulo, el puntaje y la interpretación salen al instante: aquí 25, por debajo del punto de corte. Sin calcular a mano.</p>
+                      </div>
+                    </li>
+                    <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 50%;">
+                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-graficos">
+                        <span class="shot-pin__dot" aria-hidden="true"></span>
+                        <span class="shot-pin__title">Gráficos</span>
+                      </button>
+                      <div class="shot-pin__card" id="shot-pin-graficos" hidden>
+                        <p>A la derecha, los gráficos de evolución sesión a sesión: ves el progreso (o si se estancó) sin armar la curva aparte.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <figcaption>Pulsa un círculo para ver la interpretación automática y los gráficos de progreso.</figcaption>
             </figure>
             <figure class="install-carousel__slide" hidden>
               <picture>
@@ -280,6 +373,12 @@
               </picture>
               <figcaption>Neurofeedback con Muse 2: línea base de atención, dentro de la consulta.</figcaption>
             </figure>
+            <button type="button" class="install-carousel__overlay install-carousel__prev" aria-label="Imagen anterior">
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button type="button" class="install-carousel__overlay install-carousel__next" aria-label="Imagen siguiente">
+              <span aria-hidden="true">›</span>
+            </button>
           </div>
           <div class="install-carousel__controls">
             <button type="button" class="install-carousel__arrow install-carousel__prev" aria-label="Imagen anterior">
@@ -287,8 +386,8 @@
               <span class="install-carousel__arrow-label">Imagen anterior</span>
             </button>
             <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar captura">
-              <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Material de significado" aria-selected="true"></button>
-              <button type="button" class="install-carousel__dot" role="tab" aria-label="Escala y curva" aria-selected="false"></button>
+              <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Índice de sesiones" aria-selected="true"></button>
+              <button type="button" class="install-carousel__dot" role="tab" aria-label="Puntajes e interpretaciones" aria-selected="false"></button>
               <button type="button" class="install-carousel__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
             </div>
             <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
@@ -303,124 +402,52 @@
     <section id="valor" class="value-section">
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
-        <h2 class="section-title">Lo que Telar te devuelve.</h2>
-        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>escalas longitudinales</strong> en <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>.</p>
+        <h2 class="section-title">Para qué sirve Telar</h2>
+        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>.</p>
 
         <div class="value-grid">
           <article class="value-card">
-            <img class="value-card__shot" src="assets/value-ai-chat.png" alt="Atajos de IA en Telar: sugerir programa, generar email, módulo a medida y resumen del caso" width="948" height="164" loading="lazy" decoding="async">
-            <p class="value-kicker">Tiempo</p>
+            <img class="value-card__shot value-card__shot--libreria" src="assets/value-libreria.jpg" alt="Librería de módulos de Telar: seleccionar GAD-7 y ver autor, validez y puntaje" width="857" height="1024" loading="lazy" decoding="async">
+            <p class="value-kicker">+ Tiempo</p>
             <p class="value-figure">Crea programas de psicoterapia con IA</p>
-            <p>La <a href="ia.html">IA</a> lee el caso y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento.</p>
+            <p>Telar posee una librería con decenas de módulos para trabajar con tus usuarios.</p>
+            <p>La <a href="ia.html">IA</a> lee el tratamiento por completo y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento.</p>
           </article>
 
           <article class="value-card">
             <img class="value-card__shot value-card__shot--gad" src="assets/value-gad7.png" alt="GAD-7 puntuado en Telar: 9 puntos, ansiedad leve, con interpretación automática" width="1024" height="937" loading="lazy" decoding="async">
-            <p class="value-kicker">Tiempo</p>
+            <p class="value-kicker">+ Tiempo</p>
             <p class="value-figure">Puntajes e interpretaciones al instante</p>
-            <h3>Menos planillas, más tiempo clínico</h3>
             <p>Telar puntúa las escalas automáticamente y actualiza la curva longitudinal. Evitas cálculos manuales y el traspaso de resultados a otras herramientas.</p>
+            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia. El <a href="modules/index.html">catálogo de módulos</a> lista cada ficha con autor y validez.</p>
           </article>
 
           <article class="value-card">
-            <p class="value-kicker">Tiempo</p>
-            <p class="value-figure">El correo ya escrito</p>
-            <h3>Emails post-sesión y resúmenes del caso</h3>
-            <p>Después de la sesión: un correo al paciente con lo trabajado y la tarea de la semana. Antes de una supervisión o una derivación: un resumen con hipótesis, focos y alertas. Sale del contexto que ya está en la ficha, no de un chatbot en blanco.</p>
+            <img class="value-card__shot" src="assets/value-ai-chat.png" alt="Atajos de IA en Telar: sugerir programa, generar email, módulo a medida y resumen del caso" width="948" height="164" loading="lazy" decoding="async">
+            <p class="value-kicker">+ Tiempo</p>
+            <p class="value-figure">Informes, correos y resúmenes al instante</p>
+            <p>Después de la sesión: un correo al paciente con lo trabajado y la tarea de la semana. Antes de una supervisión o una derivación: un resumen con hipótesis, focos y alertas.</p>
+            <p>Exporta programas de psicoterapia para tus usuarios e informes para supervisión clínica en PDF.</p>
           </article>
 
           <article class="value-card">
             <p class="value-kicker">Seguridad y respaldo</p>
             <p class="value-figure">La información de tus pacientes segura</p>
             <h3>Datos cifrados en tu equipo</h3>
-            <p>Telar guarda la ficha clínica cifrada en tu computador y crea respaldos automáticos cifrados en la carpeta de nube que tú eliges. Telar no aloja ni puede leer esos datos.</p>
+            <p>Trabaja con tu información tranquilo: tus datos quedan asegurados bajo la <strong>Ley 19.628</strong> de protección de datos personales. Ver <a href="privacidad.html">privacidad</a>.</p>
           </article>
 
           <article class="value-card">
             <img class="value-card__shot value-card__shot--nf" src="assets/muse-headband-hero.png" alt="Persona entrenando con banda Muse 2 en consulta de neurofeedback" width="1024" height="768" loading="lazy" decoding="async">
             <p class="value-kicker">Prestación opcional</p>
-            <p class="value-figure" data-geo-session-fee>$50.000</p>
-            <h3>Si además haces neurofeedback</h3>
-            <p>Es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
+            <p class="value-figure">Neurofeedback</p>
+            <h3>Incorpora Neurofeedback a tus servicios</h3>
+            <p>Hasta <span data-geo-session-fee>$50.000</span> pesos es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
           </article>
         </div>
       </div>
     </section>
 
-
-    <section id="funciones">
-      <div class="container">
-        <p class="section-label">Funciones principales</p>
-        <h2 class="section-title">Un flujo clínico, sesión a sesión.</h2>
-        <div class="features-grid">
-          <article class="feature-card">
-            <div class="feature-icon blue"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/><path d="m8 14 2 2 5-5"/></svg></div>
-            <h3>Crea programas de psicoterapia</h3>
-            <p>Define objetivos, ordena módulos y registra resultados dentro de un programa de tratamiento, no solo en una ficha estática.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m3 7 6-4 6 5 6-5"/></svg></div>
-            <h3><a href="modules/index.html#cat-pruebas">13 escalas con puntuación automática</a></h3>
-            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia, más 23 materiales de trabajo clínico. El <a href="modules/index.html">catálogo de módulos</a> lista cada ficha con autor y validez.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
-            <h3>Respaldo cifrado en tu nube</h3>
-            <p>La ficha clínica se guarda cifrada en tu equipo. Con Plan Pro, Telar crea respaldos automáticos diarios encriptados en la carpeta de nube que tú eliges (iCloud, Dropbox, OneDrive…).</p>
-          </article>
-          <article class="feature-card feature-card--shot">
-            <div>
-              <div class="feature-eyebrow">Módulo complementario</div>
-              <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0M4 13v5a2 2 0 0 0 2 2h2v-8H4ZM20 13v5a2 2 0 0 1-2 2h-2v-8h4Z"/><path d="M10 5.3V3M14 5.3V3"/></svg></div>
-              <h3>Neurofeedback</h3>
-              <p>Entrena atención y calma con retroalimentación en vivo dentro de la sesión, usando la banda <strong>Muse 2</strong>. La plataforma Muse tiene validación publicada para registro de EEG y potenciales relacionados a eventos en investigación (<a href="https://doi.org/10.3389/fnins.2017.00109" target="_blank" rel="noopener">Krigolson et al., 2017, <em>Frontiers in Neuroscience</em></a>). Telar lo integra como herramienta de <strong>entrenamiento complementario</strong>, con el registro clínico al lado: no es equipamiento diagnóstico ni un tratamiento en sí mismo. En Demo: sesiones en vivo; en Pro: grabar, analizar y exportar.</p>
-              <p class="feature-link"><a href="neurofeedback.html">Ver guía de neurofeedback →</a></p>
-            </div>
-            <picture>
-              <source
-                type="image/webp"
-                srcset="assets/telar-neurofeedback-660.webp 660w, assets/telar-neurofeedback-1318.webp 1318w"
-                sizes="(min-width: 901px) 60vw, calc(100vw - 3rem)"
-              >
-              <img
-                class="feature-shot"
-                src="assets/telar-neurofeedback.png"
-                alt="Neurofeedback en Telar con Muse 2 conectado y protocolo Calma activo"
-                width="1318"
-                height="1246"
-                loading="lazy"
-                decoding="async"
-              >
-            </picture>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/><path d="m8 9 1 1 2-2"/></svg></div>
-            <h3><a href="modules/index.html#cat-tcc">Habilidades y tareas</a></h3>
-            <p>Psicoeducación y práctica, recomendado para traer como tarea entre sesiones (modelo ABC, registro de pensamientos, jerarquía de exposición). El plan de seguridad vive en conceptualización; el trabajo de identidad, en significado. Exportable a PDF.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon blue"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/></svg></div>
-            <h3>Pack TDAH adulto</h3>
-            <p>Plantilla de 8 sesiones + escalas ASRS, GAD-7 y ADES. No incluye handouts exclusivos: comparte los materiales TCC del pack base. <a href="blog/tdah-adulto.html">Ver plantilla de sesiones →</a></p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon green"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8 8 9 4.6-1 8-4 8-9V7z"/><path d="M8 12h8M12 8v8"/></svg></div>
-            <h3><a href="modules/index.html#cat-pruebas">Pack trauma y regulación</a></h3>
-            <p>Plantilla de sesiones + PCL-5, IES-R, SPRINT-E-CL y estimulación bilateral EMDR-adjacent. Mismos handouts TCC del pack base — lo distinto son las escalas y la estructura de sesiones. <a href="blog/trauma-herramientas.html">Ver flujo por fases →</a></p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon blue"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"/></svg></div>
-            <h3>Informes</h3>
-            <p>Exporta handouts TCC desde cada módulo. El programa de tratamiento en PDF requiere Plan Profesional.</p>
-          </article>
-          <article class="feature-card">
-            <div class="feature-icon purple"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-4 12.7V21l4-2 4 2v-5.3A7 7 0 0 0 12 3Z"/><path d="M9 10h.01M15 10h.01M9.5 13.5c1.6 1 3.4 1 5 0"/></svg></div>
-            <h3><a href="ia.html">IA que ya leyó la ficha</a></h3>
-            <p>Propone un programa por sesiones, redacta el email post-sesión, resume el caso y puede diseñar un módulo a medida. Tú decides qué aplicar. <a href="ia.html">Cómo funciona →</a></p>
-          </article>
-        </div>
-      </div>
-    </section>
 
     <section id="planes" class="pricing-section">
       <div class="container">
@@ -715,9 +742,11 @@
 
   <script src="js/download.js?v=20260803a"></script>
   <script src="js/geo-pricing.js?v=20260804a"></script>
-  <script src="js/install-carousel.js?v=20260806a"></script>
+  <script src="js/install-carousel.js?v=20260826h"></script>
+  <script src="js/gallery-hotspots.js?v=20260826h"></script>
   <script src="js/demo-video.js?v=20260821c"></script>
   <script src="js/track.js?v=20260821c"></script>
   <script src="js/nav.js?v=20260803a"></script>
+  <script src="js/hero-camera.js?v=20260826e"></script>
 </body>
 </html>
