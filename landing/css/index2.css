@@ -1,0 +1,509 @@
+/* index2 — pedagogía tipo categoría, identidad Telar (sin clonar el morado). */
+.i2-nav .nav-inner {
+  position: relative;
+}
+
+.i2-nav .nav-links {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.i2-mega {
+  display: flex;
+  align-items: stretch;
+}
+
+.i2-mega > button {
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.i2-mega > button:hover,
+.i2-mega.is-open > button {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.i2-mega > button::after {
+  content: "";
+  width: 0.35rem;
+  height: 0.35rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  opacity: 0.55;
+}
+
+.i2-mega__panel {
+  display: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  z-index: 120;
+  padding: 1.35rem 1.5rem 1.5rem;
+}
+
+@media (min-width: 901px) {
+  .i2-mega {
+    position: static;
+  }
+
+  .i2-mega__panel {
+    position: absolute;
+    top: 100%;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+
+  .i2-mega__panel::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 8px;
+  }
+
+  .i2-mega.is-open .i2-mega__panel,
+  .i2-mega:hover .i2-mega__panel {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 1.5rem;
+  }
+}
+
+.i2-mega__lead h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.i2-mega__lead {
+  background: var(--bg);
+  padding: 0.85rem 1rem;
+}
+
+.i2-mega__lead p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.i2-mega__lead p + p {
+  margin-top: 0.75rem;
+}
+
+.i2-mega__cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.i2-mega__cols h4 {
+  margin: 0 0 0.55rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.i2-nav .i2-mega__panel a,
+.i2-nav .i2-mega__cols a {
+  display: block;
+  padding: 0.4rem 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  white-space: normal;
+  background: none;
+}
+
+.i2-mega__cols a span {
+  display: block;
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.i2-nav .i2-mega__panel a:hover,
+.i2-nav .i2-mega__cols a:hover {
+  background: none;
+  color: var(--text);
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .i2-mega:hover .i2-mega__panel {
+    display: none;
+  }
+
+  .i2-mega.is-open .i2-mega__panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    position: static;
+    width: auto;
+    margin: 0 1rem 0.75rem;
+    border: 1px solid var(--border);
+  }
+
+  .i2-mega > button {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.85rem 1.5rem;
+  }
+
+  .i2-mega__cols {
+    grid-template-columns: 1fr;
+  }
+
+  .i2-nav .nav-links.open .i2-mega__panel a {
+    padding: 0.4rem 0;
+    border-bottom: 0;
+  }
+}
+
+.i2-hero {
+  padding: 4.5rem 0 3.25rem;
+  text-align: center;
+}
+
+.i2-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.7rem;
+  margin: 0 0 1.25rem;
+}
+
+.i2-hero h1 {
+  margin: 0 auto 1rem;
+  max-width: 22ch;
+  font-size: clamp(2rem, 4.5vw, 3.15rem);
+  line-height: 1.12;
+}
+
+.i2-hero .lead {
+  margin: 0 auto 1.5rem;
+  max-width: 40rem;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+}
+
+.i2-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.i2-trust {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.i2-trust b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.i2-lock {
+  background: #111;
+  color: #f4f4f2;
+  padding: 4rem 0;
+}
+
+.i2-lock h2 {
+  color: #fff;
+}
+
+.i2-lock p,
+.i2-lock li {
+  color: rgba(244, 244, 242, 0.78);
+}
+
+.i2-lock .section-label {
+  color: rgba(244, 244, 242, 0.45);
+}
+
+.i2-lock-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.i2-lock h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.i2-lock ul {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.i2-lock li {
+  padding: 0.55rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.95rem;
+}
+
+.i2-lock li strong {
+  display: block;
+  color: #fff;
+  margin-bottom: 0.15rem;
+}
+
+.i2-lock-visual {
+  margin: 1.5rem 0 0;
+  max-width: 220px;
+}
+
+.i2-lock-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .i2-lock-visual img {
+    animation: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .i2-lock-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.i2-steps {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.i2-step {
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.i2-step:first-child {
+  border-top: 0;
+}
+
+.i2-step b {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.i2-mock {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1.25rem 1.35rem;
+  font-size: 0.88rem;
+}
+
+.i2-mock__bar {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.85rem;
+}
+
+.i2-mock h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.i2-mock p {
+  margin: 0 0 0.7rem;
+  color: var(--text-secondary);
+}
+
+.i2-compare {
+  overflow-x: auto;
+}
+
+.i2-compare table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.i2-compare th,
+.i2-compare td {
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.i2-compare th:last-child,
+.i2-compare td:last-child {
+  background: #fff;
+  font-weight: 550;
+}
+
+.i2-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.85rem;
+}
+
+.i2-people {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.i2-quote {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1.25rem 1.4rem;
+}
+
+.i2-quote p {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+.i2-quote cite {
+  font-style: normal;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.i2-mic {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.i2-mic article {
+  border: 1px solid var(--border);
+  padding: 1rem 1.1rem;
+  background: #fff;
+}
+
+.i2-mic h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.i2-cats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.i2-cats article {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1.1rem 1.15rem;
+}
+
+.i2-cats h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.i2-cats p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.i2-shot {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+
+.i2-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.i2-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.i2-pair article {
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1.2rem 1.3rem;
+}
+
+.i2-pair h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+}
+
+.i2-pair p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.i2-install {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.i2-install img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 800px) {
+  .i2-steps,
+  .i2-people,
+  .i2-mic,
+  .i2-cats,
+  .i2-pair,
+  .i2-install {
+    grid-template-columns: 1fr;
+  }
+}

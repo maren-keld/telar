@@ -126,7 +126,7 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260827a">
+  <link rel="stylesheet" href="css/style.css?v=20260829u">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -164,11 +164,59 @@
   </header>
 
   <main id="contenido">
+    <section class="hero-product-shot" aria-label="Puntajes e interpretación en Telar">
+      <div class="hero-product-shot__inner">
+        <figure class="hero-product-shot__figure">
+          <div class="shot-map" data-shot-map>
+            <div class="shot-map__frame">
+              <picture>
+                <source
+                  type="image/webp"
+                  srcset="assets/gallery-puntajes-2400.webp 2400w"
+                  sizes="min(1600px, 100vw)"
+                >
+                <img
+                  src="assets/gallery-puntajes.png?v=20260824e"
+                  srcset="assets/gallery-puntajes.png?v=20260824e 2400w"
+                  sizes="min(1600px, 100vw)"
+                  alt="PCL-5 puntuada en Telar, con interpretación automática y curva de evolución por sesión"
+                  width="2400"
+                  height="1452"
+                  decoding="async"
+                  fetchpriority="high"
+                >
+              </picture>
+              <ul class="shot-map__pins">
+                <li class="shot-pin shot-pin--center" style="--x: 42.3%; --y: 31.6%;">
+                  <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-interpretacion">
+                    <span class="shot-pin__dot" aria-hidden="true"></span>
+                    <span class="shot-pin__title">Interpretación</span>
+                  </button>
+                  <div class="shot-pin__card" id="shot-pin-interpretacion" hidden>
+                    <p>En el módulo, el puntaje y la interpretación salen al instante: aquí 25, por debajo del punto de corte. Sin calcular a mano.</p>
+                  </div>
+                </li>
+                <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 50%;">
+                  <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-graficos">
+                    <span class="shot-pin__dot" aria-hidden="true"></span>
+                    <span class="shot-pin__title">Gráficos</span>
+                  </button>
+                  <div class="shot-pin__card" id="shot-pin-graficos" hidden>
+                    <p>A la derecha, los gráficos de evolución sesión a sesión: ves el progreso (o si se estancó) sin armar la curva aparte.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
     <section class="hero-panel hero-panel--modules">
       <div class="hero-main">
         <div class="hero-main__copy">
-          <h1><span>El seguimiento del paciente</span> <span>se ve sesión a sesión.</span></h1>
-          <p class="hero-lead-main">Telar es una aplicación de escritorio para Windows y macOS para construir programas de psicoterapia con asistencia de la <a href="ia.html">IA</a>, con escalas validadas con puntuaciones automáticas y decenas de módulos terapéuticos para ayudar a tus pacientes. Además, da un salto al futuro incorporando <a href="neurofeedback.html">Neurofeedback</a> a tu consulta.</p>
+          <h1><span>Aplicación clínica con IA para psicólogos.</span> <span>Programas de tratamiento, informes e interpretaciones en minutos.</span></h1>
+          <p class="hero-lead-main">Telar es una aplicación de escritorio para Windows y macOS para construir programas de psicoterapia con asistencia de la <a href="ia.html">IA</a>, con decenas de módulos terapéuticos para psicoeducación, narrativa, evaluación con escalas y entrenamientos.</p>
           <div class="hero-actions">
             <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-primary btn-lg">
               <span class="btn-label">Descargar Telar</span>
@@ -176,66 +224,11 @@
             <a href="https://wa.me/56945383084?text=Hola%2C%20me%20interesa%20Telar" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">Hablemos por Whatsapp</a>
           </div>
           <div class="hero-badges">
-            <span class="badge badge-chile">Desarrollado en Latam</span>
-            <span class="badge badge-encrypted">Datos clínicos cifrados localmente</span>
-            <span class="badge badge-law">Para profesionales bajo Ley 19.628</span>
+            <span class="badge badge-chile">Desarrollado en LATAM por psicólogos</span>
+            <span class="badge badge-encrypted">Datos encriptados 100% en tu computadora</span>
+            <span class="badge badge-law">Desarrollada bajo la ley 19.628</span>
+            <span class="badge badge-open">Aplicación de código libre (Open-source)</span>
           </div>
-        </div>
-      </div>
-      <div class="hero-camera" data-hero-camera>
-        <div class="hero-camera__viewport">
-          <div class="hero-camera__scene">
-            <article class="hero-cam-card is-active" data-frame="ia">
-              <div class="hero-cam-card__stage">
-                <canvas data-visual="lego" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
-              </div>
-              <div class="hero-cam-card__body">
-                <h3>Construye programas de psicoterapia con IA</h3>
-                <p>Ahorra tiempo con decenas de módulos con asistencia de la IA.</p>
-                <a class="hero-cam-card__go" href="ia.html">Ver IA</a>
-              </div>
-            </article>
-            <article class="hero-cam-card" data-frame="score">
-              <div class="hero-cam-card__stage">
-                <canvas data-visual="score" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
-              </div>
-              <div class="hero-cam-card__body">
-                <h3>Puntajes instantáneos</h3>
-                <p>Obtén puntajes e interpretaciones al instante con corrección de escalas.</p>
-                <a class="hero-cam-card__go" href="modules/index.html#cat-pruebas">Ver escalas</a>
-              </div>
-            </article>
-            <article class="hero-cam-card" data-frame="neuro">
-              <div class="hero-cam-card__stage">
-                <canvas data-visual="orb" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
-              </div>
-              <div class="hero-cam-card__body">
-                <h3>Neurofeedback</h3>
-                <p>Da un salto al futuro con entrenamientos de avanzada.</p>
-                <a class="hero-cam-card__go" href="neurofeedback.html">Ver módulo</a>
-              </div>
-            </article>
-            <article class="hero-cam-card" data-frame="lock">
-              <div class="hero-cam-card__stage">
-                <canvas data-visual="lock" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
-              </div>
-              <div class="hero-cam-card__body">
-                <h3>Todo encriptado</h3>
-                <p>Toda la información encriptada en tu computadora y con respaldo cifrado en tu nube personal.</p>
-                <a class="hero-cam-card__go" href="privacidad.html">Ver privacidad</a>
-              </div>
-            </article>
-          </div>
-        </div>
-        <div class="hero-camera__controls">
-          <button type="button" class="hero-camera__nav" data-cam-dir="-1" aria-label="Módulo anterior">‹</button>
-          <div class="hero-camera__dots" role="tablist" aria-label="Seleccionar módulo">
-            <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="Programas con IA" aria-selected="true"></button>
-            <button type="button" class="hero-camera__dot" role="tab" aria-label="Puntajes instantáneos" aria-selected="false"></button>
-            <button type="button" class="hero-camera__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
-            <button type="button" class="hero-camera__dot" role="tab" aria-label="Todo encriptado" aria-selected="false"></button>
-          </div>
-          <button type="button" class="hero-camera__nav" data-cam-dir="1" aria-label="Módulo siguiente">›</button>
         </div>
       </div>
     </section>
@@ -316,47 +309,6 @@
               <figcaption>Pulsa un círculo para ver el índice, el módulo o la bitácora.</figcaption>
             </figure>
             <figure class="install-carousel__slide" hidden>
-              <div class="shot-map" data-shot-map>
-                <div class="shot-map__frame">
-                  <picture>
-                    <source
-                      type="image/webp"
-                      srcset="assets/gallery-puntajes-2400.webp"
-                    >
-                    <img
-                      src="assets/gallery-puntajes.png?v=20260824e"
-                      alt="PCL-5 puntuada en Telar, con interpretación automática y curva de evolución por sesión"
-                      width="2400"
-                      height="1452"
-                      loading="lazy"
-                      decoding="async"
-                    >
-                  </picture>
-                  <ul class="shot-map__pins">
-                    <li class="shot-pin shot-pin--center" style="--x: 42.3%; --y: 31.6%;">
-                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-interpretacion">
-                        <span class="shot-pin__dot" aria-hidden="true"></span>
-                        <span class="shot-pin__title">Interpretación</span>
-                      </button>
-                      <div class="shot-pin__card" id="shot-pin-interpretacion" hidden>
-                        <p>En el módulo, el puntaje y la interpretación salen al instante: aquí 25, por debajo del punto de corte. Sin calcular a mano.</p>
-                      </div>
-                    </li>
-                    <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 50%;">
-                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-graficos">
-                        <span class="shot-pin__dot" aria-hidden="true"></span>
-                        <span class="shot-pin__title">Gráficos</span>
-                      </button>
-                      <div class="shot-pin__card" id="shot-pin-graficos" hidden>
-                        <p>A la derecha, los gráficos de evolución sesión a sesión: ves el progreso (o si se estancó) sin armar la curva aparte.</p>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <figcaption>Pulsa un círculo para ver la interpretación automática y los gráficos de progreso.</figcaption>
-            </figure>
-            <figure class="install-carousel__slide" hidden>
               <picture>
                 <source
                   type="image/webp"
@@ -387,7 +339,6 @@
             </button>
             <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar captura">
               <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Índice de sesiones" aria-selected="true"></button>
-              <button type="button" class="install-carousel__dot" role="tab" aria-label="Puntajes e interpretaciones" aria-selected="false"></button>
               <button type="button" class="install-carousel__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
             </div>
             <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
@@ -405,44 +356,65 @@
         <h2 class="section-title">Para qué sirve Telar</h2>
         <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>.</p>
 
-        <div class="value-grid">
-          <article class="value-card">
-            <img class="value-card__shot value-card__shot--libreria" src="assets/value-libreria.jpg" alt="Librería de módulos de Telar: seleccionar GAD-7 y ver autor, validez y puntaje" width="857" height="1024" loading="lazy" decoding="async">
-            <p class="value-kicker">+ Tiempo</p>
-            <p class="value-figure">Crea programas de psicoterapia con IA</p>
-            <p>Telar posee una librería con decenas de módulos para trabajar con tus usuarios.</p>
-            <p>La <a href="ia.html">IA</a> lee el tratamiento por completo y propone el esqueleto: cuántas sesiones, qué módulos de Telar van en cada una (escalas, handouts, ejercicios) y qué se trabaja <strong>fuera</strong> — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento.</p>
+        <div class="value-grid value-grid--stack">
+          <article class="value-card value-card--iso">
+            <div class="value-card__visual" aria-hidden="true">
+              <canvas data-visual="lego" data-post="ascii" width="480" height="280"></canvas>
+            </div>
+            <div class="value-card__copy">
+              <p class="value-kicker">Ahorra tiempo</p>
+              <p class="value-figure">Crea programas de psicoterapia con IA</p>
+              <p>Telar posee una librería con decenas de módulos para trabajar con tus usuarios.</p>
+              <p>Además la <a href="ia.html">IA</a> lee el tratamiento por completo y propone un programa de psicoterapia y por dónde debe orientarse el caso: cuántas sesiones, qué módulos van en cada una (escalas, handouts, ejercicios) y qué se trabaja fuera de la app — en la sala, en papel, en una derivación. Tú revisas y, si te sirve, lo aplicas al tratamiento.</p>
+            </div>
           </article>
 
-          <article class="value-card">
-            <img class="value-card__shot value-card__shot--gad" src="assets/value-gad7.png" alt="GAD-7 puntuado en Telar: 9 puntos, ansiedad leve, con interpretación automática" width="1024" height="937" loading="lazy" decoding="async">
-            <p class="value-kicker">+ Tiempo</p>
-            <p class="value-figure">Puntajes e interpretaciones al instante</p>
-            <p>Telar puntúa las escalas automáticamente y actualiza la curva longitudinal. Evitas cálculos manuales y el traspaso de resultados a otras herramientas.</p>
-            <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia. El <a href="modules/index.html">catálogo de módulos</a> lista cada ficha con autor y validez.</p>
+          <article class="value-card value-card--iso">
+            <div class="value-card__visual" aria-hidden="true">
+              <canvas data-visual="score" data-post="cad" width="480" height="280"></canvas>
+            </div>
+            <div class="value-card__copy">
+              <p class="value-kicker">Ahorra tiempo</p>
+              <p class="value-figure">Puntajes instantáneos</p>
+              <p>Telar puntúa las escalas automáticamente y actualiza la curva longitudinal. Evitas cálculos manuales y el traspaso de resultados a otras herramientas.</p>
+              <p>ASRS, GAD-7, PCL-5, IES-R, SPRINT-E-CL, DASS-21, Rosenberg, QOLS, ADES, EED, escala FER y más — 13 escalas en el pack base para tamizaje y seguimiento longitudinal en evaluación neuropsicológica y psicoterapia. El <a href="modules/index.html">catálogo de módulos</a> lista cada ficha con autor y validez.</p>
+            </div>
           </article>
 
-          <article class="value-card">
-            <img class="value-card__shot" src="assets/value-ai-chat.png" alt="Atajos de IA en Telar: sugerir programa, generar email, módulo a medida y resumen del caso" width="948" height="164" loading="lazy" decoding="async">
-            <p class="value-kicker">+ Tiempo</p>
-            <p class="value-figure">Informes, correos y resúmenes al instante</p>
-            <p>Después de la sesión: un correo al paciente con lo trabajado y la tarea de la semana. Antes de una supervisión o una derivación: un resumen con hipótesis, focos y alertas.</p>
-            <p>Exporta programas de psicoterapia para tus usuarios e informes para supervisión clínica en PDF.</p>
+          <article class="value-card value-card--iso">
+            <div class="value-card__visual" aria-hidden="true">
+              <canvas data-visual="bolt" data-post="cad" width="480" height="280"></canvas>
+            </div>
+            <div class="value-card__copy">
+              <p class="value-kicker">Ahorra tiempo</p>
+              <p class="value-figure">Informes, correos y resúmenes al instante</p>
+              <p>Después de la sesión: un correo al paciente con lo trabajado y la tarea de la semana. Antes de una supervisión o una derivación: un resumen con hipótesis, focos y alertas.</p>
+              <p>Exporta programas de psicoterapia para tus usuarios e informes para supervisión clínica en PDF.</p>
+            </div>
           </article>
 
-          <article class="value-card">
-            <p class="value-kicker">Seguridad y respaldo</p>
-            <p class="value-figure">La información de tus pacientes segura</p>
-            <h3>Datos cifrados en tu equipo</h3>
-            <p>Trabaja con tu información tranquilo: tus datos quedan asegurados bajo la <strong>Ley 19.628</strong> de protección de datos personales. Ver <a href="privacidad.html">privacidad</a>.</p>
+          <article class="value-card value-card--iso">
+            <div class="value-card__visual" aria-hidden="true">
+              <canvas data-visual="neurons" data-post="cad" width="480" height="280"></canvas>
+            </div>
+            <div class="value-card__copy">
+              <p class="value-kicker">Prestación opcional</p>
+              <p class="value-figure">Neurofeedback</p>
+              <p>Da un salto al futuro con entrenamientos para atención y calma usando dispositivos de neuroretroalimentación.</p>
+              <p>Hasta <span data-geo-session-fee>$50.000</span> pesos es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
+            </div>
           </article>
 
-          <article class="value-card">
-            <img class="value-card__shot value-card__shot--nf" src="assets/muse-headband-hero.png" alt="Persona entrenando con banda Muse 2 en consulta de neurofeedback" width="1024" height="768" loading="lazy" decoding="async">
-            <p class="value-kicker">Prestación opcional</p>
-            <p class="value-figure">Neurofeedback</p>
-            <h3>Incorpora Neurofeedback a tus servicios</h3>
-            <p>Hasta <span data-geo-session-fee>$50.000</span> pesos es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
+          <article class="value-card value-card--iso">
+            <div class="value-card__visual" aria-hidden="true">
+              <canvas data-visual="lock" data-post="cad" width="480" height="280"></canvas>
+            </div>
+            <div class="value-card__copy">
+              <p class="value-kicker">Seguridad y respaldo</p>
+              <p class="value-figure">Todo encriptado</p>
+              <p>Toda la información encriptada en tu computadora y con respaldo cifrado en tu nube personal.</p>
+              <p>Trabaja con tu información tranquilo: tus datos quedan asegurados bajo la <strong>Ley 19.628</strong> de protección de datos personales. Ver <a href="privacidad.html">privacidad</a>.</p>
+            </div>
           </article>
         </div>
       </div>
@@ -460,11 +432,11 @@
             <p class="pricing-desc">Sin tarjeta, sin vencimiento</p>
             <ul class="pricing-list">
               <li>Hasta <strong>3 pacientes activos</strong> (archivados y en pausa no cuentan)</li>
-              <li>Programas de psicoterapia por sesiones</li>
-              <li>Packs clínicos (TDAH, trauma, ansiedad)</li>
-              <li>Neurofeedback en vivo</li>
+              <li>Construye programas de psicoterapia</li>
+              <li>Decenas de módulos terapéuticos, escalas psicométricas y de entrenamiento</li>
+              <li>Módulo de Neurofeedback</li>
               <li>Escalas con puntuación automática</li>
-              <li>IA opcional con tu propia clave API u Ollama local</li>
+              <li>IA opcional 100% en tu computadora</li>
             </ul>
             <a data-download data-download-hide-other href="https://github.com/maren-keld/telar/releases/latest" class="btn btn-secondary"><span class="btn-label">Descargar y probar</span></a>
           </div>
@@ -489,12 +461,169 @@
 
     <section id="instituciones" class="inst-section">
       <div class="container">
-        <p class="section-label">Instituciones y programas</p>
-        <h2 class="section-title">Si además de atender tienes que reportar resultados.</h2>
-        <p class="section-lead">Servicios de salud estudiantil, COSAM, programas de salud mental laboral y fundaciones que rinden cuentas a quien las financia necesitan que todo el equipo mida con los mismos instrumentos y de la misma forma. Telar estandariza el set de escalas y su puntuación, sin obligar a subir fichas a un servidor externo.</p>
-        <div class="inst-actions">
-          <a href="instituciones.html" class="btn btn-secondary">Ver el uso institucional</a>
-          <a href="https://wa.me/56945383084?text=Hola%2C%20consulto%20por%20Telar%20para%20un%20equipo%20o%20programa" class="btn btn-primary" target="_blank" rel="noopener">Conversar por un equipo</a>
+        <p class="section-label">Telar frente a un chat o una IA clínica en la nube</p>
+        <h2 class="section-title">Por qué no es ChatGPT ni un software que se queda con tus casos.</h2>
+        <p class="section-lead">La ficha vive cifrada en el computador del clínico. Puedes alinear escalas con un equipo; no hay que subir pacientes a un servidor compartido.</p>
+        <div class="compare-table compare-table--3" role="table" aria-label="Comparación entre ChatGPT, Psypilot y Telar">
+          <div class="compare-table__head" role="row">
+            <div class="compare-table__col compare-table__col--other" role="columnheader">ChatGPT</div>
+            <div class="compare-table__col compare-table__col--psypilot" role="columnheader">Psypilot</div>
+            <div class="compare-table__col compare-table__col--telar" role="columnheader">TELAR</div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Empieza de cero en cada conversación</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Mantiene contexto entre sesiones por caso, en su nube</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Conserva el contexto del caso de sesión en sesión (ficha local)</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>No organiza casos clínicos</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Cada caso con su propio contexto y evolución</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Cada caso tiene su propio contexto y evolución</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>No hay un flujo propio de psicología</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Diseñado desde la práctica clínica (notas y copiloto)</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Diseñada desde la práctica clínica: módulos, escalas y programas de sesión</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>No separa el contexto por paciente</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Separación estricta por caso clínico</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Un caso por paciente, estricto</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>No guía la revisión de documentos clínicos</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Revisión profesional en el flujo (validar el documento)</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>El clínico siempre revisa y aplica</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Sin foco en protección de datos locales</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>RGPD en su nube (Azure, Países Bajos)</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Cifrado local y encriptado 100% en tu computadora</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Los datos clínicos no quedan cifrados en tu equipo</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>La ficha vive en su servidor, no en tu disco</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Encriptado: la ficha clínica se cifra en el computador del clínico</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Un modelo ajeno; no eliges dónde corre la IA</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Copiloto permanente en su nube; no eliges el modelo</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>IA privada y puedes elegir el modelo (Ollama local o tu propia API)</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Los datos viven en una app o servidor externo</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>La ficha queda en un servidor de un tercero (Azure, Países Bajos)</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Soberanía de la información: los datos son del clínico, no de un servidor de terceros</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Código cerrado</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Código cerrado</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Código libre (AGPL)</span>
+            </div>
+          </div>
+          <div class="compare-table__row" role="row">
+            <div class="compare-table__cell compare-table__cell--other" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Sin internet no hay sesión</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--psypilot" role="cell">
+              <span class="compare-table__icon compare-table__icon--no" aria-hidden="true"></span>
+              <span>Sin internet no hay sesión</span>
+            </div>
+            <div class="compare-table__cell compare-table__cell--telar" role="cell">
+              <span class="compare-table__icon compare-table__icon--yes" aria-hidden="true"></span>
+              <span>Funciona sin conexión: la consulta corre en tu computador</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -519,7 +648,6 @@
             </div>
             <div class="req-card-aside">
               <p class="req-platform-note">Internet no es necesario para el día a día clínico. Solo para verificar suscripción Pro o recibir actualizaciones si las activas.</p>
-              <p class="req-platform-note"><strong>Muse 2 (opcional):</strong> Solo para Neurofeedback. Banda <strong>Interaxon Muse 2</strong> con Bluetooth; no es equipamiento diagnóstico. <a href="neurofeedback.html#muse">Más información sobre la banda Muse 2</a>.</p>
             </div>
           </div>
         </div>
@@ -642,36 +770,6 @@
       </div>
     </section>
 
-    <section id="confianza">
-      <div class="container">
-        <p class="section-label">Transparencia</p>
-        <h2 class="section-title">Todo lo que Telar afirma se puede revisar.</h2>
-        <p class="section-lead">No te pedimos confiar en una promesa de marketing. Estos son los hechos que puedes verificar por tu cuenta antes de poner una sola ficha adentro.</p>
-        <div class="trust-grid">
-          <article class="trust-card">
-            <h3>No es una caja negra</h3>
-            <p>Cómo Telar guarda y cifra las fichas está publicado: cualquiera puede revisarlo. No tienes que creernos de palabra. Si un colega o alguien de informática quiere mirarlo, el código está <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">abierto acá</a>.</p>
-          </article>
-          <article class="trust-card">
-            <h3>No hay servidor que pueda filtrarse</h3>
-            <p>Telar no sube fichas a ninguna parte. El respaldo del Plan Pro se cifra en tu equipo <em>antes</em> de copiarse a la carpeta de nube que tú eliges, así que ni nosotros ni el proveedor de nube pueden leerlo. Ver <a href="privacidad.html">privacidad</a>.</p>
-          </article>
-          <article class="trust-card">
-            <h3>Instrumentos publicados, no inventados</h3>
-            <p>Las 13 escalas del pack base son instrumentos publicados (ASRS, GAD-7, PCL-5, IES-R, DASS-21, entre otros), con su puntuación y puntos de corte de referencia. Telar automatiza el cálculo; la interpretación clínica sigue siendo tuya.</p>
-          </article>
-          <article class="trust-card">
-            <h3>Lo que Telar no hace</h3>
-            <p>No diagnostica, no reemplaza una batería neuropsicológica completa, no sustituye el protocolo de ocho fases de EMDR y el módulo de neurofeedback no es equipamiento diagnóstico. Cada módulo lo dice explícitamente en la app, no solo acá.</p>
-          </article>
-        </div>
-        <!-- PRUEBA SOCIAL — pendiente y es el vacío más notorio de la página.
-             Cuando haya 2 o 3 colegas dispuestos a aparecer, agregar acá un bloque
-             con nombre real, profesión, ciudad y una línea concreta sobre el uso.
-             Un testimonio anónimo o inventado resta más de lo que suma. -->
-      </div>
-    </section>
-
     <section id="faq" class="nf-faq-section">
       <div class="container">
         <p class="section-label">Preguntas frecuentes</p>
@@ -747,6 +845,6 @@
   <script src="js/demo-video.js?v=20260821c"></script>
   <script src="js/track.js?v=20260821c"></script>
   <script src="js/nav.js?v=20260803a"></script>
-  <script src="js/hero-camera.js?v=20260826e"></script>
+  <script src="js/hero-camera.js?v=20260829n"></script>
 </body>
 </html>

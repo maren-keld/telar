@@ -217,6 +217,11 @@ li a.card {
   transition: background 0.15s, color 0.15s;
 }
 
+header.nav .nav-actions .btn,
+.btn-nav {
+  border-radius: 0;
+}
+
 .btn:hover {
   text-decoration: none;
 }
@@ -243,6 +248,40 @@ li a.card {
 .btn-lg {
   padding: 0.9rem 1.6rem;
   font-size: 1rem;
+}
+
+/* Captura grande de puntajes, encima del hero */
+.hero-product-shot {
+  background: #0c0d10;
+  padding: 1.25rem 1rem 0.5rem;
+  border-bottom: 1px solid #222;
+}
+
+.hero-product-shot__inner {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.hero-product-shot__figure {
+  margin: 0;
+}
+
+.hero-product-shot .shot-map {
+  background: transparent;
+}
+
+.hero-product-shot .shot-map__frame {
+  width: 100%;
+  max-width: 100%;
+}
+
+.hero-product-shot .shot-map__frame picture,
+.hero-product-shot .shot-map__frame img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  image-rendering: auto;
 }
 
 /* Hero — panel grid estilo Mistral */
@@ -383,9 +422,9 @@ li a.card {
 
 /* Hero módulos — cámara cinemática (no es un carrusel de slides) */
 .hero-panel--modules {
-  grid-template-columns: minmax(280px, 0.92fr) minmax(360px, 1.28fr);
-  grid-template-areas: "copy camera";
-  min-height: clamp(460px, calc(82dvh - 56px), 700px);
+  grid-template-columns: 1fr;
+  grid-template-areas: "copy";
+  min-height: auto;
   background-color: #0c0d10;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
@@ -399,20 +438,34 @@ li a.card {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding: 3.25rem 3rem 3.5rem;
   border-right: 0;
   border-top: 0;
 }
 
 .hero-panel--modules .hero-main__copy {
   max-width: 36rem;
+  width: 100%;
+  margin-inline: auto;
+  text-align: center;
 }
 
 .hero-panel--modules .hero-main h1 {
   color: #fff;
+  text-align: center;
 }
 
 .hero-panel--modules .hero-lead-main {
   color: rgba(244, 244, 242, 0.68);
+  text-align: center;
+}
+
+.hero-panel--modules .hero-actions {
+  justify-content: center;
 }
 
 .hero-panel--modules .hero-lead-main a {
@@ -420,6 +473,8 @@ li a.card {
 }
 
 .hero-panel--modules .hero-badges {
+  flex-wrap: wrap;
+  justify-content: center;
   margin-top: 1.75rem;
   margin-bottom: 0;
 }
@@ -437,6 +492,11 @@ li a.card {
 .hero-panel--modules .badge-law {
   color: #8ab4e8;
   border-color: #3d6ea8;
+}
+
+.hero-panel--modules .badge-open {
+  color: #cbb48a;
+  border-color: #8a7348;
 }
 
 .hero-panel--modules .btn-primary {
@@ -467,14 +527,17 @@ li a.card {
 
 .hero-camera {
   position: relative;
+  display: flex;
+  flex-direction: column;
   height: clamp(420px, 58dvh, 620px);
   min-height: 0;
   overflow: hidden;
 }
 
 .hero-camera__viewport {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   background: transparent;
 }
@@ -632,14 +695,17 @@ li a.card {
 }
 
 .hero-camera__controls {
-  position: absolute;
-  left: 50%;
-  bottom: 0.9rem;
+  position: relative;
+  left: auto;
+  bottom: auto;
   z-index: 4;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.7rem;
-  transform: translateX(-50%);
+  transform: none;
+  flex-shrink: 0;
+  margin: 12px auto 0;
   padding: 0.25rem 0.35rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(12, 13, 16, 0.72);
@@ -846,11 +912,14 @@ li a.card {
 
 .install-carousel--gallery {
   margin: 0;
+  background: transparent;
+  border-color: var(--border);
 }
 
 .install-carousel--gallery .install-carousel__viewport {
   aspect-ratio: auto;
   max-height: none;
+  background: transparent;
 }
 
 .install-carousel--gallery .install-carousel__slide img {
@@ -860,10 +929,14 @@ li a.card {
   max-height: min(calc(100dvh - 16rem), 800px);
   object-fit: contain;
   object-position: top center;
+  background: transparent;
 }
 
 .install-carousel--gallery .install-carousel__slide figcaption {
   font-size: 0.9rem;
+  color: var(--text);
+  background: transparent;
+  border-top: 1px solid var(--border);
 }
 
 .install-carousel--gallery .install-carousel__overlay {
@@ -878,20 +951,20 @@ li a.card {
   width: 2.6rem;
   height: 2.6rem;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(12, 12, 12, 0.62);
-  color: #fff;
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 1.65rem;
   line-height: 1;
   cursor: pointer;
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
 }
 
 .install-carousel--gallery .install-carousel__overlay:hover,
 .install-carousel--gallery .install-carousel__overlay:focus-visible {
-  background: rgba(12, 12, 12, 0.86);
-  color: #fff;
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 .install-carousel--gallery .install-carousel__overlay:focus-visible {
@@ -910,7 +983,7 @@ li a.card {
 .shot-map {
   position: relative;
   width: 100%;
-  background: #0a0a0a;
+  background: transparent;
 }
 
 .shot-map__frame {
@@ -1359,6 +1432,19 @@ section {
 
 #curso .section-lead {
   max-width: none;
+}
+
+#instituciones .section-label,
+#instituciones .section-title,
+#instituciones .section-lead {
+  max-width: none;
+}
+
+#valor .section-label,
+#valor .section-title,
+#valor .section-lead {
+  max-width: none;
+  width: 100%;
 }
 
 /* Problem / solution */
@@ -1914,6 +2000,104 @@ section {
   color: var(--text-secondary);
 }
 
+.value-grid--stack {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  justify-items: stretch;
+}
+
+.value-card--iso {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 260px auto;
+  align-content: start;
+  align-items: stretch;
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.value-card__visual {
+  position: relative;
+  min-height: 260px;
+  background: #08090b;
+  overflow: hidden;
+}
+
+.value-card--iso .value-card__visual {
+  height: 260px;
+  min-height: 260px;
+  max-height: 260px;
+}
+
+.value-card__visual::before,
+.value-card__visual::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 2;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.55);
+  border-style: solid;
+}
+
+.value-card__visual::before {
+  top: 8px;
+  left: 8px;
+  border-width: 1px 0 0 1px;
+}
+
+.value-card__visual::after {
+  top: 8px;
+  right: 8px;
+  border-width: 1px 1px 0 0;
+}
+
+.value-card__visual canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  pointer-events: none;
+}
+
+.value-card--iso .value-card__visual canvas {
+  min-height: 0;
+  height: 100%;
+}
+
+.value-card__copy {
+  padding: 1.5rem 1.65rem 1.65rem;
+}
+
+.value-card--iso .value-card__copy {
+  min-height: 0;
+  align-self: start;
+}
+
+.value-card__copy .value-kicker {
+  margin-top: 0;
+}
+
+.value-card__copy p:not(.value-kicker):not(.value-figure) {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.value-card__copy .value-figure {
+  color: var(--text);
+  margin-bottom: 0.85rem;
+}
+
+.value-card__copy p:last-child {
+  margin-bottom: 0;
+}
+
 /* Transparencia — hechos verificables. Sin testimonios inventados: un testimonio
    anónimo resta más de lo que suma en software clínico. */
 .trust-grid {
@@ -1952,6 +2136,149 @@ section {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.5rem;
+}
+
+.compare-table {
+  margin-top: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #fff;
+  font-family: var(--font);
+}
+
+.compare-table__head,
+.compare-table__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.compare-table__head {
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-table__col {
+  padding: 1rem 1.1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.compare-table__col--other {
+  color: var(--text-muted);
+  background: #f3f3f0;
+}
+
+.compare-table__col--psypilot {
+  color: #2c3a5a;
+  background: #e8eef8;
+  border-left: 1px solid var(--border);
+}
+
+.compare-table__col--telar {
+  color: var(--text);
+  background: var(--success-soft);
+  border-left: 1px solid var(--border);
+}
+
+.compare-table__row + .compare-table__row {
+  border-top: 1px solid var(--border);
+}
+
+.compare-table__cell {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.95rem 0.75rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.compare-table__cell > span:not(.compare-table__icon) {
+  flex: 0 1 11.5rem;
+  min-width: 0;
+}
+
+.compare-table__cell--psypilot {
+  border-left: 1px solid var(--border);
+  background: rgba(232, 238, 248, 0.45);
+}
+
+.compare-table__cell--telar {
+  color: var(--text);
+  background: rgba(224, 240, 232, 0.28);
+  border-left: 1px solid var(--border);
+}
+
+.compare-table__icon {
+  flex: 0 0 1.4rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0.08rem 0 0;
+  border-radius: 50%;
+  position: relative;
+}
+
+.compare-table__icon--no {
+  color: #8a8a86;
+  border: 1.5px solid currentColor;
+}
+
+.compare-table__icon--no::before,
+.compare-table__icon--no::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.55rem;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.compare-table__icon--no::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.compare-table__icon--no::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.compare-table__icon--yes {
+  background: var(--success);
+}
+
+.compare-table__icon--yes::after {
+  content: "";
+  position: absolute;
+  left: 0.38rem;
+  top: 0.28rem;
+  width: 0.38rem;
+  height: 0.62rem;
+  border: 1.8px solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(40deg);
+}
+
+@media (max-width: 800px) {
+  .compare-table__head,
+  .compare-table__row {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-table__col--psypilot,
+  .compare-table__col--telar,
+  .compare-table__cell--psypilot,
+  .compare-table__cell--telar {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
 }
 
 .steps-list {
@@ -2102,14 +2429,15 @@ section {
 }
 
 .pricing-card h3 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 1.25rem;
+  line-height: 1.15;
 }
 
 .pricing-price {
   font-size: 2rem;
   font-weight: 800;
-  margin: 0.75rem 0;
+  margin: 0.1rem 0 0.75rem;
   letter-spacing: -0.03em;
 }
 
@@ -2397,6 +2725,21 @@ section {
   box-sizing: border-box;
 }
 
+.install-carousel--gallery,
+.install-carousel--gallery .install-carousel__viewport,
+.install-carousel--gallery .shot-map,
+.install-carousel--gallery .shot-map__frame,
+.install-carousel--gallery .install-carousel__slide,
+.install-carousel--gallery .install-carousel__slide img {
+  background: var(--bg);
+}
+
+.install-carousel--gallery .install-carousel__slide figcaption {
+  color: var(--text-secondary);
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
 .install-carousel__controls {
   display: flex;
   align-items: center;
@@ -2581,6 +2924,10 @@ section {
   gap: 1.5rem;
 }
 
+.team-grid:has(.team-card:only-child) {
+  grid-template-columns: minmax(0, 36rem);
+}
+
 .team-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -2604,6 +2951,20 @@ section {
   object-fit: cover;
   object-position: center top;
   filter: grayscale(100%);
+}
+
+.team-initials {
+  flex: 0 0 150px;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--text);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .team-card-body {
@@ -2632,6 +2993,10 @@ section {
   font-size: 0.95rem;
   line-height: 1.6;
   color: var(--text-secondary);
+}
+
+.team-bio + .team-bio {
+  margin-top: 0.65rem;
 }
 
 .team-contact {
@@ -2664,16 +3029,15 @@ section {
 
   .hero-panel--modules {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "camera"
-      "copy";
+    grid-template-areas: "copy";
     min-height: auto;
   }
 
   .hero-panel--modules .hero-main {
     border-right: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 0;
     border-bottom: 0;
+    max-width: none;
   }
 
   .hero-panel--modules .hero-camera {
@@ -2731,6 +3095,35 @@ section {
 
   .value-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .value-grid--stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: stretch;
+  }
+
+  .value-card--iso {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .value-card__visual {
+    min-height: 200px;
+  }
+
+  .value-card__visual canvas {
+    min-height: 200px;
+  }
+
+  .value-card--iso .value-card__visual {
+    height: 260px;
+    min-height: 260px;
+    max-height: 260px;
+  }
+
+  .value-card--iso .value-card__visual canvas {
+    min-height: 0;
+    height: 100%;
   }
 
   .req-card {
@@ -2829,6 +3222,11 @@ section {
 @media (max-width: 560px) {
   .value-grid {
     grid-template-columns: 1fr;
+  }
+
+  .value-grid--stack {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
   }
 
   .value-math {

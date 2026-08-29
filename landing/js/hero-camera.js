@@ -89,42 +89,100 @@
     ctx.restore();
   }
 
-  function drawOrb(ctx, w, h, t) {
+  function drawNeurons(ctx, w, h, t) {
     ctx.fillStyle = "#070809";
     ctx.fillRect(0, 0, w, h);
     drawIsoGrid(ctx, w, h);
-    const cx = w * 0.5;
-    const cy = h * 0.5;
-    const r = Math.min(w, h) * 0.34;
-    const phase = (Math.sin(t * 0.00105) + 1) * 0.5;
-    const rgb = mix3([46, 196, 104], [230, 205, 48], [226, 58, 58], phase);
-    const lx = Math.cos(t * 0.0011);
-    const ly = -0.35;
-    const lz = Math.sin(t * 0.0011);
-    const len = Math.hypot(lx, ly, lz) || 1;
-    const Lx = lx / len;
-    const Ly = ly / len;
-    const Lz = lz / len;
-    const img = ctx.createImageData(w, h);
-    const data = img.data;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const nx = (x - cx) / r;
-        const ny = (y - cy) / r;
-        const d = nx * nx + ny * ny;
-        if (d > 1) continue;
-        const nz = Math.sqrt(1 - d);
-        const ndot = Math.max(0, nx * Lx + ny * Ly + nz * Lz);
-        const rim = Math.pow(1 - nz, 1.8) * 0.45;
-        const lum = 0.1 + ndot * 0.82 + rim;
-        const i = (y * w + x) * 4;
-        data[i] = Math.min(255, rgb[0] * lum);
-        data[i + 1] = Math.min(255, rgb[1] * lum);
-        data[i + 2] = Math.min(255, rgb[2] * lum);
-        data[i + 3] = 255;
+
+    function hash(n) {
+      const s = Math.sin(n * 127.1) * 43758.5453;
+      return s - Math.floor(s);
+    }
+
+    const cols = Math.max(7, Math.round(w / 52));
+    const rows = Math.max(5, Math.round(h / 48));
+    const nodes = [];
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const id = j * cols + i + 1;
+        nodes.push({
+          x: ((i + 0.5) / cols) * w + (hash(id) - 0.5) * (w / cols) * 0.72,
+          y: ((j + 0.5) / rows) * h + (hash(id + 17) - 0.5) * (h / rows) * 0.72,
+          id,
+        });
       }
     }
-    ctx.putImageData(img, 0, 0);
+
+    const angA = t * 0.00021 + Math.sin(t * 0.00007) * 0.8;
+    const angB = t * 0.00013 + 2.1 + Math.cos(t * 0.00005) * 1.1;
+    const angC = t * 0.00009 + 4.0;
+    const dAx = Math.cos(angA);
+    const dAy = Math.sin(angA);
+    const dBx = Math.cos(angB);
+    const dBy = Math.sin(angB);
+    const dCx = Math.cos(angC);
+    const dCy = Math.sin(angC);
+    const travelA = t * 0.0026;
+    const travelB = t * 0.0018;
+    const travelC = t * 0.0031;
+
+    function waveAt(x, y) {
+      const a = (Math.sin((x * dAx + y * dAy) * 0.016 - travelA) + 1) * 0.5;
+      const b = (Math.sin((x * dBx + y * dBy) * 0.011 + travelB) + 1) * 0.5;
+      const c = (Math.sin((x * dCx + y * dCy) * 0.022 - travelC) + 1) * 0.5;
+      return Math.max(0, Math.min(1, a * 0.5 + b * 0.32 + c * 0.18));
+    }
+
+    const maxDist = Math.min(w, h) * 0.3;
+    for (let a = 0; a < nodes.length; a++) {
+      for (let b = a + 1; b < nodes.length; b++) {
+        const dx = nodes[b].x - nodes[a].x;
+        const dy = nodes[b].y - nodes[a].y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxDist || dist < 10) continue;
+        if (hash(nodes[a].id * 31 + nodes[b].id) < 0.42) continue;
+        const mx = (nodes[a].x + nodes[b].x) * 0.5;
+        const my = (nodes[a].y + nodes[b].y) * 0.5;
+        const p = waveAt(mx, my);
+        const rgb = mix3([46, 196, 104], [230, 205, 48], [226, 58, 58], p);
+        ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.1 + p * 0.62})`;
+        ctx.lineWidth = 0.7 + p * 1.6;
+        ctx.beginPath();
+        ctx.moveTo(nodes[a].x, nodes[a].y);
+        ctx.quadraticCurveTo(
+          mx + (hash(a + b) - 0.5) * 22,
+          my + (hash(a + b + 5) - 0.5) * 22,
+          nodes[b].x,
+          nodes[b].y
+        );
+        ctx.stroke();
+      }
+    }
+
+    nodes.forEach((n) => {
+      const p = waveAt(n.x, n.y);
+      const rgb = mix3([46, 196, 104], [230, 205, 48], [226, 58, 58], p);
+      const soma = 2.1 + p * 3.4;
+      const dendrites = 3 + Math.floor(hash(n.id) * 4);
+      ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.18 + p * 0.45})`;
+      ctx.lineWidth = 0.7;
+      for (let k = 0; k < dendrites; k++) {
+        const ang = hash(n.id * 9 + k) * Math.PI * 2;
+        const len = 6 + hash(n.id + k + 8) * 11;
+        ctx.beginPath();
+        ctx.moveTo(n.x, n.y);
+        ctx.lineTo(n.x + Math.cos(ang) * len, n.y + Math.sin(ang) * len);
+        ctx.stroke();
+      }
+      ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.1 + p * 0.22})`;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, soma * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgb(${Math.round(rgb[0])},${Math.round(rgb[1])},${Math.round(rgb[2])})`;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, soma, 0, Math.PI * 2);
+      ctx.fill();
+    });
   }
 
   const BRICKS = [
@@ -264,6 +322,92 @@
     }
   }
 
+  const BOLT_WORDS = [
+    "informe", "email", "resumen", "pdf", "sesión",
+    "correo", "tarea", "nota", "plan", "foco",
+  ];
+
+  function sdBolt(px, py) {
+    const segs = [
+      [-0.1, -0.86, 0.32, -0.2, 0.08],
+      [0.32, -0.2, -0.26, -0.04, 0.075],
+      [-0.26, -0.04, 0.36, 0.4, 0.08],
+      [0.36, 0.4, -0.16, 0.54, 0.07],
+      [-0.16, 0.54, 0.08, 0.9, 0.065],
+    ];
+    let d = 9;
+    for (let s = 0; s < segs.length; s++) {
+      const [ax, ay, bx, by, rad] = segs[s];
+      d = Math.min(d, sdCapsule(px, py, ax, ay, bx, by, rad));
+    }
+    return d;
+  }
+
+  function drawBolt(ctx, w, h, t) {
+    ctx.fillStyle = "#050506";
+    ctx.fillRect(0, 0, w, h);
+    drawIsoGrid(ctx, w, h);
+
+    const drift = (t * 0.016) % 88;
+    ctx.font = `500 ${Math.max(11, Math.round(w * 0.034))}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    let n = 0;
+    for (let y = -18; y < h + 36; y += 30) {
+      for (let x = -52; x < w + 90; x += 98) {
+        const word = BOLT_WORDS[n % BOLT_WORDS.length];
+        const a = 0.045 + (n % 4) * 0.018;
+        ctx.fillStyle = `rgba(232, 214, 120, ${a})`;
+        ctx.fillText(word, x - drift + (n % 3) * 8, y + (n % 2) * 5);
+        n += 1;
+      }
+    }
+
+    const cell = Math.max(5, Math.round(Math.min(w, h) / 38));
+    const cols = Math.ceil(w / cell);
+    const rows = Math.ceil(h / cell);
+    const aspect = w / h;
+    const ang = t * 0.0009;
+    const Lx = Math.cos(ang) * 0.55;
+    const Ly = -0.28 + Math.sin(ang * 0.8) * 0.12;
+    const Lz = 0.78;
+    const llen = Math.hypot(Lx, Ly, Lz) || 1;
+    const axisX = Math.cos(t * 0.00034);
+    const axisY = Math.sin(t * 0.00029);
+    const travel = t * 0.0022;
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const px = ((i + 0.5) / cols - 0.5) * 2.15 * aspect;
+        const py = ((j + 0.48) / rows - 0.5) * 2.2;
+        const d = sdBolt(px, py);
+        if (d > 0.05) continue;
+        const e = 0.012;
+        let nx = sdBolt(px + e, py) - sdBolt(px - e, py);
+        let ny = sdBolt(px, py + e) - sdBolt(px, py - e);
+        let nz = 0.48;
+        const nlen = Math.hypot(nx, ny, nz) || 1;
+        nx /= nlen;
+        ny /= nlen;
+        nz /= nlen;
+        const ndot = Math.max(0, (nx * Lx + ny * Ly + nz * Lz) / llen);
+        const spec = Math.pow(ndot, 12) * 0.85;
+        const rim = Math.pow(1 - Math.max(0, nz), 2.2) * 0.28;
+        let lum = 0.12 + ndot * 0.78 + spec + rim;
+        if (d > 0) lum *= Math.max(0, 1 - d / 0.05);
+        const rad = lum * cell * 0.52;
+        if (rad < 0.4) continue;
+        const along = px * axisX + py * axisY;
+        const pulse = (Math.sin(along * 2.4 - travel) + 1) * 0.5;
+        const flash = 0.55 + 0.45 * pulse;
+        const rgb = mix3([255, 236, 130], [255, 210, 52], [226, 90, 48], pulse);
+        ctx.fillStyle = `rgb(${Math.min(255, rgb[0] * lum * flash)},${Math.min(255, rgb[1] * lum * flash)},${Math.min(255, rgb[2] * lum * flash)})`;
+        ctx.beginPath();
+        ctx.arc((i + 0.5) * cell, (j + 0.5) * cell, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
   function ellipse(ctx, x, y, rx, ry) {
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
@@ -366,7 +510,7 @@
     ctx.fillText("scoring.local", 16, 20);
   }
 
-  const DRAW = { orb: drawOrb, lego: drawLego, lock: drawLock, score: drawScore };
+  const DRAW = { orb: drawNeurons, neurons: drawNeurons, lego: drawLego, lock: drawLock, score: drawScore, bolt: drawBolt };
 
   function postAscii(src, dst, t, charset) {
     const sw = src.width;
@@ -459,7 +603,7 @@
         sizeScene(dw, dh);
         force = true;
       }
-      if (!force && !active && now - last < 120) return;
+      if (!force && !active) return;
       last = now;
       octx.clearRect(0, 0, off.width, off.height);
       draw(octx, off.width, off.height, now);
@@ -708,4 +852,36 @@
     }
     requestAnimationFrame(loop);
   });
+
+  const isoVisuals = [...document.querySelectorAll("canvas[data-visual]")]
+    .filter((canvas) => !canvas.closest("[data-hero-camera]"))
+    .map(makeVisual)
+    .filter(Boolean);
+
+  if (isoVisuals.length) {
+    const seen = new Map();
+    isoVisuals.forEach((v) => {
+      v.setActive(false);
+      seen.set(v.canvas, v);
+    });
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const v = seen.get(entry.target);
+          if (v) v.setActive(entry.isIntersecting && entry.intersectionRatio > 0.08);
+        });
+      },
+      { threshold: [0, 0.08, 0.25] }
+    );
+    isoVisuals.forEach((v) => io.observe(v.canvas));
+    const firstNow = performance.now();
+    isoVisuals.forEach((v) => v.render(firstNow, true));
+    function isoLoop(now) {
+      if (!document.hidden) {
+        isoVisuals.forEach((v) => v.render(now));
+      }
+      requestAnimationFrame(isoLoop);
+    }
+    requestAnimationFrame(isoLoop);
+  }
 })();
