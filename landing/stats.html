@@ -206,7 +206,7 @@
 
     <section class="card">
       <h2>Visitas e intención por día</h2>
-      <p class="hint">Sesiones que entraron al sitio y sesiones que hicieron clic en descargar o WhatsApp.</p>
+      <p class="hint">Sesiones que entraron al sitio y sesiones que hicieron clic en descargar o en el correo.</p>
       <ul class="legend">
         <li><span class="key" style="background:var(--series-1)"></span>Visitas</li>
         <li><span class="key" style="background:var(--series-2)"></span>Intención</li>
@@ -269,7 +269,8 @@
     'cta:download_windows': 'Descarga Windows',
     'cta:download_other': 'Descarga (otro SO)',
     'cta:releases': 'Ver releases',
-    'cta:whatsapp': 'WhatsApp',
+    'cta:whatsapp': 'WhatsApp (histórico)',
+    'cta:email': 'Correo',
     'cta:telefono': 'Teléfono'
   };
   var PAGE_LABELS = {
@@ -554,13 +555,14 @@
     var pricing = steps.find(function (s) { return s.key === 'step:pricing'; }) || { count: 0 };
     var downloads = (data.events['cta:download_mac'] || 0) + (data.events['cta:download_windows'] || 0) +
                     (data.events['cta:download_other'] || 0);
+    var email = data.events['cta:email'] || 0;
     var whatsapp = data.events['cta:whatsapp'] || 0;
 
     var kpis = [
       { label: 'Sesiones', value: fmt(top), foot: 'últimos ' + data.range_days + ' días' },
       { label: 'Vieron el precio', value: fmt(pricing.count), foot: pricing.pct_of_top + '% de las sesiones' },
       { label: 'Clics en descargar', value: fmt(downloads), foot: 'mac + windows + otros' },
-      { label: 'Clics a WhatsApp', value: fmt(whatsapp), foot: 'demo y dudas' },
+      { label: 'Clics al correo', value: fmt(email + whatsapp), foot: 'contacto@telarapp.cl' },
       { label: 'Aperturas de la app', value: fmt(data.usage_opens_total), foot: 'acumulado histórico' }
     ];
     document.getElementById('kpis').innerHTML = kpis.map(function (k) {

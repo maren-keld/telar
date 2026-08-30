@@ -323,6 +323,7 @@
   /** Clasifica un enlace como CTA de conversión, o null si no lo es. */
   function ctaFor(href) {
     if (!href) return null;
+    if (href.indexOf('mailto:contacto@telarapp.cl') !== -1) return 'cta:email';
     if (href.indexOf('wa.me') !== -1) return 'cta:whatsapp';
     if (href.indexOf('tel:') === 0) return 'cta:telefono';
     if (href.indexOf('releases/latest/download') !== -1) {

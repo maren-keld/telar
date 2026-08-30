@@ -11,8 +11,8 @@ import { toast, escapeHtml } from '../utils.js';
 import { shakeEl } from '../transitions.js';
 import { mountHeroCameras } from '../hero-camera.js';
 
-const HELP_WA_URL = 'https://wa.me/56945383084';
-const HELP_WA_LABEL = '+56 9 4538 3084';
+const HELP_CONTACT_URL = 'mailto:contacto@telarapp.cl';
+const HELP_CONTACT_LABEL = 'contacto@telarapp.cl';
 
 function unlockHeroCameraHtml() {
   return `
@@ -24,8 +24,8 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="lego" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>Construye programas de psicoterapia con IA</h3>
-              <p>Ahorra tiempo con decenas de módulos con asistencia de la IA.</p>
+              <h3>Programa sobre la ficha</h3>
+              <p>La IA viene apagada. Si la activas, propone sesiones y módulos; tú aplicas.</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="score">
@@ -33,8 +33,8 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="score" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>Puntajes instantáneos</h3>
-              <p>Obtén puntajes e interpretaciones al instante con corrección de escalas.</p>
+              <h3>Puntajes y curva</h3>
+              <p>Escalas con scoring automático y seguimiento longitudinal.</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="neuro">
@@ -43,7 +43,7 @@ function unlockHeroCameraHtml() {
             </div>
             <div class="hero-cam-card__body">
               <h3>Neurofeedback</h3>
-              <p>Da un salto al futuro con entrenamientos de avanzada.</p>
+              <p>Entrenamiento de atención y calma con Muse, en la consulta.</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="lock">
@@ -51,8 +51,8 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="lock" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>Todo encriptado</h3>
-              <p>Toda la información encriptada en tu computadora y con respaldo cifrado en tu nube personal.</p>
+              <h3>La ficha en tu computador</h3>
+              <p>Cifrado local y respaldo cifrado en tu nube. No es un chat en la nube.</p>
             </div>
           </article>
         </div>
@@ -60,7 +60,7 @@ function unlockHeroCameraHtml() {
       <div class="hero-camera__controls">
         <button type="button" class="hero-camera__nav" data-cam-dir="-1" aria-label="Módulo anterior">‹</button>
         <div class="hero-camera__dots" role="tablist" aria-label="Seleccionar módulo">
-          <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="Programas con IA" aria-selected="true"></button>
+          <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="Programas de psicoterapia" aria-selected="true"></button>
           <button type="button" class="hero-camera__dot" role="tab" aria-label="Puntajes instantáneos" aria-selected="false"></button>
           <button type="button" class="hero-camera__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
           <button type="button" class="hero-camera__dot" role="tab" aria-label="Todo encriptado" aria-selected="false"></button>
@@ -79,15 +79,15 @@ function unlockShellHtml(innerHtml) {
       </div>
       <p class="initial-screen__help">
         ¿Necesitas orientación o ayuda?
-        <a class="initial-screen__help-link" id="unlockHelpWa" href="${HELP_WA_URL}">WhatsApp ${HELP_WA_LABEL}</a>
+        <a class="initial-screen__help-link" id="unlockHelpContact" href="${HELP_CONTACT_URL}">${HELP_CONTACT_LABEL}</a>
       </p>
     </div>`;
 }
 
 function bindUnlockHelp(host) {
-  host.querySelector('#unlockHelpWa')?.addEventListener('click', (e) => {
+  host.querySelector('#unlockHelpContact')?.addEventListener('click', (e) => {
     e.preventDefault();
-    void openExternalUrl(HELP_WA_URL);
+    void openExternalUrl(HELP_CONTACT_URL);
   });
 }
 
@@ -96,7 +96,6 @@ export async function renderUnlock(host, { onNavigate }) {
     <header class="initial-screen__brand">
       <h1 class="initial-screen__title">Telar</h1>
     </header>
-    <p class="initial-screen__sub">Preparando desbloqueo…</p>
   `);
   mountHeroCameras(host);
   bindUnlockHelp(host);

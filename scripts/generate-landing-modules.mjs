@@ -261,8 +261,7 @@ function footerHtml(depth) {
       </div>
       <nav class="footer-links" aria-label="Enlaces del pie">
 ${links}
-        <a href="tel:+56945383084">+56 9 4538 3084</a>
-        <a href="https://wa.me/56945383084" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="mailto:contacto@telarapp.cl">contacto@telarapp.cl</a>
         <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
       </nav>

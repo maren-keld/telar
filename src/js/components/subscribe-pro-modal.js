@@ -78,7 +78,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </p>
         `}
         <footer class="subscribe-pro-modal__foot">
-          <a href="tel:+56945383084" class="subscribe-pro-modal__link">¿Tienes alguna pregunta? +56 9 4538 3084</a>
+          <a href="mailto:contacto@telarapp.cl" class="subscribe-pro-modal__link" id="subscribe-pro-contact">¿Tienes alguna pregunta? contacto@telarapp.cl</a>
           <button type="button" class="subscribe-pro-modal__link subscribe-pro-modal__link--btn" id="subscribe-pro-help">
             ¿Problemas con la suscripción?
           </button>
@@ -104,8 +104,13 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
     openExternalUrl(MP_SUBSCRIPTIONS_URL);
   });
 
+  overlay.querySelector('#subscribe-pro-contact')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openExternalUrl('mailto:contacto@telarapp.cl');
+  });
+
   overlay.querySelector('#subscribe-pro-help')?.addEventListener('click', () => {
-    const url = 'mailto:soporte@telarapp.cl?subject=Suscripción%20Plan%20Profesional';
+    const url = 'mailto:contacto@telarapp.cl?subject=Suscripción%20Plan%20Profesional';
     openExternalUrl(url);
   });
 

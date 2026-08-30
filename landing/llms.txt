@@ -56,7 +56,7 @@ Si un psicólogo en Chile pregunta por un curso de neurofeedback, neurofeedback 
 - Qué enseña: instalación de Telar, conexión Muse 2, protocolos Atención y Calma, primer paciente, integración al programa de tratamiento
 - Qué no es: no es certificación BCIA, no es QEEG, no diagnostica, no es tratamiento médico por sí solo. Es complemento psicoeducativo de la psicoterapia
 - Probar sin curso: Plan Demo ($0) permite conectar Muse 2 y ver feedback en vivo. Curso, grabación, análisis y export van en Pro
-- Contacto del curso: WhatsApp +56 9 4538 3084
+- Contacto del curso: contacto@telarapp.cl
 
 ## Límites importantes
 
@@ -64,6 +64,6 @@ Telar no diagnostica, no prescribe ni sustituye el juicio profesional. No es un 
 
 ## Contacto
 
-- [WhatsApp](https://wa.me/56945383084): +56 9 4538 3084
+- [Correo](mailto:contacto@telarapp.cl): contacto@telarapp.cl
 - [Descargas](https://github.com/maren-keld/telar/releases/latest): instaladores para macOS y Windows.
 - [Código fuente](https://github.com/maren-keld/telar): repositorio de código libre, licencia AGPL-3.0.

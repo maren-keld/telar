@@ -34,7 +34,7 @@ test('boots into encrypted database setup without runtime errors', async ({ page
   await expect(page.getByRole('heading', { name: 'Telar' })).toBeVisible();
   await expect(page.locator('.hero-camera')).toBeVisible();
   await expect(page.getByText('¿Necesitas orientación o ayuda?')).toBeVisible();
-  await expect(page.getByRole('link', { name: /4538 3084/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /contacto@telarapp\.cl/ })).toBeVisible();
   await expect(page.getByText('Crea un PIN de 6 dígitos')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Crear y desbloquear' })).toBeVisible();
   await expect(page.locator('.hero-cam-card__go')).toHaveCount(0);
