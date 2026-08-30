@@ -4,6 +4,9 @@ Disallow: /panel
 Disallow: /panel/
 Disallow: /api/admin
 
+# Resumen para modelos de lenguaje (curso de neurofeedback en Chile y resto del producto)
+# https://telarapp.cl/llms.txt
+
 User-agent: GPTBot
 Allow: /
 Disallow: /panel

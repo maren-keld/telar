@@ -118,7 +118,9 @@
     ]
   }
   </script>
-  <link rel="icon" href="assets/icon.png" type="image/png">
+  <link rel="preload" as="image" type="image/webp" fetchpriority="high"
+    imagesrcset="assets/gallery-puntajes-800.webp 800w, assets/gallery-puntajes-1600.webp 1600w, assets/gallery-puntajes-2400.webp 2400w"
+    imagesizes="(max-width: 800px) 100vw, min(1600px, 100vw)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
@@ -126,7 +128,27 @@
        la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="css/style.css?v=20260829u">
+  <style>
+    :root{--bg:#f5f5f0;--text:#111111;--border:#d8d8d4;--font:"Inter",system-ui,-apple-system,sans-serif;--accent:#111}
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--text);background:var(--bg);line-height:1.6}
+    img{max-width:100%;height:auto}picture{display:contents}
+    .nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border)}
+    .nav-inner{display:flex;align-items:stretch;min-height:56px}
+    .hero-product-shot{background:#0c0d10;padding:1.25rem 1rem .5rem}
+    .hero-product-shot__inner{max-width:1600px;margin:0 auto}
+    .hero-product-shot img{display:block;width:100%;height:auto}
+  </style>
+  <link rel="stylesheet" href="css/style.min.css?v=20260830p" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="css/style.min.css?v=20260830p"></noscript>
+  <script src="js/nav.js?v=20260830p" defer></script>
+  <script src="js/download.js?v=20260830p" defer></script>
+  <script src="js/install-carousel.js?v=20260830p" defer></script>
+  <script src="js/gallery-hotspots.js?v=20260830p" defer></script>
+  <script src="js/demo-video.js?v=20260830p" defer></script>
+  <script src="js/track.min.js?v=20260830p" defer></script>
+  <script src="js/hero-camera.min.js?v=20260830p" defer></script>
+  <script src="js/geo-pricing.js?v=20260830p" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -172,13 +194,11 @@
               <picture>
                 <source
                   type="image/webp"
-                  srcset="assets/gallery-puntajes-2400.webp 2400w"
-                  sizes="min(1600px, 100vw)"
+                  srcset="assets/gallery-puntajes-800.webp 800w, assets/gallery-puntajes-1600.webp 1600w, assets/gallery-puntajes-2400.webp 2400w"
+                  sizes="(max-width: 800px) 100vw, min(1600px, 100vw)"
                 >
                 <img
-                  src="assets/gallery-puntajes.png?v=20260824e"
-                  srcset="assets/gallery-puntajes.png?v=20260824e 2400w"
-                  sizes="min(1600px, 100vw)"
+                  src="assets/gallery-puntajes-1600.webp"
                   alt="PCL-5 puntuada en Telar, con interpretación automática y curva de evolución por sesión"
                   width="2400"
                   height="1452"
@@ -243,8 +263,7 @@
                 alt="Telar con un GAD-7 puntuado: ansiedad moderada, 11 puntos"
                 width="1280"
                 height="720"
-                loading="eager"
-                fetchpriority="high"
+                loading="lazy"
                 decoding="async"
               >
               <span class="video-facade__play" aria-hidden="true">Ver 90 segundos</span>
@@ -264,14 +283,15 @@
                   <picture>
                     <source
                       type="image/webp"
-                      srcset="assets/gallery-significado-2400.webp"
+                      srcset="assets/gallery-significado-800.webp 800w, assets/gallery-significado-1600.webp 1600w, assets/gallery-significado-2400.webp 2400w"
+                      sizes="(max-width: 800px) 100vw, min(1200px, 100vw)"
                     >
                     <img
-                      src="assets/gallery-significado.png?v=20260824e"
+                      src="assets/gallery-significado-1600.webp"
                       alt="Telar en sesión: índice a la izquierda, módulo al centro, bitácora e IA a la derecha"
                       width="2400"
                       height="1452"
-                      loading="eager"
+                      loading="lazy"
                       decoding="async"
                     >
                   </picture>
@@ -312,10 +332,11 @@
               <picture>
                 <source
                   type="image/webp"
-                  srcset="assets/gallery-neurofeedback-2400.webp"
+                  srcset="assets/gallery-neurofeedback-800.webp 800w, assets/gallery-neurofeedback-1600.webp 1600w, assets/gallery-neurofeedback-2400.webp 2400w"
+                  sizes="(max-width: 800px) 100vw, min(1200px, 100vw)"
                 >
                 <img
-                  src="assets/gallery-neurofeedback.png?v=20260824e"
+                  src="assets/gallery-neurofeedback-1600.webp"
                   alt="Sesión de neurofeedback Muse 2 en Telar, calculando línea base de atención"
                   width="2400"
                   height="1452"
@@ -354,7 +375,7 @@
       <div class="container">
         <p class="section-label">Por qué vale la pena</p>
         <h2 class="section-title">Para qué sirve Telar</h2>
-        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong><a href="neurofeedback.html">Neurofeedback</a></strong>.</p>
+        <p class="section-lead">Telar es una aplicación pensada para psicólogos que trabajan con <strong>TDAH adulto</strong>, <strong>trauma y TEPT</strong>, <strong>evaluación neuropsicológica</strong>, <strong>estimulación bilateral</strong> y <strong>neurofeedback</strong>. El <a href="neurofeedback.html">curso de neurofeedback en Chile</a> va incluido en el Plan Pro.</p>
 
         <div class="value-grid value-grid--stack">
           <article class="value-card value-card--iso">
@@ -401,7 +422,7 @@
               <p class="value-kicker">Prestación opcional</p>
               <p class="value-figure">Neurofeedback</p>
               <p>Da un salto al futuro con entrenamientos para atención y calma usando dispositivos de neuroretroalimentación.</p>
-              <p>Hasta <span data-geo-session-fee>$50.000</span> pesos es el honorario de referencia de una sesión de <a href="neurofeedback.html">Neurofeedback</a> en <span data-geo-country>Chile</span>. Con el protocolo del curso incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
+              <p>Hasta <span data-geo-session-fee>$50.000</span> pesos es el honorario de referencia de una sesión de neurofeedback en <span data-geo-country>Chile</span>. Con el <a href="neurofeedback.html">curso de neurofeedback en Chile</a> incluido en el Plan Pro puedes agregar esa línea de servicio; tú defines tu tarifa.</p>
             </div>
           </article>
 
@@ -823,7 +844,7 @@
       <nav class="footer-links" aria-label="Enlaces del pie">
         <a href="index.html">Inicio</a>
         <a href="modules/index.html">Módulos</a>
-        <a href="neurofeedback.html">Neurofeedback</a>
+        <a href="neurofeedback.html">Curso de neurofeedback</a>
         <a href="ia.html">IA</a>
         <a href="instituciones.html">Instituciones</a>
         <a href="precio.html">Precio</a>
@@ -837,14 +858,5 @@
       </nav>
     </div>
   </footer>
-
-  <script src="js/download.js?v=20260803a"></script>
-  <script src="js/geo-pricing.js?v=20260804a"></script>
-  <script src="js/install-carousel.js?v=20260826h"></script>
-  <script src="js/gallery-hotspots.js?v=20260826h"></script>
-  <script src="js/demo-video.js?v=20260821c"></script>
-  <script src="js/track.js?v=20260821c"></script>
-  <script src="js/nav.js?v=20260803a"></script>
-  <script src="js/hero-camera.js?v=20260829n"></script>
 </body>
 </html>

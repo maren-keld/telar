@@ -30,10 +30,10 @@ TARGETS = [
     ("muse-headband-hero.png", [512, 1024]),
     # Miniatura del destacado: ya está a medida, solo cambia de formato.
     ("muse-headband-thumb.png", [224, 448]),
-    # Carrusel de la home: se muestra a ~1200 px CSS; 2400 es el 2x retina.
-    ("gallery-significado.png", [2400]),
-    ("gallery-puntajes.png", [2400]),
-    ("gallery-neurofeedback.png", [2400]),
+    # Home: LCP y galería. 800 = móvil 1x/2x chico; 1600 = desktop; 2400 = retina ancha.
+    ("gallery-significado.png", [800, 1600, 2400]),
+    ("gallery-puntajes.png", [800, 1600, 2400]),
+    ("gallery-neurofeedback.png", [800, 1600, 2400]),
     # Fotos del equipo: se muestran a 150 px, recortadas en cuadrado.
     ("team-felipe.png", [150, 300], True),
     ("team-debbie.png", [150, 300], True),
@@ -46,6 +46,9 @@ QUALITY_UI = 90
 
 def variants(name: str, widths: list[int], square: bool = False) -> None:
     source = ASSETS / name
+    if not source.exists():
+        print(f"skip {name} (no está)")
+        return
     original = Image.open(source)
     if square:
         side = min(original.size)

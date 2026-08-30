@@ -579,6 +579,8 @@
     let active = false;
     let last = 0;
     let sized = false;
+    let cssW = 0;
+    let cssH = 0;
 
     function sizeScene(dw, dh) {
       if (post === "ascii") {
@@ -592,18 +594,22 @@
       sized = true;
     }
 
-    function render(now, force) {
+    function readCssSize() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const rect = canvas.getBoundingClientRect();
-      const dw = Math.max(1, Math.round(rect.width * dpr));
-      const dh = Math.max(1, Math.round(rect.height * dpr));
+      cssW = Math.max(1, Math.round(canvas.clientWidth * dpr));
+      cssH = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    }
+
+    function render(now, force) {
+      if (!force && !active) return;
+      if (!cssW || !cssH) readCssSize();
+      const dw = cssW;
+      const dh = cssH;
       if (!sized || canvas.width !== dw || canvas.height !== dh) {
         canvas.width = dw;
         canvas.height = dh;
         sizeScene(dw, dh);
-        force = true;
       }
-      if (!force && !active) return;
       last = now;
       octx.clearRect(0, 0, off.width, off.height);
       draw(octx, off.width, off.height, now);
@@ -615,6 +621,12 @@
         ctx.drawImage(off, 0, 0, dw, dh);
       }
     }
+
+    const ro = new ResizeObserver(() => {
+      readCssSize();
+      sized = false;
+    });
+    ro.observe(canvas);
 
     return {
       canvas,
@@ -815,8 +827,9 @@
     if (intro) {
       scene.style.transition = "none";
       overview();
-      scene.offsetHeight;
-      scene.style.transition = "";
+      requestAnimationFrame(() => {
+        scene.style.transition = "";
+      });
       window.setTimeout(() => {
         if (intro) {
           intro = false;
@@ -827,8 +840,9 @@
     } else {
       scene.style.transition = "none";
       frameCard(index);
-      scene.offsetHeight;
-      scene.style.transition = "";
+      requestAnimationFrame(() => {
+        scene.style.transition = "";
+      });
       startAuto();
     }
 
