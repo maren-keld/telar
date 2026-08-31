@@ -14,6 +14,7 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
   'motivo_consulta',
   'redes_apoyo',
   'diagnostico',
+  'nota_sesion',
   'neurofeedback',
   'bilateral_stimulation',
   'tcc_abc',
@@ -57,6 +58,8 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
 const FALLBACK_DESCRIPTIONS = {
   redes_apoyo: 'Mapa de personas, tipo de vínculo y áreas de apoyo.',
   diagnostico: 'Problemas, indicadores y objetivos por tratamiento.',
+  nota_sesion:
+    'Registro libre de una sesión de seguimiento o acompañamiento. No sustituye escalas ni formulación.',
   registro_inicial: 'Datos demográficos y de contacto del paciente.',
   motivo_consulta: 'Anamnesis de la primera sesión: motivo acotado, expectativas y antecedentes.',
   neurofeedback: 'Sesión en vivo con Muse, FFT y análisis local.',
@@ -81,6 +84,7 @@ const FALLBACK_LABELS = {
   escala_fer: 'Escala FER',
   redes_apoyo: 'Redes de apoyo',
   diagnostico: 'Diagnósticos',
+  nota_sesion: 'Nota de sesión',
   registro_inicial: 'Registro inicial',
   motivo_consulta: 'Anamnesis',
 };
@@ -94,7 +98,7 @@ function legacyDefFor(type) {
       ? intro.split('.')[0] + (intro.includes('.') ? '.' : '')
       : FALLBACK_DESCRIPTIONS[type] || 'Módulo clínico.',
     oncePerTreatment: ONCE_PER_TREATMENT.has(type) || (Boolean(handout) && handout.oncePerTreatment !== false),
-    category: handout?.category,
+    category: handout?.category || (type === 'nota_sesion' ? 'conceptualizacion' : undefined),
   };
 }
 

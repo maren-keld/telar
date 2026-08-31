@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 import {
   AI_QUICK_PROMPTS,
   buildAiSystemPrompt,
+  formatReferenceDocsForPrompt,
   humanizeModuleRefs,
   isHomeworkHandout,
+  listProposableModules,
   markAiActionApplied,
+  markAiActionDismissed,
+  aiActionsHtml,
   markupModuleRefs,
   parseAiActions,
   planModuleInserts,
@@ -116,6 +120,37 @@ test('el prompt incluye los encabezados de ámbito y prohíbe ids inventados', (
   assert.match(prompt, /quedo atento/);
   assert.match(prompt, /como máximo UNA vez/);
   assert.match(prompt, /NUNCA incluyas datos del paciente/);
+  assert.match(prompt, /Bibliografía/);
+  assert.match(prompt, /No diagnosticas/);
+  assert.match(prompt, /Puedes rechazar la premisa/);
+  assert.match(prompt, /No adules/);
+  assert.match(prompt, /No simules alianza/);
+  assert.match(prompt, /nota_sesion es registro libre/);
+  assert.doesNotMatch(prompt, /MIC/);
+  assert.doesNotMatch(prompt, /Marcela/);
+  assert.doesNotMatch(prompt, /Brooks/);
+  assert.doesNotMatch(prompt, /DOCUMENTOS DE REFERENCIA/);
+});
+
+test('el prompt incluye documentos de referencia y pide citarlos por nombre', () => {
+  const prompt = buildAiSystemPrompt('CASO', {
+    referenceDocs: [
+      { name: 'guia-tdah.md', text: 'Protocolo de 12 sesiones para TDAH adulto.' },
+      { name: 'paper.pdf' },
+    ],
+  });
+  assert.match(prompt, /guia-tdah\.md/);
+  assert.match(prompt, /Protocolo de 12 sesiones/);
+  assert.match(prompt, /paper\.pdf/);
+  assert.match(prompt, /nombre exacto del archivo/);
+});
+
+test('formatReferenceDocsForPrompt recorta textos largos', () => {
+  const long = 'x'.repeat(4000);
+  const text = formatReferenceDocsForPrompt([{ name: 'notas.txt', text: long }]);
+  assert.match(text, /notas\.txt/);
+  assert.match(text, /\[…\]/);
+  assert.ok(!text.includes(long));
 });
 
 test('el editor admite ejercicios, escalas e indicaciones', () => {
@@ -206,7 +241,29 @@ test('una acción aplicada conserva la card y marca su estado', () => {
   assert.equal(text, 'Programa sugerido.');
   assert.equal(actions.length, 1);
   assert.equal(actions[0].applied, true);
+  assert.equal(actions[0].dismissed, false);
   assert.equal(markAiActionApplied(persisted, 0), persisted);
+  const html = aiActionsHtml(actions, 1);
+  assert.match(html, /data-ai-apply/);
+  assert.match(html, /data-ai-dismiss/);
+  assert.match(html, /is-chosen/);
+});
+
+test('una acción declinada conserva las dos opciones y marca Ahora no', () => {
+  const raw = [
+    'Programa sugerido.',
+    '```telar-plan',
+    '{"label":"Plan","sessions":[{"label":"S1","modules":["gad7"]}]}',
+    '```',
+  ].join('\n');
+  const persisted = markAiActionDismissed(raw, 0);
+  const { actions } = parseAiActions(persisted);
+  assert.equal(actions[0].dismissed, true);
+  assert.equal(actions[0].applied, false);
+  const html = aiActionsHtml(actions, 1);
+  assert.match(html, /data-ai-apply/);
+  assert.match(html, /Ahora no/);
+  assert.match(html, /ai-dialog--dismissed/);
 });
 
 test('planModuleInserts calcula un solo lote de filas por sesión', () => {
@@ -270,6 +327,22 @@ test('planModuleInserts no repite un handout TCC en otra sesión', () => {
   assert.ok(skipped >= 1);
 });
 
+test('el plan parseado deja registro_inicial solo en la sesión 1', () => {
+  const raw = [
+    '```telar-plan',
+    JSON.stringify({
+      sessions: [
+        { label: 'S1', modules: ['registro_inicial', 'gad7'] },
+        { label: 'S2', modules: ['registro_inicial', 'dass21'] },
+      ],
+    }),
+    '```',
+  ].join('\n');
+  const { actions } = parseAiActions(raw);
+  assert.deepEqual(actions[0].plan.sessions[0].modules, ['registro_inicial', 'gad7']);
+  assert.deepEqual(actions[0].plan.sessions[1].modules, ['dass21']);
+});
+
 test('el plan parseado deja el handout TCC solo en la primera sesión', () => {
   const raw = [
     '```telar-plan',
@@ -284,6 +357,26 @@ test('el plan parseado deja el handout TCC solo en la primera sesión', () => {
   const { actions } = parseAiActions(raw);
   assert.deepEqual(actions[0].plan.sessions[0].modules, ['tcc_abc', 'gad7']);
   assert.deepEqual(actions[0].plan.sessions[1].modules, ['dass21']);
+});
+
+test('nota_sesion es proposable y no es intake de una sola vez', () => {
+  const ids = listProposableModules().map((m) => m.id);
+  assert.ok(ids.includes('nota_sesion'));
+  assert.equal(isHomeworkHandout('nota_sesion'), false);
+  const raw = [
+    '```telar-plan',
+    JSON.stringify({
+      sessions: [
+        { label: 'S1', modules: ['registro_inicial'] },
+        { label: 'S2', modules: ['nota_sesion'] },
+        { label: 'S3', modules: ['nota_sesion'] },
+      ],
+    }),
+    '```',
+  ].join('\n');
+  const { actions } = parseAiActions(raw);
+  assert.deepEqual(actions[0].plan.sessions[1].modules, ['nota_sesion']);
+  assert.deepEqual(actions[0].plan.sessions[2].modules, ['nota_sesion']);
 });
 
 test('registros reiterables no cuentan como handout de una sola entrega', () => {

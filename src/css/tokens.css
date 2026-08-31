@@ -54,21 +54,21 @@
 html[data-theme="dark"] {
   --btn-primary-bg: #c8d4e8;
   --btn-primary-fg: #0c1220;
-  --bg-app: #0c1220;
-  --bg-sidebar: #121a2b;
-  --bg-card: #1a2438;
-  --bg-input: #1e2a42;
+  --bg-app: #0c0d10;
+  --bg-sidebar: #12141a;
+  --bg-card: #14151a;
+  --bg-input: #1a1c22;
   --text-primary: #e8eef8;
   --text-secondary: #9aa8c0;
   --text-muted: #6b7a94;
   --accent: #c8d4e8;
-  --accent-soft: #1a2438;
+  --accent-soft: #1a1c22;
   --accent-dark: #e8eef8;
-  --border: #2a3850;
+  --border: #2a2d36;
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.35);
   --overlay: rgba(3, 6, 14, 0.66);
   --shadow-modal: 0 28px 70px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
-  --border-elevated: #3a4a68;
+  --border-elevated: #3a3e48;
   --note-teal: #3d8a82;
   --note-yellow: #b89a3a;
   --note-lavender: #7a6aa8;

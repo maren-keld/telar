@@ -411,12 +411,10 @@
 .module-card-head {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
-  /* Espacio para hasta 3 iconos de acción (swap + print/help + delete) */
-  padding-right: 116px;
 }
 
 .module-card-head__sub {
@@ -428,8 +426,7 @@
 .module-card-head__badge {
   position: static;
   flex-shrink: 0;
-  margin: 10px 0 0;
-  margin-left: auto;
+  margin: 0;
 }
 
 .center-module-card__body > .card:not(.module-scroll),
@@ -442,21 +439,44 @@
   min-height: 0;
 }
 
+.botonera-modules,
 .module-card-actions {
-  position: absolute;
-  top: 34px;
-  right: 24px;
+  position: static;
+  top: auto;
+  right: auto;
   z-index: 2;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-/* Espacio para iconos de acción cuando el encabezado no usa .module-card-head */
-.center-module-card__body > .card > .module-title:first-child,
-.center-module-card__body > .card > .dx-head,
-.center-module-card__body > .nf-panel .nf-header {
-  padding-right: 116px;
+.botonera-modules .btn,
+.module-card-actions .btn {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.botonera-modules-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.botonera-modules-row .module-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.module-card-head > div:first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 

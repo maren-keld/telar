@@ -109,7 +109,7 @@ export function openReferenceDocumentsModal({ treatmentId }) {
         </header>
         <p class="ref-docs-modal__hint">
           Adjunta guías, protocolos o material de apoyo. Quedan en este dispositivo, asociados al tratamiento actual.
-          La IA todavía no los lee; eso llega en una versión siguiente. Los .txt y .md se guardan como texto; PDF e imágenes se listan por ahora.
+          Los .txt y .md se envían a la IA como texto y pueden citarse en la bibliografía; PDF e imágenes se listan por nombre.
         </p>
         <div class="ref-docs-dropzone" id="ref-docs-dropzone" tabindex="0">
           <p>Arrastra archivos aquí</p>

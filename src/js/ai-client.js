@@ -19,7 +19,7 @@ function extractAssistantText(response) {
  * Chat completion OpenAI-compatible vía Rust (sin restricciones CSP).
  * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object }} opts
  */
-export async function chatCompletion({ messages, maxTokens = 512, profile } = {}) {
+export async function chatCompletion({ messages, maxTokens = 512, profile, request } = {}) {
   const cfg = resolveAiConfig(profile ?? loadProfile());
   if (!cfg.enabled) {
     throw new Error('Asistente IA desactivado. Actívalo en Ajustes → Proveedor de IA.');
@@ -40,6 +40,7 @@ export async function chatCompletion({ messages, maxTokens = 512, profile } = {}
     await assertOllamaModelReady(cfg.apiModel);
   }
 
+  if (request?.aborted) throw new Error('cancelado');
   const response = await getInvoke()('ai_chat_completion', {
     apiBase: cfg.apiBase,
     apiKey: cfg.apiKey || '',
@@ -47,6 +48,7 @@ export async function chatCompletion({ messages, maxTokens = 512, profile } = {}
     messages,
     maxTokens,
   });
+  if (request?.aborted) throw new Error('cancelado');
 
   const text = extractAssistantText(response);
   return { response, text };

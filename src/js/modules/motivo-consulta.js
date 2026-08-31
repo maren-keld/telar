@@ -6,7 +6,29 @@ import { workspaceAutoSaveStatus } from '../save-status.js';
 import { ICON_WAND } from '../icons.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 
-const URGENCIA_HINT = {
+export const IA_ANAMNESIS_PROMPTS = [
+  { key: 'ia_pregunto', n: '01', q: '¿Qué preguntaste?' },
+  { key: 'ia_compartio', n: '02', q: '¿Qué compartiste?' },
+  { key: 'ia_respondio', n: '03', q: '¿Qué te respondió?' },
+  { key: 'ia_hizo', n: '04', q: '¿Qué hiciste con eso?' },
+  { key: 'ia_lugar', n: '05', q: '¿Qué lugar ocupa ahora?' },
+];
+
+export const IA_ANAMNESIS_PLACEHOLDER = IA_ANAMNESIS_PROMPTS.map((p) => p.q).join('\n');
+
+/** Un solo campo; si solo hay respuestas viejas por pregunta, las junta. */
+export function relacionIaDisplay(data = {}) {
+  const notes = String(data.relacion_ia || '').trim();
+  if (notes) return notes;
+  return IA_ANAMNESIS_PROMPTS.map((p) => {
+    const v = String(data[p.key] || '').trim();
+    return v ? `${p.q}\n${v}` : '';
+  })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+export const URGENCIA_HINT = {
   baja: 'Malestar que no limita de forma grave el funcionamiento; puede esperar a la siguiente sesión habitual.',
   media: 'Interferencia clara en el día a día o riesgo emocional relevante, sin emergencia inmediata.',
   alta: 'Riesgo de daño (ideas de muerte, descompensación, violencia) o necesidad de intervenir en esta sesión / derivar.',
@@ -14,7 +36,7 @@ const URGENCIA_HINT = {
 
 function reorderButtonHtml() {
   return `
-    <button type="button" class="btn btn-secondary btn-sm btn-ai-reorder" data-reorder-anamnesis>
+    <button type="button" class="btn btn-secondary btn-sm btn-ai-reorder" data-reorder-anamnesis data-botonera-extra>
       <span class="btn-ai-reorder__label">
         ${ICON_WAND}
         <span class="btn-ai-reorder__text">Reorganizar con IA</span>
@@ -122,6 +144,15 @@ export async function renderMotivoConsulta(host, moduleRow) {
           <input type="text" name="consumo" id="motivo-consumo" placeholder="Alcohol, cannabis, estimulantes…" value="${escapeHtml(data.consumo || '')}" />
         </div>
         <div class="form-group" style="margin-bottom:16px">
+          <label for="motivo-salud-fisica">Salud física / factores orgánicos</label>
+          <textarea name="salud_fisica" id="motivo-salud-fisica" rows="3" placeholder="tiroides, anemia, vitamina D, B12, sueño, dolor, últimos exámenes; si está en control médico.">${escapeHtml(data.salud_fisica || '')}</textarea>
+        </div>
+        <div class="form-group anamnesis-ia" style="margin-bottom:16px">
+          <label for="motivo-relacion-ia">Relación con la IA</label>
+          <p class="form-hint">Cómo se lleva con chatbots (ChatGPT y similares). Recorre las cinco preguntas.</p>
+          <textarea name="relacion_ia" id="motivo-relacion-ia" rows="8" placeholder="${escapeHtml(IA_ANAMNESIS_PLACEHOLDER)}">${escapeHtml(relacionIaDisplay(data))}</textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
           <label for="motivo-urgencia">Urgencia / prioridad</label>
           <select name="urgencia" id="motivo-urgencia">
             <option value="baja" ${urgencia === 'baja' ? 'selected' : ''}>Baja</option>
@@ -145,6 +176,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
   const persist = async () => {
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
+    for (const p of IA_ANAMNESIS_PROMPTS) payload[p.key] = '';
     await syncModuleReadableText(moduleRow, payload, 'completado');
   };
 

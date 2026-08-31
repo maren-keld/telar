@@ -50,9 +50,10 @@ test('las categorías agrupan por función en la hora, no por escuela', async ()
 
   assert.equal(CATEGORY_LABELS.conceptualizacion, 'Conceptualización');
   assert.equal(CATEGORY_LABELS.tcc, 'Habilidades y tareas');
-  assert.equal(CATEGORY_LABELS.significado, 'Significado');
+  assert.equal(CATEGORY_LABELS.significado, 'Narrativa');
   assert.equal(CATEGORY_LABELS.intervencion, 'Intervención en sesión');
   assert.ok(byId.conceptualizacion.types.includes('tcc_plan_seguridad'));
+  assert.ok(byId.conceptualizacion.types.includes('nota_sesion'));
   assert.ok(byId.significado.types.includes('tcc_autoconceptos'));
   assert.ok(byId.significado.types.includes('sig_felt_sense'));
   assert.ok(byId.tcc.types.includes('tcc_exposicion'));
@@ -91,6 +92,15 @@ test('al seleccionar Diagnósticos o Redes de apoyo el preview muestra descripci
   assert.match(redesPreview, /Mapa de personas/);
   assert.match(dxPreview, /Problemas, indicadores/);
   assert.doesNotMatch(redesPreview, /mod-selector-item__desc/);
+});
+
+test('Nota de sesión está disponible y en conceptualización', async () => {
+  const { getModuleDef } = await import('../../src/js/config.js');
+  const def = getModuleDef('nota_sesion');
+  assert.ok(def);
+  assert.equal(def.label, 'Nota de sesión');
+  assert.equal(def.oncePerTreatment, false);
+  assert.equal(isModuleTypeAvailable('nota_sesion'), true);
 });
 
 test('el preview del selector puede ocultar el botón de acción', async () => {

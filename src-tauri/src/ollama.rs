@@ -81,8 +81,7 @@ fn model_installed(name: &str, models: &[String]) -> bool {
 #[cfg(target_os = "macos")]
 fn try_start_ollama() -> Result<(), String> {
     if Command::new("open")
-        .arg("-a")
-        .arg("Ollama")
+        .args(["-g", "-a", "Ollama"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
@@ -224,6 +223,20 @@ fn pull_model_blocking(app: &AppHandle, model: &str) -> Result<(), String> {
             }
         ))
     }
+}
+
+/// Arranca Ollama.app / `ollama serve` si el puerto 11434 no responde.
+#[tauri::command]
+pub async fn ollama_ensure_running() -> Result<OllamaStatus, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        ensure_ollama_running()?;
+        Ok(OllamaStatus {
+            running: true,
+            models: list_models(),
+        })
+    })
+    .await
+    .map_err(|e| format!("Error interno al arrancar Ollama: {e}"))?
 }
 
 /// Async para no bloquear el hilo principal: hace I/O de red.

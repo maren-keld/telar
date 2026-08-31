@@ -34,6 +34,14 @@ export const CORE_MODULE_DEFS = {
     category: 'conceptualizacion',
     description: 'Problemas, indicadores y objetivos por tratamiento.',
   },
+  nota_sesion: {
+    label: 'Nota de sesión',
+    category: 'conceptualizacion',
+    description:
+      'Registro libre de una sesión de seguimiento o acompañamiento. No sustituye escalas ni formulación.',
+    oncePerTreatment: false,
+    allowMultipleInSession: false,
+  },
   neurofeedback: {
     label: 'Neurofeedback',
     category: 'intervencion',
@@ -107,6 +115,20 @@ export const NOTE_COLORS = [
   { id: 'pink', label: 'Rosa', short: 'Ro', class: 'note--pink' },
   { id: 'blue', label: 'Azul', short: 'Az', class: 'note--blue' },
 ];
+
+export const PATIENT_GENDER_OPTIONS = [
+  { id: 'femenino', label: 'Femenino' },
+  { id: 'masculino', label: 'Masculino' },
+  { id: 'no_binario', label: 'No binario' },
+  { id: 'otro', label: 'Otro' },
+  { id: 'no_identifica', label: 'No se identifica con ninguno' },
+  { id: 'no_dice', label: 'Prefiere no decir' },
+];
+
+export function patientGenderLabel(id) {
+  if (!id) return '';
+  return PATIENT_GENDER_OPTIONS.find((o) => o.id === id)?.label || String(id);
+}
 
 export const MARITAL_OPTIONS = [
   'Soltero/a',

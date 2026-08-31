@@ -15,6 +15,7 @@ import { escapeHtml, practitionerInitials, toast } from '../utils.js';
 import { bindSlidingTabs, revealStreaming } from '../transitions.js';
 import { resolveAiConfig } from '../ai-config.js';
 import { chatCompletion } from '../ai-client.js';
+import { openAiSettingsModal } from './open-ai-settings-modal.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
 import {
@@ -23,10 +24,13 @@ import {
   applyAiModule,
   applyAiPlan,
   buildAiSystemPrompt,
+  formatReferenceDocsForPrompt,
   markAiActionApplied,
+  markAiActionDismissed,
   markupModuleRefs,
   parseAiActions,
 } from '../ai-actions.js';
+import { listReferenceDocuments } from './reference-documents-modal.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
 import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
@@ -156,6 +160,9 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           </p>
           <button type="button" class="ai-dock__send" id="ai-dock-send" title="Enviar" aria-label="Enviar">
             <span class="ai-dock__arrow-wrap">${AI_SEND_ARROW}</span>
+            <span class="ai-dock__stop-wrap" hidden aria-hidden="true">
+              <span class="ai-dock__stop"></span>
+            </span>
             <span class="ai-dock__orb" hidden></span>
           </button>
         </div>
@@ -269,20 +276,48 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   const aiHint = container.querySelector('#ai-dock-hint');
   const aiThinking = container.querySelector('#ai-dock-thinking');
   const aiThinkingLabel = container.querySelector('#ai-dock-thinking-label');
-  const aiCfg = resolveAiConfig(profile);
-
   const aiChips = container.querySelector('#ai-dock-chips');
 
-  if (!aiCfg.enabled) {
-    aiInput.disabled = true;
-    aiSend.disabled = true;
-    if (aiChips) aiChips.hidden = true;
-    aiHint.textContent = 'Activa el asistente IA en Ajustes → Proveedor de IA.';
+  const syncDockHint = () => {
+    const enabled = resolveAiConfig(loadProfile()).enabled;
+    if (!aiHint) return;
+    if (enabled) {
+      aiHint.hidden = true;
+      aiHint.textContent = '';
+      return;
+    }
     aiHint.hidden = false;
-  } else {
-    // Auto-grow textarea hacia arriba (la notas list encoge con 1fr).
-    // Con box-sizing: border-box, scrollHeight no incluye bordes: sin compensarlos
-    // la caja queda corta y el texto salta en cada tecla.
+    aiHint.textContent =
+      'La IA está apagada. Al preguntar se abre la configuración; recomendamos IA local privada.';
+  };
+
+  const ensureAiReady = () =>
+    new Promise((resolve) => {
+      if (resolveAiConfig(loadProfile()).enabled) {
+        resolve(true);
+        return;
+      }
+      openAiSettingsModal({
+        source: 'dock',
+        onSaved: () => {
+          syncDockHint();
+          resolve(resolveAiConfig(loadProfile()).enabled);
+        },
+        onCancel: () => resolve(false),
+      });
+    });
+
+  syncDockHint();
+  const onAiConfigChanged = () => {
+    if (!aiHint?.isConnected) {
+      document.removeEventListener('telar:ai-config-changed', onAiConfigChanged);
+      return;
+    }
+    syncDockHint();
+  };
+  document.addEventListener('telar:ai-config-changed', onAiConfigChanged);
+
+  {
     const AI_INPUT_MAX_H = 120;
     const autoGrow = () => {
       aiInput.style.height = 'auto';
@@ -314,15 +349,28 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       return seconds === 1 ? `Pensando por 1 segundo${dots}` : `Pensando por ${seconds} segundos${dots}`;
     };
 
+    const setSendMode = (mode) => {
+      const arrow = aiSend.querySelector('.ai-dock__arrow-wrap');
+      const stop = aiSend.querySelector('.ai-dock__stop-wrap');
+      if (arrow) arrow.hidden = mode === 'stop';
+      if (stop) stop.hidden = mode !== 'stop';
+      aiSend.classList.toggle('ai-dock__send--stop', mode === 'stop');
+      const label = mode === 'stop' ? 'Detener' : 'Enviar';
+      aiSend.title = label;
+      aiSend.setAttribute('aria-label', label);
+      aiSend.disabled = mode === 'send' && aiInput.value.trim() === '';
+    };
+
     const setThinking = (on) => {
       if (aiThinking) aiThinking.hidden = !on;
       aiInput.hidden = on;
-      aiSend.hidden = on;
+      setSendMode(on ? 'stop' : 'send');
       if (aiChips) aiChips.classList.toggle('ai-dock__chips--busy', on);
     };
 
     let thinkingTimer = null;
     let stopThinkOrb = () => {};
+    let aiRequest = null;
     const startThinking = () => {
       const started = Date.now();
       let tick = 0;
@@ -353,25 +401,51 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       setThinking(false);
     };
 
+    const abortAiQuestion = () => {
+      if (!aiRequest || aiSend.dataset.busy !== '1') return;
+      aiRequest.aborted = true;
+      toast('Consulta detenida');
+    };
+
     const sendAiQuestion = async () => {
       const q = aiInput.value.trim();
       if (!q || aiSend.dataset.busy === '1') return;
+      const ready = await ensureAiReady();
+      if (!ready) {
+        toast('Activa la IA local (recomendado) o una API para consultar el caso.');
+        return;
+      }
       resetInput();
       aiSend.dataset.busy = '1';
+      const request = { aborted: false };
+      aiRequest = request;
       startThinking();
       try {
         const context = await buildCaseContextText(treatmentId);
+        if (request.aborted) throw new Error('cancelado');
+        const referenceDocs = listReferenceDocuments(treatmentId);
+        const docsPrompt = formatReferenceDocsForPrompt(referenceDocs);
         await confirmClinicalAiSend({
-          contextText: context,
+          contextText: [context, docsPrompt].filter(Boolean).join('\n\n'),
           purpose: `Consulta IA: «${q.slice(0, 80)}${q.length > 80 ? '…' : ''}»`,
         });
+        if (request.aborted) throw new Error('cancelado');
+        const local = resolveAiConfig(loadProfile()).mode === 'local';
         const { text } = await chatCompletion({
           messages: [
-            { role: 'system', content: buildAiSystemPrompt(context, { practitioner: loadProfile() }) },
+            {
+              role: 'system',
+              content: buildAiSystemPrompt(context, {
+                practitioner: loadProfile(),
+                referenceDocs,
+              }),
+            },
             { role: 'user', content: q },
           ],
-          maxTokens: 2000,
+          maxTokens: local ? 4096 : 2600,
+          request,
         });
+        if (request.aborted) throw new Error('cancelado');
         if (!text.trim()) {
           throw new Error(
             'La IA devolvió una respuesta vacía. Con modelos locales pequeños suele ayudar reformular la pregunta o usar un modelo mayor.',
@@ -401,17 +475,25 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         });
         await refreshList({ scrollBottom: true });
       } finally {
+        if (aiRequest === request) aiRequest = null;
         stopThinking();
         delete aiSend.dataset.busy;
         syncSendState();
       }
     };
 
-    aiSend.addEventListener('click', sendAiQuestion);
+    aiSend.addEventListener('click', () => {
+      if (aiSend.dataset.busy === '1') {
+        abortAiQuestion();
+        return;
+      }
+      void sendAiQuestion();
+    });
     aiInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendAiQuestion();
+        if (aiSend.dataset.busy === '1') abortAiQuestion();
+        else sendAiQuestion();
       }
     });
 
@@ -757,6 +839,7 @@ function renderMarkdown(text) {
     // y qué queda para la sesión presencial o material impreso.
     .replace(/^En Telar:/gm, '<span class="ai-scope ai-scope--in">En Telar</span>')
     .replace(/^Fuera de Telar:/gm, '<span class="ai-scope ai-scope--out">Fuera de Telar</span>')
+    .replace(/^Bibliograf[ií]a\s*$/gim, '<span class="ai-biblio-head">Bibliografía</span>')
     .replace(/^[-•]\s+/gm, '· ')
     .replace(/\n/g, '<br>');
   return markupModuleRefs(html);
@@ -881,13 +964,6 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
         }
       };
 
-      const consumeAction = async () => {
-        // Quitar el bloque del contenido: la acción ya se resolvió y no debe
-        // volver a ofrecerse al recargar el workspace.
-        const f = readFields();
-        await updateClinicalNote(id, { ...f, content: parseAiActions(rawContent()).text });
-      };
-
       const persistApplied = async (actionIndex) => {
         const f = readFields();
         await updateClinicalNote(id, {
@@ -896,8 +972,18 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
         });
       };
 
+      const persistDismissed = async (actionIndex) => {
+        const f = readFields();
+        await updateClinicalNote(id, {
+          ...f,
+          content: markAiActionDismissed(rawContent(), actionIndex),
+        });
+      };
+
       dismissBtn?.addEventListener('click', async () => {
-        await consumeAction();
+        if (dismissBtn.disabled) return;
+        const idx = Number(actionEl.dataset.actionIndex || 0);
+        await persistDismissed(idx);
         await rerender();
       });
 

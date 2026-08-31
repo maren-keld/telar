@@ -1,4 +1,4 @@
-import { getModuleDef } from './config.js';
+import { getModuleDef, patientGenderLabel } from './config.js';
 import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
 import { formatTccHandoutReadable, tccHandoutDef } from './tcc-handout-defs.js';
 import { saveModuleData } from './db.js';
@@ -9,6 +9,25 @@ import { iesrSummary } from './iesr-scoring.js';
 import { adesSummary } from './ades-scoring.js';
 import { getScorer } from './pack-registry.js';
 import { parseJsonSafe } from './utils.js';
+
+const IA_ANAMNESIS_LEGACY = [
+  ['ia_pregunto', '¿Qué preguntaste?'],
+  ['ia_compartio', '¿Qué compartiste?'],
+  ['ia_respondio', '¿Qué te respondió?'],
+  ['ia_hizo', '¿Qué hiciste con eso?'],
+  ['ia_lugar', '¿Qué lugar ocupa ahora?'],
+];
+
+export function relacionIaReadable(d = {}) {
+  const notes = String(d.relacion_ia || '').trim();
+  if (notes) return notes;
+  return IA_ANAMNESIS_LEGACY.map(([key, q]) => {
+    const v = String(d[key] || '').trim();
+    return v ? `${q} ${v}` : '';
+  })
+    .filter(Boolean)
+    .join('\n');
+}
 
 function linesFromObject(obj, labels) {
   return labels
@@ -276,7 +295,7 @@ export function buildReadableText(moduleType, data) {
   const d = data || {};
   switch (moduleType) {
     case 'registro_inicial':
-      return linesFromObject(d, [
+      return linesFromObject({ ...d, genero: patientGenderLabel(d.genero) || d.genero }, [
         { key: 'nombre', label: 'Nombre' },
         { key: 'genero', label: 'Género' },
         { key: 'id_number', label: 'ID' },
@@ -289,7 +308,8 @@ export function buildReadableText(moduleType, data) {
         { key: 'source', label: 'Fuente' },
         { key: 'ocupaciones', label: 'Ocupaciones' },
       ]);
-    case 'motivo_consulta':
+    case 'motivo_consulta': {
+      const relacionIa = relacionIaReadable(d);
       return [
         d.motivo ? `Motivo: ${d.motivo}` : null,
         d.expectativas ? `Expectativas: ${d.expectativas}` : null,
@@ -298,10 +318,13 @@ export function buildReadableText(moduleType, data) {
         d.medicacion ? `Medicación: ${d.medicacion}` : null,
         d.psiquiatra ? `Psiquiatra / médico tratante: ${d.psiquiatra}` : null,
         d.consumo ? `Consumo: ${d.consumo}` : null,
+        d.salud_fisica ? `Salud física / factores orgánicos: ${d.salud_fisica}` : null,
+        relacionIa ? `Relación con la IA: ${relacionIa}` : null,
         d.urgencia ? `Urgencia: ${d.urgencia}` : null,
       ]
         .filter(Boolean)
         .join('\n');
+    }
     case 'redes_apoyo': {
       const people = (d.people || []).filter((p) => p.name);
       if (!people.length) return '';
@@ -313,6 +336,8 @@ export function buildReadableText(moduleType, data) {
         })
         .join('\n');
     }
+    case 'nota_sesion':
+      return String(d.nota || '').trim();
     case 'diagnostico':
       return formatDiagnostico(d);
     case 'bilateral_stimulation':

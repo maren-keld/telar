@@ -265,7 +265,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_externalizacion: {
     title: 'Externalización del problema',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'El problema se nombra como algo que actúa sobre la persona, no como lo que la persona “es”. Preguntas narrativas (White): qué hace el problema y qué posición toma usted.',
@@ -313,7 +313,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_resultados_unicos: {
     title: 'Resultados únicos',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'Momentos en que el problema no estuvo, o estuvo menos. No son “excepciones irrelevantes”: son evidencia de otra historia posible.',
@@ -351,7 +351,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_linea_vida: {
     title: 'Línea de vida / identidad preferida',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'Mapa de hitos, no una biografía completa. Distingue la historia que más se cuenta de la historia que quiere habitar.',
@@ -397,7 +397,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_carta_problema: {
     title: 'Carta al problema',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'Escribirle al problema (o a una parte, o a un yo anterior) para tomar posición. No es un ensayo: es una carta, con destinatario y tono propio.',
@@ -436,7 +436,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_condiciones_valia: {
     title: 'Condiciones de valía',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'Enfoque humanista (Rogers): cuándo aprendí que valía solo si cumplía ciertas condiciones, y cómo me trato hoy cuando no las cumplo.',
@@ -476,7 +476,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_felt_sense: {
     title: 'Felt sense',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     oncePerTreatment: false,
     intro:
@@ -535,7 +535,7 @@ export const EXTRA_HANDOUT_DEFS = {
 
   sig_pregunta_milagro: {
     title: 'Pregunta milagro y excepciones',
-    subtitle: 'Material de significado Telar — elaboración propia',
+    subtitle: 'Narrativa — elaboración propia Telar',
     category: 'significado',
     intro:
       'Enfoque centrado en soluciones (de Shazer): si el problema no estuviera, ¿qué sería distinto? Luego se buscan excepciones que ya ocurrieron.',

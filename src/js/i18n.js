@@ -33,6 +33,8 @@ const STRINGS = {
     'settings.touchIdOn': 'Activo en este Mac (desbloquea con huella tras configurar PIN)',
     'settings.touchIdOff': 'Usar huella en lugar del PIN cuando esté configurado',
     'settings.touchIdLinux': 'No disponible para Linux todavía',
+    'settings.fileVaultHint':
+      'Cifra el disco del computador (FileVault en Mac, BitLocker en Windows). Si se pierde o se roba, nadie puede leer la ficha, Touch ID ni los respaldos en el disco.',
     'settings.privacyTitle': 'Privacidad y datos',
     'settings.privacyHint': 'Tus datos están solo en este dispositivo. Puedes exportarlos o borrarlos por completo.',
     'settings.encrypted': 'Cifrado en este dispositivo',
@@ -85,7 +87,7 @@ const STRINGS = {
       'La copia se escribe en tu disco, no en servidores de Telar. Si eliges una carpeta de Google Drive, Dropbox, OneDrive o iCloud, tu propia nube la sincroniza y así el respaldo sobrevive a un computador perdido o robado. Si eliges cualquier otra carpeta, las copias no salen de este equipo.',
     'settings.cloudBackupInfoPrivacyTitle': 'Nadie más puede leerlo.',
     'settings.cloudBackupInfoPrivacy':
-      'La copia se cifra con age antes de salir de Telar. En la carpeta —y en tu nube, si la sincronizas— solo queda ese archivo .age indescifrable. Ni Telar, ni Google, ni Dropbox pueden abrirlo.',
+      'La copia se cifra con age antes de salir de Telar. En la carpeta —y en tu nube, si la sincronizas— solo queda ese archivo .age indescifrable. Ni Telar, ni Google, ni Dropbox pueden abrirlo. Cifra también el disco del computador (FileVault en Mac, BitLocker en Windows): así la clave que Telar guarda en el equipo no queda a la vista.',
     'settings.cloudBackupInfoKeyTitle': 'Tu clave de recuperación.',
     'settings.cloudBackupInfoKey':
       'Al activarlo te entregamos una clave única. Es la única forma de abrir tus respaldos. Guárdala fuera del computador — impresa, o en tu gestor de contraseñas.',
@@ -255,6 +257,8 @@ const STRINGS = {
     'settings.touchIdOn': 'Active on this Mac (unlock with fingerprint after PIN setup)',
     'settings.touchIdOff': 'Use fingerprint instead of PIN when configured',
     'settings.touchIdLinux': 'Not available on Linux yet',
+    'settings.fileVaultHint':
+      'Encrypt the computer disk (FileVault on Mac, BitLocker on Windows). If it is lost or stolen, nobody can read the clinical file, Touch ID key, or on-disk backups.',
     'settings.privacyTitle': 'Privacy & data',
     'settings.privacyHint': 'Your data stays on this device only. You can export or delete it entirely.',
     'settings.encrypted': 'Encrypted on this device',
@@ -307,7 +311,7 @@ const STRINGS = {
       'The copy is written to your disk, not to Telar servers. If you pick a folder inside Google Drive, Dropbox, OneDrive, or iCloud, your own cloud syncs it, so the backup survives a lost or stolen computer. Pick any other folder and the copies never leave this machine.',
     'settings.cloudBackupInfoPrivacyTitle': 'Nobody else can read it.',
     'settings.cloudBackupInfoPrivacy':
-      'The copy is encrypted with age before it leaves Telar. The folder — and your cloud, if you sync it — only holds that unreadable .age file. Not Telar, not Google, not Dropbox can open it.',
+      'The copy is encrypted with age before it leaves Telar. The folder — and your cloud, if you sync it — only holds that unreadable .age file. Not Telar, not Google, not Dropbox can open it. Also encrypt the computer disk (FileVault on Mac, BitLocker on Windows) so the key Telar stores on the machine is not sitting in the clear.',
     'settings.cloudBackupInfoKeyTitle': 'Your recovery key.',
     'settings.cloudBackupInfoKey':
       'When you enable it, we give you a unique key. It is the only way to open your backups. Store it off this computer — printed or in a password manager.',

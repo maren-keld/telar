@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use serde::Deserialize;
@@ -76,32 +76,64 @@ async fn install_app_update(_app: tauri::AppHandle) -> Result<(), String> {
     Err("Actualizaciones no disponibles en esta plataforma".into())
 }
 
+fn validate_external_url(raw: &str) -> Result<String, String> {
+    let url = raw.trim();
+    if url.is_empty() || url.chars().any(|c| c.is_control()) {
+        return Err("Enlace inválido".into());
+    }
+    let scheme = url.split(':').next().unwrap_or("").to_ascii_lowercase();
+    match scheme.as_str() {
+        "https" | "http" | "mailto" => Ok(url.to_string()),
+        _ => Err("Solo se pueden abrir enlaces http, https o mailto".into()),
+    }
+}
+
+/// Ruta relativa segura: sin `..`, sin absoluta. `max_components` = 1 archivo, 2 = carpeta/archivo.
+fn safe_relative_path(name: &str, max_components: usize) -> Result<PathBuf, String> {
+    let name = name.trim();
+    if name.is_empty() || name.contains('\0') {
+        return Err("Nombre de archivo inválido".into());
+    }
+    let path = Path::new(name);
+    if path.is_absolute() {
+        return Err("Nombre de archivo inválido".into());
+    }
+    let mut out = PathBuf::new();
+    let mut count = 0usize;
+    for comp in path.components() {
+        match comp {
+            Component::Normal(s) => {
+                let s = s.to_string_lossy();
+                if s == "." || s == ".." || s.is_empty() {
+                    return Err("Nombre de archivo inválido".into());
+                }
+                count += 1;
+                if count > max_components {
+                    return Err("Nombre de archivo inválido".into());
+                }
+                out.push(s.as_ref());
+            }
+            Component::CurDir
+            | Component::ParentDir
+            | Component::Prefix(_)
+            | Component::RootDir => {
+                return Err("Nombre de archivo inválido".into());
+            }
+        }
+    }
+    if out.as_os_str().is_empty() {
+        return Err("Nombre de archivo inválido".into());
+    }
+    Ok(out)
+}
+
 #[tauri::command]
-fn open_external_url(url: String) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| format!("No se pudo abrir el enlace: {e}"))?;
-        return Ok(());
-    }
-    #[cfg(target_os = "windows")]
-    {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
-            .spawn()
-            .map_err(|e| format!("No se pudo abrir el enlace: {e}"))?;
-        return Ok(());
-    }
-    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&url)
-            .spawn()
-            .map_err(|e| format!("No se pudo abrir el enlace: {e}"))?;
-        Ok(())
-    }
+fn open_external_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let url = validate_external_url(&url)?;
+    app.shell()
+        .open(url, None)
+        .map_err(|e| format!("No se pudo abrir el enlace: {e}"))?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -124,7 +156,7 @@ async fn open_pdf_export(
     };
     std::fs::create_dir_all(&exports)
         .map_err(|e| format!("No se pudo crear carpeta de exportaciones: {e}"))?;
-    let path = exports.join(&filename);
+    let path = exports.join(safe_relative_path(&filename, 1)?);
     std::fs::write(&path, &data).map_err(|e| format!("No se pudo guardar el PDF: {e}"))?;
     app.shell()
         .open(path.to_string_lossy().to_string(), None)
@@ -151,11 +183,11 @@ async fn save_data_export(
     let exports = dir
         .join("Telar")
         .join("exportaciones")
-        .join(&folder_name);
+        .join(safe_relative_path(&folder_name, 1)?);
     std::fs::create_dir_all(&exports)
         .map_err(|e| format!("No se pudo crear carpeta de exportación: {e}"))?;
     for file in files {
-        let path = exports.join(&file.name);
+        let path = exports.join(safe_relative_path(&file.name, 2)?);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("No se pudo crear subcarpeta: {e}"))?;
@@ -183,7 +215,7 @@ async fn save_calendar_export(
     let calendar_dir = dir.join("Telar").join("calendario");
     std::fs::create_dir_all(&calendar_dir)
         .map_err(|e| format!("No se pudo crear carpeta de calendario: {e}"))?;
-    let path = calendar_dir.join(&filename);
+    let path = calendar_dir.join(safe_relative_path(&filename, 1)?);
     std::fs::write(&path, content.as_bytes())
         .map_err(|e| format!("No se pudo guardar calendario: {e}"))?;
     if reveal {
@@ -448,6 +480,7 @@ pub fn run() {
             cloud_backup_folder_status_cmd,
             ai_api::ai_chat_completion,
             ollama::ollama_status,
+            ollama::ollama_ensure_running,
             ollama::ollama_pull_model,
             subscription_api::subscription_checkout,
             subscription_api::subscription_health,
@@ -475,4 +508,55 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error al iniciar Telar");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{safe_relative_path, validate_external_url};
+    use crate::subscription_api::validated_api_base;
+
+    #[test]
+    fn external_url_allows_http_https_mailto() {
+        assert!(validate_external_url("https://ollama.com/download").is_ok());
+        assert!(validate_external_url("https://www.mercadopago.cl/checkout?pref=1&x=2").is_ok());
+        assert!(validate_external_url("http://127.0.0.1:5001/ok").is_ok());
+        assert!(validate_external_url("mailto:soporte@telarapp.cl?subject=Hola").is_ok());
+    }
+
+    #[test]
+    fn external_url_rejects_dangerous_schemes() {
+        assert!(validate_external_url("javascript:alert(1)").is_err());
+        assert!(validate_external_url("file:///etc/passwd").is_err());
+        assert!(validate_external_url("data:text/html,hi").is_err());
+        assert!(validate_external_url("https://evil.com\nfile:///tmp").is_err());
+        assert!(validate_external_url("").is_err());
+    }
+
+    #[test]
+    fn export_paths_allow_nested_nf_folder() {
+        let p = safe_relative_path("neurofeedback_raw/grabacion-12.txt", 2).unwrap();
+        assert_eq!(p, std::path::Path::new("neurofeedback_raw/grabacion-12.txt"));
+        assert!(safe_relative_path("programa-tratamiento-María.pdf", 1).is_ok());
+        assert!(safe_relative_path("datos-2026-08-28-1814", 1).is_ok());
+    }
+
+    #[test]
+    fn export_paths_reject_traversal() {
+        assert!(safe_relative_path("../secret.pdf", 1).is_err());
+        assert!(safe_relative_path("a/../../etc/passwd", 2).is_err());
+        assert!(safe_relative_path("/etc/passwd", 1).is_err());
+        assert!(safe_relative_path("a/b/c.txt", 2).is_err());
+        assert!(safe_relative_path("..", 1).is_err());
+        assert!(safe_relative_path("", 1).is_err());
+    }
+
+    #[test]
+    fn usage_api_base_allowlist() {
+        assert!(validated_api_base("https://telar-api-aim8.onrender.com").is_ok());
+        assert!(validated_api_base("https://telar-api-aim8.onrender.com/").is_ok());
+        assert!(validated_api_base("http://127.0.0.1:5001").is_ok());
+        assert!(validated_api_base("http://localhost:5001").is_ok());
+        assert!(validated_api_base("https://evil.example").is_err());
+        assert!(validated_api_base("http://169.254.169.254").is_err());
+    }
 }

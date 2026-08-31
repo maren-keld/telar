@@ -25,6 +25,7 @@ import { escapeHtml } from './utils.js';
 const ACTION_BLOCK_RE =
   /```[ \t]*(?:json[ \t]+)?telar-(plan|module)[ \t]*\r?\n?([\s\S]*?)(?:```|$)/gi;
 const APPLIED_MARKER_RE = /<!--\s*telar-action-applied:(\d+)\s*-->/gi;
+const DISMISSED_MARKER_RE = /<!--\s*telar-action-dismissed:(\d+)\s*-->/gi;
 
 /** Módulos que la IA no debe proponer (placeholders o de uso interno). */
 const NON_PROPOSABLE = new Set(['selector_modulo']);
@@ -52,7 +53,27 @@ export function buildModuleCatalogText() {
     .join('\n');
 }
 
-export function buildAiSystemPrompt(context, { practitioner } = {}) {
+const REF_DOC_EXCERPT = 3500;
+
+/** Texto para el prompt: nombres de archivos y extractos si hay texto. */
+export function formatReferenceDocsForPrompt(docs) {
+  if (!Array.isArray(docs) || !docs.length) return '';
+  const blocks = docs.map((d) => {
+    const name = String(d?.name || 'documento').trim() || 'documento';
+    const text = String(d?.text || '').trim();
+    if (text) {
+      const excerpt = text.length > REF_DOC_EXCERPT ? `${text.slice(0, REF_DOC_EXCERPT)}\n[…]` : text;
+      return `### ${name}\n${excerpt}`;
+    }
+    return `### ${name}\n(Archivo adjunto sin texto extraíble. Cítalo por este nombre si el clínico lo menciona.)`;
+  });
+  return `DOCUMENTOS DE REFERENCIA DEL TRATAMIENTO
+El clínico adjuntó estos archivos. Úsalos si aportan al caso. Si los citas, ponlos en Bibliografía con el nombre exacto del archivo.
+
+${blocks.join('\n\n')}`;
+}
+
+export function buildAiSystemPrompt(context, { practitioner, referenceDocs } = {}) {
   const name = String(practitioner?.name || '').trim();
   const gender = practitioner?.grammaticalGender;
   const genderLine =
@@ -64,8 +85,17 @@ export function buildAiSystemPrompt(context, { practitioner } = {}) {
   const signLine = name
     ? `El profesional se llama ${name}. En emails y textos al paciente fírmalos con ese nombre. Nunca uses placeholders como [Tu nombre], «Tu nombre» ni iniciales inventadas.`
     : 'Si no conoces el nombre del profesional, firma solo con «Psicoterapeuta» — nunca con [Tu nombre].';
+  const docsBlock = formatReferenceDocsForPrompt(referenceDocs);
 
   return `Eres un asistente clínico de apoyo al psicoterapeuta. Responde de forma concisa y fundamentada, en español de Chile.
+
+POSICIÓN
+- Apoyas al psicoterapeuta. No diagnosticas, no prescribes, no sustituyes el juicio clínico.
+- Puedes rechazar la premisa si hay fallo lógico, dato inventado o pedido que exceda la ficha.
+- No adules ni confirmes por cortesía. Si la hipótesis es débil, dilo.
+- No simules alianza, empatía terapéutica ni “estar con” el profesional o el paciente.
+- Distingue hecho de la ficha, inferencia y especulación. Lo no verificable, no lo afirmes.
+- Prefiere una pregunta precisa a un plan largo cuando falte información.
 
 IDENTIDAD DEL PROFESIONAL
 ${signLine}
@@ -78,13 +108,22 @@ FORMATO
   "Fuera de Telar:" para lo que ocurre en sesión presencial, material impreso, derivaciones o coordinación.
 - Al citar un módulo de Telar escribe una sola vez su etiqueta y su id entre corchetes, por ejemplo: GAD-7 [gad7]. No repitas la etiqueta ni el id. Usa solo ids del catálogo.
 
+BIBLIOGRAFÍA
+- En respuestas clínicas (programas, resúmenes, hipótesis, sugerencias), cierra con un encabezado literal "Bibliografía" y 2 a 6 fuentes (papers, libros, guías) que respalden lo dicho. Formato: Autor (año). Título. Revista o editorial.
+- Si usaste un documento de referencia del tratamiento, inclúyelo también con el nombre exacto del archivo.
+- No inventes DOI, URLs ni artículos inexistentes. Prefiere fuentes canónicas (APA, NICE, OMS, Beck, Linehan, Barlow, DSM-5-TR, CIE-11, papers clásicos del tema).
+- Omite la sección en emails al paciente y en bloques telar-plan / telar-module.
+- Si no hay respaldo real, omite la sección.
+
 MÓDULOS DISPONIBLES EN TELAR
 ${buildModuleCatalogText()}
 
 CÓMO ARMAR UN PROGRAMA
 - Las escalas subjetivas de ánimo y ansiedad van de 1 a 100. Nunca las interpretes como 0–10 ni inventes un ejemplo si el contexto trae el número.
+- registro_inicial y motivo_consulta son de la sesión 1, una sola vez por tratamiento. Nunca los pongas en sesión 2 o posteriores. Si ya están en el contexto del caso, no los vuelvas a citar.
+- nota_sesion es registro libre de una hora de seguimiento o acompañamiento (conceptualización). Puede ir en cualquier sesión, una vez por sesión. No sustituye escalas ni formulación. No es tarea entre sesiones.
 - Los ids tcc_* son habilidades y tareas entre sesiones. Asigna cada uno como máximo UNA vez, salvo registros reiterables: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades. Excepciones: tcc_plan_seguridad es encuadre de riesgo (conceptualización, no tarea ni psicoeducación); tcc_autoconceptos es trabajo de identidad EN sesión, no handout TCC.
-- Los ids sig_* y tcc_autoconceptos se trabajan EN sesión. No los trates como handout TCC. sig_felt_sense sí puede repetirse; el resto de significado, una vez y se reabre.
+- Los ids sig_* y tcc_autoconceptos se trabajan EN sesión (categoría Narrativa). No los trates como handout TCC. sig_felt_sense sí puede repetirse; el resto de narrativa, una vez y se reabre.
 - Si un handout ya está en el caso (aparece en el contexto), no lo vuelvas a proponer salvo los reiterables.
 
 MÓDULOS NUEVOS (telar-module)
@@ -103,7 +142,7 @@ Si el usuario pide un módulo, cuestionario o registro que no existe en el catá
 Tipos de ítem válidos: "text", "checkbox" (requiere "options"), "scale" (0–10), "task" (ejercicio entre sesiones), "info" (indicación sin respuesta).
 En "text"/"checkbox"/"scale" el campo "text" es un enunciado corto (una línea). En "task" e "info" puedes usar markdown ligero (**negrita**, *cursiva*) y saltos de línea para el cuerpo del ejercicio.
 No inventes ids que no estén en el catálogo. Máximo 12 sesiones en el JSON. No incluyas ningún bloque si el usuario no pidió un programa ni un módulo.
-
+${docsBlock ? `\n${docsBlock}\n` : ''}
 Contexto del caso:
 
 ${context}`;
@@ -349,11 +388,15 @@ function ingestParsed(kind, parsed, actions) {
   }
 }
 
+/** Ficha de ingreso: solo sesión 1, nunca otra vez. */
+const INTAKE_ONCE = new Set(['registro_inicial', 'motivo_consulta']);
+
 function sanitizePlan(raw) {
   const known = new Set(listProposableModules().map((m) => m.id));
   const sessions = [];
   const unknown = new Set();
   const seenHomework = new Set();
+  const seenIntake = new Set();
   (Array.isArray(raw?.sessions) ? raw.sessions : []).forEach((s, i) => {
     const modules = [];
     (Array.isArray(s?.modules) ? s.modules : []).forEach((id) => {
@@ -362,6 +405,10 @@ function sanitizePlan(raw) {
       if (!known.has(modId)) {
         unknown.add(modId);
         return;
+      }
+      if (INTAKE_ONCE.has(modId)) {
+        if (i > 0 || seenIntake.has(modId)) return;
+        seenIntake.add(modId);
       }
       if (isHomeworkHandout(modId) && seenHomework.has(modId)) return;
       if (isHomeworkHandout(modId)) seenHomework.add(modId);
@@ -397,10 +444,16 @@ export function isHomeworkHandout(type) {
 export function parseAiActions(rawContent = '') {
   const actions = [];
   const applied = new Set();
-  let source = String(rawContent).replace(APPLIED_MARKER_RE, (_match, index) => {
-    applied.add(Number(index));
-    return '';
-  });
+  const dismissed = new Set();
+  let source = String(rawContent)
+    .replace(APPLIED_MARKER_RE, (_match, index) => {
+      applied.add(Number(index));
+      return '';
+    })
+    .replace(DISMISSED_MARKER_RE, (_match, index) => {
+      dismissed.add(Number(index));
+      return '';
+    });
   let text = source.replace(ACTION_BLOCK_RE, (_match, kind, body) => {
     ingestParsed(String(kind).toLowerCase(), tryParseJson(body), actions);
     return '';
@@ -423,6 +476,7 @@ export function parseAiActions(rawContent = '') {
 
   actions.forEach((action, index) => {
     action.applied = applied.has(index);
+    action.dismissed = !action.applied && dismissed.has(index);
   });
   return { text: text.trim(), actions };
 }
@@ -463,17 +517,14 @@ export function aiActionsHtml(actions, noteId) {
           ? `<p class="ai-action__warn">Se ignoraron módulos que no existen en tu Telar: ${escapeHtml(plan.unknownModules.join(', '))}.</p>`
           : '';
         return `
-          <section class="ai-dialog${action.applied ? ' ai-dialog--applied' : ''}" data-ai-action="plan" data-note-id="${noteId}" data-action-index="${idx}">
-            <p class="ai-dialog__ask">${action.applied ? 'Programa aplicado al tratamiento actual' : '¿Aplico este programa al tratamiento actual?'}</p>
+          <section class="ai-dialog${dialogStateClass(action)}" data-ai-action="plan" data-note-id="${noteId}" data-action-index="${idx}">
+            <p class="ai-dialog__ask">¿Aplico este programa al tratamiento actual?</p>
             <p class="ai-dialog__summary">${escapeHtml(plan.label)} · ${plan.sessions.length} sesiones</p>
             <ol class="ai-action__sessions">${rows}</ol>
             ${warn}
-            ${plan.truncated ? '<p class="ai-action__warn">La IA cortó el listado; esto es lo que alcanzó a generar.</p>' : ''}
+            ${plan.truncated ? '<p class="ai-action__warn">El modelo local se quedó corto (límite de tokens). Esto es lo que alcanzó a armar; puedes aplicarlo o pedir el programa de nuevo.</p>' : ''}
             <div class="ai-dialog__foot">
-              ${action.applied ? appliedActionHtml() : `
-                <button type="button" class="btn btn-primary btn-sm" data-ai-apply>Aplicar</button>
-                <button type="button" class="btn btn-ghost btn-sm" data-ai-dismiss>Ahora no</button>
-              `}
+              ${actionChoiceHtml(action, 'Aplicar')}
             </div>
           </section>`;
       }
@@ -494,35 +545,45 @@ export function aiActionsHtml(actions, noteId) {
           ? `<li class="ai-action__item ai-action__item--more">+ ${mod.questions.length - 6} ítems más</li>`
           : '';
       return `
-        <section class="ai-dialog${action.applied ? ' ai-dialog--applied' : ''}" data-ai-action="module" data-note-id="${noteId}" data-action-index="${idx}">
-          <p class="ai-dialog__ask">${action.applied ? 'Módulo creado en Telar' : '¿Creo este módulo en tu Telar?'}</p>
+        <section class="ai-dialog${dialogStateClass(action)}" data-ai-action="module" data-note-id="${noteId}" data-action-index="${idx}">
+          <p class="ai-dialog__ask">¿Creo este módulo en tu Telar?</p>
           <p class="ai-dialog__summary">${escapeHtml(mod.title)}</p>
           ${mod.instructions ? `<p class="ai-action__desc">${escapeHtml(mod.instructions)}</p>` : ''}
           <ul class="ai-action__items">${preview}${more}</ul>
           <p class="ai-action__meta">${escapeHtml(itemTypeSummary(mod.questions))}</p>
           <div class="ai-dialog__foot">
-            ${action.applied ? appliedActionHtml() : `
-              <button type="button" class="btn btn-primary btn-sm" data-ai-apply>Crear módulo</button>
-              <button type="button" class="btn btn-ghost btn-sm" data-ai-dismiss>Ahora no</button>
-            `}
+            ${actionChoiceHtml(action, 'Crear módulo')}
           </div>
         </section>`;
     })
     .join('');
 }
 
-function appliedActionHtml() {
-  return `<span class="ai-dialog__applied" role="status">
-    <svg viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M16.7 5.7 8.5 14l-4.2-4.2" />
-    </svg>
-    Aplicado
-  </span>`;
+function dialogStateClass(action) {
+  if (action.applied) return ' ai-dialog--applied';
+  if (action.dismissed) return ' ai-dialog--dismissed';
+  return '';
+}
+
+function actionChoiceHtml(action, applyLabel) {
+  const decided = Boolean(action.applied || action.dismissed);
+  const applyCls = action.applied ? ' is-chosen' : '';
+  const dismissCls = action.dismissed ? ' is-chosen' : '';
+  const disabled = decided ? ' disabled' : '';
+  return `
+    <button type="button" class="btn btn-primary btn-sm${applyCls}" data-ai-apply${disabled}>${escapeHtml(applyLabel)}</button>
+    <button type="button" class="btn btn-ghost btn-sm${dismissCls}" data-ai-dismiss${disabled}>Ahora no</button>`;
 }
 
 export function markAiActionApplied(rawContent, actionIndex) {
   const source = String(rawContent);
   const marker = `<!-- telar-action-applied:${Number(actionIndex)} -->`;
+  return source.includes(marker) ? source : `${source.trimEnd()}\n${marker}`;
+}
+
+export function markAiActionDismissed(rawContent, actionIndex) {
+  const source = String(rawContent);
+  const marker = `<!-- telar-action-dismissed:${Number(actionIndex)} -->`;
   return source.includes(marker) ? source : `${source.trimEnd()}\n${marker}`;
 }
 

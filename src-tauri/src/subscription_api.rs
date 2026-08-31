@@ -13,7 +13,7 @@ fn agent() -> ureq::Agent {
         .build()
 }
 
-fn validated_api_base(api_base: &str) -> Result<String, String> {
+pub(crate) fn validated_api_base(api_base: &str) -> Result<String, String> {
     let base = api_base.trim().trim_end_matches('/');
     if base == PRODUCTION_API_BASE {
         return Ok(base.to_string());

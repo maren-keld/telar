@@ -1,5 +1,6 @@
 import { bindAutoSave, collectFormData } from '../autobind.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
+import { PATIENT_GENDER_OPTIONS, patientGenderLabel } from '../config.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
@@ -30,7 +31,7 @@ export async function renderRedesApoyo(host, moduleRow) {
     <div class="card support-module">
       <div class="support-module__head">
         <h2 class="module-title">Redes de apoyo</h2>
-        <button type="button" class="btn btn-ghost" id="btn-add-person" title="Añadir persona">+ Añadir persona</button>
+        <button type="button" class="btn btn-ghost" id="btn-add-person" data-botonera-extra title="Añadir persona">+ Añadir persona</button>
       </div>
 
       <div class="support-view-tabs" data-no-autobind>
@@ -66,7 +67,7 @@ export async function renderRedesApoyo(host, moduleRow) {
       if (!(`p_${i}_name` in fd)) break;
       next.push({
         name: fd[`p_${i}_name`] || '',
-        gender: fd[`p_${i}_gender`] || 'f',
+        gender: fd[`p_${i}_gender`] || '',
         relation: fd[`p_${i}_relation`] || 'Otro',
         domain: fd[`p_${i}_domain`] || 'Armonía',
         notes: fd[`p_${i}_notes`] || '',
@@ -122,7 +123,7 @@ export async function renderRedesApoyo(host, moduleRow) {
 
   host.querySelector('#btn-add-person')?.addEventListener('click', () => {
     const i = list.querySelectorAll('.support-person').length;
-    list.insertAdjacentHTML('beforeend', personBlockHtml({ name: '', gender: 'f', relation: 'Otro', domain: 'Armonía', notes: '' }, i));
+    list.insertAdjacentHTML('beforeend', personBlockHtml({ name: '', gender: '', relation: 'Otro', domain: 'Armonía', notes: '' }, i));
     syncEmptyState();
     list.querySelector(`[name="p_${i}_name"]`)?.focus();
     bindPersonBlocks(list, persist, reindexRows, syncEmptyState);
@@ -147,6 +148,23 @@ const GENO_TIERS = {
   'Amigo/a': 4,
   Otro: 4,
 };
+
+function normalizeSupportGender(raw) {
+  const value = String(raw || '').trim();
+  if (PATIENT_GENDER_OPTIONS.some((o) => o.id === value)) return value;
+  const lower = value.toLowerCase();
+  if (lower === 'f') return 'femenino';
+  if (lower === 'm') return 'masculino';
+  const byLabel = PATIENT_GENDER_OPTIONS.find((o) => o.label.toLowerCase() === lower);
+  return byLabel?.id || '';
+}
+
+function genogramGenderKind(raw) {
+  const id = normalizeSupportGender(raw);
+  if (id === 'masculino') return 'm';
+  if (id === 'femenino') return 'f';
+  return 'x';
+}
 
 function isSpouseRelation(relation) {
   return relation === 'Pareja' || relation === 'Cónyuge';
@@ -203,7 +221,7 @@ function layoutGenogramNodes(people) {
     key: 'patient',
     tier: 2,
     name: 'Paciente',
-    gender: 'f',
+    gender: 'femenino',
     relation: 'Paciente',
   };
 
@@ -281,14 +299,15 @@ function genogramConnectors(placed, patient, byKey) {
 }
 
 function genogramNodeHtml(node, { isPatient = false } = {}) {
-  const gender = node.gender === 'm' ? 'm' : 'f';
+  const gender = genogramGenderKind(node.gender);
   const label = (node.name || 'Sin nombre').trim().slice(0, 12);
   const aff = node.relation && node.relation !== 'Paciente' ? node.relation : '';
+  const symbol = gender === 'm' ? '□' : gender === 'f' ? '○' : '◇';
   return `
     <div class="genogram-node genogram-node--${gender}${isPatient ? ' genogram-node--patient' : ''}"
       style="left:${(node.x / 400) * 100}%;top:${(node.y / 300) * 100}%"
-      title="${escapeHtml([aff, node.domain].filter(Boolean).join(' · '))}">
-      <span class="genogram-node__symbol" aria-hidden="true">${gender === 'm' ? '□' : '○'}</span>
+      title="${escapeHtml([aff, node.domain, patientGenderLabel(normalizeSupportGender(node.gender))].filter(Boolean).join(' · '))}">
+      <span class="genogram-node__symbol" aria-hidden="true">${symbol}</span>
       <span class="genogram-node__name" data-sensitive>${escapeHtml(isPatient ? 'Paciente' : label)}</span>
       ${aff && !isPatient ? `<span class="genogram-node__aff">${escapeHtml(aff)}</span>` : ''}
     </div>`;
@@ -317,13 +336,8 @@ function bindPersonBlocks(list, persist, reindexRows, syncEmptyState) {
     if (block.dataset.bound === '1') return;
     block.dataset.bound = '1';
 
-    block.querySelectorAll('[data-gender]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const gender = btn.dataset.gender;
-        block.querySelectorAll('[data-gender]').forEach((b) => b.classList.toggle('active', b === btn));
-        block.querySelector('input[type="hidden"][name$="_gender"]').value = gender;
-        persist();
-      });
+    block.querySelector('select[name$="_gender"]')?.addEventListener('change', () => {
+      persist();
     });
 
     const noteBtn = block.querySelector('[data-toggle-notes]');
@@ -359,17 +373,19 @@ function bindPersonBlocks(list, persist, reindexRows, syncEmptyState) {
 }
 
 function personBlockHtml(p, i) {
-  const gender = p.gender === 'm' ? 'm' : 'f';
+  const gender = normalizeSupportGender(p.gender);
   const hasNotes = Boolean((p.notes || '').trim());
   return `
     <div class="support-person">
       <div class="support-row">
         <input name="p_${i}_name" value="${escapeHtml(p.name || '')}" placeholder="Nombre" data-sensitive />
-        <div class="support-gender" data-no-autobind>
-          <button type="button" class="${gender === 'f' ? 'active' : ''}" data-gender="f" title="Femenino">♀</button>
-          <button type="button" class="${gender === 'm' ? 'active' : ''}" data-gender="m" title="Masculino">♂</button>
-          <input type="hidden" name="p_${i}_gender" value="${gender}" />
-        </div>
+        <select name="p_${i}_gender" title="Género" aria-label="Género">
+          <option value="">Seleccionar…</option>
+          ${PATIENT_GENDER_OPTIONS.map(
+            (o) =>
+              `<option value="${escapeHtml(o.id)}" ${gender === o.id ? 'selected' : ''}>${escapeHtml(o.label)}</option>`,
+          ).join('')}
+        </select>
         <select name="p_${i}_relation" title="Afiliación">
           ${AFFILIATIONS.map((t) => `<option value="${escapeHtml(t)}" ${p.relation === t ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
         </select>

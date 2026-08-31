@@ -23,6 +23,36 @@ test('estimulación bilateral incluye SUD pre y post 0–10', () => {
   assert.match(text, /SUD post: 3\/10/);
 });
 
+test('anamnesis incluye salud física y relación con la IA', () => {
+  const text = buildReadableText('motivo_consulta', {
+    motivo: 'Ansiedad',
+    salud_fisica: 'Hipotiroidismo en control',
+    relacion_ia: 'Usa ChatGPT todas las noches para dormir',
+  });
+  assert.match(text, /Salud física \/ factores orgánicos: Hipotiroidismo/);
+  assert.match(text, /Relación con la IA: Usa ChatGPT/);
+});
+
+test('anamnesis junta las respuestas viejas de IA si no hay campo único', () => {
+  const text = buildReadableText('motivo_consulta', {
+    ia_pregunto: 'Cómo dormir',
+    ia_compartio: 'Insomnio',
+  });
+  assert.match(text, /Relación con la IA: ¿Qué preguntaste\? Cómo dormir/);
+  assert.match(text, /¿Qué compartiste\? Insomnio/);
+});
+
+test('el género del registro se lee con la etiqueta, no el id', () => {
+  const text = buildReadableText('registro_inicial', { genero: 'no_identifica' });
+  assert.match(text, /Género: No se identifica con ninguno/);
+});
+
+test('nota de sesión se lee como el texto de la nota', () => {
+  const text = buildReadableText('nota_sesion', { nota: 'Hoy trabajamos evitación.' });
+  assert.match(text, /Hoy trabajamos evitación/);
+  assert.equal(buildReadableText('nota_sesion', { nota: '  ' }), '');
+});
+
 test('el resumen psicométrico incluye ánimo y ansiedad subjetivos', () => {
   const block = buildPsychometricSummaryBlock([
     {

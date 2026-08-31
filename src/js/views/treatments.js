@@ -15,7 +15,16 @@ function convenioChip(row) {
   return `<span class="badge badge--info patient-card__convenio">${escapeHtml(row.convenio_name)}</span>`;
 }
 
-function tagChip(tagKey) {
+function alertaTooltip(row) {
+  const reasons = (row.clinical_alert_reasons || []).filter(Boolean);
+  if (reasons.length) return reasons.join('. ');
+  if (row.clinical_alert || (row.tags || []).includes('alerta')) {
+    return 'Marcado en alerta por el profesional.';
+  }
+  return '';
+}
+
+function tagChip(tagKey, { tooltip } = {}) {
   const def = allTagDefs()[tagKey];
   if (!def) return '';
   const color = def.color || '#64748b';
@@ -23,14 +32,17 @@ function tagChip(tagKey) {
     tagKey === 'alerta'
       ? `<span class="patient-card__tag-dot tag-glyph--pulse" style="--tag-color:${escapeHtml(color)}"><span class="tag-glyph__ping" aria-hidden="true"></span></span>`
       : `<span class="patient-card__tag-dot" style="--tag-color:${escapeHtml(color)}"></span>`;
-  return `<span class="patient-card__tag patient-card__tag--${escapeHtml(tagKey)}">${pulse}<span>${escapeHtml(def.label)}</span></span>`;
+  const tip = tooltip
+    ? ` data-tooltip="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}"`
+    : '';
+  return `<span class="patient-card__tag patient-card__tag--${escapeHtml(tagKey)}"${tip}>${pulse}<span>${escapeHtml(def.label)}</span></span>`;
 }
 
 export function tagPillsHtml(row) {
   const tags = row.tags || [];
   const parts = [];
   const showAlerta = row.clinical_alert || tags.includes('alerta');
-  if (showAlerta) parts.push(tagChip('alerta'));
+  if (showAlerta) parts.push(tagChip('alerta', { tooltip: alertaTooltip(row) }));
   for (const t of tags) {
     if (t === 'alerta') continue;
     parts.push(tagChip(t));

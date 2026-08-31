@@ -65,6 +65,7 @@ export function bindAppSidebar(container, { onNavigate }) {
     onNavigate({ view: 'modules', ...clearCtx });
   });
   container.querySelector('[data-nav="settings"]')?.addEventListener('click', () => {
+    container.querySelector('[data-nav="settings"]')?.classList.add('is-loading');
     onNavigate({ view: 'settings', ...clearCtx });
   });
 }

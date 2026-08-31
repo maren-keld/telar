@@ -327,6 +327,18 @@
   color: var(--text-secondary);
 }
 
+.ai-biblio-head {
+  display: block;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .ai-mod-tag {
   display: inline-flex;
   align-items: center;
@@ -378,14 +390,21 @@
   margin-top: 8px;
 }
 
-.ai-dialog__applied {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  color: var(--success, #5f8f76);
-  font-size: 0.76rem;
+.ai-dialog__foot .btn.is-chosen {
+  box-shadow: inset 0 0 0 2px currentColor;
   font-weight: 650;
+}
+
+.ai-dialog--applied [data-ai-apply].is-chosen {
+  background: var(--success, #2d7a55);
+  border-color: var(--success, #2d7a55);
+  color: #fff;
+}
+
+.ai-dialog--dismissed [data-ai-dismiss].is-chosen {
+  background: var(--bg-sidebar);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .ai-dialog__applied svg {
@@ -855,10 +874,27 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   cursor: default;
 }
 
+.ai-dock__send--stop {
+  background: var(--danger, #c4473a);
+  color: #fff;
+}
+
+.ai-dock__stop-wrap {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+
+.ai-dock__stop {
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
 .ai-dock__send[data-busy='1'] {
   opacity: 1;
-  background: transparent;
-  color: var(--text-primary);
 }
 
 .ai-dock__arrow-wrap,
@@ -871,6 +907,7 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 
 .ai-dock__orb[hidden],
 .ai-dock__arrow-wrap[hidden],
+.ai-dock__stop-wrap[hidden],
 .ai-dock__send[hidden],
 .ai-dock__input[hidden],
 .ai-dock__thinking[hidden] {

@@ -26,17 +26,25 @@ export function motivoUrgenciaAlta(data) {
 }
 
 /**
- * Alerta automática: urgencia alta en motivo, o indicadores de riesgo vital.
+ * Motivos de alerta automática: urgencia alta, escalas de riesgo o checks vitales.
  * No es un tag editable.
  */
-export function treatmentIsClinicalAlert({ urgencia, sprintAnswers, ferAnswers, spaceLabels } = {}) {
-  if (motivoUrgenciaAlta({ urgencia })) return true;
-  if (sprintSuicideAlert(sprintAnswers)) return true;
-  if (ferSelfHarmAlert(ferAnswers)) return true;
-  return (spaceLabels || []).some((label) => VITAL_RISK_LABELS.includes(label));
+export function clinicalAlertReasons({ urgencia, sprintAnswers, ferAnswers, spaceLabels } = {}) {
+  const reasons = [];
+  if (motivoUrgenciaAlta({ urgencia })) reasons.push('Urgencia alta en la anamnesis');
+  if (sprintSuicideAlert(sprintAnswers)) reasons.push('SPRINT-E: ítem de riesgo suicida');
+  if (ferSelfHarmAlert(ferAnswers)) reasons.push('Escala FER: autolesiones o daño a sí mismo');
+  for (const label of spaceLabels || []) {
+    if (VITAL_RISK_LABELS.includes(label) && !reasons.includes(label)) reasons.push(label);
+  }
+  return reasons;
 }
 
-export function clinicalAlertFromModules(moduleRows, spaceLabels = []) {
+export function treatmentIsClinicalAlert(opts = {}) {
+  return clinicalAlertReasons(opts).length > 0;
+}
+
+export function clinicalAlertReasonsFromModules(moduleRows, spaceLabels = []) {
   let urgencia = '';
   let sprintAnswers;
   let ferAnswers;
@@ -46,5 +54,9 @@ export function clinicalAlertFromModules(moduleRows, spaceLabels = []) {
     if (row.module_type === 'sprint_ecl') sprintAnswers = data.answers;
     if (row.module_type === 'escala_fer') ferAnswers = data.answers;
   }
-  return treatmentIsClinicalAlert({ urgencia, sprintAnswers, ferAnswers, spaceLabels });
+  return clinicalAlertReasons({ urgencia, sprintAnswers, ferAnswers, spaceLabels });
+}
+
+export function clinicalAlertFromModules(moduleRows, spaceLabels = []) {
+  return clinicalAlertReasonsFromModules(moduleRows, spaceLabels).length > 0;
 }

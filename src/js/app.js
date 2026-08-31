@@ -93,7 +93,7 @@ async function render() {
     }
     window.__telarStage = `render:view(${view})`;
 
-    if (view !== 'unlock' && window.__telarPacksReady) {
+    if (view !== 'unlock' && view !== 'settings' && window.__telarPacksReady) {
       window.__telarStage = `render:await_packs(${view})`;
       await window.__telarPacksReady;
     }
@@ -140,6 +140,8 @@ async function render() {
         await renderGoals(app, { onNavigate });
         break;
       case 'settings':
+        app.querySelector('[data-nav="settings"]')?.classList.add('is-loading');
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         await renderSettings(app, { onNavigate });
         break;
       case 'unlock':

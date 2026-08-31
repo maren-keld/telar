@@ -99,7 +99,7 @@ export async function mountModuleSelector(host, ctx) {
         <div class="module-selector-head__text">
           <div class="module-selector-title-row">
             <h2 class="module-title">Librería de módulos</h2>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-module" title="Diseñar un cuestionario propio">Crear módulo</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-module" data-botonera-extra title="Diseñar un cuestionario propio">Crear módulo</button>
           </div>
         </div>
       </div>

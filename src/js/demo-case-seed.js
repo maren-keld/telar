@@ -101,7 +101,7 @@ async function fillConceptualizationModules(sessions) {
   if (registro) {
     await fillModule(registro, {
       nombre: 'Camila R. (ejemplo)',
-      genero: 'Femenino',
+      genero: 'femenino',
       id_number: '12.345.678-9',
       birth_date: '1992-03-15',
       email: 'camila.ejemplo@email.cl',

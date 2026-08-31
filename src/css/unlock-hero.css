@@ -12,10 +12,6 @@
   padding: 12px 16px 0;
   box-sizing: border-box;
   background-color: #0c0d10;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 32px 32px;
 }
 
 .app-shell--unlock:has(.initial-screen--hero) {
@@ -166,8 +162,10 @@
 
 .initial-screen--hero .hero-camera {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  height: clamp(260px, 52vh, 460px);
+  height: clamp(280px, 56vh, 500px);
   min-height: 0;
   overflow: hidden;
   margin-bottom: 0;
@@ -175,8 +173,9 @@
 }
 
 .initial-screen--hero .hero-camera__viewport {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   background: transparent;
 }
@@ -329,14 +328,17 @@
 }
 
 .initial-screen--hero .hero-camera__controls {
-  position: absolute;
-  left: 50%;
-  bottom: 0.55rem;
+  position: relative;
+  left: auto;
+  bottom: auto;
   z-index: 4;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.7rem;
-  transform: translateX(-50%);
+  transform: none;
+  flex-shrink: 0;
+  margin: 10px auto 0;
   padding: 0.25rem 0.35rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(12, 13, 16, 0.72);

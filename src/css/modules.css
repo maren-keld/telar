@@ -10,12 +10,13 @@
 }
 
 .module-anamnesis-head {
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
   margin-bottom: 16px;
 }
 
 .module-anamnesis-head .module-title {
-  margin: 10px 0 6px;
+  margin: 0 0 6px;
 }
 
 .anamnesis-pair {
@@ -246,13 +247,13 @@
 
 .nf-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
 }
 
 .nf-header .module-title {
-  margin: 10px 0 0;
+  margin: 0;
 }
 
 .nf-header__intro {
@@ -572,7 +573,7 @@
 /* Redes de apoyo */
 .support-row {
   display: grid;
-  grid-template-columns: 1.2fr 70px 1fr 1fr 44px 44px;
+  grid-template-columns: 1.2fr minmax(148px, 1fr) 1fr 1fr 44px 44px;
   gap: 10px;
   align-items: center;
   padding: 12px 0;
@@ -628,7 +629,7 @@
 }
 
 .dx-head .module-title {
-  margin: 10px 0 0;
+  margin: 0;
 }
 
 .dx-head .dx-help {
@@ -964,7 +965,7 @@
 }
 
 .module-selector-head .module-title {
-  margin: 10px 0 0;
+  margin: 0;
 }
 
 .module-selector-title-row {
@@ -972,7 +973,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
+  min-height: 32px;
 }
 
 .module-selector-head {
@@ -981,8 +982,10 @@
   padding-top: 0;
 }
 
-.module-selector-title-row #btn-create-module {
-  margin-top: 2px;
+.module-selector-title-row .module-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .module-selector-head__text {
@@ -1012,14 +1015,15 @@
   font-size: 0.9rem;
 }
 
-.center-module-card--selector .module-card-actions {
-  top: 26px;
-  right: 16px;
+.center-module-card--selector .module-card-actions,
+.center-module-card--selector .botonera-modules {
+  top: auto;
+  right: auto;
 }
 
 .center-module-card--selector .module-selector-inline {
   padding-top: 14px;
-  padding-right: 48px;
+  padding-right: 16px;
 }
 
 .mod-selector-item[hidden],
@@ -1124,11 +1128,15 @@
 .support-module__head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 12px;
-  /* espacio para los iconos de module-card-actions (swap + delete) */
-  padding-right: 116px;
+}
+
+.support-module__head .module-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .support-view-tabs {
@@ -1223,8 +1231,11 @@
   min-height: 52px;
 }
 
-.genogram-node--patient {
-  border-width: 3px;
+.genogram-node--x {
+  border-radius: 8px;
+  width: 52px;
+  min-height: 52px;
+}
   border-color: var(--accent);
   background: var(--accent-soft);
   font-weight: 700;
@@ -2149,6 +2160,9 @@ body.is-dragging-module .session-block__title {
 .mod-info__placeholder {
   color: var(--text-muted);
   margin: 0;
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .mod-info-row {
@@ -3366,8 +3380,8 @@ html[data-theme='dark'] .nf-state-card p {
 }
 
 .module-card-head--selector {
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .module-card-head--selector .btn-sm {

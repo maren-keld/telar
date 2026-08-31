@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   clinicalAlertFromModules,
+  clinicalAlertReasons,
   ferSelfHarmAlert,
   sprintSuicideAlert,
   treatmentIsClinicalAlert,
@@ -41,6 +42,12 @@ test('clinicalAlertFromModules reads motivo urgencia', () => {
     clinicalAlertFromModules([{ module_type: 'motivo_consulta', data: { urgencia: 'alta' } }]),
     true,
   );
+});
+
+test('clinicalAlertReasons lists why the case is flagged', () => {
+  assert.deepEqual(clinicalAlertReasons({ urgencia: 'alta' }), ['Urgencia alta en la anamnesis']);
+  assert.ok(clinicalAlertReasons({ spaceLabels: ['Ideación suicida'] }).includes('Ideación suicida'));
+  assert.deepEqual(clinicalAlertReasons({ urgencia: 'media' }), []);
 });
 
 test('alerta tag is selectable and also auto-assigned', () => {

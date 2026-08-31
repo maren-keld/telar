@@ -20,16 +20,22 @@
   <link rel="stylesheet" href="css/goals.css" />
   <link rel="stylesheet" href="css/agenda.css" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="vendor/chart.js/chart.umd.min.js"></script>
+  <script src="vendor/jspdf/jspdf.umd.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/leaflet/leaflet-heat.js"></script>
 </head>
 <body>
-  <div id="app" class="app-shell">
-    <div id="boot-splash" class="boot-splash" aria-live="polite">
-      <p class="boot-splash__title">Telar</p>
-      <p class="boot-splash__sub">Cargando…</p>
+  <div id="app" class="app-shell app-shell--unlock">
+    <div id="boot-splash" class="initial-screen initial-screen--hero" aria-live="polite">
+      <div class="initial-screen__center">
+        <div id="unlockInner">
+          <header class="initial-screen__brand">
+            <h1 class="initial-screen__title">Telar</h1>
+          </header>
+        </div>
+        <div class="initial-screen__camera"></div>
+      </div>
     </div>
   </div>
   <div id="modal-root"></div>

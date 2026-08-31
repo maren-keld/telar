@@ -68,7 +68,7 @@ test('case presentation keeps the clinically relevant, non-identifying context',
   const context = data.context.join(' | ');
 
   assert.match(context, /Edad: \d+ años/);
-  assert.match(context, /femenino/);
+  assert.match(context, /Femenino/);
   assert.match(context, /profesora/);
   assert.match(context, /Fonasa/);
 });

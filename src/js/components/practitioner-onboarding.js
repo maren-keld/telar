@@ -26,6 +26,7 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
   const profile = loadProfile();
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop subscribe-pro-overlay';
+  overlay.dataset.modalNoEsc = '1';
   overlay.innerHTML = `
     <div class="subscribe-pro-modal practitioner-onboarding" role="dialog" aria-labelledby="onboard-title">
       <aside class="subscribe-pro-modal__brand">

@@ -9,9 +9,9 @@ export const AI_MODES = {
   },
   local: {
     id: 'local',
-    label: 'IA local privada',
+    label: 'IA local privada (recomendado)',
     description:
-      'Ollama en tu equipo (~2–5 GB por modelo). Requiere Ollama.app instalado. Los datos no salen del dispositivo.',
+      'Ollama en tu equipo (~2–5 GB por modelo). Telar lo arranca solo. Los datos no salen del dispositivo. Tarda más en responder que una API.',
   },
   api: {
     id: 'api',
@@ -21,7 +21,7 @@ export const AI_MODES = {
   },
 };
 
-/** Orden en UI: desactivado primero (privacidad por defecto). */
+/** Orden en UI: desactivado primero (default). Local sigue siendo el modo recomendado. */
 export const AI_MODE_ORDER = ['off', 'local', 'api'];
 
 /** Presets API — OpenAI-compatible. Mistral EU como default privacy-focused. */
@@ -70,24 +70,30 @@ export const AI_LOCAL_MODELS = [
     label: 'Qwen 2.5 3B (ligero)',
     sizeHint: '~2 GB descarga',
     ramHint: '8 GB RAM mínimo',
+    diff: 'Rápido para probar el flujo. Menos matices en programas largos.',
+    caution: 'En programas largos un modelo chico (Qwen 2.5 3B) puede cortar el listado.',
   },
   {
     id: 'qwen2.5-7b-instruct-q4',
-    label: 'Qwen 2.5 7B (recomendado)',
+    label: 'Qwen 2.5 7B',
     sizeHint: '~4,5 GB descarga',
     ramHint: '16 GB RAM recomendado',
+    recommended: true,
+    diff: 'Mejor equilibrio en español clínico: programas y resúmenes con más coherencia.',
   },
   {
     id: 'llama3.2-3b-instruct-q4',
     label: 'Llama 3.2 3B',
     sizeHint: '~2 GB descarga',
     ramHint: '8 GB RAM mínimo',
+    diff: 'Ligero, a veces más telegráfico. Útil si el equipo va justo de RAM.',
   },
   {
     id: 'mistral-7b-instruct-q4',
     label: 'Mistral 7B',
     sizeHint: '~4 GB descarga',
     ramHint: '16 GB RAM recomendado',
+    diff: 'Buen castellano general. En fichas largas puede recortar el plan.',
   },
 ];
 

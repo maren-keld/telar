@@ -322,10 +322,11 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
           ${row({ icon: SETTINGS_ICONS.lock, title: t('settings.lock'), subtitle: t('settings.lockSub'), dataField: 'lock' })}
           ${touchIdRow}
         </div>
+        <p class="settings-section__hint">${escapeHtml(t('settings.fileVaultHint'))}</p>
         <div class="settings-section">
           <h2 class="settings-section__title">Asistente IA</h2>
           <p class="settings-section__hint">
-            Desactivada por defecto. IA local (Ollama) mantiene los datos en tu equipo. API externa requiere consentimiento explícito y revisión del contexto antes de cada envío.
+            Por defecto está desactivada. El modo recomendado es IA local (Ollama): tarda más en responder y no sale de tu equipo. API externa requiere consentimiento y revisión del contexto.
           </p>
         </div>
         <div class="settings-card">
@@ -427,6 +428,7 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
   bindAppSidebar(container, { onNavigate });
 
   if (!extras) {
+    container.querySelector('#nav-settings')?.classList.add('is-loading');
     void loadSettingsExtras().then((loaded) => {
       if (renderGen !== settingsRenderGen) return;
       if (!isSettingsRoute()) return;

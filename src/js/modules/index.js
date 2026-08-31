@@ -11,6 +11,7 @@ import { renderRegistroInicial } from './registro-inicial.js';
 import { renderDass21 } from './dass21.js';
 import { renderRedesApoyo } from './redes-apoyo.js';
 import { renderDiagnostico } from './diagnostico.js';
+import { renderNotaSesion } from './nota-sesion.js';
 import { renderEed } from './eed.js';
 import { renderQols } from './qols.js';
 import { renderEscalaAnimo } from './escala-animo.js';
@@ -74,6 +75,7 @@ const LEGACY_RENDERERS = {
   ades: renderAdes,
   redes_apoyo: renderRedesApoyo,
   diagnostico: renderDiagnostico,
+  nota_sesion: renderNotaSesion,
 };
 
 function resolveRenderer(moduleType) {

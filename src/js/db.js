@@ -1,6 +1,6 @@
 import { getTreatmentTemplate } from './treatment-templates.js';
 import { isCustomModuleType, resolveModuleDef } from './custom-modules.js';
-import { clinicalAlertFromModules, VITAL_RISK_LABELS } from './clinical-alert.js';
+import { clinicalAlertReasonsFromModules, VITAL_RISK_LABELS } from './clinical-alert.js';
 import { parseJsonSafe } from './utils.js';
 import { getInvoke, isTauriApp, loadSqlDatabase } from './tauri-bridge.js';
 
@@ -53,19 +53,21 @@ async function loadClinicalAlertIds() {
     if (!modsByTreatment.has(id)) modsByTreatment.set(id, []);
     modsByTreatment.get(id).push(row);
   }
-  const ids = new Set();
+  const map = new Map();
   const allIds = new Set([...spaceByTreatment.keys(), ...modsByTreatment.keys()]);
   for (const id of allIds) {
-    if (clinicalAlertFromModules(modsByTreatment.get(id) || [], spaceByTreatment.get(id) || [])) {
-      ids.add(id);
-    }
+    const reasons = clinicalAlertReasonsFromModules(
+      modsByTreatment.get(id) || [],
+      spaceByTreatment.get(id) || [],
+    );
+    if (reasons.length) map.set(id, reasons);
   }
-  return ids;
+  return map;
 }
 
 export async function getAgendaGroups(search = '') {
   const like = `%${search.trim()}%`;
-  const [rows, alertIds] = await Promise.all([
+  const [rows, alertMap] = await Promise.all([
     query(
       `SELECT t.id AS treatment_id, t.number AS treatment_number, t.status,
               t.requires_referral, t.supervised, t.tags, t.created_at, t.convenio_id,
@@ -83,7 +85,9 @@ export async function getAgendaGroups(search = '') {
   const groups = {};
   for (const row of rows) {
     row.tags = parseJsonSafe(row.tags, []);
-    row.clinical_alert = alertIds.has(Number(row.treatment_id));
+    const reasons = alertMap.get(Number(row.treatment_id)) || [];
+    row.clinical_alert = reasons.length > 0;
+    row.clinical_alert_reasons = reasons;
     if (!groups[row.status]) groups[row.status] = [];
     groups[row.status].push(row);
   }
@@ -278,7 +282,7 @@ export async function upsertPatient(patient) {
       patient.email,
       patient.phone,
       patient.address,
-      patient.gender || 'femenino',
+      patient.gender || '',
       patient.birth_date,
       patient.marital_status,
       patient.source,
@@ -666,7 +670,7 @@ export async function getPatientDemographicsStats() {
     '60+': 0,
     'Sin dato': 0,
   };
-  const gender = { Femenino: 0, Masculino: 0, 'Sin dato': 0 };
+  const gender = {};
   const marital = {};
   const source = {};
   const prevision = {};
@@ -697,9 +701,13 @@ export async function getPatientDemographicsStats() {
     else if (age < 60) ageBuckets['45–59'] += 1;
     else ageBuckets['60+'] += 1;
 
-    if (p.gender === 'masculino') gender.Masculino += 1;
-    else if (p.gender === 'femenino') gender.Femenino += 1;
-    else gender['Sin dato'] += 1;
+    if (p.gender === 'masculino') gender.Masculino = (gender.Masculino || 0) + 1;
+    else if (p.gender === 'femenino') gender.Femenino = (gender.Femenino || 0) + 1;
+    else if (p.gender === 'no_binario') gender['No binario'] = (gender['No binario'] || 0) + 1;
+    else if (p.gender === 'otro') gender.Otro = (gender.Otro || 0) + 1;
+    else if (p.gender === 'no_identifica') gender['No se identifica'] = (gender['No se identifica'] || 0) + 1;
+    else if (p.gender === 'no_dice') gender['Prefiere no decir'] = (gender['Prefiere no decir'] || 0) + 1;
+    else gender['Sin dato'] = (gender['Sin dato'] || 0) + 1;
 
     bump(marital, p.marital_status);
     bump(source, p.source);

@@ -72,12 +72,16 @@ test('tags sit to the right of the name with add-label control', () => {
 });
 
 test('alerta tag is auto-and-manual and reddish', () => {
-  const auto = treatmentSectionHtml('en_tratamiento', [{ ...row, clinical_alert: true, tags: [] }]);
+  const auto = treatmentSectionHtml('en_tratamiento', [
+    { ...row, clinical_alert: true, clinical_alert_reasons: ['Urgencia alta en la anamnesis'], tags: [] },
+  ]);
   assert.match(auto, /patient-card__tag--alerta/);
   assert.match(auto, /En alerta/);
   assert.match(auto, /tag-glyph--pulse/);
+  assert.match(auto, /data-tooltip="Urgencia alta en la anamnesis"/);
 
   const manual = treatmentSectionHtml('en_tratamiento', [{ ...row, tags: ['alerta'] }]);
   assert.match(manual, /patient-card__tag--alerta/);
   assert.match(manual, /En alerta/);
+  assert.match(manual, /Marcado en alerta por el profesional/);
 });

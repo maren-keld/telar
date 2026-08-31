@@ -168,7 +168,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     ageRange: 'Adolescentes y adultos',
     reliability: 'Trabajo de identidad en sesión; no es material psicoeducativo TCC.',
     validity: 'Mejor yo posible en dominios personal, profesional y social.',
-    learnMore: 'Se trabaja en la hora, junto a los módulos de significado. Una vez y se reabre.',
+    learnMore: 'Se trabaja en la hora, junto a los módulos de narrativa. Una vez y se reabre.',
   },
   tcc_preocupaciones: {
     authors: 'Telar — elaboración propia',

@@ -14,7 +14,7 @@
  * hipótesis, evolución psicométrica (la curva), arco de sesiones, momentos
  * marcados y preguntas a supervisión.
  */
-import { TREATMENT_STATUS } from './config.js';
+import { TREATMENT_STATUS, patientGenderLabel } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getClinicalNotes, getSessionsWithModules, getTreatment } from './db.js';
 import { psychometricSeries, psychometricChartMeta, psychometricTypes } from './psychometric-summary.js';
@@ -111,7 +111,7 @@ export function buildCasePresentationData({ treatment, sessions, notes = [], pro
   const age = ageFromBirthDate(reg.birth_date || treatment.birth_date);
   const context = [
     age != null ? `Edad: ${age} años` : '',
-    reg.genero ? `Género: ${reg.genero}` : '',
+    reg.genero ? `Género: ${patientGenderLabel(reg.genero) || reg.genero}` : '',
     occupationsText(reg.occupations) ? `Ocupación: ${occupationsText(reg.occupations)}` : '',
     reg.marital_status ? `Estado civil: ${reg.marital_status}` : '',
     reg.prevision ? `Previsión: ${reg.prevision}` : '',

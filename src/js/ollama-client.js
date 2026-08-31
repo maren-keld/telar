@@ -1,5 +1,6 @@
 import { ollamaModelFromLocalId } from './ai-config.js';
 import { getInvoke, isTauriApp, openExternalUrl } from './tauri-bridge.js';
+import { toast } from './utils.js';
 
 const OLLAMA_DOWNLOAD_URL = 'https://ollama.com/download';
 
@@ -45,21 +46,49 @@ export async function getOllamaStatus() {
   return getInvoke()('ollama_status');
 }
 
+/** Arranca Ollama.app (o `ollama serve`) y espera a que responda. */
+export async function ensureOllamaRunning() {
+  if (!isTauriApp()) {
+    return { running: false, models: [] };
+  }
+  return getInvoke()('ollama_ensure_running');
+}
+
 /**
  * Falla con un mensaje accionable si Ollama no está listo, en vez de dejar que
  * la petición muera por timeout.
  */
 export async function assertOllamaModelReady(model) {
-  const { running, models } = await getOllamaStatus();
+  let running = false;
+  let models = [];
+  try {
+    const status = await getOllamaStatus();
+    running = Boolean(status?.running);
+    models = Array.isArray(status?.models) ? status.models : [];
+  } catch {
+    running = false;
+  }
   if (!running) {
-    throw new Error(
-      'Ollama no está corriendo. Ábrelo (o pulsa «Descargar / actualizar modelo» en Ajustes → Asistente IA, que lo arranca) y vuelve a consultar.',
-    );
+    toast('Arrancando Ollama…');
+    try {
+      const started = await ensureOllamaRunning();
+      running = Boolean(started?.running);
+      models = Array.isArray(started?.models) ? started.models : [];
+    } catch (err) {
+      const msg = err?.message || String(err);
+      if (/Instala Ollama|ollama\.com\/download/i.test(msg)) {
+        throw new Error('Instala Ollama desde ollama.com/download. Telar lo arranca solo la próxima vez.');
+      }
+      throw new Error(msg || 'No se pudo arrancar Ollama.');
+    }
+  }
+  if (!running) {
+    throw new Error('No se pudo arrancar Ollama. Ábrelo una vez desde Aplicaciones y vuelve a consultar.');
   }
   if (!isModelPresent(models, model)) {
     const available = models.length ? ` Disponibles: ${models.join(', ')}.` : '';
     throw new Error(
-      `El modelo «${model}» no está descargado en Ollama. Ve a Ajustes → Asistente IA → Descargar / actualizar modelo.${available}`,
+      `El modelo «${model}» no está descargado. En Herramientas elige otro o ábrelo para descargarlo.${available}`,
     );
   }
 }

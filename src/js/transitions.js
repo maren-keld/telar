@@ -315,7 +315,29 @@ function initTooltips() {
   });
 }
 
+function dismissTopModal() {
+  const backdrops = [...document.querySelectorAll('.modal-backdrop')];
+  const backdrop = backdrops.at(-1);
+  if (!backdrop) return false;
+  if (backdrop.dataset.modalLock === '1' || backdrop.dataset.modalNoEsc === '1') return true;
+  const closer =
+    backdrop.querySelector('[data-cancel]:not([disabled])') ||
+    backdrop.querySelector('[data-dismiss]') ||
+    backdrop.querySelector('button.modal-close') ||
+    backdrop.querySelector('#cm-cancel');
+  if (closer) {
+    closer.click();
+    return true;
+  }
+  backdrop.click();
+  return true;
+}
+
 export function initMotion() {
   installOverlayMotion(document.getElementById('modal-root'));
   initTooltips();
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    if (dismissTopModal()) e.preventDefault();
+  });
 }

@@ -1,6 +1,6 @@
 import { bindAddressAutocomplete } from '../components/address-autocomplete.js';
 import { bindOccupationPicker } from '../components/occupation-picker.js';
-import { EDUCATION_OPTIONS, MARITAL_OPTIONS, PREVISION_OPTIONS, SOURCE_OPTIONS } from '../config.js';
+import { EDUCATION_OPTIONS, MARITAL_OPTIONS, PATIENT_GENDER_OPTIONS, PREVISION_OPTIONS, SOURCE_OPTIONS } from '../config.js';
 import { upsertPatient } from '../db.js';
 import { ICON_COPY } from '../icons.js';
 import { syncModuleReadableText } from '../readable-text.js';
@@ -33,6 +33,16 @@ function birthParts(iso) {
 function isoFromParts(year, month, day) {
   if (!year || !month || !day) return '';
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function normalizeGenero(raw) {
+  const value = String(raw || '').trim();
+  if (PATIENT_GENDER_OPTIONS.some((o) => o.id === value)) return value;
+  const lower = value.toLowerCase();
+  if (lower === 'f') return 'femenino';
+  if (lower === 'm') return 'masculino';
+  const byLabel = PATIENT_GENDER_OPTIONS.find((o) => o.label.toLowerCase() === lower);
+  return byLabel?.id || '';
 }
 
 function yearOptions(selected) {
@@ -79,7 +89,7 @@ function dayOptions(selected) {
 export async function renderRegistroInicial(host, moduleRow, { treatment }) {
   const data = parseJsonSafe(moduleRow.data);
   const age = calcAge(data.birth_date);
-  const generoInit = data.genero || 'femenino';
+  const generoInit = normalizeGenero(data.genero);
   const birth = birthParts(data.birth_date);
 
   host.innerHTML = `
@@ -91,11 +101,14 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
           <input name="nombre" required data-sensitive value="${escapeHtml(data.nombre || treatment.patient_name || '')}" />
         </div>
         <div class="form-group">
-          <label>Género</label>
-          <div class="segmented" data-field="genero" data-no-autobind>
-            <button type="button" data-val="femenino" class="${generoInit === 'femenino' ? 'active' : ''}">Femenino</button>
-            <button type="button" data-val="masculino" class="${generoInit === 'masculino' ? 'active' : ''}">Masculino</button>
-          </div>
+          <label for="registro-genero">Género</label>
+          <select name="genero" id="registro-genero">
+            <option value="">Seleccionar…</option>
+            ${PATIENT_GENDER_OPTIONS.map(
+              (o) =>
+                `<option value="${escapeHtml(o.id)}" ${generoInit === o.id ? 'selected' : ''}>${escapeHtml(o.label)}</option>`,
+            ).join('')}
+          </select>
         </div>
         <div class="form-group">
           <label>Número de ID (o RUT)</label>
@@ -175,7 +188,6 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       </form>
     </div>`;
 
-  let genero = generoInit;
   let occupations = Array.isArray(data.occupations)
     ? data.occupations.filter((o) => OCCUPATION_OPTIONS.includes(o))
     : [];
@@ -215,7 +227,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       email: fd.get('email'),
       phone: fd.get('phone'),
       address: fd.get('address'),
-      genero,
+      genero: fd.get('genero') || '',
       birth_date,
       marital_status: fd.get('marital_status'),
       source: fd.get('source'),
@@ -230,7 +242,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       email: payload.email,
       phone: payload.phone,
       address: payload.address,
-      gender: genero,
+      gender: payload.genero,
       birth_date: payload.birth_date,
       marital_status: payload.marital_status,
       source: payload.source,
@@ -252,14 +264,6 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       }
       persist();
     },
-  });
-
-  host.querySelectorAll('[data-field="genero"] button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      genero = btn.dataset.val;
-      host.querySelectorAll('[data-field="genero"] button').forEach((b) => b.classList.toggle('active', b === btn));
-      persist();
-    });
   });
 
   ['#birth-year', '#birth-month', '#birth-day'].forEach((sel) => {

@@ -1,8 +1,8 @@
-import { TREATMENT_STATUS } from './config.js';
+import { TREATMENT_STATUS, patientGenderLabel } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getSessionsWithModules, getTreatment } from './db.js';
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
-import { buildReadableText } from './readable-text.js';
+import { buildReadableText, relacionIaReadable } from './readable-text.js';
 import { loadProfile } from './profile.js';
 import {
   dxItemTexts,
@@ -172,7 +172,7 @@ export async function exportTreatmentPdf(treatmentId) {
     ['Nombre', patient.nombre || treatment.patient_name],
     ['RUT/ID', patient.id_number],
     ['Nacimiento', patient.birth_date],
-    ['Género', patient.genero],
+    ['Género', patientGenderLabel(patient.genero) || patient.genero],
     ['Email', patient.email],
     ['Teléfono', patient.phone],
     ['Dirección', patient.address],
@@ -200,6 +200,8 @@ export async function exportTreatmentPdf(treatmentId) {
       ['Medicación', md.medicacion],
       ['Psiquiatra / médico tratante', md.psiquiatra],
       ['Consumo', md.consumo],
+      ['Salud física / factores orgánicos', md.salud_fisica],
+      ['Relación con la IA', relacionIaReadable(md)],
     ].filter(([, v]) => String(v || '').trim());
     for (const [title, body] of blocks) {
       y += 6;

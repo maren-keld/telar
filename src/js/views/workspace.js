@@ -711,6 +711,138 @@ function bindModuleScrollSpy(container) {
   pickVisible();
 }
 
+function createBotoneraEl({ isActive }) {
+  const actions = document.createElement('div');
+  actions.className = 'module-card-actions botonera-modules';
+  if (isActive) actions.id = 'botoneraModules';
+  return actions;
+}
+
+function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, moduleLabelText, onSwap, onPrint, onDelete }) {
+  // Derecha → izquierda: cerrar, cambiar, imprimir, ayuda. En DOM: ayuda, imprimir, cambiar, cerrar.
+  if (isNf) {
+    const helpBtn = document.createElement('button');
+    helpBtn.type = 'button';
+    helpBtn.className = 'module-help-btn';
+    helpBtn.title = 'Ayuda neurofeedback';
+    helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
+    helpBtn.textContent = '?';
+    helpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toast(NF_HELP_MESSAGE);
+    });
+    actions.appendChild(helpBtn);
+  }
+
+  if (handout) {
+    const printBtn = document.createElement('button');
+    printBtn.type = 'button';
+    printBtn.className = 'module-print-btn';
+    printBtn.title = 'Descargar PDF del módulo';
+    printBtn.setAttribute('aria-label', 'Descargar PDF del módulo');
+    printBtn.innerHTML = ICON_DOWNLOAD;
+    printBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await onPrint();
+      } catch (err) {
+        toast(err.message || 'No se pudo generar el PDF');
+      }
+    });
+    actions.appendChild(printBtn);
+  }
+
+  if (swappable) {
+    const swapBtn = document.createElement('button');
+    swapBtn.type = 'button';
+    swapBtn.className = 'module-print-btn';
+    swapBtn.title = 'Cambiar módulo';
+    swapBtn.setAttribute('aria-label', 'Cambiar módulo');
+    swapBtn.innerHTML = ICON_SWAP;
+    swapBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ok = await openConfirmModal({
+        title: '¿Cambiar módulo?',
+        message: `¿Deseas reemplazar «${moduleLabelText}»? Se perderá la información del módulo actual.`,
+        confirmLabel: 'Cambiar módulo',
+      });
+      if (!ok) return;
+      try {
+        await onSwap();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    actions.appendChild(swapBtn);
+  }
+
+  if (deletable) {
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'module-delete-btn';
+    del.title = 'Eliminar módulo';
+    del.setAttribute('aria-label', 'Eliminar módulo');
+    del.textContent = '×';
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ok = await openConfirmModal({
+        title: '¿Eliminar módulo?',
+        message: `¿Estás seguro de eliminar «${moduleLabelText}»? La información del módulo no se puede recuperar.`,
+        confirmLabel: 'Eliminar módulo',
+      });
+      if (!ok) return;
+      try {
+        await onDelete();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    actions.appendChild(del);
+  }
+}
+
+function collectBotoneraExtras(wrap, actions) {
+  const extras = [];
+  wrap.querySelectorAll('[data-botonera-extra], .module-card-head__badge').forEach((el) => {
+    if (actions.contains(el) || extras.includes(el)) return;
+    extras.push(el);
+    el.classList.add('botonera-modules__extra');
+  });
+  if (!extras.length) return;
+  const fragment = document.createDocumentFragment();
+  extras.forEach((el) => fragment.appendChild(el));
+  actions.insertBefore(fragment, actions.firstChild);
+}
+
+function attachBotonera(wrap, actions) {
+  collectBotoneraExtras(wrap, actions);
+  if (!actions.childElementCount) {
+    actions.remove();
+    return;
+  }
+  const head =
+    wrap.querySelector('.module-card-head') ||
+    wrap.querySelector('.support-module__head') ||
+    wrap.querySelector('.module-selector-title-row') ||
+    wrap.querySelector('.module-anamnesis-head') ||
+    wrap.querySelector('.dx-head') ||
+    wrap.querySelector('.nf-header');
+  if (head) {
+    head.appendChild(actions);
+    return;
+  }
+  const title = wrap.querySelector('.module-title');
+  if (title?.parentNode) {
+    const row = document.createElement('div');
+    row.className = 'botonera-modules-row';
+    title.parentNode.insertBefore(row, title);
+    row.appendChild(title);
+    row.appendChild(actions);
+    return;
+  }
+  wrap.insertBefore(actions, wrap.firstChild);
+}
+
 async function renderAllCenterModules(host, sessions, treatment, activeModule, ctx) {
   teardownBilateralStimulation();
   host.innerHTML = '';
@@ -739,97 +871,22 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       wrap.dataset.sessionNumber = session.number;
 
       const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
-
-      if (handout || deletable || mod.module_type === 'neurofeedback' || swappable) {
-        const actions = document.createElement('div');
-        actions.className = 'module-card-actions';
-
-        if (swappable) {
-          const swapBtn = document.createElement('button');
-          swapBtn.type = 'button';
-          swapBtn.className = 'module-print-btn';
-          swapBtn.title = 'Cambiar módulo';
-          swapBtn.setAttribute('aria-label', 'Cambiar módulo');
-          swapBtn.innerHTML = ICON_SWAP;
-          swapBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const ok = await openConfirmModal({
-              title: '¿Cambiar módulo?',
-              message: `¿Deseas reemplazar «${moduleLabel(mod.module_type)}»? Se perderá la información del módulo actual.`,
-              confirmLabel: 'Cambiar módulo',
-            });
-            if (!ok) return;
-            try {
-              await ctx.onSwap(mod.id, session.id);
-            } catch (err) {
-              toast(err.message);
-            }
-          });
-          actions.appendChild(swapBtn);
-        }
-
-        if (mod.module_type === 'neurofeedback') {
-          const helpBtn = document.createElement('button');
-          helpBtn.type = 'button';
-          helpBtn.className = 'module-help-btn';
-          helpBtn.title = 'Ayuda neurofeedback';
-          helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
-          helpBtn.textContent = '?';
-          helpBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toast(NF_HELP_MESSAGE);
-          });
-          actions.appendChild(helpBtn);
-        }
-
-        if (handout) {
-          const printBtn = document.createElement('button');
-          printBtn.type = 'button';
-          printBtn.className = 'module-print-btn';
-          printBtn.title = 'Descargar PDF del módulo';
-          printBtn.setAttribute('aria-label', 'Descargar PDF del módulo');
-          printBtn.innerHTML = ICON_DOWNLOAD;
-          printBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            try {
-              await printModulePdf(mod, treatment.patient_name);
-            } catch (err) {
-              toast(err.message || 'No se pudo generar el PDF');
-            }
-          });
-          actions.appendChild(printBtn);
-        }
-
-        if (deletable) {
-          const del = document.createElement('button');
-          del.type = 'button';
-          del.className = 'module-delete-btn';
-          del.title = 'Eliminar módulo';
-          del.setAttribute('aria-label', 'Eliminar módulo');
-          del.textContent = '×';
-          del.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const label = moduleLabel(mod.module_type);
-            const ok = await openConfirmModal({
-              title: '¿Eliminar módulo?',
-              message:
-                `¿Estás seguro de eliminar «${label}»? La información del módulo no se puede recuperar.`,
-              confirmLabel: 'Eliminar módulo',
-            });
-            if (!ok) return;
-            try {
-              await deleteSessionModule(mod.id);
-              toast('Módulo eliminado');
-              await ctx.onDelete(mod.id);
-            } catch (err) {
-              toast(err.message);
-            }
-          });
-          actions.appendChild(del);
-        }
-
-        wrap.appendChild(actions);
-      }
+      const isNf = mod.module_type === 'neurofeedback';
+      const actions = createBotoneraEl({ isActive });
+      appendBotoneraCore(actions, {
+        swappable,
+        handout,
+        deletable,
+        isNf,
+        moduleLabelText: moduleLabel(mod.module_type),
+        onSwap: () => ctx.onSwap(mod.id, session.id),
+        onPrint: () => printModulePdf(mod, treatment.patient_name),
+        onDelete: async () => {
+          await deleteSessionModule(mod.id);
+          toast('Módulo eliminado');
+          await ctx.onDelete(mod.id);
+        },
+      });
 
       const body = document.createElement('div');
       body.className = 'center-module-card__body';
@@ -842,6 +899,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
         onNavigate: ctx.onNavigate,
         refreshWorkspace: ctx.refreshWorkspace,
       });
+      attachBotonera(wrap, actions);
     }
 
     const lastMod = session.modules[session.modules.length - 1];
