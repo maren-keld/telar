@@ -6,16 +6,23 @@ import {
   NF_ARTIFACT_P2P_UV,
   NF_BAND_ORDER,
   NF_BANDS,
+  NF_BLINK_P2P_UV,
+  NF_BLINK_RISE_MS,
+  NF_BLINK_RISE_UV,
+  NF_BLINK_WINDOW_MS,
   NF_EMG_BETA_PCT,
   NF_EMG_P2P_UV,
   NF_LIVE_FFT_SIZE,
+  NF_LIVE_WINDOW_SEC,
+  NF_MOTION_ACCEL_G,
+  NF_SHAPE_HIT_RATE,
+  NF_MOTION_GYRO_DPS,
   NF_NOTCH_FREQS,
   NF_POWER_RANGE,
   NF_SAMPLE_RATE,
 } from './nf-bands.js';
 
 const DELTA_WEIGHT = 0.7;
-const EMA_ALPHA = 0.06;
 const EPS = 1e-9;
 
 /** Filtro biquad IIR (Audio EQ Cookbook), procesamiento muestra a muestra. */
@@ -103,48 +110,136 @@ export class LiveEegFilters {
   }
 }
 
-class EmaZ {
-  constructor(alpha = EMA_ALPHA) {
-    this.a = alpha;
+/** Media/varianza por lote sobre toda la línea base (no EMA de los últimos ~20 s). */
+class BatchZ {
+  constructor() {
+    this.samples = [];
     this.init = false;
+    this.frozen = false;
     this.mean = 0;
     this.var = 1;
   }
 
   update(x) {
-    if (!this.init) {
-      this.mean = x;
-      this.var = 1;
-      this.init = true;
-      return;
-    }
-    const mPrev = this.mean;
-    this.mean = (1 - this.a) * this.mean + this.a * x;
-    this.var = (1 - this.a) * this.var + this.a * (x - mPrev) * (x - mPrev);
-    this.var = Math.max(this.var, 1e-6);
+    if (this.frozen || !Number.isFinite(x)) return;
+    this.samples.push(x);
   }
 
   z(x) {
     return (x - this.mean) / Math.sqrt(this.var);
   }
 
+  freeze() {
+    const n = this.samples.length;
+    if (n === 0) {
+      this.mean = 0;
+      this.var = 1;
+      this.init = false;
+    } else if (n === 1) {
+      this.mean = this.samples[0];
+      this.var = 1;
+      this.init = true;
+    } else {
+      let sum = 0;
+      for (const v of this.samples) sum += v;
+      const m = sum / n;
+      let acc = 0;
+      for (const v of this.samples) acc += (v - m) * (v - m);
+      this.mean = m;
+      this.var = Math.max(acc / (n - 1), 1e-6);
+      this.init = true;
+    }
+    this.frozen = true;
+  }
+
   reset() {
+    this.samples = [];
     this.init = false;
+    this.frozen = false;
     this.mean = 0;
     this.var = 1;
   }
 }
 
-/** Estado EMA para normalizar índices en vivo (como analyze_session.py). */
+/** Referencia congelada de medición (misma idea que analyze_session.py). */
 export class FeedbackEma {
   constructor() {
-    this.att = new EmaZ();
-    this.calm = new EmaZ();
+    this.att = new BatchZ();
+    this.calm = new BatchZ();
+  }
+
+  freeze() {
+    this.att.freeze();
+    this.calm.freeze();
+  }
+
+  isFrozen() {
+    return this.att.frozen && this.calm.frozen;
+  }
+
+  isReady() {
+    return this.att.init && this.calm.init;
+  }
+
+  snapshot() {
+    return {
+      calm_mean: this.calm.mean,
+      calm_var: this.calm.var,
+      att_mean: this.att.mean,
+      att_var: this.att.var,
+    };
   }
 
   reset() {
     this.att.reset();
     this.calm.reset();
+  }
+}
+
+/**
+ * Umbral adaptativo para orbe/audio (shaping ~70 % de aciertos).
+ * Independiente de la medición vs línea base.
+ */
+export class AdaptiveShaper {
+  constructor({ targetHitRate = NF_SHAPE_HIT_RATE } = {}) {
+    this.targetHitRate = targetHitRate;
+    this.threshold = null;
+    this.sd = 0.4;
+    this.recent = [];
+  }
+
+  reset() {
+    this.threshold = null;
+    this.sd = 0.4;
+    this.recent = [];
+  }
+
+  seed(mean, sd) {
+    this.threshold = Number.isFinite(mean) ? mean : 0;
+    this.sd = Math.max(Number.isFinite(sd) ? sd : 0.4, 0.12);
+    this.recent = [];
+  }
+
+  update(x) {
+    if (!Number.isFinite(x) || this.threshold == null) return;
+    this.recent.push(x);
+    if (this.recent.length > 24) this.recent.shift();
+    if (this.recent.length >= 4) {
+      const m = this.recent.reduce((a, b) => a + b, 0) / this.recent.length;
+      let acc = 0;
+      for (const v of this.recent) acc += (v - m) * (v - m);
+      this.sd = Math.max(Math.sqrt(acc / this.recent.length), 0.12);
+    }
+    const hit = x >= this.threshold;
+    const missRate = 1 - this.targetHitRate;
+    const up = 0.05 * this.sd;
+    const down = missRate > 0 ? (up * this.targetHitRate) / missRate : up;
+    this.threshold += hit ? up : -down;
+  }
+
+  level(x) {
+    if (this.threshold == null || !Number.isFinite(x)) return 0.38;
+    return 1 / (1 + Math.exp(-(x - this.threshold) / this.sd));
   }
 }
 
@@ -234,7 +329,7 @@ function bandPowersFromPsd(psd, fs, nfft) {
 }
 
 /**
- * Welch en vivo (50 % solape, nperseg = min(len, 2·fs)) — alineado con scipy.signal.welch.
+ * Welch en vivo (50 % solape, nperseg = 1 s) — alineado con scipy.signal.welch.
  * @param {Float32Array|number[]} samples
  * @param {(windowed: Float32Array) => Float32Array} forwardFft magnitudes length nfft/2
  */
@@ -246,7 +341,7 @@ export function welchBandPowers(
 ) {
   const n = samples.length;
   if (n < 16) return [0, 0, 0, 0];
-  const nperseg = Math.max(16, Math.min(n, Math.floor(fs * 2), fftSize));
+  const nperseg = Math.max(16, Math.min(n, Math.floor(fs * NF_LIVE_WINDOW_SEC), fftSize));
   const noverlap = Math.floor(nperseg / 2);
   const step = Math.max(1, nperseg - noverlap);
   const nBins = Math.floor(nperseg / 2);
@@ -281,9 +376,55 @@ export function peakToPeakUv(samples) {
   return max - min;
 }
 
+export function detectHeadMotion(accelSamples, gyroSamples) {
+  const acc = accelSamples || [];
+  for (const s of acc) {
+    const mag = Math.hypot(s[0] ?? 0, s[1] ?? 0, s[2] ?? 0);
+    if (Math.abs(mag - 1) >= NF_MOTION_ACCEL_G) return true;
+  }
+  const gyr = gyroSamples || [];
+  for (const s of gyr) {
+    const mag = Math.hypot(s[0] ?? 0, s[1] ?? 0, s[2] ?? 0);
+    if (mag >= NF_MOTION_GYRO_DPS) return true;
+  }
+  return false;
+}
+
+function zeroCrossings(samples) {
+  let n = 0;
+  for (let i = 1; i < samples.length; i++) {
+    const a = samples[i - 1];
+    const b = samples[i];
+    if ((a < 0 && b >= 0) || (a > 0 && b <= 0)) n += 1;
+  }
+  return n;
+}
+
 /**
- * Artefacto por movimiento (p2p alto) o EMG mandibular (beta + p2p moderado).
- * @returns {{ artifact: boolean, kind: 'motion'|'emg'|null }}
+ * Parpadeo frontal: ~150–200 µV en <400 ms (no alpha lenta de ojos cerrados).
+ * Un seno 10 Hz cruza cero ~8 veces en 400 ms; un parpadeo, 1–2.
+ */
+export function detectBlink(buffers, fs = NF_SAMPLE_RATE) {
+  const nWin = Math.max(8, Math.round((fs * NF_BLINK_WINDOW_MS) / 1000));
+  const nRise = Math.max(2, Math.round((fs * NF_BLINK_RISE_MS) / 1000));
+  for (const ch of ['FP1', 'FP2']) {
+    const buf = buffers?.[ch];
+    if (!buf || buf.length < nWin) continue;
+    const win = buf.slice(-nWin);
+    if (peakToPeakUv(win) < NF_BLINK_P2P_UV) continue;
+    if (zeroCrossings(win) > 3) continue;
+    let maxRise = 0;
+    for (let i = nRise; i < win.length; i++) {
+      maxRise = Math.max(maxRise, Math.abs(win[i] - win[i - nRise]));
+    }
+    if (maxRise >= NF_BLINK_RISE_UV) return true;
+  }
+  return false;
+}
+
+/**
+ * Artefacto: IMU, parpadeo frontal, movimiento p2p o EMG mandibular.
+ * @returns {{ artifact: boolean, kind: 'motion'|'emg'|'blink'|null }}
  */
 export function detectArtifact(
   buffers,
@@ -291,7 +432,14 @@ export function detectArtifact(
   bars,
   threshold = NF_ARTIFACT_P2P_UV,
   fftSize = NF_LIVE_FFT_SIZE,
+  extras = {},
 ) {
+  if (detectHeadMotion(extras.accelSamples, extras.gyroSamples)) {
+    return { artifact: true, kind: 'motion' };
+  }
+  if (detectBlink(buffers)) {
+    return { artifact: true, kind: 'blink' };
+  }
   let maxP2p = 0;
   for (const ch of channels) {
     const buf = buffers[ch];
@@ -332,20 +480,23 @@ function indicesFromBands(bars) {
 }
 
 /**
- * Índice de retroalimentación en vivo (0–100 %) — misma fórmula que analyze_session.py.
+ * Índice de medición (0–100 %) vs referencia congelada.
+ * Tras freeze(), z es contra el lote de línea base; updateEma solo acumula muestras.
  * @param {{ updateEma?: boolean }} [options]
  */
 export function computeFeedbackMetrics(protocol, bars, ema = null, options = {}) {
   const { updateEma = true } = options;
   const { attIdx, calmIdx } = indicesFromBands(bars);
+  if (ema && updateEma) {
+    ema.att.update(attIdx);
+    ema.calm.update(calmIdx);
+  }
   if (protocol === 'atencion') {
-    if (ema && updateEma) ema.att.update(attIdx);
     const z = ema ? ema.att.z(attIdx) : attIdx;
     const percent = Math.round(100 * sigmoid(z));
-    return { percent, level: percent / 100 };
+    return { percent, level: percent / 100, z, attIdx, calmIdx };
   }
-  if (ema && updateEma) ema.calm.update(calmIdx);
   const z = ema ? ema.calm.z(calmIdx) : calmIdx;
   const percent = Math.round(100 * sigmoid(z));
-  return { percent, level: percent / 100 };
+  return { percent, level: percent / 100, z, attIdx, calmIdx };
 }

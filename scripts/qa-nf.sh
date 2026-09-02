@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # QA NF-01 … NF-10 — comprobaciones estáticas + smoke analyze_session.
-# Manual con Muse: conectar, warmup 90s, artefacto, grabar 1 min, resultados.
+# Manual con Muse: conectar, línea base ojos abiertos, grabar, resultados.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -16,20 +16,20 @@ grep_file() {
 
 echo "→ QA NF-01 … NF-10 (código)"
 
-# NF-01: grabación filtrada @ 256 Hz
-if grep_file src/lib/nf-session.js '1000 / NF_SAMPLE_RATE' \
-  && grep_file src/lib/nf-session.js 'vals\[e\]' \
+# NF-01: grabación con timestamps de paquete
+if grep_file src/lib/nf-session.js 'timestampMs' \
   && grep_file src/lib/nf-bands.js 'NF_SAMPLE_RATE = 256'; then
-  ok "NF-01 grabación filtrada ~256 Hz"
+  ok "NF-01 grabación filtrada ~256 Hz (timestamps de paquete)"
 else
   bad "NF-01 grabación filtrada ~256 Hz"
 fi
 
-# NF-02: FFT 512 (2 s)
-if grep_file src/lib/nf-bands.js 'NF_LIVE_FFT_SIZE = 512'; then
-  ok "NF-02 ventana espectral 2 s (FFT 512)"
+# NF-02: FFT 256 (1 s) para menor latencia del orbe
+if grep_file src/lib/nf-bands.js 'NF_LIVE_FFT_SIZE = 256' \
+  && grep_file src/lib/nf-bands.js 'NF_LIVE_WINDOW_SEC = 1'; then
+  ok "NF-02 ventana espectral 1 s (FFT 256)"
 else
-  bad "NF-02 ventana espectral 2 s (FFT 512)"
+  bad "NF-02 ventana espectral 1 s (FFT 256)"
 fi
 
 # NF-03: sin atenuación HF solo en vivo
@@ -65,23 +65,22 @@ else
   bad "NF-06/15 detección artefactos + EMG"
 fi
 
-# NF-17: calibración EMA al iniciar entrenamiento (no al conectar ni al grabar)
-if sed -n '/const finishConnect = () => {/,/^    };$/p' src/lib/nf-session.js | grep -q '_warmupStartedAt'; then
-  bad "NF-17 warmup no debe iniciar en finishConnect"
-elif sed -n '/startTraining/,/^  }$/p' src/lib/nf-session.js | grep -q '_warmupStartedAt = Date.now()' \
-  && grep -q "sessionPhase !== 'training'" src/lib/nf-session.js; then
-  ok "NF-17 calibración al iniciar entrenamiento"
+# NF-17: referencia por lote al cerrar línea base (no warmup EMA)
+if grep_file src/lib/nf-session.js 'feedbackEma.freeze' \
+  && grep_file src/lib/nf-signal.js 'class BatchZ' \
+  && ! grep_file src/lib/nf-session.js '_warmupStartedAt'; then
+  ok "NF-17 freeze por lote al completar línea base"
 else
-  bad "NF-17 calibración al iniciar entrenamiento"
+  bad "NF-17 freeze por lote al completar línea base"
 fi
 
-# NF-18: warmup configurable
-if [ -f src/lib/nf-config.js ] \
-  && grep_file src/lib/nf-config.js 'NF_WARMUP_OPTIONS_SEC' \
-  && grep_file src/js/modules/neurofeedback.js 'nf-warmup-sec'; then
-  ok "NF-18 warmup configurable (60/90/120 s)"
+# NF-18: warmup huérfano eliminado; orbe adaptativo separado de la medición
+if ! grep_file src/lib/nf-config.js 'NF_WARMUP' \
+  && ! grep_file src/js/modules/neurofeedback.js 'nf-warmup-sec' \
+  && grep_file src/lib/nf-signal.js 'class AdaptiveShaper'; then
+  ok "NF-18 sin warmup; shaping adaptativo en el orbe"
 else
-  bad "NF-18 warmup configurable"
+  bad "NF-18 warmup eliminado / AdaptiveShaper"
 fi
 
 # NF-16: semáforo calidad señal
@@ -109,9 +108,10 @@ else
 fi
 
 # NF-10: ayuda
-if grep_file src/js/modules/neurofeedback.js 'calibr' \
-  && grep_file src/js/modules/neurofeedback.js 'artefact\|mandíbula\|parpad'; then
-  ok "NF-10 copy de ayuda (calibración/artefactos)"
+if grep_file src/lib/nf-bands.js 'ojos abiertos' \
+  && grep_file src/js/modules/neurofeedback.js 'ojos abiertos' \
+  && grep_file src/js/modules/neurofeedback.js 'parpad'; then
+  ok "NF-10 copy de ayuda (ojos abiertos / artefactos)"
 else
   bad "NF-10 copy de ayuda"
 fi
@@ -134,7 +134,7 @@ else
 fi
 
 # NF-14 gráfico correlación
-if grep_file src/js/modules/nf-results.js 'nf-correlation-chart' \
+if grep_file src/js/modules/nf-results.js 'nf-live-chart' \
   && grep_file src/lib/nf-session.js '_liveTrace'; then
   ok "NF-14 gráfico vivo vs post"
 else
@@ -149,11 +149,10 @@ else
   bad "NF-12 Welch en vivo"
 fi
 
-# Sprint 4 — informe (sin topomapa NF-23)
+# Sprint 4 — informe PDF PSD (espectral en pantalla es opcional)
 if grep_file src/js/modules/nf-results.js 'nf-evolution-chart' \
-  && grep_file src/js/modules/nf-results.js 'nf-results__spectral' \
   && grep_file src/js/export-nf-session.js 'drawPsdBars'; then
-  ok "NF-20/21/22 evolución + PDF PSD + espectral"
+  ok "NF-20/21/22 evolución + PDF PSD"
 else
   bad "NF-20/21/22 informe clínico"
 fi
@@ -188,6 +187,6 @@ echo ""
 echo "Resultado NF QA: ${PASS} ok, ${FAIL} fallos"
 if [ "$FAIL" -eq 0 ]; then
   echo ""
-  echo "Manual (Muse): conectar -> grabar -> reposo -> iniciar entrenamiento -> detener -> resultados + gráfico."
+  echo "Manual (Muse): conectar → línea base ojos abiertos (orbe quieto) → grabar → detener → resultados."
 fi
 [ "$FAIL" -eq 0 ]

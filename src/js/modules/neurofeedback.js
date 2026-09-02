@@ -1,5 +1,5 @@
-import { NF_PROTOCOL_ELECTRODES, NF_PROTOCOL_PRESETS, NF_ORB_SMOOTH_LEVEL, NF_ORB_SMOOTH_PCT, NF_SUPPORTED_DEVICE, nfPreset } from '../../lib/nf-bands.js';
-import { getNfBaselineSec, getNfWarmupSec, NF_BASELINE_OPTIONS_SEC, NF_WARMUP_OPTIONS_SEC, setNfBaselineSec, setNfWarmupSec } from '../../lib/nf-config.js';
+import { NF_HELP_MESSAGE, NF_PROTOCOL_ELECTRODES, NF_PROTOCOL_PRESETS, NF_ORB_SMOOTH_LEVEL, NF_ORB_SMOOTH_PCT, NF_SUPPORTED_DEVICE, nfPreset } from '../../lib/nf-bands.js';
+import { getNfBaselineSec, NF_BASELINE_OPTIONS_SEC, setNfBaselineSec } from '../../lib/nf-config.js';
 import { NeurofeedbackSession } from '../../lib/nf-session.js';
 import { isAudioFeedbackEnabled, setAudioFeedbackEnabled, setNfAudioProtocol } from '../../lib/nf-audio.js';
 import { analyzeSessionPython, saveNeurofeedbackRecording } from '../db.js';
@@ -18,8 +18,7 @@ import {
   startAnalyzeProgress,
 } from './nf-results.js';
 
-export const NF_HELP_MESSAGE =
-  'Solo Muse 2. BLE nativo en macOS/Windows. Bienestar y autorregulación — no es dispositivo médico. Conecta el Muse, pulsa «Iniciar entrenamiento» para la línea base (~2–3 min), luego «Grabar sesión». Evita parpadear o tensar la mandíbula.';
+export { NF_HELP_MESSAGE };
 
 let nfSession = null;
 let frequencyChart = null;
@@ -31,10 +30,8 @@ let visualTarget = 0;
 let visualDisplay = 0;
 let pctDisplay = 0;
 let feedbackStatus = {
-  warming: false,
   artifact: false,
   artifactKind: null,
-  warmupRemainingSec: 0,
   recording: false,
   sessionPhase: 'idle',
   baselineElapsedSec: 0,
@@ -42,6 +39,8 @@ let feedbackStatus = {
   baselineComplete: false,
   signalQuality: 'unknown',
   signalArtifactPct: 0,
+  signalLost: false,
+  calibrated: false,
 };
 let orbAnimId = null;
 let orbHostRef = null;
@@ -117,10 +116,8 @@ function resetOrbFeedback() {
   visualTarget = 0;
   pctDisplay = 0;
   feedbackStatus = {
-    warming: false,
     artifact: false,
     artifactKind: null,
-    warmupRemainingSec: 0,
     recording: false,
     sessionPhase: 'idle',
     baselineElapsedSec: 0,
@@ -128,6 +125,8 @@ function resetOrbFeedback() {
     baselineComplete: false,
     signalQuality: 'unknown',
     signalArtifactPct: 0,
+    signalLost: false,
+    calibrated: false,
   };
 }
 
@@ -173,7 +172,8 @@ function startOrbAnimation(host) {
         visualDisplay += (visualTarget - visualDisplay) * NF_ORB_SMOOTH_LEVEL;
         pctDisplay += (visualTarget - pctDisplay) * NF_ORB_SMOOTH_PCT;
         const pct = Math.round(pctDisplay * 100);
-        paintVisualOrb(host, visualDisplay, pct);
+        const inBaseline = feedbackStatus.sessionPhase === 'baseline';
+        paintVisualOrb(host, visualDisplay, inBaseline ? 0 : pct, { idle: inBaseline });
         updateFeedbackPct(host, pct, protocol);
         updateFeedbackStatus(host, feedbackStatus);
         updateBaselineOrbTimer(host, feedbackStatus);
@@ -225,7 +225,7 @@ function updateBaselineOrbTimer(host, { sessionPhase, baselineRemainingSec }) {
   const show = sessionPhase === 'baseline';
   timer.hidden = !show;
   if (show) {
-    timer.textContent = `Calculando línea base · ${formatDuration(baselineRemainingSec)} restantes`;
+    timer.textContent = `Línea base · ojos abiertos · mirá el orbe · ${formatDuration(baselineRemainingSec)} restantes`;
   }
 }
 
@@ -255,18 +255,18 @@ function syncSessionControls(host) {
   }
 }
 
-function updateFeedbackStatus(host, { warming, artifact, artifactKind, warmupRemainingSec, recording }) {
+function updateFeedbackStatus(host, { artifact, artifactKind, recording, signalLost }) {
   const el = host.querySelector('#nf-feedback-status');
   if (!el) return;
+  if (signalLost) {
+    el.hidden = false;
+    el.className = 'nf-feedback-status nf-feedback-status--artifact';
+    el.textContent = 'Sin señal — reconectando…';
+    return;
+  }
   if (!recording) {
     el.hidden = true;
     el.textContent = '';
-    return;
-  }
-  if (warming && warmupRemainingSec > 0) {
-    el.hidden = false;
-    el.className = 'nf-feedback-status nf-feedback-status--warmup';
-    el.textContent = `Calibrando sesión… ~${warmupRemainingSec} s`;
     return;
   }
   if (artifact) {
@@ -275,7 +275,9 @@ function updateFeedbackStatus(host, { warming, artifact, artifactKind, warmupRem
     el.textContent =
       artifactKind === 'emg'
         ? 'Tensión mandibular — suelta la mandíbula'
-        : 'Señal con artefacto — evita parpadear y movimientos bruscos';
+        : artifactKind === 'blink'
+          ? 'Parpadeo detectado — relaja la frente y evita parpadear'
+          : 'Señal con artefacto — evita parpadear y movimientos bruscos';
     return;
   }
   el.hidden = true;
@@ -324,24 +326,24 @@ function updateFeedbackPct(host, pct, protocol) {
   const hintEl = host.querySelector('#nf-visual-pct-hint');
   if (!pctEl) return;
 
-  if (!isSessionConnected()) {
+  if (!isSessionConnected() || feedbackStatus.signalLost) {
     pctEl.textContent = '—';
     if (labelEl) labelEl.textContent = 'sin señal';
-    if (hintEl) hintEl.textContent = 'conecta el Muse';
+    if (hintEl) hintEl.textContent = feedbackStatus.signalLost ? 'sin señal' : 'conecta el Muse';
     return;
   }
 
   if (feedbackStatus.sessionPhase === 'baseline') {
-    pctEl.textContent = `${pct}%`;
+    pctEl.textContent = '—';
     if (labelEl) labelEl.textContent = feedbackPctLabel(protocol);
-    if (hintEl) hintEl.textContent = 'línea base';
+    if (hintEl) hintEl.textContent = 'ojos abiertos · mirá el orbe';
     return;
   }
 
-  if (feedbackStatus.recording && feedbackStatus.warming) {
-    pctEl.textContent = `${pct}%`;
+  if (!feedbackStatus.calibrated) {
+    pctEl.textContent = '—';
     if (labelEl) labelEl.textContent = feedbackPctLabel(protocol);
-    if (hintEl) hintEl.textContent = 'calibrando sesión';
+    if (hintEl) hintEl.textContent = 'calibrando';
     return;
   }
 
@@ -481,18 +483,11 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
             <span class="nf-advanced__chevron" id="nf-advanced-chevron" aria-hidden="true">▸</span>
           </summary>
           <div class="nf-advanced__body">
-            <p class="nf-field-label">Calibración EMA al grabar</p>
-            <select class="nf-select" id="nf-warmup-sec" title="Segundos de calibración al iniciar la grabación (distinto de la línea base)">
-              ${NF_WARMUP_OPTIONS_SEC.map(
-                (s) =>
-                  `<option value="${s}"${s === getNfWarmupSec() ? ' selected' : ''}>${s} s</option>`,
-              ).join('')}
-            </select>
             <p class="nf-field-label">Reposo / línea base</p>
-            <select class="nf-select" id="nf-baseline-sec" title="Duración sugerida de reposo antes del entrenamiento">
+            <select class="nf-select" id="nf-baseline-sec" title="Duración de reposo con ojos abiertos, mirando el orbe">
               ${NF_BASELINE_OPTIONS_SEC.map(
                 (s) =>
-                  `<option value="${s}"${s === getNfBaselineSec() ? ' selected' : ''}>${s} s (2–3 min)</option>`,
+                  `<option value="${s}"${s === getNfBaselineSec() ? ' selected' : ''}>${s} s (ojos abiertos)</option>`,
               ).join('')}
             </select>
             <p class="nf-field-label">Ubicación</p>
@@ -678,11 +673,6 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
   bindAdvancedAccordion(host);
   syncFeedbackVisibility(host);
 
-  host.querySelector('#nf-warmup-sec')?.addEventListener('change', (e) => {
-    setNfWarmupSec(Number(e.target.value));
-    toast(`Calibración al grabar: ${e.target.value} s`);
-  });
-
   host.querySelector('#nf-baseline-sec')?.addEventListener('change', (e) => {
     setNfBaselineSec(Number(e.target.value));
     toast(`Reposo sugerido: ${e.target.value} s`);
@@ -748,7 +738,11 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     const connecting = st === 'connecting' && !connected;
 
     if (deviceStateEl) {
-      if (connected) {
+      if (connected && feedbackStatus.signalLost) {
+        deviceStateEl.textContent = '(sin señal)';
+        deviceStateEl.hidden = false;
+        deviceStateEl.className = 'nf-device-state nf-device-state--lost';
+      } else if (connected) {
         deviceStateEl.textContent = '(conectado)';
         deviceStateEl.hidden = false;
         deviceStateEl.className = 'nf-device-state nf-device-state--connected';
@@ -794,10 +788,8 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
   nfSession.onBandsUpdate = ({
     level,
     percent,
-    warming,
     artifact,
     artifactKind,
-    warmupRemainingSec,
     recording,
     sessionPhase,
     baselineElapsedSec,
@@ -805,13 +797,13 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     baselineComplete,
     signalQuality,
     signalArtifactPct,
+    signalLost,
+    calibrated,
   }) => {
     if (nfSession.connectionStatus !== 'connected') return;
     feedbackStatus = {
-      warming: Boolean(warming),
       artifact: Boolean(artifact),
       artifactKind: artifactKind || null,
-      warmupRemainingSec: warmupRemainingSec ?? 0,
       recording: Boolean(recording),
       sessionPhase: sessionPhase || 'idle',
       baselineElapsedSec: baselineElapsedSec ?? 0,
@@ -819,18 +811,20 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
       baselineComplete: Boolean(baselineComplete),
       signalQuality: signalQuality ?? 'unknown',
       signalArtifactPct: signalArtifactPct ?? 0,
+      signalLost: Boolean(signalLost),
+      calibrated: Boolean(calibrated),
     };
     if (baselineComplete && !prevBaselineComplete) {
       toast('Línea base completa — ya puedes grabar la sesión');
       syncSessionControls(host);
     }
     prevBaselineComplete = Boolean(baselineComplete);
-    if (sessionPhase === 'baseline') {
-      visualTarget = !artifact && percent != null ? level : 0.38;
+    if (signalLost) {
+      visualTarget = 0.38;
       return;
     }
-    if (warming) {
-      visualTarget = !artifact && percent != null ? level : 0.38;
+    if (sessionPhase === 'baseline' || !calibrated) {
+      visualTarget = 0.38;
       return;
     }
     if (!artifact && percent != null) {
@@ -913,7 +907,7 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     }
     if (!nfSession.startBaseline()) return;
     syncSessionControls(host);
-    toast(`Calculando línea base (~${formatDuration(getNfBaselineSec())}) — reposo con ojos cerrados`);
+    toast(`Línea base (~${formatDuration(getNfBaselineSec())}) — ojos abiertos, mirá el orbe (quieto)`);
   });
 
   const stopRecordTimer = () => {
@@ -928,6 +922,39 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     if (!recordTimerEl || !recordStartedAt) return;
     const sec = Math.floor((Date.now() - recordStartedAt) / 1000);
     recordTimerEl.textContent = formatDuration(sec);
+  };
+
+  const resetRecordUi = () => {
+    isRec = false;
+    recordWrap?.classList.remove('recording');
+    stopRecordTimer();
+    if (recordBtn) recordBtn.innerHTML = '<span class="dot"></span> Grabar sesión';
+  };
+
+  const showIncomplete = (message) => {
+    const resultadosEl = host.querySelector('#nf-tab-resultados');
+    if (resultadosEl) {
+      resultadosEl.innerHTML = renderResultsError(message);
+      switchToResultsTab(host);
+    }
+    toast(message);
+  };
+
+  nfSession.onSessionInterrupted = ({ reason, payload }) => {
+    resetRecordUi();
+    resetOrbFeedback();
+    prevBaselineComplete = false;
+    syncUi();
+    syncSessionControls(host);
+    if (reason === 'disconnect_baseline') {
+      showIncomplete('Sesión incompleta: se cortó la conexión durante la línea base.');
+      return;
+    }
+    if (!payload || !String(payload).trim()) {
+      showIncomplete('Sesión incompleta: se perdió la señal durante la grabación.');
+      return;
+    }
+    showIncomplete('Sesión incompleta: se perdió la señal durante la grabación. Los datos parciales no se analizaron como resultado válido.');
   };
 
   recordBtn?.addEventListener('click', async () => {
@@ -1011,10 +1038,16 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
       const rawOut = String(await analyzeSessionPython(payload)).trim();
       const parsed = parseAnalyzeOutput(rawOut);
       const core = [parsed.calm_seconds, parsed.calm_pct, parsed.attentive_pct];
-      if (core.some((n) => Number.isNaN(n))) {
+      if (core.some((n) => n == null || Number.isNaN(n))) {
         throw new Error(`Respuesta inválida del analizador: ${rawOut.slice(0, 160)}`);
       }
-      const { post_series, spectral, ...results } = parsed;
+      const { post_series, spectral: specIn, ...results } = parsed;
+      const spectral = {
+        ...(specIn || {}),
+        packets_lost: specIn?.packets_lost ?? meta.packets_lost,
+        packets_expected: specIn?.packets_expected ?? meta.packets_expected,
+        effective_fs: specIn?.effective_fs ?? specIn?.fs_hz ?? meta.effective_fs,
+      };
       const resultsStored = { ...results, post_series, spectral };
       await saveNeurofeedbackRecording(moduleRow.id, {
         ...metaForDb,

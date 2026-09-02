@@ -18,8 +18,9 @@ for i in $(seq 1 512); do
 done
 SAMPLE="${SAMPLE%@}"
 OUT=$(printf '%s' "$SAMPLE" | python3 python/analyze_session.py 2>/dev/null || true)
-if echo "$OUT" | head -n1 | grep -qE '^[0-9]+(\.[0-9]+)?(,[0-9]+(\.[0-9]+)?){10}$'; then
-  ok "stdin → CSV 11 campos numéricos"
+CSV_LINE='^[0-9]+(\.[0-9]+)?(,[0-9]+(\.[0-9]+)?){6}(,([0-9]+(\.[0-9]+)?)?){4}$'
+if echo "$OUT" | head -n1 | grep -qE "$CSV_LINE"; then
+  ok "stdin → CSV 11 campos (deltas vacíos sin línea base)"
 else
   bad "stdin → salida inválida: $(echo "$OUT" | head -n1)"
 fi
@@ -33,17 +34,17 @@ TMP=$(mktemp)
 printf '%s' "$SAMPLE" > "$TMP"
 OUT2=$(python3 python/analyze_session.py --file "$TMP" 2>/dev/null || true)
 rm -f "$TMP"
-if echo "$OUT2" | head -n1 | grep -qE '^[0-9]+(\.[0-9]+)?(,[0-9]+(\.[0-9]+)?){10}$'; then
-  ok "--file → CSV 11 campos numéricos"
+if echo "$OUT2" | head -n1 | grep -qE "$CSV_LINE"; then
+  ok "--file → CSV 11 campos (deltas vacíos sin línea base)"
 else
   bad "--file → salida inválida: $(echo "$OUT2" | head -n1)"
 fi
 
 EMPTY=$(printf '' | python3 python/analyze_session.py 2>/dev/null || true)
-if echo "$EMPTY" | head -n1 | grep -qE '^0,0,0,0,0,0,0,0,0,0,0$'; then
-  ok "entrada vacía → ceros"
+if echo "$EMPTY" | head -n1 | grep -qE '^0,0,0,0,0,0,0,,,,$'; then
+  ok "entrada vacía → ceros sin fingir delta"
 else
-  bad "entrada vacía → esperado 11 ceros got $(echo "$EMPTY" | head -n1)"
+  bad "entrada vacía → esperado 0,0,0,0,0,0,0,,, got $(echo "$EMPTY" | head -n1)"
 fi
 
 echo "→ QA-1: Rust unit tests (secure_db)"

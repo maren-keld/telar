@@ -68,6 +68,7 @@ export class Muse {
     this.info = {};
     this.infoFragment = '';
     this.eeg = Array.from({ length: 5 }, () => new MuseCircularBuffer(BUFFER_SIZE));
+    this.eegPackets = Array.from({ length: 5 }, () => []);
     this.ppg = Array.from({ length: 3 }, () => new MuseCircularBuffer(BUFFER_SIZE));
     this.accelerometer = Array.from({ length: 3 }, () => new MuseCircularBuffer(BUFFER_SIZE));
     this.gyroscope = Array.from({ length: 3 }, () => new MuseCircularBuffer(BUFFER_SIZE));
@@ -163,11 +164,24 @@ export class Muse {
     }
   }
 
+  drainPackets(n) {
+    const q = this.eegPackets[n];
+    if (!q?.length) return [];
+    return q.splice(0, q.length);
+  }
+
   eegData(n, event) {
     let data = event.target.value;
     data = data.buffer ? data : new DataView(data);
-    let samples = this.decodeUnsigned12BitData(new Uint8Array(data.buffer).subarray(2));
+    const raw = new Uint8Array(data.buffer);
+    const packetIndex = raw.length >= 2 ? (raw[0] << 8) | raw[1] : 0;
+    let samples = this.decodeUnsigned12BitData(raw.subarray(2));
     samples = samples.map((x) => 0.48828125 * (x - 0x800));
+    this.eegPackets[n].push({
+      samples: samples.slice(),
+      timestampMs: Date.now(),
+      packetIndex,
+    });
     for (let i = 0; i < samples.length; i++) this.eeg[n].write(samples[i]);
   }
 

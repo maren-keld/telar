@@ -1,5 +1,5 @@
 import { bindAutoSave, collectFormData } from '../autobind.js';
-import { nfPreset } from '../../lib/nf-bands.js';
+import { NF_EYE_CONDITION_LABEL, NF_HELP_MESSAGE, nfPreset } from '../../lib/nf-bands.js';
 import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
 import { getSessionsWithModules } from '../db.js';
 import { exportNfSessionCsv, exportNfSessionPdf } from '../export-nf-session.js';
@@ -124,8 +124,13 @@ function displayProtocolLabel(meta) {
 
 export function parseAnalyzeOutput(raw) {
   const lines = String(raw).trim().split('\n').filter(Boolean);
-  const parts = lines[0].split(',').map(Number);
-  while (parts.length < 11) parts.push(0);
+  const parts = lines[0].split(',').map((p) => {
+    const t = String(p).trim();
+    if (t === '') return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  });
+  while (parts.length < 11) parts.push(null);
   let postSeries = [];
   let spectral = {};
   if (lines[1]) {
@@ -138,18 +143,19 @@ export function parseAnalyzeOutput(raw) {
       spectral = {};
     }
   }
+  const hasBaseline = spectral.has_baseline === true;
+  const numOrNull = (v) => (v == null || Number.isNaN(v) ? null : v);
   return {
-    calm_seconds: parts[0],
-    attention_seconds: parts[1],
-    calm_level: parts[2],
-    attention_level: parts[3],
-    relaxation_pct: parts[4],
-    calm_pct: parts[5],
-    attentive_pct: parts[6],
-    baseline_calm_pct: parts[7],
-    baseline_attentive_pct: parts[8],
-    delta_calm_pct: parts[9],
-    delta_attentive_pct: parts[10],
+    calm_seconds: parts[0] ?? 0,
+    attention_seconds: parts[1] ?? 0,
+    relaxation_pct: parts[4] ?? 0,
+    calm_pct: parts[5] ?? 0,
+    attentive_pct: parts[6] ?? 0,
+    baseline_calm_pct: hasBaseline ? numOrNull(parts[7]) : null,
+    baseline_attentive_pct: hasBaseline ? numOrNull(parts[8]) : null,
+    delta_calm_pct: hasBaseline ? numOrNull(parts[9]) : null,
+    delta_attentive_pct: hasBaseline ? numOrNull(parts[10]) : null,
+    has_baseline: hasBaseline,
     post_series: postSeries,
     spectral,
   };
@@ -333,10 +339,10 @@ async function mountEvolutionChart(host, treatmentId) {
 function renderExplainCard({ kind, trained }) {
   const isCalm = kind === 'calm';
   const title = isCalm ? 'Calma' : 'Atención';
-  const cat = isCalm ? 'Estado cognitivo-emocional' : 'Estado ejecutivo';
+  const cat = isCalm ? 'Índice espectral · sienes' : 'Índice espectral · frente';
   const body = isCalm
-    ? 'La mente se mantiene tranquila sin acelerarse ni entrar en rumiación. Indica regulación parasimpática y baja activación emocional.'
-    : 'Selección y mantenimiento de la información para una tarea. Indica atención estable con baja somnolencia y/o movimiento.';
+    ? 'Más alpha (8–12 Hz) y theta (4–8 Hz) frente a beta, en TP9 y TP10, comparado con tu línea base de ojos abiertos. No mide tono parasimpático ni “mente sin rumiación”.'
+    : 'Más beta estrecha (15–20 Hz) frente a theta y delta, promedio de FP1 y FP2, comparado con tu línea base. No es un diagnóstico de TDAH ni de “atención estable”.'
   const role = trained ? 'Métrica entrenada hoy' : 'Solo referencia';
   const mod = isCalm ? 'calm' : 'attent';
   const trainedMod = trained ? ' nf-state-card--trained' : ' nf-state-card--reference';
@@ -374,13 +380,38 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
         <button type="button" class="btn btn-secondary btn-sm" id="nf-export-pdf">Exportar PDF sesión</button>
       </div>`
     : '';
+  const spec = results.spectral || {};
+  const incompleteBanner = meta?.incomplete
+    ? `<p class="nf-results-empty nf-results-empty--error">Sesión incompleta${meta.incomplete_reason ? ` (${escapeHtml(String(meta.incomplete_reason))})` : ''}.</p>`
+    : '';
+  const fmtDelta = (v) => (v == null || Number.isNaN(Number(v)) ? '—' : `${v}`);
+  const lost = spec.packets_lost ?? meta?.packets_lost;
+  const expected = spec.packets_expected ?? meta?.packets_expected;
+  const fsHz = spec.effective_fs ?? spec.fs_hz ?? meta?.effective_fs;
+  const fsOff = spec.fs_off_nominal === true;
+  const qualityDetails = [
+    lost != null
+      ? `<li><span>Paquetes perdidos</span><span>${escapeHtml(String(lost))}${expected != null ? ` / ${escapeHtml(String(expected))}` : ''}</span></li>`
+      : '',
+    fsHz != null && fsHz !== ''
+      ? `<li><span>Frecuencia de muestreo efectiva</span><span>${escapeHtml(String(fsHz))} Hz${fsOff ? ' (desvío &gt;2 % de 256)' : ''}</span></li>`
+      : '',
+    results.has_baseline
+      ? `<li><span>Calma vs línea base</span><span>${fmtDelta(results.delta_calm_pct)}</span></li>`
+      : `<li><span>Calma vs línea base</span><span>—</span></li>`,
+    results.has_baseline
+      ? `<li><span>Atención vs línea base</span><span>${fmtDelta(results.delta_attentive_pct)}</span></li>`
+      : `<li><span>Atención vs línea base</span><span>—</span></li>`,
+  ].join('');
   return `
     <div class="nf-results">
       <h3 class="nf-results__heading">Resultados de la sesión</h3>
       <p class="nf-results__sub">Protocolo: ${escapeHtml(protocolLabel)}</p>
+      <p class="nf-results__sub nf-results__disclaimer">${escapeHtml(NF_HELP_MESSAGE)}</p>
+      ${incompleteBanner}
       ${chartBlock}
       <h3 class="nf-results__heading nf-results__heading--secondary">¿Qué significan calma y atención?</h3>
-      <p class="nf-results__sub">Referencia clínica orientativa — calma mide regulación emocional; atención mide foco y alerta ejecutiva.</p>
+      <p class="nf-results__sub">El % es respecto a tu reposo de esta sesión (ojos abiertos). 50 % = igual que la línea base. El orbe se adapta para el entrenamiento; el número no.</p>
       <div class="nf-results__cards" id="nf-results-cards">
         ${cardsHtml}
       </div>
@@ -398,6 +429,12 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
         <li><span>Fecha de finalización</span><span>${formatDate(meta?.ended_at)}</span></li>
         <li><span>Duración de sesión</span><span>${formatDuration(meta?.duration_sec)}</span></li>
         <li><span>Protocolo</span><span>${escapeHtml(protocolLabel)}</span></li>
+        <li><span>Condición de ojos</span><span>${escapeHtml(
+          (meta?.eye_condition || spec.eye_condition) === 'closed'
+            ? 'Ojos cerrados'
+            : NF_EYE_CONDITION_LABEL,
+        )}</span></li>
+        ${qualityDetails}
       </ul>
       ${exportBlock}
     </div>`;

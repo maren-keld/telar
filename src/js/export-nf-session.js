@@ -73,6 +73,7 @@ export async function exportNfSessionCsv({ results, meta, sessionNotes, patientN
     paciente: patientName || '',
     sesion: sessionNumber ?? '',
     protocolo: meta?.protocol || '',
+    ojos: meta?.eye_condition || spec.eye_condition || 'open',
     dispositivo: meta?.device || 'Muse 2',
     inicio: meta?.started_at ? formatDate(meta.started_at) : '',
     fin: meta?.ended_at ? formatDate(meta.ended_at) : '',
@@ -82,9 +83,18 @@ export async function exportNfSessionCsv({ results, meta, sessionNotes, patientN
     relajacion_pct: results.relaxation_pct ?? '',
     calma_seg: results.calm_seconds ?? '',
     atencion_seg: results.attention_seconds ?? '',
+    baseline_calma_pct: results.has_baseline ? results.baseline_calm_pct ?? '' : '',
+    baseline_atencion_pct: results.has_baseline ? results.baseline_attentive_pct ?? '' : '',
+    delta_calma_pct: results.has_baseline ? results.delta_calm_pct ?? '' : '',
+    delta_atencion_pct: results.has_baseline ? results.delta_attentive_pct ?? '' : '',
     theta_beta_fp2: spec.theta_beta_fp2 ?? '',
     alpha_asym_fp: spec.alpha_asym_fp ?? '',
     artefacto_pct: spec.artifact_pct ?? '',
+    fs_hz: spec.effective_fs ?? spec.fs_hz ?? meta?.effective_fs ?? '',
+    fs_desvio: spec.fs_off_nominal ? 'si' : '',
+    paquetes_perdidos: spec.packets_lost ?? meta?.packets_lost ?? '',
+    paquetes_esperados: spec.packets_expected ?? meta?.packets_expected ?? '',
+    incompleta: meta?.incomplete ? 'si' : '',
     notas: sessionNotes || '',
   };
   const cols = Object.keys(row);
@@ -110,10 +120,13 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
   };
 
   line('Neurofeedback — sesión', { size: 14, style: 'bold' });
+  y += 2;
+  line('Bienestar y autorregulación — no es dispositivo médico.', { size: 9 });
   y += 4;
   line(`Paciente: ${patientName || '—'}`);
   line(`Sesión: ${sessionNumber ?? '—'}`);
   line(`Protocolo: ${meta?.protocol || '—'}`);
+  line(`Ojos: ${meta?.eye_condition === 'closed' ? 'cerrados' : 'abiertos (mirando el orbe)'}`);
   line(`Duración: ${meta?.duration_sec != null ? `${meta.duration_sec} s` : '—'}`);
   y += 4;
   line('Resultados', { size: 12, style: 'bold' });
@@ -121,6 +134,12 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
   line(`Calma: ${results.calm_pct ?? '—'}%`);
   line(`Atención: ${results.attentive_pct ?? '—'}%`);
   line(`Relajación: ${results.relaxation_pct ?? '—'}%`);
+  if (results.has_baseline) {
+    line(`Δ calma vs línea base: ${results.delta_calm_pct ?? '—'}`);
+    line(`Δ atención vs línea base: ${results.delta_attentive_pct ?? '—'}`);
+  } else {
+    line('Sin línea base grabada — no hay delta.');
+  }
 
   const spec = results.spectral || {};
   if (spec.theta_beta_fp2 != null) {
@@ -130,6 +149,16 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
     line(`Theta/Beta FP2: ${spec.theta_beta_fp2}`);
     line(`Asimetría alpha FP1−FP2: ${spec.alpha_asym_fp ?? '—'} pp`);
     if (spec.artifact_pct != null) line(`Ventanas con artefacto: ${spec.artifact_pct}%`);
+    const fsHz = spec.effective_fs ?? spec.fs_hz ?? meta?.effective_fs;
+    if (fsHz != null) {
+      line(
+        `fs efectiva: ${fsHz} Hz${spec.fs_off_nominal ? ' (desvío >2 % de 256 Hz)' : ''}`,
+      );
+    }
+    const lost = spec.packets_lost ?? meta?.packets_lost;
+    if (lost != null) {
+      line(`Paquetes perdidos: ${lost}${spec.packets_expected != null ? ` / ${spec.packets_expected}` : ''}`);
+    }
     if (spec.psd_channels && Object.keys(spec.psd_channels).length) {
       y += 2;
       y = drawPsdBars(doc, spec.psd_channels, y);

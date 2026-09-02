@@ -43,10 +43,19 @@ export class MuseNative {
     this.state = 0;
     this.batteryLevel = null;
     this.eeg = Array.from({ length: 5 }, () => new MuseCircularBuffer(256));
+    this.eegPackets = Array.from({ length: 5 }, () => []);
+    this.accelerometer = Array.from({ length: 3 }, () => new MuseCircularBuffer(256));
+    this.gyroscope = Array.from({ length: 3 }, () => new MuseCircularBuffer(256));
     this._unlisten = [];
     this._deviceName = 'Muse';
     this._connecting = false;
     this.onConnected = null;
+  }
+
+  drainPackets(n) {
+    const q = this.eegPackets[n];
+    if (!q?.length) return [];
+    return q.splice(0, q.length);
   }
 
   async _setupListeners() {
@@ -55,7 +64,24 @@ export class MuseNative {
       await listen('muse-eeg', ({ payload }) => {
         const ch = payload.channel;
         if (ch < 0 || ch > 4) return;
-        for (const v of payload.samples) this.eeg[ch].write(v);
+        const samples = payload.samples || [];
+        this.eegPackets[ch].push({
+          samples: samples.slice(),
+          timestampMs: payload.timestamp_ms || Date.now(),
+          packetIndex: payload.packet_index ?? null,
+        });
+        for (const v of samples) this.eeg[ch].write(v);
+      }),
+    );
+    this._unlisten.push(
+      await listen('muse-motion', ({ payload }) => {
+        const samples = payload?.samples || [];
+        const buffers = payload?.kind === 'gyro' ? this.gyroscope : this.accelerometer;
+        for (const s of samples) {
+          buffers[0].write(s[0]);
+          buffers[1].write(s[1]);
+          buffers[2].write(s[2]);
+        }
       }),
     );
     this._unlisten.push(
