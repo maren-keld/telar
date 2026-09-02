@@ -5,6 +5,8 @@ import {
 } from '../custom-module-items.js';
 import { customModuleTypeId, newCustomModuleId, saveCustomModule } from '../custom-modules.js';
 import { playOverlayOpen, animateAndRemove } from '../transitions.js';
+import { buildInteractiveDocument, interactiveModuleUrl } from '../modules/interactive-html.js';
+import { getInvoke, isTauriApp, pickCodepenZip } from '../tauri-bridge.js';
 
 function newQuestion(index) {
   return {
@@ -46,8 +48,48 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
           <span class="create-module-field__label">Nombre del módulo</span>
           <input type="text" id="cm-title" class="input" placeholder="Ej. Cuestionario de sesión" required />
         </label>
-        <div id="cm-questions"></div>
-        <button type="button" class="btn btn-dashed btn-block" id="cm-add-question">+ Agregar ítem (pregunta, ejercicio o indicación)</button>
+        <div class="cm-tabs" role="tablist">
+          <button type="button" class="cm-tab is-active" data-tab="questionnaire" role="tab">Cuestionario</button>
+          <button type="button" class="cm-tab" data-tab="interactive" role="tab">Experiencia interactiva</button>
+        </div>
+        <div data-panel="questionnaire">
+          <div id="cm-questions"></div>
+          <button type="button" class="btn btn-dashed btn-block" id="cm-add-question">+ Agregar ítem (pregunta, ejercicio o indicación)</button>
+        </div>
+        <div data-panel="interactive" hidden>
+          <p class="cm-interactive__intro">
+            Pega acá los tres paneles de tu pen. Telar los junta en un solo archivo y lo corre aislado,
+            sin internet: si el pen usa librerías por CDN, hay que pegar su código en el panel de JS.
+            Para guardar datos en la ficha del paciente usa <code>Telar.save(datos)</code> y
+            <code>Telar.done('resumen')</code>.
+          </p>
+          <div class="cm-interactive__grid">
+            <label class="create-module-field">
+              <span class="create-module-field__label">HTML</span>
+              <textarea id="cm-html" class="input cm-code" rows="8" spellcheck="false" placeholder="&lt;div class=&quot;escena&quot;&gt;…&lt;/div&gt;"></textarea>
+            </label>
+            <label class="create-module-field">
+              <span class="create-module-field__label">CSS</span>
+              <textarea id="cm-css" class="input cm-code" rows="6" spellcheck="false" placeholder=".escena { … }"></textarea>
+            </label>
+            <label class="create-module-field">
+              <span class="create-module-field__label">JS</span>
+              <textarea id="cm-js" class="input cm-code" rows="8" spellcheck="false" placeholder="// Telar.save({ paso: 1 })"></textarea>
+            </label>
+          </div>
+          <div class="cm-interactive__preview-head">
+            <button type="button" class="btn btn-ghost btn-sm" id="cm-import-zip">Importar .zip de CodePen</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="cm-preview">Ver vista previa</button>
+            <span class="cm-interactive__note" id="cm-preview-note"></span>
+          </div>
+          <iframe
+            class="cm-interactive__preview"
+            id="cm-preview-frame"
+            title="Vista previa"
+            sandbox="allow-scripts allow-forms"
+            referrerpolicy="no-referrer"
+            hidden></iframe>
+        </div>
       </div>
       <footer class="create-module-modal__foot">
         <button type="button" class="btn btn-ghost" id="cm-cancel">Cancelar</button>
@@ -152,7 +194,105 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
     overlay.querySelector('#cm-title').value = existing.title || '';
   }
 
+  /* --- pestañas: cuestionario simple o experiencia interactiva --- */
+  let activeTab = existing?.kind === 'interactive' ? 'interactive' : 'questionnaire';
+
+  const setTab = (tab) => {
+    activeTab = tab;
+    overlay.querySelectorAll('.cm-tab').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.tab === tab);
+    });
+    overlay.querySelectorAll('[data-panel]').forEach((panel) => {
+      panel.hidden = panel.dataset.panel !== tab;
+    });
+  };
+
+  overlay.querySelectorAll('.cm-tab').forEach((btn) => {
+    btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  });
+
+  const htmlEl = overlay.querySelector('#cm-html');
+  const cssEl = overlay.querySelector('#cm-css');
+  const jsEl = overlay.querySelector('#cm-js');
+  if (existing?.kind === 'interactive') {
+    htmlEl.value = existing.source?.html ?? existing.html ?? '';
+    cssEl.value = existing.source?.css ?? '';
+    jsEl.value = existing.source?.js ?? '';
+  }
+  setTab(activeTab);
+
+  /** Junta los tres paneles en un solo documento, como hace CodePen al exportar. */
+  const assembleHtml = () => {
+    const css = cssEl.value.trim();
+    const js = jsEl.value.trim();
+    return [
+      css ? `<style>\n${css}\n</style>` : '',
+      htmlEl.value.trim(),
+      js ? `<script>\n${js}\n</script>` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
+
+  const previewFrame = overlay.querySelector('#cm-preview-frame');
+  const previewNote = overlay.querySelector('#cm-preview-note');
+  const previewId = `preview-${newCustomModuleId()}`;
+
+  overlay.querySelector('#cm-import-zip')?.addEventListener('click', async () => {
+    try {
+      const path = await pickCodepenZip();
+      if (!path) return;
+      const { files } = await getInvoke()('codepen_zip_read', { path });
+      const pick = (ext) => Object.entries(files).find(([name]) => name.endsWith(ext))?.[1] || '';
+      const html = pick('.html');
+      // El index.html del export ya enlaza style.css y script.js: se queda solo el body.
+      const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
+      htmlEl.value = body.replace(/<script[^>]*src=["'][^"']*["'][^>]*><\/script>/gi, '').trim();
+      cssEl.value = pick('.css').trim();
+      jsEl.value = pick('.js').trim();
+      const cdn = [...html.matchAll(/<script[^>]+src=["'](https?:\/\/[^"']+)["']/gi)].map((m) => m[1]);
+      previewNote.textContent = cdn.length
+        ? `Ojo: el pen carga ${cdn[0]} desde internet y acá no hay red. Pega su código en el panel JS.`
+        : 'Listo: revisa los tres paneles y guarda.';
+    } catch (err) {
+      console.error(err);
+      previewNote.textContent = err.message || 'No se pudo leer el .zip.';
+    }
+  });
+
+  overlay.querySelector('#cm-preview')?.addEventListener('click', async () => {
+    const assembled = assembleHtml();
+    if (!assembled) {
+      previewNote.textContent = 'Pega algo de HTML primero.';
+      return;
+    }
+    if (!isTauriApp()) {
+      previewNote.textContent = 'La vista previa solo funciona en la app de escritorio.';
+      return;
+    }
+    try {
+      const doc = buildInteractiveDocument(assembled, {
+        title: overlay.querySelector('#cm-title')?.value?.trim() || 'Vista previa',
+        initialData: null,
+      });
+      await getInvoke()('interactive_module_set', { id: previewId, html: doc });
+      previewFrame.hidden = false;
+      previewFrame.src = interactiveModuleUrl(previewId);
+      previewNote.textContent = '';
+    } catch (err) {
+      console.error(err);
+      previewNote.textContent = 'No se pudo generar la vista previa.';
+    }
+  });
+
   const close = () => {
+    if (isTauriApp()) {
+      try {
+        getInvoke()('interactive_module_clear', { id: previewId }).catch(() => {});
+      } catch {
+        /* la app puede no tener el comando en versiones viejas */
+      }
+    }
     void animateAndRemove(overlay);
   };
 
@@ -164,13 +304,36 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
 
   overlay.querySelector('#cm-add-question')?.addEventListener('click', () => addQuestion());
 
-  overlay.querySelector('#cm-save')?.addEventListener('click', () => {
+  overlay.querySelector('#cm-save')?.addEventListener('click', async () => {
     const title = overlay.querySelector('#cm-title')?.value?.trim();
     if (!title) {
       overlay.querySelector('#cm-title')?.focus();
       return;
     }
     const instructions = overlay.querySelector('#cm-instructions')?.value?.trim() || '';
+
+    if (activeTab === 'interactive') {
+      const html = assembleHtml();
+      if (!html) {
+        htmlEl.focus();
+        return;
+      }
+      const id = existing?.id || newCustomModuleId();
+      const def = {
+        id,
+        kind: 'interactive',
+        title,
+        instructions,
+        html,
+        source: { html: htmlEl.value, css: cssEl.value, js: jsEl.value },
+        createdAt: existing?.createdAt || new Date().toISOString(),
+      };
+      await saveCustomModule(def);
+      close();
+      onCreated?.({ def, moduleType: customModuleTypeId(id) });
+      return;
+    }
+
     const questions = [];
     overlay.querySelectorAll('.cm-question').forEach((block, i) => {
       const text = block.querySelector('[data-field="text"]')?.value?.trim();
@@ -197,7 +360,7 @@ export function openCreateModuleModal({ onCreated, module: existing } = {}) {
       questions,
       createdAt: existing?.createdAt || new Date().toISOString(),
     };
-    saveCustomModule(def);
+    await saveCustomModule(def);
     close();
     onCreated?.({ def, moduleType: customModuleTypeId(id) });
   });

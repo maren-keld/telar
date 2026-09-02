@@ -6,8 +6,10 @@ use serde::Deserialize;
 
 mod ai_api;
 mod backup;
+mod interactive;
 mod muse_ble;
 mod ollama;
+mod packfile;
 mod secure_db;
 mod subscription_api;
 mod touch_id;
@@ -487,7 +489,15 @@ pub fn run() {
             subscription_api::subscription_health,
             subscription_api::subscription_status,
             usage_ping::usage_ping,
+            packfile::pack_read,
+            packfile::pack_write,
+            packfile::codepen_zip_read,
+            interactive::interactive_module_set,
+            interactive::interactive_module_clear,
         ])
+        .register_uri_scheme_protocol("telar-mod", |_ctx, request| {
+            interactive::handle_request(request)
+        })
         .setup(|app| {
             #[cfg(target_os = "macos")]
             touch_id::purge_legacy_keychain();

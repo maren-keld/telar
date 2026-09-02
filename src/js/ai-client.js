@@ -53,7 +53,9 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
     throw new Error('Falta modelo de IA en Ajustes.');
   }
   if (cfg.keyRequired && !cfg.apiKey?.trim()) {
-    throw new Error('Falta clave API. Obtén una en console.mistral.ai o elige Ollama local.');
+    throw new Error(
+      `Falta clave API para ${cfg.providerLabel || 'el proveedor'}. ${cfg.keyHint || 'Configúrala en Ajustes → Asistente IA'} o elige Ollama local.`,
+    );
   }
   if (!isTauriApp()) {
     throw new Error('Las llamadas a IA requieren la app de escritorio Telar.');
@@ -71,6 +73,7 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
       messages,
       maxTokens,
       requestId: request?.id || 0,
+      provider: cfg.apiProtocol || '',
     });
     if (request?.aborted) throw new Error('cancelado');
 

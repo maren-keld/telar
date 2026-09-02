@@ -166,25 +166,47 @@ export function selectorListInnerHtml({
   const includeCustom = !filterCategoryId || filterCategoryId === 'otros';
   const customMods = includeCustom ? listCustomModules() : [];
 
-  const customCategoryHtml = customMods.length
-    ? `<div class="mod-selector-cat" data-cat="custom">
-        <h4>${escapeHtml(CUSTOM_CATEGORY_LABEL)}</h4>
-        <p class="mod-selector-cat__blurb">${escapeHtml(CUSTOM_CATEGORY_BLURB)}</p>
-        ${customMods
-          .map((cm) => {
-            const type = `custom_${cm.id}`;
-            const inUse = inTreatment.has(type) || inSession.has(type);
-            const def = resolveModuleDef(type) || { label: cm.title };
-            const search = searchTextForType(type, def, null, cm.title);
-            return `
+  const customItemsHtml = (mods) =>
+    mods
+      .map((cm) => {
+        const type = `custom_${cm.id}`;
+        const inUse = inTreatment.has(type) || inSession.has(type);
+        const def = resolveModuleDef(type) || { label: cm.title };
+        const search = searchTextForType(type, def, null, cm.title);
+        return `
           <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}">
             <span>${escapeHtml(cm.title)}</span>
             ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
           </button>`;
-          })
-          .join('')}
+      })
+      .join('');
+
+  // Los módulos que llegaron en un pack se agrupan bajo el nombre del pack;
+  // los propios quedan en «Mis módulos».
+  const ownMods = customMods.filter((cm) => !cm.packId);
+  const packGroups = new Map();
+  for (const cm of customMods) {
+    if (!cm.packId) continue;
+    if (!packGroups.has(cm.packId)) packGroups.set(cm.packId, { label: cm.packLabel || cm.packId, mods: [] });
+    packGroups.get(cm.packId).mods.push(cm);
+  }
+
+  const customCategoryHtml =
+    (ownMods.length
+      ? `<div class="mod-selector-cat" data-cat="custom">
+        <h4>${escapeHtml(CUSTOM_CATEGORY_LABEL)}</h4>
+        <p class="mod-selector-cat__blurb">${escapeHtml(CUSTOM_CATEGORY_BLURB)}</p>
+        ${customItemsHtml(ownMods)}
       </div>`
-    : '';
+      : '') +
+    [...packGroups.entries()]
+      .map(
+        ([packId, group]) => `<div class="mod-selector-cat" data-cat="pack-${escapeHtml(packId)}">
+        <h4>${escapeHtml(group.label)}</h4>
+        ${customItemsHtml(group.mods)}
+      </div>`,
+      )
+      .join('');
 
   const catsHtml = cats
     .map((cat) => {

@@ -54,6 +54,49 @@ export async function pickBackupFile(title) {
   return selected || null;
 }
 
+function getDialogSave() {
+  const save = window.__TAURI__?.dialog?.save;
+  if (!save) {
+    throw new Error('Diálogo nativo no disponible. Actualiza Telar.');
+  }
+  return save;
+}
+
+/** @returns {Promise<string|null>} */
+export async function pickPackFile(title) {
+  if (!isTauriApp()) return null;
+  const selected = await getDialogOpen()({
+    directory: false,
+    multiple: false,
+    title: title || 'Importar pack de módulos',
+    filters: [{ name: 'Pack de Telar', extensions: ['telarpack'] }],
+  });
+  return selected || null;
+}
+
+/** @returns {Promise<string|null>} */
+export async function pickCodepenZip() {
+  if (!isTauriApp()) return null;
+  const selected = await getDialogOpen()({
+    directory: false,
+    multiple: false,
+    title: 'Importar .zip exportado de CodePen',
+    filters: [{ name: 'Export de CodePen', extensions: ['zip'] }],
+  });
+  return selected || null;
+}
+
+/** @returns {Promise<string|null>} */
+export async function pickPackSavePath(defaultName) {
+  if (!isTauriApp()) return null;
+  const selected = await getDialogSave()({
+    title: 'Exportar pack de módulos',
+    defaultPath: defaultName,
+    filters: [{ name: 'Pack de Telar', extensions: ['telarpack'] }],
+  });
+  return selected || null;
+}
+
 export async function loadSqlDatabase(dbName = 'sqlite:telar.db') {
   const invoke = getInvoke();
   // dbName se ignora: la DB se abre en Rust (cifrada) tras desbloqueo.

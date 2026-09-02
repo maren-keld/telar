@@ -88,7 +88,7 @@ ${source}
 </html>`;
 }
 
-function interactiveUrl(id) {
+export function interactiveModuleUrl(id) {
   const convert = window.__TAURI_INTERNALS__?.convertFileSrc;
   if (typeof convert === 'function') return convert(id, 'telar-mod');
   return `telar-mod://localhost/${encodeURIComponent(id)}`;
@@ -202,5 +202,5 @@ export async function renderInteractiveHtml(host, moduleRow) {
     getInvoke()('interactive_module_clear', { id: contentId }).catch(() => {});
   });
 
-  frame.src = interactiveUrl(contentId);
+  frame.src = interactiveModuleUrl(contentId);
 }

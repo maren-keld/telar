@@ -10,6 +10,7 @@ import { renderUnlock } from './views/unlock.js';
 import { renderWorkspace } from './views/workspace.js';
 import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
+import { ensureCustomModulesLoaded } from './custom-modules.js';
 import { initLocaleFromProfile } from './i18n.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { teardownNeurofeedback } from './modules/neurofeedback.js';
@@ -90,6 +91,8 @@ async function render() {
         await renderUnlock(app, { onNavigate });
         return;
       }
+      window.__telarStage = `render:custom_modules(${view})`;
+      await ensureCustomModulesLoaded();
     }
     window.__telarStage = `render:view(${view})`;
 

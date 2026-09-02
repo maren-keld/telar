@@ -722,7 +722,7 @@ export async function applyAiModule(treatmentId, moduleSpec) {
     createdAt: new Date().toISOString(),
     createdByAi: true,
   };
-  saveCustomModule(def);
+  await saveCustomModule(def);
 
   const moduleType = customModuleTypeId(id);
   const sessions = await getSessions(treatmentId);

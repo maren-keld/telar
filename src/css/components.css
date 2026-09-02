@@ -2284,6 +2284,10 @@ html[data-presentation='on'] .genogram-node__name::after {
   color: var(--text-muted);
 }
 
+.modules-library-section__actions {
+  margin-bottom: 12px;
+}
+
 .modules-library-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

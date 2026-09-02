@@ -135,7 +135,7 @@ export function listAddableModuleOptions(categoryId = null) {
     push(type, def.label, catId, cat?.label || 'Otros');
   }
   for (const cm of listCustomModules()) {
-    push(`custom_${cm.id}`, cm.title, 'otros', 'Otros');
+    push(`custom_${cm.id}`, cm.title, 'otros', cm.packLabel || 'Otros');
   }
 
   if (categoryId) return out.filter((o) => o.categoryId === categoryId);

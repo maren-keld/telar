@@ -1,5 +1,6 @@
 import { query } from './db.js';
 import { loadProfile } from './profile.js';
+import { listCustomModules } from './custom-modules.js';
 import { getInvoke } from './tauri-bridge.js';
 
 const UTF8_BOM = '\uFEFF';
@@ -29,7 +30,7 @@ function profileToCsv(profile) {
     plan: profile.plan || 'free',
     modo_oscuro: profile.darkMode ? '1' : '0',
     modo_presentacion: profile.presentationMode ? '1' : '0',
-    modulos_personalizados_json: JSON.stringify(profile.customModules || []),
+    modulos_personalizados_json: JSON.stringify(listCustomModules()),
   };
   return rowsToCsv([row], Object.keys(row));
 }

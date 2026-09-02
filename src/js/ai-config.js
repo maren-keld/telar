@@ -38,6 +38,31 @@ export const AI_API_PRESETS = {
     keyRequired: true,
     recommended: true,
   },
+  anthropic: {
+    id: 'anthropic',
+    label: 'Anthropic (Claude)',
+    description:
+      'Claude con tu propia clave API. Es el mejor para el creador de módulos. Los datos que envíes salen de tu equipo.',
+    serverCountry: 'Estados Unidos',
+    baseUrl: 'https://api.anthropic.com/v1',
+    // Protocolo distinto a OpenAI: el Rust usa /messages y x-api-key.
+    protocol: 'anthropic',
+    defaultModel: 'claude-sonnet-4-5',
+    models: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-1'],
+    keyHint: 'Clave en console.anthropic.com (empieza con sk-ant-)',
+    keyRequired: true,
+  },
+  openai: {
+    id: 'openai',
+    label: 'OpenAI (ChatGPT)',
+    description: 'GPT con tu propia clave API. Los datos que envíes salen de tu equipo.',
+    serverCountry: 'Estados Unidos',
+    baseUrl: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4.1-mini',
+    models: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o-mini'],
+    keyHint: 'Clave en platform.openai.com (empieza con sk-)',
+    keyRequired: true,
+  },
   ollama_app: {
     id: 'ollama_app',
     label: 'Ollama en este Mac (sin nube)',
@@ -170,6 +195,9 @@ export function resolveAiConfig(profile = {}) {
     apiModel,
     apiKey: profile.aiApiKey || '',
     keyRequired: preset.keyRequired !== false,
+    keyHint: preset.keyHint || '',
+    // 'anthropic' cambia de endpoint y cabeceras en Rust; vacío = OpenAI-compatible.
+    apiProtocol: preset.protocol || '',
   };
 }
 
@@ -187,6 +215,9 @@ export function aiSettingsSummary(profile) {
   }
   if (preset.id === 'ollama_app') {
     return model ? `Ollama local · ${model}` : 'Ollama local';
+  }
+  if (preset.id === 'anthropic' || preset.id === 'openai') {
+    return model ? `${preset.label} · ${model}` : preset.label;
   }
   const base = (profile.aiApiBase || preset.baseUrl || '').trim();
   if (base) {
