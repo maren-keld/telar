@@ -28,12 +28,8 @@
       "destination": "https://telar-api-aim8.onrender.com/api/share/:path*"
     },
     {
-      "source": "/r/js/:file",
-      "destination": "/r/js/:file"
-    },
-    {
       "source": "/r/:token",
-      "destination": "/r/index.html"
+      "destination": "/r"
     },
     {
       "source": "/panel",
