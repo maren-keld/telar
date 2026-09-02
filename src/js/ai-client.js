@@ -3,6 +3,13 @@ import { assertOllamaModelReady } from './ollama-client.js';
 import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 
+let nextAiRequestId = 1;
+
+/** Token de aborto para una consulta de chat (sidebar, perfil, etc.). */
+export function createAiRequest() {
+  return { aborted: false, id: nextAiRequestId++ };
+}
+
 function extractAssistantText(response) {
   const content = response?.choices?.[0]?.message?.content;
   if (typeof content === 'string') return content.trim();
@@ -15,9 +22,24 @@ function extractAssistantText(response) {
   return '';
 }
 
+function isCancelError(err) {
+  return /cancelado/i.test(err?.message || '');
+}
+
+/** Cierra el stream SSE en Rust; Ollama deja de generar. */
+export async function cancelChatCompletion(request) {
+  const id = Number(request?.id) || 0;
+  if (!id || !isTauriApp()) return;
+  try {
+    await getInvoke()('ai_chat_cancel', { requestId: id });
+  } catch {
+    /* el invoke de completion devolverá cancelado igualmente */
+  }
+}
+
 /**
  * Chat completion OpenAI-compatible vía Rust (sin restricciones CSP).
- * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object }} opts
+ * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number } }} opts
  */
 export async function chatCompletion({ messages, maxTokens = 512, profile, request } = {}) {
   const cfg = resolveAiConfig(profile ?? loadProfile());
@@ -41,17 +63,23 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
   }
 
   if (request?.aborted) throw new Error('cancelado');
-  const response = await getInvoke()('ai_chat_completion', {
-    apiBase: cfg.apiBase,
-    apiKey: cfg.apiKey || '',
-    model: cfg.apiModel,
-    messages,
-    maxTokens,
-  });
-  if (request?.aborted) throw new Error('cancelado');
+  try {
+    const response = await getInvoke()('ai_chat_completion', {
+      apiBase: cfg.apiBase,
+      apiKey: cfg.apiKey || '',
+      model: cfg.apiModel,
+      messages,
+      maxTokens,
+      requestId: request?.id || 0,
+    });
+    if (request?.aborted) throw new Error('cancelado');
 
-  const text = extractAssistantText(response);
-  return { response, text };
+    const text = extractAssistantText(response);
+    return { response, text };
+  } catch (err) {
+    if (request?.aborted || isCancelError(err)) throw new Error('cancelado');
+    throw err;
+  }
 }
 
 /** Prueba conexión con un prompt mínimo. */

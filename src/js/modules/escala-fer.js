@@ -211,3 +211,6 @@ function updatePill(id, score, { label, cls }) {
   if (scoreEl) scoreEl.textContent = String(score);
   if (labelEl) labelEl.textContent = label;
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { FORTALEZAS as FER_FORTALEZAS, RIESGOS as FER_RIESGOS, OPTIONS as FER_OPTIONS };

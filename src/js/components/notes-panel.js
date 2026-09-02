@@ -14,7 +14,7 @@ import { loadProfile } from '../profile.js';
 import { escapeHtml, practitionerInitials, toast } from '../utils.js';
 import { bindSlidingTabs, revealStreaming } from '../transitions.js';
 import { resolveAiConfig } from '../ai-config.js';
-import { chatCompletion } from '../ai-client.js';
+import { cancelChatCompletion, chatCompletion, createAiRequest } from '../ai-client.js';
 import { openAiSettingsModal } from './open-ai-settings-modal.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
@@ -371,6 +371,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     let thinkingTimer = null;
     let stopThinkOrb = () => {};
     let aiRequest = null;
+    let lastAiQuestion = '';
     const startThinking = () => {
       const started = Date.now();
       let tick = 0;
@@ -403,8 +404,15 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
     const abortAiQuestion = () => {
       if (!aiRequest || aiSend.dataset.busy !== '1') return;
-      aiRequest.aborted = true;
+      const request = aiRequest;
+      request.aborted = true;
+      stopThinking();
+      aiInput.value = lastAiQuestion;
+      autoGrow();
+      delete aiSend.dataset.busy;
+      syncSendState();
       toast('Consulta detenida');
+      void cancelChatCompletion(request);
     };
 
     const sendAiQuestion = async () => {
@@ -415,9 +423,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         toast('Activa la IA local (recomendado) o una API para consultar el caso.');
         return;
       }
+      lastAiQuestion = q;
       resetInput();
       aiSend.dataset.busy = '1';
-      const request = { aborted: false };
+      const request = createAiRequest();
       aiRequest = request;
       startThinking();
       try {
@@ -442,7 +451,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
             },
             { role: 'user', content: q },
           ],
-          maxTokens: local ? 4096 : 2600,
+          maxTokens: local ? 1600 : 2600,
           request,
         });
         if (request.aborted) throw new Error('cancelado');
@@ -461,11 +470,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         await refreshList({ scrollBottom: true, streamNoteId: noteId });
       } catch (err) {
         const msg = err?.message || 'Error al consultar la IA.';
-        if (/cancelado/i.test(msg)) {
-          aiInput.value = q;
-          autoGrow();
-          return;
-        }
+        if (/cancelado/i.test(msg)) return;
         await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'yellow',
@@ -476,9 +481,11 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         await refreshList({ scrollBottom: true });
       } finally {
         if (aiRequest === request) aiRequest = null;
-        stopThinking();
-        delete aiSend.dataset.busy;
-        syncSendState();
+        if (!request.aborted) {
+          stopThinking();
+          delete aiSend.dataset.busy;
+          syncSendState();
+        }
       }
     };
 
@@ -597,14 +604,27 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
 
   await renderSections();
 
+  let perfilRequest = null;
+  const perfilBtnLabel = 'Analizar perfil con IA';
   listEl.querySelector('#btn-analyze-perfil')?.addEventListener('click', async () => {
     const btn = listEl.querySelector('#btn-analyze-perfil');
-    if (!btn || btn.disabled) return;
-    btn.disabled = true;
-    const prev = btn.textContent;
-    btn.textContent = 'Analizando…';
+    if (!btn) return;
+    if (perfilRequest && !perfilRequest.aborted) {
+      perfilRequest.aborted = true;
+      toast('Consulta detenida');
+      void cancelChatCompletion(perfilRequest);
+      btn.disabled = false;
+      btn.textContent = perfilBtnLabel;
+      return;
+    }
+    if (btn.disabled) return;
+    const request = createAiRequest();
+    perfilRequest = request;
+    btn.disabled = false;
+    btn.textContent = 'Detener';
     try {
-      await analyzeProfileWithAi(treatmentId);
+      await analyzeProfileWithAi(treatmentId, request);
+      if (request.aborted) return;
       writePerfilOnlySelected(treatmentId, true);
       if (onlyEl) onlyEl.checked = true;
       await renderSections();
@@ -615,8 +635,11 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
         toast(msg);
       }
     } finally {
-      btn.disabled = false;
-      btn.textContent = prev;
+      if (perfilRequest === request) perfilRequest = null;
+      if (!request.aborted) {
+        btn.disabled = false;
+        btn.textContent = perfilBtnLabel;
+      }
     }
   });
 }
@@ -686,7 +709,7 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
   });
 }
 
-async function analyzeProfileWithAi(treatmentId) {
+async function analyzeProfileWithAi(treatmentId, request) {
   const context = await buildCaseContextText(treatmentId);
   const lists = Object.fromEntries(
     PERFIL_SECTIONS.map((s) => [s.id === 'riesgos' ? 'debilidades' : s.id, sortLabels(defaultsFor(s.id))]),
@@ -696,6 +719,7 @@ async function analyzeProfileWithAi(treatmentId) {
     contextText: `${context}\n\n---\nListas de perfil disponibles para marcar:\nRecursos: ${lists.fortalezas.join(', ')}\nDefensas: ${lists.defensas.join(', ')}\nDebilidades: ${lists.debilidades.join(', ')}`,
     purpose: 'Análisis de perfil clínico con IA',
   });
+  if (request?.aborted) throw new Error('cancelado');
 
   const { text } = await chatCompletion({
     messages: [
@@ -719,6 +743,7 @@ Usa exactamente los nombres de las listas proporcionadas.`,
       },
     ],
     maxTokens: 1200,
+    request,
   });
 
   const parsed = parseProfileAiJson(text);

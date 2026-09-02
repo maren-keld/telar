@@ -322,6 +322,10 @@ def _create_schema():
 
         ensure_schema(conn, autoincrement)
 
+        from share import ensure_schema as ensure_share_schema
+
+        ensure_share_schema(conn, autoincrement)
+
 
 def mp_sdk():
     if not MP_TOKEN:
@@ -1596,6 +1600,11 @@ def webhook():
 
 
 register_routes(APP)
+
+from share import register_routes as register_share_routes
+
+register_share_routes(APP)
+
 init_db()
 
 if __name__ == "__main__":

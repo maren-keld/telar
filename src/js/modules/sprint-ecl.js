@@ -209,3 +209,6 @@ export async function renderSprintEcl(host, moduleRow) {
 }
 
 export { sprintSummary } from '../sprint-scoring.js';
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { likertItems as sprintItems, likertOptions as sprintOptions };

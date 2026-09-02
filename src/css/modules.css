@@ -2502,6 +2502,22 @@ body.is-dragging-module .session-block__title {
   font-weight: 600;
 }
 
+.psych-item--risk .psych-item__q {
+  font-weight: 600;
+}
+
+/* Cuestionarios declarativos (packs importados y creador de módulos). */
+.questionnaire-module__instructions {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.psych-score-pill--sub {
+  font-size: 0.75rem;
+}
+
 /* Alerta de riesgo (p. ej. ítem de ideación suicida). */
 .psych-alert {
   display: flex;
@@ -3036,6 +3052,59 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   color: var(--text-secondary);
   line-height: 1.45;
   white-space: pre-line;
+}
+
+/* Enviar un módulo al paciente por enlace */
+.share-modal__sub {
+  margin: -6px 0 14px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.share-modal__link {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.share-modal__link .input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.share-modal__hint {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.share-modal__hint--warn {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Experiencias interactivas */
+.interactive-module__frame-wrap {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+.interactive-module__frame {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+
+.interactive-module__note {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 /* Redes de apoyo */

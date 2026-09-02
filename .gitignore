@@ -35,6 +35,10 @@ docs/
 /packs/
 /packs-src/
 /packs-private/
+# Packs privados de terceros (copyright de sus autores): nunca se commitean ni se
+# publican, se entregan como archivo .telarpack al profesional que los licenció.
+/packs-src/private/
+/dist/private/
 /src/packs/clinical-shared/
 /src/packs/tdah-adulto/
 /src/packs/trauma-regulacion/

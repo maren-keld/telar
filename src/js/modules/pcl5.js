@@ -176,3 +176,6 @@ export async function renderPcl5(host, moduleRow) {
 }
 
 export { pcl5Summary } from '../pcl5-scoring.js';
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { items as pcl5Items, options as pcl5Options };

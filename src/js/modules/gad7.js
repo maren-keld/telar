@@ -167,3 +167,6 @@ export function gad7Summary(data) {
   const b = band(total);
   return { total, label: b.label };
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { items as gad7Items, options as gad7Options };

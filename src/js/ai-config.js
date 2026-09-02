@@ -70,6 +70,7 @@ export const AI_LOCAL_MODELS = [
     label: 'Qwen 2.5 3B (ligero)',
     sizeHint: '~2 GB descarga',
     ramHint: '8 GB RAM mínimo',
+    recommended: true,
     diff: 'Rápido para probar el flujo. Menos matices en programas largos.',
     caution: 'En programas largos un modelo chico (Qwen 2.5 3B) puede cortar el listado.',
   },
@@ -78,7 +79,7 @@ export const AI_LOCAL_MODELS = [
     label: 'Qwen 2.5 7B',
     sizeHint: '~4,5 GB descarga',
     ramHint: '16 GB RAM recomendado',
-    recommended: true,
+    caution: 'Mucho más lento, incluso en Mac M4. Mejor 3B salvo que el 3B se quede corto.',
     diff: 'Mejor equilibrio en español clínico: programas y resúmenes con más coherencia.',
   },
   {

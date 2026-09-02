@@ -2,7 +2,10 @@
  * Registry dinámico de renderers + fallback legacy (transición open-core).
  */
 import { getRenderer, hasModuleType } from '../pack-registry.js';
+import { getCustomModuleByType, isCustomModuleType } from '../custom-modules.js';
 import { isCustomQuestionnaireType, renderCustomQuestionnaire } from './custom-questionnaire.js';
+import { renderDeclarativeQuestionnaire } from './questionnaire-generic.js';
+import { renderInteractiveHtml, teardownInteractiveHtml } from './interactive-html.js';
 
 // Fallback legacy — imports estáticos mientras packs no cubren todo
 import { renderMotivoConsulta } from './motivo-consulta.js';
@@ -85,8 +88,11 @@ function resolveRenderer(moduleType) {
 }
 
 export async function renderModule(host, moduleRow, ctx = {}) {
-  if (isCustomQuestionnaireType(moduleRow.module_type)) {
-    await renderCustomQuestionnaire(host, moduleRow, ctx);
+  if (isCustomModuleType(moduleRow.module_type)) {
+    const kind = getCustomModuleByType(moduleRow.module_type)?.kind;
+    if (kind === 'questionnaire') await renderDeclarativeQuestionnaire(host, moduleRow, ctx);
+    else if (kind === 'interactive') await renderInteractiveHtml(host, moduleRow, ctx);
+    else await renderCustomQuestionnaire(host, moduleRow, ctx);
     return;
   }
   const fn = resolveRenderer(moduleRow.module_type);
@@ -102,4 +108,4 @@ export function isModuleTypeAvailable(moduleType) {
   return hasModuleType(moduleType) || Boolean(LEGACY_RENDERERS[moduleType]);
 }
 
-export { teardownBilateralStimulation };
+export { teardownBilateralStimulation, teardownInteractiveHtml };

@@ -209,3 +209,6 @@ export async function renderAsrs(host, moduleRow) {
 }
 
 export { asrsSummary } from '../asrs-scoring.js';
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { items as asrsItems, options as asrsOptions };

@@ -201,3 +201,6 @@ export async function renderRosenberg(host, moduleRow) {
   form.addEventListener('change', recomputeLive);
   form.addEventListener('input', recomputeLive);
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { ITEMS as ROSENBERG_ITEMS, OPTIONS as ROSENBERG_OPTIONS };

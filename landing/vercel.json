@@ -20,6 +20,22 @@
   ],
   "rewrites": [
     {
+      "source": "/api/share",
+      "destination": "https://telar-api-aim8.onrender.com/api/share"
+    },
+    {
+      "source": "/api/share/:path*",
+      "destination": "https://telar-api-aim8.onrender.com/api/share/:path*"
+    },
+    {
+      "source": "/r/js/:file",
+      "destination": "/r/js/:file"
+    },
+    {
+      "source": "/r/:token",
+      "destination": "/r/index.html"
+    },
+    {
       "source": "/panel",
       "destination": "https://telar-api-aim8.onrender.com/panel"
     },
@@ -64,6 +80,13 @@
       "source": "/api/admin(.*)",
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
+    {
+      "source": "/r(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     },
     {

@@ -292,7 +292,7 @@ export function psychometricChartMeta(type) {
   const scorer = getScorer(type);
   if (scorer) {
     return {
-      title: def?.label || type,
+      title: def?.label || moduleLabelFor(type),
       yMax: scorer.yMax ?? 100,
       color: scorer.color || '#2f6fed',
     };

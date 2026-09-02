@@ -479,6 +479,7 @@ pub fn run() {
             cloud_backup_restore,
             cloud_backup_folder_status_cmd,
             ai_api::ai_chat_completion,
+            ai_api::ai_chat_cancel,
             ollama::ollama_status,
             ollama::ollama_ensure_running,
             ollama::ollama_pull_model,

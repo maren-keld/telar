@@ -8,6 +8,7 @@ import { sprintSummary } from './sprint-scoring.js';
 import { iesrSummary } from './iesr-scoring.js';
 import { adesSummary } from './ades-scoring.js';
 import { getScorer } from './pack-registry.js';
+import { questionnaireReadable } from '../lib/questionnaire-schema.js';
 import { parseJsonSafe } from './utils.js';
 
 const IA_ANAMNESIS_LEGACY = [
@@ -265,10 +266,28 @@ function formatTccActivacion(d) {
   return parts.join('\n');
 }
 
+/** Resumen de una experiencia interactiva: lo que el propio módulo guardó. */
+function formatInteractive(d) {
+  const lines = [];
+  if (d.summary) lines.push(String(d.summary).trim());
+  const payload = d.payload;
+  if (payload && typeof payload === 'object') {
+    for (const [key, value] of Object.entries(payload)) {
+      if (value == null || value === '') continue;
+      const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      lines.push(`${key}: ${text}`);
+    }
+  }
+  if (d.completed_at) lines.push(`Completado: ${d.completed_at}`);
+  return lines.join('\n');
+}
+
 /** Módulos personalizados (incluidos los creados por IA) para el contexto clínico. */
 function formatCustomModule(moduleType, d) {
   const def = getCustomModuleByType(moduleType);
   if (!def) return '';
+  if (def.kind === 'questionnaire') return questionnaireReadable(def.def, d);
+  if (def.kind === 'interactive') return formatInteractive(d);
   const answers = d.answers || {};
   const lines = (def.questions || [])
     .map((q) => {

@@ -187,3 +187,6 @@ function likertRowHtml(idx, text, selected) {
     </div>
   `;
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { ITEMS as EED_ITEMS, OPTIONS as EED_OPTIONS, ADAPT as EED_ADAPT, INTER as EED_INTER, MALAD as EED_MALAD };

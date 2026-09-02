@@ -168,3 +168,6 @@ export async function renderAdes(host, moduleRow) {
 }
 
 export { adesSummary } from '../ades-scoring.js';
+
+/** Definición de ítems para el schema declarativo (compartir por enlace). */
+export { items as adesItems };

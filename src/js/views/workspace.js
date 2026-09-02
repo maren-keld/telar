@@ -26,7 +26,10 @@ import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { t } from '../i18n.js';
 import { tccHandoutDef } from '../tcc-handout-defs.js';
-import { ICON_DOWNLOAD, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
+import { ICON_DOWNLOAD, ICON_LINK, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
+import { openShareModuleModal } from '../components/share-module-modal.js';
+import { shareableContentFor } from '../share-content.js';
+import { shareInfo, startShareAutoSync } from '../share-sync.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
 import {
   bindCategoryCollapse,
@@ -52,6 +55,14 @@ const collapsedSessionsByTreatment = new Map();
 
 /** Posición de scroll del centro a restaurar tras re-render (p. ej. borrar módulo). */
 let pendingCenterScrollRestore = null;
+
+/** Consulta periódica de respuestas de pacientes; una sola por workspace abierto. */
+let stopShareSync = null;
+
+function stopShareAutoSync() {
+  stopShareSync?.();
+  stopShareSync = null;
+}
 
 export function moduleLabel(type) {
   return moduleLabelFor(type);
@@ -366,7 +377,22 @@ export async function renderWorkspace(
   container.querySelector('[data-back]')?.addEventListener('click', () => {
     teardownNeurofeedback();
     teardownBilateralStimulation();
+    stopShareAutoSync();
     onNavigate({ view: 'treatments' });
+  });
+
+  // Mientras el workspace esté abierto, las respuestas que manden los pacientes
+  // caen solas en su módulo.
+  stopShareAutoSync();
+  stopShareSync = startShareAutoSync(treatmentId, (applied) => {
+    if (!container.isConnected) return;
+    toast(applied === 1 ? 'Llegó una respuesta del paciente' : `Llegaron ${applied} respuestas`);
+    void renderWorkspace(container, {
+      treatmentId,
+      sessionId: activeSessionId,
+      moduleId: activeModule?.id,
+      onNavigate,
+    });
   });
 
   container.querySelector('#btn-patient-menu')?.addEventListener('click', (e) => {
@@ -718,8 +744,8 @@ function createBotoneraEl({ isActive }) {
   return actions;
 }
 
-function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, moduleLabelText, onSwap, onPrint, onDelete }) {
-  // Derecha → izquierda: cerrar, cambiar, imprimir, ayuda. En DOM: ayuda, imprimir, cambiar, cerrar.
+function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
+  // Derecha → izquierda: cerrar, cambiar, imprimir, enviar, ayuda.
   if (isNf) {
     const helpBtn = document.createElement('button');
     helpBtn.type = 'button';
@@ -732,6 +758,24 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, modu
       toast(NF_HELP_MESSAGE);
     });
     actions.appendChild(helpBtn);
+  }
+
+  if (shareState) {
+    const shareBtn = document.createElement('button');
+    shareBtn.type = 'button';
+    shareBtn.className = `module-print-btn${shareState === 'pending' ? ' module-print-btn--active' : ''}`;
+    const label =
+      shareState === 'pending'
+        ? 'Enlace enviado — esperando respuesta'
+        : 'Enviar al paciente por enlace';
+    shareBtn.title = label;
+    shareBtn.setAttribute('aria-label', label);
+    shareBtn.innerHTML = ICON_LINK;
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onShare();
+    });
+    actions.appendChild(shareBtn);
   }
 
   if (handout) {
@@ -872,15 +916,23 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
       const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
       const isNf = mod.module_type === 'neurofeedback';
+      const shareable = shareableContentFor(mod.module_type);
       const actions = createBotoneraEl({ isActive });
       appendBotoneraCore(actions, {
         swappable,
         handout,
         deletable,
         isNf,
+        shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
         moduleLabelText: moduleLabel(mod.module_type),
         onSwap: () => ctx.onSwap(mod.id, session.id),
         onPrint: () => printModulePdf(mod, treatment.patient_name),
+        onShare: () =>
+          openShareModuleModal(mod, {
+            label: moduleLabel(mod.module_type),
+            ...shareable,
+            onChange: () => ctx.refreshWorkspace?.(),
+          }),
         onDelete: async () => {
           await deleteSessionModule(mod.id);
           toast('Módulo eliminado');

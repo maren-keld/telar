@@ -174,3 +174,6 @@ function itemRowHtml(idx, item, selected) {
     </div>
   `;
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { ITEMS as QOLS_ITEMS, OPTIONS as QOLS_OPTIONS };

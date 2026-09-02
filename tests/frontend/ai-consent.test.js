@@ -20,10 +20,13 @@ test('el aviso de corte de listado vive en Qwen 2.5 3B, no en el modo', () => {
   assert.doesNotMatch(AI_MODES.local.description, /cortar el listado/i);
 });
 
-test('Qwen 2.5 7B dice recomendado una sola vez, en el badge', () => {
+test('Qwen 2.5 3B dice recomendado una sola vez, en el badge', () => {
+  const qwen3 = AI_LOCAL_MODELS.find((m) => m.id === 'qwen2.5-3b-instruct-q4');
+  assert.equal(qwen3?.recommended, true);
+  assert.doesNotMatch(qwen3?.label || '', /recomendado/i);
   const qwen7 = AI_LOCAL_MODELS.find((m) => m.id === 'qwen2.5-7b-instruct-q4');
-  assert.equal(qwen7?.recommended, true);
-  assert.doesNotMatch(qwen7?.label || '', /recomendado/i);
+  assert.notEqual(qwen7?.recommended, true);
+  assert.match(qwen7?.caution || '', /más lento/i);
 });
 
 test('hasAiApiConsent requires persisted timestamp', () => {

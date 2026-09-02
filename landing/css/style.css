@@ -479,6 +479,26 @@ header.nav .nav-actions .btn,
   margin-bottom: 0;
 }
 
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 242, 0.72);
+}
+
+.hero-stats b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #fff;
+}
+
 .hero-panel--modules .badge {
   color: rgba(244, 244, 242, 0.72);
   border-color: rgba(255, 255, 255, 0.22);

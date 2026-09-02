@@ -552,6 +552,12 @@
   background: var(--bg-hover);
 }
 
+/* Enlace enviado y esperando respuesta del paciente. */
+.module-print-btn--active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .workspace-tools {
   flex: 0 0 var(--workspace-right-w, 320px);
   width: var(--workspace-right-w, 320px);

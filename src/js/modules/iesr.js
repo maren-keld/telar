@@ -190,3 +190,6 @@ export async function renderIesr(host, moduleRow) {
 }
 
 export { iesrSummary } from '../iesr-scoring.js';
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { items as iesrItems, options as iesrOptions };

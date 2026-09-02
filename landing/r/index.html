@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cuestionario — Telar</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="/assets/icon.png" type="image/png">
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #fff;
+      --text: #16202e;
+      --muted: #5a6b85;
+      --border: #dfe4ec;
+      --accent: #2f6fed;
+      --accent-soft: #e8efff;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      line-height: 1.5;
+      -webkit-text-size-adjust: 100%;
+    }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 20px 16px 96px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    h1 { font-size: 1.3rem; margin: 0 0 6px; }
+    .sub { color: var(--muted); font-size: 0.88rem; margin: 0; }
+    .instructions { font-size: 0.95rem; margin: 12px 0 0; }
+    .item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .item:last-child { border-bottom: 0; }
+    .item__q { display: flex; gap: 8px; font-size: 1rem; margin-bottom: 12px; }
+    .item__n { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .opts { display: grid; gap: 8px; }
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: #fff;
+      font-size: 0.95rem;
+      /* Objetivo de toque cómodo en móvil, que es donde se va a responder. */
+      min-height: 48px;
+    }
+    .opt input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+    .opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+    .slider-row { display: flex; align-items: center; gap: 12px; }
+    .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+    .slider-out { min-width: 2.5rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .slider-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+    .bar {
+      position: fixed; inset: auto 0 0 0; background: #fff;
+      border-top: 1px solid var(--border); padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px; justify-content: space-between;
+    }
+    .bar__count { color: var(--muted); font-size: 0.85rem; }
+    button.primary {
+      background: var(--accent); color: #fff; border: 0; border-radius: var(--radius);
+      padding: 13px 20px; font-size: 1rem; font-weight: 600; cursor: pointer; min-height: 48px;
+    }
+    button.primary[disabled] { opacity: 0.5; cursor: default; }
+    .note { color: var(--muted); font-size: 0.8rem; margin: 14px 0 0; }
+    .center { text-align: center; padding: 40px 16px; }
+    .center h1 { font-size: 1.2rem; }
+    .brand { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.82rem; margin-bottom: 14px; }
+    .brand img { width: 22px; height: 22px; }
+    .error { color: #922b21; }
+    [hidden] { display: none !important; }
+    iframe.experience { width: 100%; border: 0; border-radius: var(--radius); min-height: 520px; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #10151d; --card: #171e28; --text: #e8edf5; --muted: #9aa8bd;
+        --border: #2a3542; --accent: #6f9bff; --accent-soft: #1e2a44;
+      }
+      .opt { background: var(--card); }
+      .bar { background: var(--card); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><img src="/assets/icon.png" alt="" width="22" height="22"> Telar</div>
+
+    <div id="loading" class="card center">
+      <p class="sub">Abriendo el cuestionario…</p>
+    </div>
+
+    <div id="fail" class="card center" hidden>
+      <h1 id="fail-title">Este enlace ya no está disponible</h1>
+      <p class="sub" id="fail-text">Pídele a tu terapeuta uno nuevo.</p>
+    </div>
+
+    <div id="done" class="card center" hidden>
+      <h1>Listo, gracias</h1>
+      <p class="sub">Tus respuestas le llegaron a tu terapeuta. Ya puedes cerrar esta página.</p>
+    </div>
+
+    <main id="form-host" hidden></main>
+  </div>
+
+  <div class="bar" id="bar" hidden>
+    <span class="bar__count" id="count"></span>
+    <button type="button" class="primary" id="send">Enviar respuestas</button>
+  </div>
+
+  <script type="module" src="/r/js/share-form.js"></script>
+</body>
+</html>

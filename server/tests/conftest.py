@@ -25,6 +25,7 @@ TABLES = (
     "subscriptions",
     "usage_opens",
     "landing_events",
+    "shared_forms",
 )
 
 

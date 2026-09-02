@@ -220,3 +220,6 @@ function itemRowHtml(idx, text, selected) {
     </div>
   `;
 }
+
+/** Definición de ítems y anclajes para el schema declarativo (compartir por enlace). */
+export { ITEMS as DASS21_ITEMS, OPTIONS as DASS21_OPTIONS, STRESS as DASS21_STRESS, ANXIETY as DASS21_ANXIETY, DEPRESSION as DASS21_DEPRESSION };
