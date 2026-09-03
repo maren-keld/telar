@@ -198,8 +198,9 @@ function escapeHtml(s) {
 }
 
 const NAV_ITEMS = [
-  ['index.html#funciones', 'Funciones'],
+  ['index.html#valor', 'Funciones'],
   ['modules/index.html', 'Módulos'],
+  ['tutoriales/index.html', 'Tutoriales'],
   ['neurofeedback.html', 'Neurofeedback'],
   ['ia.html', 'IA'],
   ['blog/index.html', 'Blog'],
@@ -209,6 +210,8 @@ const NAV_ITEMS = [
 
 const FOOTER_ITEMS = [
   ['index.html', 'Inicio'],
+  ['tutoriales/index.html', 'Tutoriales'],
+  ['descargar.html', 'Descargar'],
   ['modules/index.html', 'Módulos'],
   ['neurofeedback.html', 'Neurofeedback'],
   ['ia.html', 'IA'],

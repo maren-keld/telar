@@ -23,13 +23,14 @@ function detectPlatform() {
   return 'other';
 }
 
-function getDownloadTarget() {
-  const platform = detectPlatform();
+function getDownloadTarget(platformOverride) {
+  const platform = platformOverride || detectPlatform();
 
   if (platform === 'mac') {
     return {
       href: DOWNLOAD_URLS.mac,
       label: 'Descargar para macOS',
+      demoLabel: 'Descargar Demo Gratis (macOS)',
       platform: 'mac',
     };
   }
@@ -38,6 +39,7 @@ function getDownloadTarget() {
     return {
       href: DOWNLOAD_URLS.windows,
       label: 'Descargar para Windows',
+      demoLabel: 'Descargar Demo Gratis (Windows)',
       platform: 'windows',
     };
   }
@@ -57,8 +59,8 @@ function getDownloadTarget() {
   };
 }
 
-function applyDownloadButtons() {
-  const target = getDownloadTarget();
+function applyDownloadButtons(platformOverride) {
+  const target = getDownloadTarget(platformOverride);
 
   document.querySelectorAll('[data-download]').forEach((button) => {
     const hideIfOther = button.hasAttribute('data-download-hide-other');
@@ -70,15 +72,33 @@ function applyDownloadButtons() {
 
     button.hidden = false;
     button.href = target.href;
+    const text = button.classList.contains('btn-lg') && target.demoLabel
+      ? target.demoLabel
+      : target.label;
     const label = button.querySelector('.btn-label');
     if (label) {
-      label.textContent = target.label;
+      label.textContent = text;
     } else {
-      button.textContent = target.label;
+      button.textContent = text;
     }
     button.dataset.platform = target.platform;
     button.removeAttribute('download');
   });
+
+  document.querySelectorAll('[data-download-choice]').forEach((choice) => {
+    const selected = choice.dataset.downloadChoice === target.platform;
+    choice.classList.toggle('is-active', selected);
+    choice.setAttribute('aria-pressed', String(selected));
+  });
 }
 
-document.addEventListener('DOMContentLoaded', applyDownloadButtons);
+function initDownloads() {
+  applyDownloadButtons();
+  document.querySelectorAll('[data-download-choice]').forEach((choice) => {
+    choice.addEventListener('click', () => {
+      applyDownloadButtons(choice.dataset.downloadChoice);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initDownloads);
