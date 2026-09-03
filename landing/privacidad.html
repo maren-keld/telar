@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacidad y datos clínicos — Telar</title>
-  <meta name="description" content="Cómo Telar protege los datos clínicos: almacenamiento local cifrado, IA opcional con BYOK u Ollama, respaldo automático a una carpeta del profesional. Ley 19.628 Chile.">
+  <meta name="description" content="Cómo Telar protege los datos clínicos: almacenamiento local encriptado, IA opcional con BYOK u Ollama, respaldo automático a una carpeta del profesional. Ley 19.628 Chile.">
   <link rel="canonical" href="https://telarapp.cl/privacidad">
   <meta property="og:title" content="Privacidad y datos clínicos — Telar">
-  <meta property="og:description" content="Almacenamiento local cifrado, IA opcional y desactivada por defecto, y respaldo automático a una carpeta que elige el profesional.">
+  <meta property="og:description" content="Almacenamiento local encriptado, IA opcional y desactivada por defecto, y respaldo automático a una carpeta que elige el profesional.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CL">
   <meta property="og:url" content="https://telarapp.cl/privacidad">
@@ -62,7 +62,7 @@
 
     <h2>Almacenamiento local</h2>
     <p>Telar guarda la información clínica <strong>en el dispositivo del profesional</strong>. No enviamos fichas de pacientes a servidores propios de Telar.</p>
-    <p>La base de datos local está cifrada. Puedes exportar o eliminar tus datos desde <strong>Ajustes</strong> en la aplicación.</p>
+    <p>La base de datos local está encriptada. Puedes exportar o eliminar tus datos desde <strong>Ajustes</strong> en la aplicación.</p>
 
     <h2>Asistente de IA (opcional)</h2>
     <p>Por defecto la IA está <strong>desactivada</strong>. El detalle de qué hace y cómo se configura está en <a href="ia.html">IA en Telar</a>. Si la activas:</p>
@@ -76,19 +76,19 @@
     <p>Internet se usa solo si activas el Plan Profesional (verificación de suscripción con el proveedor de pagos), si descargas una actualización de la app, si configuras una API de IA externa, o si mantienes activo el <strong>contador anónimo de uso</strong>. Ese contador envía, mientras la app está abierta, un identificador aleatorio del equipo (creado en tu computador, sin relación con tu nombre ni con tus pacientes), la versión de Telar, el sistema operativo y el plan. Sirve solo para saber cuántas personas están usando la app. No envía IP, ni datos clínicos, ni tu email. Viene activado por defecto y se apaga por completo en Ajustes.</p>
 
     <h2>Respaldo automático</h2>
-    <p>En el Plan Profesional, Telar guarda una vez al día una copia cifrada de tu base de datos en <strong>una carpeta de tu computador que tú eliges</strong>. Telar no aloja esa copia: si eliges una carpeta sincronizada (Google Drive, Dropbox, OneDrive, iCloud), es tu propio servicio el que la sube, y si eliges cualquier otra, el respaldo no sale del equipo.</p>
-    <p>El archivo se cifra con <strong>age</strong> antes de escribirse, con una clave de recuperación que se te entrega una sola vez y que solo tú conservas. Ni Telar ni el proveedor de tu nube pueden abrirlo. Si pierdes esa clave, los respaldos no se pueden recuperar.</p>
+    <p>En el Plan Profesional, Telar guarda una vez al día una copia encriptada de tu base de datos en <strong>una carpeta de tu computador que tú eliges</strong>. Telar no aloja esa copia: si eliges una carpeta sincronizada (Google Drive, Dropbox, OneDrive, iCloud), es tu propio servicio el que la sube, y si eliges cualquier otra, el respaldo no sale del equipo.</p>
+    <p>El archivo se encripta con <strong>age</strong> antes de escribirse, con una clave de recuperación que se te entrega una sola vez y que solo tú conservas. Ni Telar ni el proveedor de tu nube pueden abrirlo. Si pierdes esa clave, los respaldos no se pueden recuperar.</p>
 
     <h2>Analítica de este sitio web</h2>
     <p>Este sitio mide cuántas visitas recibe y qué secciones se usan, <strong>sin cookies, sin registrar tu dirección IP y sin identificadores de visitante</strong>. Lo único que se guarda es un contador por día y por tipo de evento (por ejemplo: “una visita a la página de precio”), del que no es posible reconstruir quién eres ni qué recorrido hiciste.</p>
     <p>Para no contar la misma visita dos veces se usa <code>sessionStorage</code> del navegador, que se borra al cerrar la pestaña y no se comparte con otros sitios. Si tu navegador envía <strong>Do Not Track</strong> o <strong>Global Privacy Control</strong>, no se registra absolutamente nada.</p>
     <p>Junto con eso se cuentan tres rasgos generales de la visita, ya convertidos en una categoría de una lista fija <em>antes</em> de salir de tu navegador: de dónde llegaste (“Instagram”, “Google”, “directo” — el dominio, nunca la dirección completa ni lo que buscaste), si estás en móvil, tablet o escritorio (por el ancho de la pantalla, no por el <em>user-agent</em>), y en qué tramo de tiempo estuvo la página a la vista (“entre 30 s y 1 minuto”, nunca la duración exacta).</p>
-    <p>La comuna se deduce de tu dirección IP <strong>en nuestro propio servidor y con una base de datos local</strong>: ningún tercero ve tu tráfico. La IP se traduce a un nombre de comuna en memoria y se descarta en el acto — no se guarda, ni siquiera cifrada o abreviada. La precisión es aproximada, y en conexiones móviles suele apuntar al centro de la ciudad.</p>
+    <p>La comuna se deduce de tu dirección IP <strong>en nuestro propio servidor y con una base de datos local</strong>: ningún tercero ve tu tráfico. La IP se traduce a un nombre de comuna en memoria y se descarta en el acto — no se guarda, ni siquiera encriptada o abreviada. La precisión es aproximada, y en conexiones móviles suele apuntar al centro de la ciudad.</p>
     <p>Los cuatro contadores son independientes entre sí: la base sabe que hubo 42 visitas desde Instagram y 7 desde Providencia, pero no puede decir si alguna fue la misma persona. No hay perfiles, no hay sesiones almacenadas y no compartimos nada con terceros. Todo esto es código abierto y auditable: <a href="https://github.com/maren-keld/telar/blob/main/landing/js/track.js">track.js</a>.</p>
     <p><small>Datos de ubicación por IP: <a href="https://db-ip.com" rel="noopener">IP Geolocation by DB-IP</a> (CC BY 4.0).</small></p>
 
     <h2>Neurofeedback</h2>
-    <p>La señal EEG de Neurofeedback se guarda cifrada solo en el computador del profesional; informa al paciente antes de grabar.</p>
+    <p>La señal EEG de Neurofeedback se guarda encriptada solo en el computador del profesional; informa al paciente antes de grabar.</p>
 
     <p><a href="index.html">← Volver al inicio</a></p>
     </div>

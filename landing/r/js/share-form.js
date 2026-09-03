@@ -1,9 +1,9 @@
 /**
  * Página que responde el paciente: /r/<token>#<llave>
  *
- * El servidor entrega un sobre cifrado que solo se puede abrir con la llave del
+ * El servidor entrega un sobre encriptado que solo se puede abrir con la llave del
  * fragmento. Aquí no se muestra ningún puntaje ni interpretación: eso es del
- * terapeuta. Al enviar, las respuestas se cifran con la misma llave.
+ * terapeuta. Al enviar, las respuestas se encriptan con la misma llave.
  */
 import { decryptShare, encryptShare } from './share-crypto.js';
 import { optionsForItem, questionnaireItems, sliderRange } from './questionnaire-schema.js';
@@ -83,7 +83,7 @@ function renderQuestionnaire(def, onSubmit) {
     <form class="card" id="q-form">
       ${items.map((item) => itemHtml(def, item)).join('')}
     </form>
-    <p class="note">Tus respuestas se cifran en este dispositivo y solo las puede abrir tu terapeuta.
+    <p class="note">Tus respuestas se encriptan en este dispositivo y solo las puede abrir tu terapeuta.
       Esto no es un diagnóstico ni reemplaza una evaluación clínica.</p>`;
 
   const form = el('q-form');
@@ -144,7 +144,7 @@ function renderExperience(payload, onSubmit) {
       <iframe class="experience" id="exp" title="${escapeHtml(payload.title || 'Experiencia')}"
               sandbox="allow-scripts allow-forms allow-pointer-lock" referrerpolicy="no-referrer"></iframe>
     </div>
-    <p class="note">Lo que registres se cifra en este dispositivo y solo lo puede abrir tu terapeuta.</p>`;
+    <p class="note">Lo que registres se encripta en este dispositivo y solo lo puede abrir tu terapeuta.</p>`;
 
   const frame = el('exp');
   let latest = null;
