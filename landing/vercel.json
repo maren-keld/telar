@@ -16,6 +16,16 @@
       "source": "/trauma-herramientas",
       "destination": "/blog/trauma-herramientas",
       "permanent": true
+    },
+    {
+      "source": "/privacidad-local",
+      "destination": "/tutoriales/privacidad-local",
+      "permanent": true
+    },
+    {
+      "source": "/como-instalar-telar",
+      "destination": "/tutoriales/como-instalar-telar",
+      "permanent": true
     }
   ],
   "rewrites": [
