@@ -3914,14 +3914,14 @@ section {
 /* Página de descarga */
 .download-hero {
   overflow: hidden;
-  padding: clamp(3rem, 7vw, 7rem) 0;
+  padding: clamp(5rem, 10vw, 9.5rem) 0;
   background: #f2b99b;
 }
 
 .download-hero__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(20rem, 0.85fr);
-  gap: clamp(2rem, 6vw, 6rem);
+  grid-template-columns: minmax(0, 1.2fr) minmax(22rem, 0.8fr);
+  gap: clamp(1.5rem, 5vw, 4.5rem);
   align-items: center;
 }
 
@@ -3929,33 +3929,27 @@ section {
   color: #3a2a22;
 }
 
-.download-mockup {
+.download-stage {
   position: relative;
-  margin-left: -12%;
-  padding: 0.7rem;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  border-radius: 14px;
-  background: #191a1d;
-  box-shadow: 0 2.5rem 5rem rgba(55, 31, 18, 0.22);
-  transform: perspective(1100px) rotateY(10deg) rotateX(1deg);
-  transform-origin: center right;
-  overflow: hidden;
+  perspective: 1800px;
+  perspective-origin: 85% 40%;
 }
 
-.download-mockup::before {
-  content: "";
-  display: block;
-  height: 1.35rem;
-  border-bottom: 1px solid #34363b;
-  background: radial-gradient(circle at 0.45rem 50%, #e56b61 0 0.22rem, transparent 0.24rem),
-    radial-gradient(circle at 1.15rem 50%, #e5bd61 0 0.22rem, transparent 0.24rem),
-    radial-gradient(circle at 1.85rem 50%, #6aba74 0 0.22rem, transparent 0.24rem);
+.download-mockup {
+  width: 118%;
+  margin-left: -16%;
+  transform: rotateY(14deg) rotateX(5deg);
+  transform-origin: 30% 55%;
+  filter: drop-shadow(0 28px 40px rgba(55, 31, 18, 0.32));
 }
 
 .download-mockup img {
   display: block;
   width: 100%;
-  border-radius: 0 0 7px 7px;
+  height: auto;
+  border-radius: 10px;
+  background: #111;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
 
 .download-copy h1 {
@@ -4200,13 +4194,30 @@ section {
   }
 
   .download-hero {
-    padding-top: 2rem;
+    padding: 2.25rem 0 0;
+  }
+
+  .download-stage {
+    order: 2;
+    height: 16.5rem;
+    overflow: hidden;
+    perspective: 1200px;
+    perspective-origin: 40% 80%;
+    width: 100vw;
+    margin: 2rem 0 0 calc(50% - 50vw);
   }
 
   .download-mockup {
-    order: 2;
-    margin: 1.5rem 0 0;
-    transform: none;
+    width: 220%;
+    margin-left: -18%;
+    margin-top: -6%;
+    transform: rotateX(9deg) rotateY(-6deg);
+    transform-origin: 30% 40%;
+    filter: drop-shadow(0 1.2rem 1.6rem rgba(55, 31, 18, 0.28));
+  }
+
+  .download-mockup img {
+    border-radius: 8px;
   }
 
   .download-copy {
@@ -4228,7 +4239,12 @@ section {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .download-stage {
+    perspective: none;
+  }
+
   .download-mockup {
     transform: none;
+    filter: drop-shadow(0 1.2rem 1.8rem rgba(55, 31, 18, 0.22));
   }
 }
