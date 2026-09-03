@@ -3,24 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Blog clínico para psicólogos — TDAH, trauma, EMDR, neurofeedback | Telar</title>
-  <meta name="description" content="Artículos para psicólogos sobre TDAH adulto, trauma y TEPT, estimulación bilateral EMDR-adjacent, evaluación con escalas longitudinales y neurofeedback en consulta.">
+  <title>Blog de Telar — tutoriales, práctica clínica y opinión</title>
+  <meta name="description" content="Artículos para psicólogos: cómo instalar Telar, privacidad local, TDAH adulto, trauma y herramientas de la consulta.">
   <link rel="canonical" href="https://telarapp.cl/blog">
-  <meta property="og:title" content="Blog clínico para psicólogos — Telar">
-  <meta property="og:description" content="TDAH, trauma, EMDR-adjacent, evaluación neuropsicológica longitudinal y neurofeedback aplicados al trabajo en consulta.">
+  <meta property="og:site_name" content="Telar">
+  <meta property="og:title" content="Blog de Telar — tutoriales, práctica clínica y opinión">
+  <meta property="og:description" content="Tutoriales, práctica clínica y notas sobre la consulta con Telar.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CL">
   <meta property="og:url" content="https://telarapp.cl/blog">
   <meta property="og:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <meta property="og:image:alt" content="Telar, aplicación clínica para psicólogos">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blog de Telar — tutoriales, práctica clínica y opinión">
+  <meta name="twitter:description" content="Tutoriales, práctica clínica y notas sobre la consulta con Telar.">
+  <meta name="twitter:image" content="https://telarapp.cl/assets/telar-app-screenshot.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Blog de Telar",
+    "url": "https://telarapp.cl/blog",
+    "inLanguage": "es-CL",
+    "description": "Tutoriales, práctica clínica y opinión para psicólogos que usan Telar.",
+    "mainEntity": {
+      "@type": "ItemList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "url": "https://telarapp.cl/blog/como-instalar-telar", "name": "Cómo instalar Telar en macOS y Windows" },
+        { "@type": "ListItem", "position": 2, "url": "https://telarapp.cl/blog/privacidad-local", "name": "Qué significa que Telar sea local" },
+        { "@type": "ListItem", "position": 3, "url": "https://telarapp.cl/blog/tdah-adulto", "name": "TDAH en adultos: cómo Telar puede apoyar el tratamiento" },
+        { "@type": "ListItem", "position": 4, "url": "https://telarapp.cl/blog/trauma-herramientas", "name": "Trauma: cómo las herramientas de Telar apoyan el tratamiento" }
+      ]
+    }
+  }
+  </script>
   <link rel="icon" href="../assets/icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
-       media="print" y se activa al terminar de bajar. Hasta entonces se ve
-       la tipografía del sistema, que es el fallback de --font. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
-  <link rel="stylesheet" href="../css/style.css?v=20260803a">
+  <link rel="stylesheet" href="../css/style.css?v=20260903c">
 </head>
 <body>
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -38,11 +60,9 @@
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="../modules/index.html">Módulos</a>
         <span class="nav-divider" aria-hidden="true"></span>
-        <a href="../tutoriales/index.html">Tutoriales</a>
+        <a href="../cursos/index.html">Cursos</a>
         <span class="nav-divider" aria-hidden="true"></span>
-        <a href="../neurofeedback.html">Neurofeedback</a>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <a href="../blog/index.html">Blog</a>
+        <a href="index.html" aria-current="page">Blog</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="../precio.html">Precio</a>
         <span class="nav-divider" aria-hidden="true"></span>
@@ -58,28 +78,72 @@
   </header>
 
   <main id="contenido">
-    <section class="page-hero">
+    <section class="articles-section" aria-labelledby="blog-heading">
       <div class="container">
-        <p class="section-label">Blog</p>
-        <h1 class="section-title">Blog clínico para psicólogos</h1>
-        <p class="page-hero-lead">TDAH, trauma, EMDR-adjacent, evaluación neuropsicológica con escalas longitudinales y neurofeedback — con los límites de la herramienta dichos de frente, no escondidos en la letra chica.</p>
-      </div>
-    </section>
-
-    <section>
-      <div class="container">
-        <div class="blog-grid">
-          <a href="tdah-adulto.html" class="blog-card">
-            <p class="post-meta"><span>Práctica clínica</span><span>31 jul 2026</span></p>
-            <h2>TDAH en adultos: cómo Telar puede apoyar el tratamiento</h2>
-            <p>La plantilla de 8 sesiones módulo por módulo, ASRS y GAD-7 puntuadas al instante, handouts TCC como tarea entre sesiones y la variante con neurofeedback protocolo Atención.</p>
-          </a>
-          <a href="trauma-herramientas.html" class="blog-card">
-            <p class="post-meta"><span>Práctica clínica</span><span>31 jul 2026</span></p>
-            <h2>Trauma: cómo las herramientas de Telar apoyan el tratamiento</h2>
-            <p>PCL-5, IES-R, SPRINT-E-CL y A-DES con puntuación automática, plan de seguridad, estimulación bilateral EMDR-adjacent y neurofeedback protocolo Calma — ordenados por fase del tratamiento.</p>
-          </a>
+        <div class="articles-section__head">
+          <h1 id="blog-heading">Novedades de Telar</h1>
         </div>
+        <p class="article-filters" aria-label="Categorías">
+          <a href="index.html" data-article-filter>Todos</a>
+          <a href="index.html?cat=tutorial" data-article-filter>Tutorial</a>
+          <a href="index.html?cat=practica" data-article-filter>Práctica clínica</a>
+          <a href="index.html?cat=opinion" data-article-filter>Opinión</a>
+        </p>
+        <div class="article-grid" data-article-grid>
+          <article class="article-card" data-cat="tutorial" data-tags="macos windows instalacion">
+            <a class="article-card__main" href="como-instalar-telar.html">
+              <div class="article-card__media">
+                <img src="../assets/gallery-puntajes-800.webp" alt="Telar puntuando una escala PCL-5 y mostrando la evolución por sesión" width="800" height="484" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Tutorial</span>
+                <time class="article-card__date" datetime="2026-09-02">2 sep 2026</time>
+              </p>
+              <h2>Cómo instalar Telar en macOS y Windows</h2>
+              <p class="article-card__excerpt">Descarga, instala y comienza fácilmente a potenciar tu consulta.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="tutorial" data-tags="privacidad local encriptado">
+            <a class="article-card__main" href="privacidad-local.html">
+              <div class="article-card__media">
+                <img src="../assets/gallery-significado-800.webp" alt="Ficha clínica de Telar con pregunta milagro y bitácora, guardada en el computador" width="800" height="484" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Tutorial</span>
+                <time class="article-card__date" datetime="2026-09-02">2 sep 2026</time>
+              </p>
+              <h2>Qué significa que Telar sea local</h2>
+              <p class="article-card__excerpt">Con Telar los datos de tus pacientes son siempre tuyos. Qué implica eso para tu práctica frente a herramientas con IA como ChatGPT o Google NotebookLM.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="practica" data-tags="tdah escalas neurofeedback">
+            <a class="article-card__main" href="tdah-adulto.html">
+              <div class="article-card__media">
+                <img src="../assets/hero-cloud-asrs-chart.png" alt="Curva de evolución ASRS en Telar para seguimiento de TDAH adulto" width="800" height="500" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Práctica clínica</span>
+                <time class="article-card__date" datetime="2026-07-31">31 jul 2026</time>
+              </p>
+              <h2>TDAH en adultos: cómo Telar puede apoyar el tratamiento</h2>
+              <p class="article-card__excerpt">La plantilla de 8 sesiones, ASRS y GAD-7 puntuadas al instante, y la variante con neurofeedback.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="practica" data-tags="trauma emdr pcl-5">
+            <a class="article-card__main" href="trauma-herramientas.html">
+              <div class="article-card__media">
+                <img src="../assets/gallery-neurofeedback-800.webp" alt="Sesión de neurofeedback en Telar con banda Muse 2" width="800" height="484" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Práctica clínica</span>
+                <time class="article-card__date" datetime="2026-07-31">31 jul 2026</time>
+              </p>
+              <h2>Trauma: cómo las herramientas de Telar apoyan el tratamiento</h2>
+              <p class="article-card__excerpt">PCL-5, plan de seguridad, estimulación bilateral EMDR-adjacent y neurofeedback protocolo Calma.</p>
+            </a>
+          </article>
+        </div>
+        <p class="article-empty">No hay artículos en esta categoría todavía.</p>
       </div>
     </section>
 
@@ -106,12 +170,11 @@
       </div>
       <nav class="footer-links" aria-label="Enlaces del pie">
         <a href="../index.html">Inicio</a>
-        <a href="../tutoriales/index.html">Tutoriales</a>
         <a href="../descargar.html">Descargar</a>
         <a href="../modules/index.html">Módulos</a>
-        <a href="../neurofeedback.html">Neurofeedback</a>
+        <a href="../cursos/index.html">Cursos</a>
         <a href="../precio.html">Precio</a>
-        <a href="../blog/index.html">Blog</a>
+        <a href="index.html">Blog</a>
         <a href="../equipo.html">Equipo</a>
         <a href="../privacidad.html">Privacidad</a>
         <a href="mailto:contacto@telarapp.cl">contacto@telarapp.cl</a>
@@ -121,8 +184,9 @@
     </div>
   </footer>
 
-  <script src="../js/download.js?v=20260803a"></script>
-  <script src="../js/track.js?v=20260803a"></script>
-  <script src="../js/nav.js?v=20260803a"></script>
+  <script src="../js/download.js?v=20260903a"></script>
+  <script src="../js/track.js?v=20260903a"></script>
+  <script src="../js/nav.js?v=20260903a"></script>
+  <script src="../js/blog-filter.js?v=20260903a"></script>
 </body>
 </html>

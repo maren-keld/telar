@@ -18,13 +18,23 @@
       "permanent": true
     },
     {
+      "source": "/tutoriales",
+      "destination": "/blog",
+      "permanent": true
+    },
+    {
+      "source": "/tutoriales/:path*",
+      "destination": "/blog/:path*",
+      "permanent": true
+    },
+    {
       "source": "/privacidad-local",
-      "destination": "/tutoriales/privacidad-local",
+      "destination": "/blog/privacidad-local",
       "permanent": true
     },
     {
       "source": "/como-instalar-telar",
-      "destination": "/tutoriales/como-instalar-telar",
+      "destination": "/blog/como-instalar-telar",
       "permanent": true
     }
   ],
@@ -93,6 +103,18 @@
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
         { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/stats",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
+      "source": "/index2",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
       ]
     },
     {

@@ -200,9 +200,7 @@ function escapeHtml(s) {
 const NAV_ITEMS = [
   ['index.html#valor', 'Funciones'],
   ['modules/index.html', 'Módulos'],
-  ['tutoriales/index.html', 'Tutoriales'],
-  ['neurofeedback.html', 'Neurofeedback'],
-  ['ia.html', 'IA'],
+  ['cursos/index.html', 'Cursos'],
   ['blog/index.html', 'Blog'],
   ['precio.html', 'Precio'],
   ['index.html#contacto', 'Contacto'],
@@ -210,11 +208,10 @@ const NAV_ITEMS = [
 
 const FOOTER_ITEMS = [
   ['index.html', 'Inicio'],
-  ['tutoriales/index.html', 'Tutoriales'],
   ['descargar.html', 'Descargar'],
   ['modules/index.html', 'Módulos'],
-  ['neurofeedback.html', 'Neurofeedback'],
-  ['ia.html', 'IA'],
+  ['cursos/index.html', 'Cursos'],
+  ['neurofeedback.html', 'Curso de neurofeedback'],
   ['instituciones.html', 'Instituciones'],
   ['precio.html', 'Precio'],
   ['blog/index.html', 'Blog'],

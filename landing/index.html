@@ -4,11 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Telar — App clínica para psicólogos | TDAH, trauma, neurofeedback</title>
-  <meta name="description" content="App de escritorio para psicólogos: 13 escalas con scoring automático, IA sobre la ficha, packs TDAH y trauma, neurofeedback Muse 2. Datos encriptados en tu equipo.">
+  <meta name="description" content="App de escritorio para psicólogos: programas con asistencia de IA, escalas e informes automáticos. Datos de pacientes 100% encriptados en tu computador. TDAH, trauma y neurofeedback.">
   <link rel="canonical" href="https://telarapp.cl/">
+  <link rel="icon" href="assets/icon.png" type="image/png">
   <link rel="alternate" type="text/plain" href="https://telarapp.cl/llms.txt" title="Resumen para modelos de lenguaje">
-  <meta property="og:title" content="Telar — Seguimiento clínico para psicólogos | TDAH, trauma, neurofeedback">
-  <meta property="og:description" content="Escalas longitudinales, IA sobre la ficha, packs TDAH y trauma y neurofeedback Muse 2. App local y encriptada para macOS y Windows.">
+  <meta property="og:site_name" content="Telar">
+  <meta property="og:title" content="Telar — App clínica para psicólogos | TDAH, trauma, neurofeedback">
+  <meta property="og:description" content="Programas de psicoterapia con IA, escalas e informes automáticos. Los datos quedan encriptados y solo en tu computador. macOS y Windows.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_CL">
   <meta property="og:url" content="https://telarapp.cl/">
@@ -29,7 +31,13 @@
         "name": "Telar",
         "url": "https://telarapp.cl/",
         "inLanguage": "es-CL",
-        "description": "Aplicación de escritorio para seguimiento clínico estructurado en psicología: TDAH, trauma, escalas longitudinales, IA opcional sobre la ficha y neurofeedback."
+        "description": "Aplicación de escritorio para seguimiento clínico estructurado en psicología: TDAH, trauma, escalas longitudinales, IA opcional sobre la ficha y neurofeedback.",
+        "publisher": {
+          "@type": "Organization",
+          "name": "Telar",
+          "url": "https://telarapp.cl/",
+          "logo": { "@type": "ImageObject", "url": "https://telarapp.cl/assets/icon.png" }
+        }
       },
       {
         "@type": "SoftwareApplication",
@@ -139,11 +147,10 @@
     .hero-product-shot__inner{max-width:1600px;margin:0 auto}
     .hero-product-shot img{display:block;width:100%;height:auto}
   </style>
-  <link rel="stylesheet" href="css/style.min.css?v=20260902z" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="css/style.min.css?v=20260902z"></noscript>
+  <link rel="stylesheet" href="css/style.min.css?v=20260903c" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="css/style.min.css?v=20260903c"></noscript>
   <script src="js/nav.js?v=20260830p" defer></script>
   <script src="js/download.js?v=20260902u" defer></script>
-  <script src="js/gallery-hotspots.js?v=20260830p" defer></script>
   <script src="js/demo-video.js?v=20260830p" defer></script>
   <script src="js/track.min.js?v=20260830p" defer></script>
   <script src="js/hero-camera.min.js?v=20260830p" defer></script>
@@ -165,11 +172,7 @@
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="modules/index.html">Módulos</a>
         <span class="nav-divider" aria-hidden="true"></span>
-        <a href="tutoriales/index.html">Tutoriales</a>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <a href="neurofeedback.html">Neurofeedback</a>
-        <span class="nav-divider" aria-hidden="true"></span>
-        <a href="ia.html">IA</a>
+        <a href="cursos/index.html">Cursos</a>
         <span class="nav-divider" aria-hidden="true"></span>
         <a href="blog/index.html">Blog</a>
         <span class="nav-divider" aria-hidden="true"></span>
@@ -192,7 +195,7 @@
         <div class="hero-main__copy">
           <p class="hero-eyebrow">Aplicación de escritorio para psicólogos</p>
           <h1>Tu consulta clínica, ordenada en un solo lugar.</h1>
-          <p class="hero-lead-main">Construye programas de psicoterapia, puntúa escalas y prepara informes con IA opcional. La ficha queda encriptada en tu computador.</p>
+          <p class="hero-lead-main">Construye programas de psicoterapia con asistencia de IA, puntúa escalas y obtén informes automatizados. Los datos de tus pacientes quedan 100% encriptados y solo en tu computador.</p>
           <div class="hero-actions">
             <a href="descargar.html" class="btn btn-primary btn-lg">Probar gratis</a>
             <a href="mailto:contacto@telarapp.cl" class="btn btn-secondary btn-lg">Escribirnos</a>
@@ -270,100 +273,52 @@
       </div>
     </section>
 
-    <section class="product-gallery" id="galeria" aria-label="Capturas de Telar en consulta">
+    <section class="articles-section" id="articulos" aria-labelledby="articulos-heading">
       <div class="container">
-        <div class="install-carousel install-carousel--gallery" data-install-carousel data-carousel-static role="region" aria-roledescription="carousel" aria-label="Capturas de Telar en consulta">
-          <div class="install-carousel__viewport">
-            <figure class="install-carousel__slide is-active">
-              <div class="shot-map" data-shot-map>
-                <div class="shot-map__frame">
-                  <picture>
-                    <source
-                      type="image/webp"
-                      srcset="assets/gallery-significado-800.webp 800w, assets/gallery-significado-1600.webp 1600w, assets/gallery-significado-2400.webp 2400w"
-                      sizes="(max-width: 800px) 100vw, min(1200px, 100vw)"
-                    >
-                    <img
-                      src="assets/gallery-significado-1600.webp"
-                      alt="Telar en sesión: índice a la izquierda, módulo al centro, bitácora e IA a la derecha"
-                      width="2400"
-                      height="1452"
-                      loading="lazy"
-                      decoding="async"
-                    >
-                  </picture>
-                  <ul class="shot-map__pins">
-                    <li class="shot-pin shot-pin--left" style="--x: 12.7%; --y: 46%;">
-                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-indice">
-                        <span class="shot-pin__dot" aria-hidden="true"></span>
-                        <span class="shot-pin__title">Índice</span>
-                      </button>
-                      <div class="shot-pin__card" id="shot-pin-indice" hidden>
-                        <p>A la izquierda, el índice de sesiones con los módulos a trabajar en cada sesión.</p>
-                      </div>
-                    </li>
-                    <li class="shot-pin shot-pin--center" style="--x: 43.3%; --y: 38%;">
-                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-modulo">
-                        <span class="shot-pin__dot" aria-hidden="true"></span>
-                        <span class="shot-pin__title">Módulo</span>
-                      </button>
-                      <div class="shot-pin__card" id="shot-pin-modulo" hidden>
-                        <p>En el centro, el espacio de trabajo con el módulo de la sesión — aquí corre el ejercicio con el paciente.</p>
-                      </div>
-                    </li>
-                    <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 40%;">
-                      <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-bitacora">
-                        <span class="shot-pin__dot" aria-hidden="true"></span>
-                        <span class="shot-pin__title">Bitácora</span>
-                      </button>
-                      <div class="shot-pin__card" id="shot-pin-bitacora" hidden>
-                        <p>A la derecha, la bitácora para añadir notas, resaltar anotaciones y consultar a la IA por el tratamiento.</p>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
+        <div class="articles-section__head">
+          <h2 id="articulos-heading">Novedades de Telar</h2>
+          <a href="blog/index.html">Ver el blog →</a>
+        </div>
+        <div class="article-grid">
+          <article class="article-card" data-cat="tutorial">
+            <a class="article-card__main" href="blog/como-instalar-telar.html">
+              <div class="article-card__media">
+                <img src="assets/gallery-puntajes-800.webp" alt="Telar puntuando una escala PCL-5 y mostrando la evolución por sesión" width="800" height="484" loading="lazy" decoding="async">
               </div>
-              <figcaption>Pulsa un círculo para ver el índice, el módulo o la bitácora.</figcaption>
-            </figure>
-            <figure class="install-carousel__slide" hidden>
-              <picture>
-                <source
-                  type="image/webp"
-                  srcset="assets/gallery-neurofeedback-800.webp 800w, assets/gallery-neurofeedback-1600.webp 1600w, assets/gallery-neurofeedback-2400.webp 2400w"
-                  sizes="(max-width: 800px) 100vw, min(1200px, 100vw)"
-                >
-                <img
-                  src="assets/gallery-neurofeedback-1600.webp"
-                  alt="Sesión de neurofeedback Muse 2 en Telar, calculando línea base de atención"
-                  width="2400"
-                  height="1452"
-                  loading="lazy"
-                  decoding="async"
-                >
-              </picture>
-              <figcaption>Neurofeedback con Muse 2: línea base de atención, dentro de la consulta.</figcaption>
-            </figure>
-            <button type="button" class="install-carousel__overlay install-carousel__prev" aria-label="Imagen anterior">
-              <span aria-hidden="true">‹</span>
-            </button>
-            <button type="button" class="install-carousel__overlay install-carousel__next" aria-label="Imagen siguiente">
-              <span aria-hidden="true">›</span>
-            </button>
-          </div>
-          <div class="install-carousel__controls">
-            <button type="button" class="install-carousel__arrow install-carousel__prev" aria-label="Imagen anterior">
-              <span class="install-carousel__arrow-symbol" aria-hidden="true">‹</span>
-              <span class="install-carousel__arrow-label">Imagen anterior</span>
-            </button>
-            <div class="install-carousel__dots" role="tablist" aria-label="Seleccionar captura">
-              <button type="button" class="install-carousel__dot is-active" role="tab" aria-label="Índice de sesiones" aria-selected="true"></button>
-              <button type="button" class="install-carousel__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
-            </div>
-            <button type="button" class="install-carousel__arrow install-carousel__next" aria-label="Imagen siguiente">
-              <span class="install-carousel__arrow-label">Imagen siguiente</span>
-              <span class="install-carousel__arrow-symbol" aria-hidden="true">›</span>
-            </button>
-          </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Tutorial</span>
+                <time class="article-card__date" datetime="2026-09-02">2 sep 2026</time>
+              </p>
+              <h3>Cómo instalar Telar en macOS y Windows</h3>
+              <p class="article-card__excerpt">Descarga, instala y comienza fácilmente a potenciar tu consulta.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="tutorial">
+            <a class="article-card__main" href="blog/privacidad-local.html">
+              <div class="article-card__media">
+                <img src="assets/gallery-significado-800.webp" alt="Ficha clínica de Telar con pregunta milagro y bitácora, guardada en el computador" width="800" height="484" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Tutorial</span>
+                <time class="article-card__date" datetime="2026-09-02">2 sep 2026</time>
+              </p>
+              <h3>Qué significa que Telar sea local</h3>
+              <p class="article-card__excerpt">Con Telar los datos de tus pacientes son siempre tuyos. Qué implica eso para tu práctica frente a herramientas con IA como ChatGPT o Google NotebookLM.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="practica">
+            <a class="article-card__main" href="blog/tdah-adulto.html">
+              <div class="article-card__media">
+                <img src="assets/hero-cloud-asrs-chart.png" alt="Curva de evolución ASRS en Telar para seguimiento de TDAH adulto" width="800" height="500" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Práctica clínica</span>
+                <time class="article-card__date" datetime="2026-07-31">31 jul 2026</time>
+              </p>
+              <h3>TDAH en adultos: cómo Telar puede apoyar el tratamiento</h3>
+              <p class="article-card__excerpt">La plantilla de 8 sesiones, ASRS y GAD-7 puntuadas al instante, y la variante con neurofeedback.</p>
+            </a>
+          </article>
         </div>
       </div>
     </section>
@@ -468,7 +423,7 @@
               <li><a href="neurofeedback.html"><strong>Curso de neurofeedback y mentoría</strong></a> incluidos</li>
               <li><strong>Exportar programa de tratamiento en PDF</strong></li>
               <li><strong>Grabar, analizar y exportar sesiones de neurofeedback</strong></li>
-              <li><strong>Respaldo automático diario encriptado en tu nube</strong></li>
+              <li><strong>Respaldo automático diario encriptado en tu nube</strong> (Google Drive, Dropbox, iCloud, etc.)</li>
             </ul>
             <a href="mailto:contacto@telarapp.cl" class="btn btn-primary" target="_blank" rel="noopener">Suscribirme al Pro</a>
             <p class="pricing-note"><a href="precio.html#costos">Ver todos los costos, incluida la banda Muse 2 →</a></p>
@@ -559,7 +514,7 @@
             </div>
           </div>
         </div>
-        <p class="feature-link"><a href="tutoriales/privacidad-local.html">Leer la guía completa sobre privacidad local →</a></p>
+        <p class="feature-link"><a href="blog/privacidad-local.html">Leer la guía completa sobre privacidad local →</a></p>
       </div>
     </section>
 
@@ -713,7 +668,7 @@
           <p class="section-lead">Telar está disponible para macOS y Windows. La prueba gratuita no pide tarjeta ni vence.</p>
           <div class="hero-actions">
             <a href="descargar.html" class="btn btn-primary btn-lg">Ir a descargas</a>
-            <a href="tutoriales/como-instalar-telar.html" class="btn btn-secondary btn-lg">Ver guía paso a paso</a>
+            <a href="blog/como-instalar-telar.html" class="btn btn-secondary btn-lg">Ver guía paso a paso</a>
           </div>
         </div>
         <div class="home-install-teaser__facts" aria-label="Características de la prueba">
@@ -757,10 +712,10 @@
       <div class="cta-box">
         <div>
           <h2>¿Tienes una duda antes de probar?</h2>
-          <p>Revisa los tutoriales o escríbenos a contacto@telarapp.cl.</p>
+          <p>Revisa el blog o escríbenos a contacto@telarapp.cl.</p>
         </div>
         <div class="cta-actions">
-          <a href="tutoriales/index.html" class="btn btn-primary btn-lg">Ver tutoriales</a>
+          <a href="blog/index.html" class="btn btn-primary btn-lg">Ver el blog</a>
           <a href="mailto:contacto@telarapp.cl" class="btn btn-secondary btn-lg cta-secondary">Escribirnos</a>
         </div>
       </div>
@@ -776,11 +731,10 @@
       </div>
       <nav class="footer-links" aria-label="Enlaces del pie">
         <a href="index.html">Inicio</a>
-        <a href="tutoriales/index.html">Tutoriales</a>
         <a href="descargar.html">Descargar</a>
         <a href="modules/index.html">Módulos</a>
+        <a href="cursos/index.html">Cursos</a>
         <a href="neurofeedback.html">Curso de neurofeedback</a>
-        <a href="ia.html">IA</a>
         <a href="instituciones.html">Instituciones</a>
         <a href="precio.html">Precio</a>
         <a href="blog/index.html">Blog</a>

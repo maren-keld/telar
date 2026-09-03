@@ -3,6 +3,10 @@ Allow: /
 Disallow: /panel
 Disallow: /panel/
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
+Disallow: /r/
 
 # Resumen para modelos de lenguaje (curso de neurofeedback en Chile y resto del producto)
 # https://telarapp.cl/llms.txt
@@ -11,30 +15,48 @@ User-agent: GPTBot
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 User-agent: ChatGPT-User
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 User-agent: Claude-Web
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 User-agent: anthropic-ai
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 User-agent: Google-Extended
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 User-agent: PerplexityBot
 Allow: /
 Disallow: /panel
 Disallow: /api/admin
+Disallow: /stats
+Disallow: /index2
+Disallow: /r
 
 Sitemap: https://telarapp.cl/sitemap.xml
