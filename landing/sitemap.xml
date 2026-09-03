@@ -90,6 +90,12 @@
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
+  <url>
+    <loc>https://telarapp.cl/terminos</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
   <!-- modules:start -->
   <url>
     <loc>https://telarapp.cl/modules/ades</loc>
@@ -230,12 +236,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://telarapp.cl/modules/iesr</loc>
-    <lastmod>2026-09-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://telarapp.cl/modules/tcc_exposicion</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>monthly</changefreq>
@@ -357,12 +357,6 @@
   </url>
   <url>
     <loc>https://telarapp.cl/modules/tcc_estres</loc>
-    <lastmod>2026-09-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://telarapp.cl/modules/sprint_ecl</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
