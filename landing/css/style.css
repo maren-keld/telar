@@ -3849,39 +3849,6 @@ section {
   text-transform: uppercase;
 }
 
-.home-trust-strip {
-  padding: 0;
-  background: var(--bg-card);
-}
-
-.home-trust-strip__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.home-trust-strip__grid p {
-  display: grid;
-  gap: 0.2rem;
-  margin: 0;
-  padding: 1.5rem;
-  border-left: 1px solid var(--border);
-}
-
-.home-trust-strip__grid p:last-child {
-  border-right: 1px solid var(--border);
-}
-
-.home-trust-strip__grid strong {
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.home-trust-strip__grid span {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
 .home-install-teaser__grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.8fr);
@@ -4178,19 +4145,12 @@ section {
 }
 
 @media (max-width: 800px) {
-  .home-trust-strip__grid,
   .home-install-teaser__grid,
   .download-hero__grid,
   .download-next__grid,
   .tutorial-grid,
   .privacy-flow {
     grid-template-columns: 1fr;
-  }
-
-  .home-trust-strip__grid p,
-  .home-trust-strip__grid p:last-child {
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
   }
 
   .download-hero {
