@@ -151,6 +151,29 @@ def test_empty_graph_is_just_the_center(panel):
     assert graph["edges"] == []
 
 
+def test_known_contacts_seed_the_red_map(panel, monkeypatch):
+    monkeypatch.setenv("TELAR_SEED_CRM", "1")
+    with api_module.db() as conn:
+        added = crm.seed_missing_network(conn)
+    assert added > 0
+    body = crm_get(panel).json
+    names = {p["name"] for p in body["people"]}
+    assert "Carolina Danyau" in names
+    assert "Raúl Carrasco Aguilar" in names
+    assert "Marcela Barría Cárdenas" in names
+    again = 0
+    with api_module.db() as conn:
+        again = crm.seed_missing_network(conn)
+    assert again == 0
+    graph = body["graph"]
+    people_nodes = [n for n in graph["nodes"] if n["kind"] == "person"]
+    assert len(people_nodes) >= 13
+    raul = next(p for p in body["people"] if p["name"].startswith("Raúl"))
+    assert raul["status"] == "demo"
+    node = next(n for n in people_nodes if n["ref"] == raul["id"])
+    assert node["ring"] == "inner"
+
+
 def test_graph_links_person_to_group_and_reaches(panel):
     group = panel.post(
         f"/api/admin/crm/groups?secret={PANEL_PASSWORD}",

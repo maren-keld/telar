@@ -168,6 +168,247 @@ def ensure_schema(conn, autoincrement: str) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_crm_reaches_day ON crm_reaches(day)")
     _ensure_column(conn, "crm_people", "group_id", "INTEGER")
     _ensure_column(conn, "crm_people", "lost_reason", "TEXT NOT NULL DEFAULT ''")
+    seed_missing_network(conn)
+
+
+def _should_seed_network() -> bool:
+    import os
+
+    if os.environ.get("TELAR_SEED_CRM", "").strip() == "0":
+        return False
+    return bool(os.environ.get("RENDER") or os.environ.get("TELAR_SEED_CRM"))
+
+
+# Contactos de GROKBOT / docs/crm-contactos.md. Solo nombres y estado;
+# sin mail ni teléfono. Se insertan si faltan; no pisan fichas ya editadas.
+NETWORK_SEED_GROUPS = (
+    {
+        "name": "LinkedIn orgánico",
+        "location": "Chile / Latam",
+        "status": "activo",
+        "notes": "Post 1-2 sep 2026. Katerin, Pamela, Raúl, Edgar.",
+    },
+    {
+        "name": "WhatsApp frío (Encuadrado)",
+        "location": "Chile",
+        "status": "archivado",
+        "notes": "~38 salidas en frío. No ampliar el spray. Firmar como Felipe.",
+    },
+    {
+        "name": "Curso NF 2025",
+        "location": "Viña / Copiapó",
+        "status": "creado",
+        "notes": "Alumnos del curso presencial. Luis: posible colaboración.",
+    },
+    {
+        "name": "Asesoría MIC",
+        "location": "Chile",
+        "status": "activo",
+        "notes": "Marcela + Aye. Ética de IA en consulta. No es staff.",
+    },
+)
+
+NETWORK_SEED_PEOPLE = (
+    {
+        "name": "Carolina Danyau",
+        "location": "Providencia",
+        "contact": "Videollamada / WhatsApp",
+        "status": "conversando",
+        "group": "LinkedIn orgánico",
+        "notes": "Pack privado autismo + CodePen. Call 4 sep. Hablar como Felipe. Siguiente: share de módulos.",
+        "reach": "Videollamada 4 sep: pack autismo e interactivas.",
+    },
+    {
+        "name": "Caro Díaz",
+        "location": "Chile",
+        "contact": "Videollamada",
+        "status": "no_interesado",
+        "lost_reason": "otro",
+        "group": "WhatsApp frío (Encuadrado)",
+        "notes": "Transpersonal. No lo pagaría: notas en agenda. No perseguir. No confundir con Danyau.",
+        "reach": "Call: dijo que no lo pagaría.",
+    },
+    {
+        "name": "Sara Bardález Pérez",
+        "location": "Madrid",
+        "contact": "LinkedIn · MentalSearch",
+        "status": "perdido",
+        "lost_reason": "desaparecio",
+        "group": "LinkedIn orgánico",
+        "notes": "Founder MentalSearch. DM 1 sep, sin respuesta. Esperar. No pitch de integración clínica.",
+        "reach": "DM LinkedIn 1 sep.",
+    },
+    {
+        "name": "Katerin Osorio Hernández",
+        "location": "Chile",
+        "contact": "LinkedIn",
+        "status": "interesado",
+        "group": "LinkedIn orgánico",
+        "notes": "Comentó «Yo quiero probar!». Aún sin DM. Mandar Demo. No liderar con NF.",
+    },
+    {
+        "name": "Pamela de Leiva",
+        "location": "Chile",
+        "contact": "LinkedIn",
+        "status": "interesado",
+        "group": "LinkedIn orgánico",
+        "notes": "Pendiente conectar. Completar ficha cuando haya apellido y qué hace.",
+    },
+    {
+        "name": "Raúl Carrasco Aguilar",
+        "location": "Argentina",
+        "contact": "WhatsApp",
+        "status": "demo",
+        "group": "LinkedIn orgánico",
+        "notes": "Bajó Demo. Le gusta la UI. No compra por NF/BLS: hace TCC. Plantilla TDAH 8 sesiones sin NF.",
+        "reach": "DM 3 sep: bajó Demo, objeción NF.",
+    },
+    {
+        "name": "Edgar Alexis Adonahi Ponce Juárez",
+        "location": "México",
+        "contact": "LinkedIn · Psynder",
+        "status": "no_interesado",
+        "lost_reason": "otro",
+        "group": "LinkedIn orgánico",
+        "notes": "Founder Psynder. Sondeó copyright. No es lead. No hablarle de packs privados.",
+        "reach": "Comentario LinkedIn sobre copyright.",
+    },
+    {
+        "name": "Cecilia Gálvez",
+        "location": "Chile",
+        "contact": "WhatsApp",
+        "status": "interesado",
+        "group": "WhatsApp frío (Encuadrado)",
+        "notes": "Mostró interés ~3-4 sep. Sin respuesta al follow-up. Un mensaje corto, no Muse.",
+        "reach": "WhatsApp: mostró interés.",
+    },
+    {
+        "name": "Florencia Sofía",
+        "location": "Chile",
+        "contact": "WhatsApp",
+        "status": "perdido",
+        "lost_reason": "desaparecio",
+        "group": "WhatsApp frío (Encuadrado)",
+        "notes": "Agendó videollamada y no llegó. Un mensaje para reprogramar; si no, cerrar.",
+        "reach": "Agendó call y no llegó.",
+    },
+    {
+        "name": "Maria Jose Araya",
+        "location": "Chile",
+        "contact": "WhatsApp",
+        "status": "no_interesado",
+        "lost_reason": "otro",
+        "group": "WhatsApp frío (Encuadrado)",
+        "notes": "Frío 1 sep. «Gracias pero no es de mi interés».",
+        "reach": "WhatsApp frío: no le interesa.",
+    },
+    {
+        "name": "Marcela Barría Cárdenas",
+        "location": "Chile",
+        "contact": "iaysaludmental.com",
+        "status": "conversando",
+        "group": "Asesoría MIC",
+        "notes": "Asesora ética IA (no staff). MIC. Confirmar foto antes de /equipo.",
+        "reach": "Reunión con Aye: local vs Psypilot.",
+    },
+    {
+        "name": "Luis",
+        "location": "Chile",
+        "contact": "Curso NF 2025",
+        "status": "curso",
+        "group": "Curso NF 2025",
+        "notes": "Hizo el curso. Posible colaboración, no cofundador. Falta apellido y OK explícito.",
+    },
+    {
+        "name": "Aye",
+        "location": "Chile",
+        "contact": "Reunión con Marcela",
+        "status": "conversando",
+        "group": "Asesoría MIC",
+        "notes": "Reunión posición local vs Psypilot. Poca ficha; completar.",
+        "reach": "Reunión con Marcela.",
+    },
+)
+
+
+def seed_missing_network(conn) -> int:
+    """Inserta grupos y personas que aún no están. No pisa fichas existentes."""
+    if not _should_seed_network():
+        return 0
+    now = _api().now_iso()
+    today = today_chile()
+    created = 0
+    groups = {
+        str(row["name"]).casefold(): int(row["id"])
+        for row in conn.execute("SELECT id, name FROM crm_groups")
+    }
+    for group in NETWORK_SEED_GROUPS:
+        key = group["name"].casefold()
+        if key in groups:
+            continue
+        gid = _insert_id(
+            conn,
+            """INSERT INTO crm_groups
+               (name, location, status, notes, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                group["name"],
+                group.get("location") or "",
+                group.get("status") or "por_crear",
+                group.get("notes") or "",
+                now,
+                now,
+            ),
+        )
+        groups[key] = gid
+        created += 1
+    people = {
+        str(row["name"]).casefold(): int(row["id"])
+        for row in conn.execute("SELECT id, name FROM crm_people")
+    }
+    reached = {
+        int(row["person_id"])
+        for row in conn.execute(
+            "SELECT person_id FROM crm_reaches WHERE person_id IS NOT NULL"
+        )
+    }
+    for person in NETWORK_SEED_PEOPLE:
+        key = person["name"].casefold()
+        group_id = groups.get((person.get("group") or "").casefold())
+        if key not in people:
+            pid = _insert_id(
+                conn,
+                """INSERT INTO crm_people
+                   (name, location, contact, status, notes, group_id, lost_reason,
+                    created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    person["name"],
+                    person.get("location") or "",
+                    person.get("contact") or "",
+                    person.get("status") or "interesado",
+                    person.get("notes") or "",
+                    group_id,
+                    person.get("lost_reason") or "",
+                    now,
+                    now,
+                ),
+            )
+            people[key] = pid
+            created += 1
+        pid = people[key]
+        note = person.get("reach") or ""
+        if note and pid not in reached:
+            _insert_id(
+                conn,
+                """INSERT INTO crm_reaches
+                   (day, kind, group_id, person_id, where_text, note, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (today, "persona", None, pid, person["name"], note, now),
+            )
+            reached.add(pid)
+            created += 1
+    return created
 
 
 def _ensure_column(conn, table: str, column: str, spec: str) -> None:
