@@ -2,8 +2,10 @@
  * «Enviar al paciente»: genera el enlace del módulo, lo copia y muestra el
  * estado del envío (esperando respuesta / anular).
  */
-import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+import { escapeHtml, invokeErrorMessage, parseJsonSafe, toast } from '../utils.js';
 import { getModule } from '../db.js';
+import { ICON_COPY } from '../icons.js';
+import { announceShareResponses } from '../share-notify.js';
 import {
   collectShareResponse,
   createModuleShareLink,
@@ -45,9 +47,10 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
 
           ${
             share
-              ? `<div class="share-modal__link">
+              ? `<label class="share-modal__link-label" for="share-url">Enlace para el paciente</label>
+                <div class="share-modal__link">
                   <input type="text" class="input" id="share-url" readonly value="${escapeHtml(url)}" />
-                  <button type="button" class="btn btn-secondary" data-copy>Copiar</button>
+                  <button type="button" class="btn btn-icon btn-secondary" data-copy title="Copiar enlace" aria-label="Copiar enlace">${ICON_COPY}</button>
                 </div>
                 <p class="share-modal__hint">
                   Mándaselo por WhatsApp o correo. Se puede responder una sola vez y caduca
@@ -84,8 +87,16 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
     root.querySelector('[data-copy]')?.addEventListener('click', async () => {
       const ok = await copy(url);
       if (ok) toast('Enlace copiado');
-      else root.querySelector('#share-url')?.select();
+      else {
+        root.querySelector('#share-url')?.select();
+        toast('Selecciona el enlace y cópialo con ⌘C');
+      }
     });
+
+    root.querySelector('#share-url')?.addEventListener('focus', (e) => e.currentTarget.select());
+    if (share) {
+      requestAnimationFrame(() => root.querySelector('#share-url')?.select());
+    }
 
     root.querySelector('[data-create]')?.addEventListener('click', async (event) => {
       const btn = event.currentTarget;
@@ -93,15 +104,15 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
       btn.textContent = 'Creando…';
       try {
         const created = await createModuleShareLink(moduleRow, { def, interactive });
-        await copy(created.url);
-        toast('Enlace creado y copiado');
+        const copied = await copy(created.url);
+        toast(copied ? 'Enlace creado y copiado' : 'Enlace creado');
         const fresh = await getModule(moduleRow.id);
         onChange?.();
         paint({ share: parseJsonSafe(fresh?.data, {}).share });
       } catch (e) {
         btn.disabled = false;
         btn.textContent = 'Crear enlace y copiar';
-        toast(e.message || 'No se pudo crear el enlace');
+        toast(invokeErrorMessage(e, 'No se pudo crear el enlace'));
       }
     });
 
@@ -112,7 +123,7 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
       const fresh = await getModule(moduleRow.id);
       const applied = await collectShareResponse(fresh || moduleRow);
       if (applied) {
-        toast('Respuesta recibida');
+        announceShareResponses([applied]);
         close();
         onChange?.();
         return;

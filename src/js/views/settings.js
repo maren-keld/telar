@@ -50,6 +50,8 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'resetSubscription',
   'grammaticalGender',
   'encrypted',
+  'notifyShareDesktop',
+  'notifyShareEmail',
 ]);
 
 function openLanguagePicker(onPick) {
@@ -318,6 +320,32 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
             toggleOn: profile.presentationMode,
           })}
         </div>
+        <div class="settings-section">
+          <h2 class="settings-section__title">Notificaciones</h2>
+          <p class="settings-section__hint">Cuando un paciente responde un test o un handout por enlace. El aviso en la app siempre aparece.</p>
+        </div>
+        <div class="settings-card">
+          ${row({
+            icon: SETTINGS_ICONS.notify,
+            title: 'Notificación en macOS o Windows',
+            subtitle: profile.notifyShareDesktop !== false
+              ? 'Avisarte en el sistema cuando llegue una respuesta'
+              : 'Desactivado — solo verás el aviso dentro de Telar',
+            dataField: 'notifyShareDesktop',
+            action: 'toggle',
+            toggleOn: profile.notifyShareDesktop !== false,
+          })}
+          ${row({
+            icon: SETTINGS_ICONS.email,
+            title: 'Enviar un correo',
+            subtitle: profile.notifyShareEmail
+              ? `Se manda a ${profile.email?.trim() || 'el correo de Ajustes'} cuando respondan`
+              : 'Desactivado — no se envía correo',
+            dataField: 'notifyShareEmail',
+            action: 'toggle',
+            toggleOn: Boolean(profile.notifyShareEmail),
+          })}
+        </div>
         <div class="settings-card">
           ${row({ icon: SETTINGS_ICONS.lock, title: t('settings.lock'), subtitle: t('settings.lockSub'), dataField: 'lock' })}
           ${touchIdRow}
@@ -550,6 +578,36 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
     saveProfile({ presentationMode: on });
     applyPresentationMode(on);
     toast(on ? 'Modo presentación activado' : 'Modo presentación desactivado');
+  });
+
+  container.querySelector('[data-toggle="notifyShareDesktop"]')?.addEventListener('change', (e) => {
+    const on = e.target.checked;
+    saveProfile({ notifyShareDesktop: on });
+    toast(on ? 'Notificación del sistema activada' : 'Notificación del sistema desactivada');
+    const sub = e.target.closest('.settings-row')?.querySelector('.settings-row__sub');
+    if (sub) {
+      sub.textContent = on
+        ? 'Avisarte en el sistema cuando llegue una respuesta'
+        : 'Desactivado — solo verás el aviso dentro de Telar';
+    }
+  });
+
+  container.querySelector('[data-toggle="notifyShareEmail"]')?.addEventListener('change', (e) => {
+    const on = e.target.checked;
+    if (on && !String(loadProfile().email || '').trim()) {
+      e.target.checked = false;
+      toast('Agrega tu correo en Ajustes para recibir el aviso por email');
+      return;
+    }
+    saveProfile({ notifyShareEmail: on });
+    toast(on ? 'Aviso por correo activado' : 'Aviso por correo desactivado');
+    const sub = e.target.closest('.settings-row')?.querySelector('.settings-row__sub');
+    if (sub) {
+      const email = String(loadProfile().email || '').trim();
+      sub.textContent = on
+        ? `Se manda a ${email || 'el correo de Ajustes'} cuando respondan`
+        : 'Desactivado — no se envía correo';
+    }
   });
 
   container.querySelector('[data-toggle="usagePing"]')?.addEventListener('change', (e) => {

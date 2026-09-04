@@ -54,6 +54,15 @@ export async function pickBackupFile(title) {
   return selected || null;
 }
 
+/** El diálogo nativo a veces entrega string, a veces `{ path }` o un array. */
+export function normalizePickedPath(selected) {
+  if (!selected) return null;
+  if (typeof selected === 'string') return selected;
+  if (Array.isArray(selected)) return normalizePickedPath(selected[0]);
+  if (typeof selected === 'object' && selected.path) return String(selected.path);
+  return String(selected);
+}
+
 function getDialogSave() {
   const save = window.__TAURI__?.dialog?.save;
   if (!save) {
@@ -71,7 +80,7 @@ export async function pickPackFile(title) {
     title: title || 'Importar pack de módulos',
     filters: [{ name: 'Pack de Telar', extensions: ['telarpack'] }],
   });
-  return selected || null;
+  return normalizePickedPath(selected);
 }
 
 /** @returns {Promise<string|null>} */
@@ -83,7 +92,7 @@ export async function pickCodepenZip() {
     title: 'Importar .zip exportado de CodePen',
     filters: [{ name: 'Export de CodePen', extensions: ['zip'] }],
   });
-  return selected || null;
+  return normalizePickedPath(selected);
 }
 
 /** @returns {Promise<string|null>} */

@@ -99,12 +99,15 @@ export async function renderQuestionnaireDef(host, moduleRow, def) {
   const answers = Array.isArray(data.answers) ? data.answers : emptyAnswers(def);
   const score = scoreQuestionnaire(def, answers);
 
+  const theme = String(def.theme || '').trim();
+  const themeAttr = theme && theme !== 'clinico' ? ` data-theme="${escapeHtml(theme)}"` : '';
+
   host.innerHTML = `
-    <div class="card psych-module questionnaire-module">
+    <div class="card psych-module questionnaire-module"${themeAttr}>
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title" style="margin:0">${escapeHtml(def.title)}</h2>
+            <h2 class="module-title" style="margin:0">${escapeHtml(def.title.split(' — ')[0])}</h2>
             ${def.subtitle ? `<p class="module-card-head__sub">${escapeHtml(def.subtitle)}</p>` : ''}
           </div>
           <div class="badge badge--info module-card-head__badge" id="q-progress" title="Ítems respondidos">${score?.answered || 0}/${items.length}</div>

@@ -28,6 +28,8 @@ node "$ROOT/scripts/validate-private-pack.mjs" "$SRC"
 mkdir -p "$ROOT/dist/private"
 rm -f "$OUT"
 # .telarpack es un tar.gz: Telar lo abre con flate2 + tar, sin dependencias extra.
+# COPYFILE_DISABLE evita los `._*` de resource fork que mete tar en macOS.
+export COPYFILE_DISABLE=1
 DIRS=(pack.json)
 for d in questionnaires interactive assets; do
   [[ -d "$SRC/$d" ]] && DIRS+=("$d")

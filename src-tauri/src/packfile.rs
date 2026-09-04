@@ -29,10 +29,45 @@ pub struct PackFileInput {
     pub content: String,
 }
 
+fn normalize_pack_path(raw: &str) -> PathBuf {
+    let trimmed = raw.trim();
+    let without_scheme = trimmed.strip_prefix("file://").unwrap_or(trimmed);
+    let decoded = percent_decode_path(without_scheme);
+    PathBuf::from(decoded)
+}
+
+fn percent_decode_path(raw: &str) -> String {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).unwrap_or("");
+            if let Ok(byte) = u8::from_str_radix(hex, 16) {
+                out.push(byte);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).to_string()
+}
+
+fn skip_pack_entry(name: &str) -> bool {
+    let base = name.rsplit('/').next().unwrap_or(name);
+    name.ends_with('/')
+        || name.contains("PaxHeader")
+        || name.contains("__MACOSX")
+        || base == ".DS_Store"
+        || base.starts_with("._")
+}
+
 /// Ruta relativa segura dentro del pack: sin `..`, sin absolutas, máximo 3 niveles.
 fn safe_entry_path(raw: &str) -> Option<String> {
     let cleaned = raw.trim_start_matches("./").trim();
-    if cleaned.is_empty() || cleaned.contains('\0') || cleaned.ends_with('/') {
+    if cleaned.is_empty() || cleaned.contains('\0') || skip_pack_entry(cleaned) {
         return None;
     }
     let path = Path::new(cleaned);
@@ -54,7 +89,7 @@ fn safe_entry_path(raw: &str) -> Option<String> {
 
 #[tauri::command]
 pub fn pack_read(path: String) -> Result<PackContents, String> {
-    let path = PathBuf::from(path);
+    let path = normalize_pack_path(&path);
     let file = std::fs::File::open(&path)
         .map_err(|e| format!("No se pudo abrir el pack: {e}"))?;
     let mut archive = tar::Archive::new(GzDecoder::new(file));
@@ -68,30 +103,37 @@ pub fn pack_read(path: String) -> Result<PackContents, String> {
 
     for entry in entries {
         let mut entry = entry.map_err(|e| format!("Pack dañado: {e}"))?;
-        if !entry.header().entry_type().is_file() {
-            continue;
-        }
         let raw = entry
             .path()
             .map_err(|e| format!("Pack dañado: {e}"))?
             .to_string_lossy()
             .to_string();
+        // El tar de macOS mete carpetas (`questionnaires/`) y a veces `._` de
+        // resource fork. No son módulos: se saltan, no se aborta el pack.
+        if !entry.header().entry_type().is_file() || skip_pack_entry(&raw) {
+            continue;
+        }
         let Some(name) = safe_entry_path(&raw) else {
-            return Err(format!("El pack contiene una ruta no permitida: {raw}"));
+            continue;
         };
         total = total.saturating_add(entry.header().size().unwrap_or(0));
         if total > MAX_TOTAL_BYTES || files.len() >= MAX_ENTRIES {
             return Err("El pack es demasiado grande.".into());
         }
-        let mut buf = String::new();
+        let mut buf = Vec::new();
         entry
-            .read_to_string(&mut buf)
-            .map_err(|_| format!("El archivo {name} no es texto UTF-8."))?;
-        files.insert(name, buf);
+            .read_to_end(&mut buf)
+            .map_err(|e| format!("No se pudo leer {name}: {e}"))?;
+        match String::from_utf8(buf) {
+            Ok(text) => {
+                files.insert(name, text);
+            }
+            Err(_) => continue,
+        }
     }
 
     if !files.contains_key("pack.json") {
-        return Err("El pack no tiene pack.json.".into());
+        return Err("El pack no tiene pack.json. ¿Elegiste un archivo .telarpack?".into());
     }
     Ok(PackContents { files })
 }
@@ -189,6 +231,39 @@ mod tests {
         assert!(safe_entry_path("a/../b").is_none());
         assert!(safe_entry_path("a/b/c/d.json").is_none());
         assert!(safe_entry_path("").is_none());
+        assert!(safe_entry_path("questionnaires/").is_none());
+        assert!(safe_entry_path("questionnaires/._aq10.json").is_none());
+        assert!(safe_entry_path(".DS_Store").is_none());
+    }
+
+    #[test]
+    fn macos_tar_directory_entries_are_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("macos.telarpack");
+        {
+            let out = std::fs::File::create(&path).unwrap();
+            let mut builder = tar::Builder::new(GzEncoder::new(out, Compression::default()));
+            let mut dir_header = tar::Header::new_gnu();
+            dir_header.set_entry_type(tar::EntryType::Directory);
+            dir_header.set_size(0);
+            dir_header.set_mode(0o755);
+            dir_header.set_cksum();
+            builder
+                .append_data(&mut dir_header, "questionnaires", &[] as &[u8])
+                .unwrap();
+            let payload = b"{\"id\":\"demo\"}";
+            let mut file_header = tar::Header::new_gnu();
+            file_header.set_size(payload.len() as u64);
+            file_header.set_mode(0o644);
+            file_header.set_cksum();
+            builder
+                .append_data(&mut file_header, "pack.json", &payload[..])
+                .unwrap();
+            builder.into_inner().unwrap().finish().unwrap();
+        }
+        let read = pack_read(path.to_string_lossy().to_string()).unwrap();
+        assert_eq!(read.files.len(), 1);
+        assert_eq!(read.files["pack.json"], "{\"id\":\"demo\"}");
     }
 
     #[test]

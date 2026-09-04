@@ -2,6 +2,7 @@
  * Modo de índice del workspace: cronológico (sesiones) vs por categoría (instrumentos).
  */
 import { CATEGORIES as MODULE_CATEGORIES } from './components/module-selector.js';
+import { isLicensePendingModule } from './license-pending-modules.js';
 import { getModuleDef, getModuleDefs } from './config.js';
 import { listCustomModules } from './custom-modules.js';
 import {
@@ -117,6 +118,7 @@ export function listAddableModuleOptions(categoryId = null) {
   const out = [];
   const push = (type, label, catId, categoryLabel) => {
     if (!type || type === 'selector_modulo' || seen.has(type)) return;
+    if (isLicensePendingModule(type)) return;
     seen.add(type);
     out.push({ type, label, categoryId: catId, categoryLabel });
   };

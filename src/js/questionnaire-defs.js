@@ -24,6 +24,7 @@ import { EED_ADAPT, EED_INTER, EED_ITEMS, EED_MALAD, EED_OPTIONS } from './modul
 import { QOLS_ITEMS, QOLS_OPTIONS } from './modules/qols.js';
 import { FER_FORTALEZAS, FER_OPTIONS, FER_RIESGOS } from './modules/escala-fer.js';
 import { getScorer } from './pack-registry.js';
+import { isLicensePendingModule } from './license-pending-modules.js';
 
 /** Guarda las respuestas en `data.answers` (lo habitual). */
 const ANSWERS_STORAGE = { kind: 'answers' };
@@ -59,7 +60,7 @@ function gad7Def() {
       ],
       cutoff: { value: 10, label: 'ansiedad clínicamente significativa' },
     },
-    attribution: { authors: 'Spitzer, Kroenke, Williams & Löwe', year: 2006, license: 'Uso libre' },
+    attribution: { authors: 'Spitzer, Kroenke, Williams & Löwe', year: 2006, license: 'Uso clínico con atribución (Pfizer / autores)' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -69,21 +70,22 @@ function asrsDef() {
     schema: 1,
     id: 'asrs',
     title: 'ASRS v1.1 — Síntomas de TDAH en adultos',
-    subtitle: '18 ítems · escala 0–4 · últimos 6 meses.',
+    subtitle: '6 ítems · escala 0–4 · últimos 6 meses · screener WHO (Parte A).',
     instructions:
       'Responda cada pregunta pensando en cómo se ha sentido y comportado durante los últimos 6 meses.',
     items: textItems(asrsItems()),
     options: asrsOptions(),
     scoring: {
       kind: 'sum',
-      max: 72,
-      bands: [{ max: 72, label: '' }],
-      subscales: [
-        subscale('parte_a', 'Parte A (tamizaje)', [0, 1, 2, 3, 4, 5]),
-        subscale('parte_b', 'Parte B', [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-      ],
+      max: 24,
+      bands: [{ max: 24, label: '' }],
+      subscales: [subscale('parte_a', 'Parte A (tamizaje)', [0, 1, 2, 3, 4, 5])],
     },
-    attribution: { authors: 'Kessler et al. / OMS', year: 2005, license: 'Uso libre' },
+    attribution: {
+      authors: 'Kessler et al. / OMS',
+      year: 2005,
+      license: 'Screener de 6 ítems; copyright WHO (uso con atribución, sin aprobación previa)',
+    },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -125,7 +127,7 @@ function iesrDef() {
       bands: [{ max: 88, label: '' }],
       cutoff: { value: 33, label: 'impacto clínicamente relevante' },
     },
-    attribution: { authors: 'Weiss & Marmar', year: 1997, license: 'Uso libre con cita' },
+    attribution: { authors: 'Weiss & Marmar', year: 1997, license: 'Pendiente de permiso / oculto en el catálogo' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -158,7 +160,7 @@ function adesDef() {
       ],
       cutoff: { value: 4, label: 'tamizaje positivo' },
     },
-    attribution: { authors: 'Armstrong, Putnam, Carlson, Libero & Smith', year: 1997, license: 'Uso libre con cita' },
+    attribution: { authors: 'Armstrong, Putnam, Carlson, Libero & Smith', year: 1997, license: 'Uso con cita; confirmar titular (Sidran / autores)' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -189,7 +191,7 @@ function sprintDef() {
       subscales: [subscale('likert', 'Ítems 1–11', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
     },
     riskItems: [{ index: 11, gte: 1, message: 'Posible ideación suicida — abordar en sesión.' }],
-    attribution: { authors: 'Connor & Davidson · adaptación chilena 27-F', license: 'Uso libre con cita' },
+    attribution: { authors: 'Connor & Davidson · adaptación chilena 27-F', license: 'Pendiente de permiso / oculto en el catálogo' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -214,7 +216,7 @@ function dass21Def() {
         subscale('depresion', 'Depresión', DASS21_DEPRESSION),
       ],
     },
-    attribution: { authors: 'Lovibond & Lovibond', year: 1995, license: 'Uso libre con cita' },
+    attribution: { authors: 'Lovibond & Lovibond', year: 1995, license: 'Dominio público (no vender la escala; resultados al clínico)' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -238,7 +240,7 @@ function rosenbergDef() {
         { max: 40, label: 'Autoestima alta' },
       ],
     },
-    attribution: { authors: 'Rosenberg', year: 1965, license: 'Uso libre con cita' },
+    attribution: { authors: 'Rosenberg', year: 1965, license: 'Dominio público (citar Rosenberg 1965)' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -281,7 +283,7 @@ function qolsDef() {
       max: 112,
       bands: [{ max: 112, label: '' }],
     },
-    attribution: { authors: 'Flanagan · Burckhardt', year: 1982, license: 'Uso libre con cita' },
+    attribution: { authors: 'Flanagan · Burckhardt', year: 1982, license: 'Copyright Burckhardt; uso clínico/software sujeto a Mapi / autor' },
     storage: ANSWERS_STORAGE,
   };
 }
@@ -364,6 +366,7 @@ const BUILTIN_DEFS = {
  * @returns {object|null}
  */
 export function toShareDef(moduleType) {
+  if (isLicensePendingModule(moduleType)) return null;
   const builtin = BUILTIN_DEFS[moduleType];
   if (builtin) return builtin();
   const fromPack = getScorer(moduleType)?.shareDef;
@@ -378,5 +381,5 @@ export function isShareableScale(moduleType) {
 
 /** Escalas del núcleo que se pueden compartir (para tests y diagnósticos). */
 export function shareableBuiltinTypes() {
-  return Object.keys(BUILTIN_DEFS);
+  return Object.keys(BUILTIN_DEFS).filter((id) => !isLicensePendingModule(id));
 }

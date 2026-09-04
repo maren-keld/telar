@@ -83,10 +83,7 @@ function formatAsrs(d) {
   return [
     `Parte A: ${s.partAPositive}/6 síntomas positivos`,
     `Tamizaje: ${s.screenLabel}`,
-    s.total != null ? `Suma total: ${s.total}/72` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ].join('\n');
 }
 
 function formatRosenberg(d) {

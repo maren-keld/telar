@@ -98,7 +98,7 @@ export async function renderGad7(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title">${escapeHtml(t('gad7.title', 'GAD-7 — Ansiedad generalizada'))}</h2>
+            <h2 class="module-title">${escapeHtml(t('gad7.title', 'GAD-7'))}</h2>
             <p class="module-card-head__sub">${escapeHtml(t('gad7.subtitle', '7 ítems · escala 0–3 · últimas 2 semanas · una vez por sesión.'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="gad7-progress" title="${escapeHtml(t('gad7.progress', 'Ítems respondidos'))}">${answeredCount}/${TOTAL}</div>

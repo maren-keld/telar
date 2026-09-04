@@ -63,6 +63,116 @@ fn handle_response(
     }
 }
 
+fn share_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(8))
+        .timeout(Duration::from_secs(45))
+        .build()
+}
+
+fn share_status_and_body(
+    result: Result<ureq::Response, ureq::Error>,
+    base: &str,
+) -> Result<(u16, Value), String> {
+    match result {
+        Ok(response) => {
+            let status = response.status();
+            let body = response
+                .into_json()
+                .unwrap_or(Value::Null);
+            Ok((status, body))
+        }
+        Err(ureq::Error::Status(code, response)) => {
+            let body: Value = response.into_json().unwrap_or(Value::Null);
+            Ok((code, body))
+        }
+        Err(e) => Err(format!(
+            "No se pudo conectar con la API ({base}). Detalle: {e}"
+        )),
+    }
+}
+
+fn share_error(status: u16, body: &Value, fallback: &str) -> String {
+    if status == 404 {
+        return "El servidor aún no tiene el envío por enlace. Hay que publicar el backend.".into();
+    }
+    format!("{} [HTTP {status}]", api_error_message(body, fallback))
+}
+
+#[tauri::command]
+pub fn share_create(api_base: String, owner_email: String, payload_ct: String) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_agent()
+        .post(&format!("{base}/api/share"))
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({
+            "owner_email": owner_email,
+            "payload_ct": payload_ct,
+        }));
+    let (status, body) = share_status_and_body(result, &base)?;
+    if status >= 400 {
+        return Err(share_error(status, &body, "No se pudo crear el enlace"));
+    }
+    Ok(body)
+}
+
+#[tauri::command]
+pub fn share_collect(api_base: String, token: String, secret: String) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_agent()
+        .get(&format!("{base}/api/share/{token}/response"))
+        .query("secret", &secret)
+        .call();
+    let (status, body) = share_status_and_body(result, &base)?;
+    if status == 410 {
+        return Ok(serde_json::json!({ "gone": true }));
+    }
+    if status >= 400 {
+        return Err(share_error(status, &body, "No se pudo consultar la respuesta"));
+    }
+    Ok(body)
+}
+
+#[tauri::command]
+pub fn share_notify_owner(
+    api_base: String,
+    email: String,
+    subject: String,
+    text: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_agent()
+        .post(&format!("{base}/api/share/notify-owner"))
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({
+            "email": email,
+            "subject": subject,
+            "text": text,
+        }));
+    let (status, body) = share_status_and_body(result, &base)?;
+    if status >= 400 {
+        return Err(share_error(status, &body, "No se pudo enviar el correo"));
+    }
+    Ok(body)
+}
+
+#[tauri::command]
+pub fn share_revoke(api_base: String, token: String, secret: String) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_agent()
+        .delete(&format!("{base}/api/share/{token}"))
+        .query("secret", &secret)
+        .call();
+    let (status, body) = share_status_and_body(result, &base)?;
+    if status == 410 || status == 404 {
+        return Ok(serde_json::json!({ "ok": true, "gone": true }));
+    }
+    if status >= 400 {
+        return Err(share_error(status, &body, "No se pudo anular el enlace"));
+    }
+    Ok(body)
+}
+
 #[tauri::command]
 pub fn subscription_checkout(
     email: String,

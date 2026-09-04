@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use serde::Deserialize;
 
 mod ai_api;
+mod desktop_notify;
 mod backup;
 mod interactive;
 mod muse_ble;
@@ -488,6 +489,11 @@ pub fn run() {
             subscription_api::subscription_checkout,
             subscription_api::subscription_health,
             subscription_api::subscription_status,
+            subscription_api::share_create,
+            subscription_api::share_collect,
+            subscription_api::share_revoke,
+            subscription_api::share_notify_owner,
+            desktop_notify::show_desktop_notification,
             usage_ping::usage_ping,
             packfile::pack_read,
             packfile::pack_write,

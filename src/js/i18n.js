@@ -174,15 +174,11 @@ const STRINGS = {
       'Tamizaje de trastorno de ansiedad generalizada (Spitzer et al., 2006). No sustituye evaluación clínica integral.',
     'module.asrs.label': 'ASRS v1.1 — TDAH en adultos',
     'asrs.title': 'ASRS v1.1 — TDAH en adultos',
-    'asrs.subtitle': '18 ítems · escala 0–4 · últimos 6 meses · tamizaje WHO (Parte A).',
+    'asrs.subtitle': '6 ítems · escala 0–4 · últimos 6 meses · screener WHO (Parte A).',
     'asrs.progress': 'Ítems respondidos',
     'asrs.partA': 'Parte A (tamizaje)',
-    'asrs.total': 'Suma total',
-    'asrs.totalMax': 'máx. 72',
     'asrs.item': 'Ítem',
     'asrs.response': 'Respuesta',
-    'asrs.sectionA': 'Parte A — Tamizaje (ítems 1–6)',
-    'asrs.sectionB': 'Parte B — Síntomas adicionales (ítems 7–18)',
     'asrs.opt0': 'Nunca',
     'asrs.opt1': 'Raramente',
     'asrs.opt2': 'A veces',
@@ -199,29 +195,8 @@ const STRINGS = {
       '¿Con qué frecuencia te mueves inquieto/a o te retuerces las manos o los pies cuando tienes que estar sentado/a por mucho tiempo?',
     'asrs.q6':
       '¿Con qué frecuencia te sientes demasiado activo/a y te sientes impulsado/a a hacer cosas, como si estuvieras accionado/a por un motor?',
-    'asrs.q7':
-      '¿Con qué frecuencia cometes errores de descuido cuando tienes que trabajar en un proyecto aburrido o difícil?',
-    'asrs.q8':
-      '¿Con qué frecuencia tienes dificultad para mantener la atención cuando haces un trabajo aburrido o repetitivo?',
-    'asrs.q9':
-      '¿Con qué frecuencia tienes dificultad para concentrarte en lo que la gente te dice, incluso cuando te hablan directamente?',
-    'asrs.q10':
-      '¿Con qué frecuencia pierdes cosas o tienes dificultad para encontrarlas en casa o en el trabajo?',
-    'asrs.q11': '¿Con qué frecuencia te distraes con la actividad o ruido a tu alrededor?',
-    'asrs.q12':
-      '¿Con qué frecuencia te levantas de tu asiento en reuniones u otras situaciones en las que se espera que permanezcas sentado/a?',
-    'asrs.q13': '¿Con qué frecuencia te sientes inquieto/a o agitado/a?',
-    'asrs.q14':
-      '¿Con qué frecuencia tienes dificultad para relajarte y desconectar cuando tienes tiempo para ti mismo/a?',
-    'asrs.q15':
-      '¿Con qué frecuencia te das cuenta de que hablas demasiado cuando estás en situaciones sociales?',
-    'asrs.q16':
-      'Cuando estás en una conversación, ¿con qué frecuencia terminas las frases de las personas con las que hablas, antes de que ellas terminen?',
-    'asrs.q17':
-      '¿Con qué frecuencia tienes dificultad para esperar tu turno en situaciones en las que hay que hacerlo?',
-    'asrs.q18': '¿Con qué frecuencia interrumpes a los demás cuando están ocupados?',
     'asrs.note':
-      'Adult ADHD Self-Report Scale (Kessler et al., WHO). Parte A ≥4 síntomas positivos sugiere tamizaje consistente con TDAH. No sustituye evaluación clínica.',
+      'Adult ADHD Self-Report Scale (ASRS-v1.1) Screener © World Health Organization. Uso con atribución; no se requiere aprobación previa para el screener de 6 ítems. Parte A ≥4 síntomas positivos sugiere tamizaje consistente con TDAH. No sustituye evaluación clínica.',
     'toast.saved': 'Guardado',
     'toast.langChanged': 'Idioma actualizado',
   },
@@ -398,15 +373,11 @@ const STRINGS = {
       'Screening for generalized anxiety disorder (Spitzer et al., 2006). Not a substitute for full clinical evaluation.',
     'module.asrs.label': 'ASRS v1.1 — Adult ADHD',
     'asrs.title': 'ASRS v1.1 — Adult ADHD',
-    'asrs.subtitle': '18 items · 0–4 scale · past 6 months · WHO screening (Part A).',
+    'asrs.subtitle': '6 items · 0–4 scale · past 6 months · WHO screener (Part A).',
     'asrs.progress': 'Items answered',
     'asrs.partA': 'Part A (screening)',
-    'asrs.total': 'Total sum',
-    'asrs.totalMax': 'max. 72',
     'asrs.item': 'Item',
     'asrs.response': 'Response',
-    'asrs.sectionA': 'Part A — Screening (items 1–6)',
-    'asrs.sectionB': 'Part B — Additional symptoms (items 7–18)',
     'asrs.opt0': 'Never',
     'asrs.opt1': 'Rarely',
     'asrs.opt2': 'Sometimes',
@@ -423,29 +394,8 @@ const STRINGS = {
       'How often do you fidget or squirm when you have to sit down for a long time?',
     'asrs.q6':
       'How often do you feel overly active and compelled to do things, like you were driven by a motor?',
-    'asrs.q7':
-      'How often do you make careless mistakes when you have to work on a boring or difficult project?',
-    'asrs.q8':
-      'How often do you have difficulty keeping your attention when you are doing boring or repetitive work?',
-    'asrs.q9':
-      'How often do you have difficulty concentrating on what people say to you, even when they are speaking to you directly?',
-    'asrs.q10':
-      'How often do you misplace or have difficulty finding things at home or at work?',
-    'asrs.q11': 'How often are you distracted by activity or noise around you?',
-    'asrs.q12':
-      'How often do you leave your seat in meetings or other situations in which you are expected to remain seated?',
-    'asrs.q13': 'How often do you feel restless or fidgety?',
-    'asrs.q14':
-      'How often do you have difficulty unwinding and relaxing when you have time to yourself?',
-    'asrs.q15':
-      'How often do you find yourself talking too much when you are in social situations?',
-    'asrs.q16':
-      'When you are in a conversation, how often do you find yourself finishing the sentences of the people you are talking to?',
-    'asrs.q17':
-      'How often do you have difficulty waiting your turn in situations when turn taking is required?',
-    'asrs.q18': 'How often do you interrupt others when they are busy?',
     'asrs.note':
-      'Adult ADHD Self-Report Scale (Kessler et al., WHO). Part A ≥4 positive symptoms suggests ADHD-consistent screening. Not a substitute for clinical evaluation.',
+      'Adult ADHD Self-Report Scale (ASRS-v1.1) Screener © World Health Organization. Used with attribution; no prior approval is required for the 6-item screener. Part A ≥4 positive symptoms suggests ADHD-consistent screening. Not a substitute for clinical evaluation.',
     'toast.saved': 'Saved',
     'toast.langChanged': 'Language updated',
   },

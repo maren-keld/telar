@@ -1471,6 +1471,21 @@ html[data-theme='dark'] .badge--info {
   color: var(--success);
 }
 
+.badge--subtle {
+  font-size: 0.62rem;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: #e8edf3;
+  color: var(--text-muted);
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+html[data-theme='dark'] .badge--subtle {
+  background: #1e2a3a;
+  color: var(--text-muted);
+}
+
 .badge--status-completada {
   background: var(--accent-soft);
   color: var(--accent);

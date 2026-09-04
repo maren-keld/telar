@@ -558,6 +558,46 @@
   background: var(--accent-soft);
 }
 
+.share-answered-tag {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  max-width: 11.5rem;
+  margin: 0 2px;
+  padding: 4px 8px 5px 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success, #2d7a55) 14%, var(--bg-card));
+  color: var(--success, #2d7a55);
+  line-height: 1.2;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.share-answered-tag::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-60%) rotate(-45deg);
+}
+
+.share-answered-tag__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.share-answered-tag__when {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 .workspace-tools {
   flex: 0 0 var(--workspace-right-w, 320px);
   width: var(--workspace-right-w, 320px);

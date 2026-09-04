@@ -16,6 +16,10 @@ const DEFAULTS = {
   usagePingOptOut: false,
   locale: 'es',
   plan: 'free',
+  /** Aviso nativo cuando responden un test o handout por enlace. */
+  notifyShareDesktop: true,
+  /** Correo al email de Ajustes cuando responden un test o handout por enlace. */
+  notifyShareEmail: false,
   /** true = no mostrar la previsualización del contexto antes de cada consulta API. */
   aiPreviewSkip: false,
   customModules: [],
@@ -93,8 +97,20 @@ export function migrateInterfaceDefaults() {
 
 /** Borra datos del profesional y módulos custom; conserva preferencias de interfaz y Touch ID. */
 export function wipeProfileData() {
-  const { darkMode, useTouchId, locale, aiMode, aiLocalModel, aiApiProvider, aiApiBase, aiApiModel, aiApiKey, aiApiConsentAt } =
-    loadProfile();
+  const {
+    darkMode,
+    useTouchId,
+    locale,
+    aiMode,
+    aiLocalModel,
+    aiApiProvider,
+    aiApiBase,
+    aiApiModel,
+    aiApiKey,
+    aiApiConsentAt,
+    notifyShareDesktop,
+    notifyShareEmail,
+  } = loadProfile();
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({
@@ -109,6 +125,8 @@ export function wipeProfileData() {
       aiApiModel: aiApiModel || AI_DEFAULTS.aiApiModel,
       aiApiKey: aiApiKey || '',
       aiApiConsentAt: aiApiConsentAt || '',
+      notifyShareDesktop: notifyShareDesktop !== false,
+      notifyShareEmail: Boolean(notifyShareEmail),
     }),
   );
 }

@@ -245,3 +245,50 @@ def register_routes(app) -> None:
             conn.execute("DELETE FROM shared_forms WHERE token = ?", (token,))
 
         return jsonify({"ok": True})
+
+    @app.post("/api/share/notify-owner")
+    def share_notify_owner():
+        """Correo al clínico cuando el paciente responde. Opt-in desde Ajustes."""
+        api = _api()
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip()
+        subject = str(data.get("subject") or "Telar: respondieron un formulario").strip()[:180]
+        text = str(data.get("text") or "").strip()[:2000]
+        if not api.is_valid_payer_email(email):
+            return jsonify({"error": "Falta un correo válido del profesional"}), 400
+        if not text:
+            return jsonify({"error": "Falta el texto del aviso"}), 400
+        sent = _send_owner_email(api.normalize_payer_email(email), subject, text)
+        return jsonify({"ok": True, "sent": sent, "skipped": not sent})
+
+
+def _send_owner_email(to_email: str, subject: str, text: str) -> bool:
+    key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not key:
+        return False
+    import json
+    import urllib.error
+    import urllib.request
+
+    payload = json.dumps(
+        {
+            "from": os.environ.get("SHARE_NOTIFY_FROM", "Telar <noreply@telarapp.cl>"),
+            "to": [to_email],
+            "subject": subject,
+            "text": text,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            return 200 <= int(resp.status) < 300
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False

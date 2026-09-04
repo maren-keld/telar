@@ -100,7 +100,7 @@ export function psychometricSeries(sessions, type) {
 
     let value = null;
     if (type === 'asrs') {
-      value = asrsSummary(data)?.total;
+      value = asrsSummary(data)?.partAPositive;
     } else if (type === 'gad7') {
       value = answers.reduce((a, v) => a + (Number(v) || 0), 0);
     } else if (type === 'pcl5') {
@@ -301,7 +301,7 @@ export function psychometricChartMeta(type) {
     title: def?.label || type,
     yMax:
       type === 'asrs'
-        ? 72
+        ? 6
         : type === 'gad7'
           ? 21
           : type === 'pcl5'

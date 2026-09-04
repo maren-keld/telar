@@ -2514,6 +2514,70 @@ body.is-dragging-module .session-block__title {
   color: var(--text-secondary);
 }
 
+.questionnaire-module[data-theme="pictos"],
+.questionnaire-module[data-theme="sensorial"] {
+  --q-ink: #1a2a2e;
+  --q-paper: #fff8e7;
+  --q-accent: #ffd54f;
+  color: var(--q-ink);
+  background: var(--q-paper);
+}
+
+.questionnaire-module[data-theme="sensorial"] {
+  --q-ink: #3d3550;
+  --q-paper: #f7f3ee;
+  --q-accent: #c5b4e3;
+}
+
+.questionnaire-module[data-theme="pictos"] .module-title,
+.questionnaire-module[data-theme="sensorial"] .module-title,
+.questionnaire-module[data-theme="pictos"] .module-card-head__sub,
+.questionnaire-module[data-theme="sensorial"] .module-card-head__sub,
+.questionnaire-module[data-theme="pictos"] .questionnaire-module__instructions,
+.questionnaire-module[data-theme="sensorial"] .questionnaire-module__instructions {
+  color: var(--q-ink);
+}
+
+.questionnaire-module[data-theme="pictos"] .psych-item,
+.questionnaire-module[data-theme="sensorial"] .psych-item {
+  padding: 16px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 16px;
+}
+
+.questionnaire-module[data-theme="pictos"] .psych-item:nth-child(4n + 1) { background: #fff3c4; }
+.questionnaire-module[data-theme="pictos"] .psych-item:nth-child(4n + 2) { background: #d6f0fb; }
+.questionnaire-module[data-theme="pictos"] .psych-item:nth-child(4n + 3) { background: #ffe0d4; }
+.questionnaire-module[data-theme="pictos"] .psych-item:nth-child(4n + 4) { background: #dff3e2; }
+
+.questionnaire-module[data-theme="sensorial"] .psych-item:nth-child(4n + 1) { background: #ece4f6; }
+.questionnaire-module[data-theme="sensorial"] .psych-item:nth-child(4n + 2) { background: #fde8d8; }
+.questionnaire-module[data-theme="sensorial"] .psych-item:nth-child(4n + 3) { background: #dcefe6; }
+.questionnaire-module[data-theme="sensorial"] .psych-item:nth-child(4n + 4) { background: #f6edd4; }
+
+.questionnaire-module[data-theme="pictos"] .psych-item__opt,
+.questionnaire-module[data-theme="sensorial"] .psych-item__opt {
+  min-height: 52px;
+  justify-content: center;
+  border-width: 2px;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  color: var(--q-ink);
+}
+
+.questionnaire-module[data-theme="pictos"] .psych-item__opt:has(input:checked),
+.questionnaire-module[data-theme="sensorial"] .psych-item__opt:has(input:checked) {
+  background: var(--q-accent);
+  border-color: var(--q-ink);
+  color: var(--q-ink);
+}
+
+.questionnaire-module[data-theme="pictos"] .psych-item__opt-v,
+.questionnaire-module[data-theme="sensorial"] .psych-item__opt-v {
+  color: var(--q-ink);
+}
+
 .psych-score-pill--sub {
   font-size: 0.75rem;
 }
@@ -3061,10 +3125,18 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   font-size: 0.9rem;
 }
 
+.share-modal__link-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
 .share-modal__link {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: stretch;
 }
 
 .share-modal__link .input {
@@ -3072,6 +3144,16 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78rem;
+}
+
+.share-modal__link [data-copy] {
+  flex: 0 0 44px;
+  padding: 0;
+}
+
+.share-modal__link [data-copy] .nav-icon-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .share-modal__hint {
@@ -3084,6 +3166,21 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 .share-modal__hint--warn {
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.modal-card.share-modal {
+  width: min(520px, 94vw);
+}
+
+.share-modal .modal-card__actions {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.share-modal .modal-card__actions .btn {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  padding: 0 14px;
 }
 
 /* Experiencias interactivas */
@@ -3105,6 +3202,15 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   margin: 10px 0 0;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+.interactive-module__summary {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2, rgba(127, 127, 127, 0.1));
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 /* Creador de módulos: pestañas y paneles estilo CodePen */
@@ -3175,7 +3281,7 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 
 /* Crear módulo con IA */
 .ai-module-modal {
-  max-width: 720px;
+  max-width: 780px;
   width: 100%;
 }
 
@@ -3190,6 +3296,96 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
   color: var(--text-muted);
   font-size: 0.82rem;
   line-height: 1.5;
+}
+
+.ai-module__themes {
+  margin: 0 0 16px;
+  padding: 0;
+  border: none;
+}
+
+.ai-module__themes-legend {
+  padding: 0;
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ai-module__themes-hint {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ai-module__themes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-module__theme {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 100%;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card, #fff);
+  cursor: pointer;
+}
+
+.ai-module__theme input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ai-module__theme:hover {
+  border-color: var(--accent);
+}
+
+.ai-module__theme:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft, rgba(80, 120, 140, 0.22));
+}
+
+.ai-module__theme:has(input:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft, #c5d4da) 70%, transparent);
+}
+
+.ai-module__theme-swatches {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.ai-module__theme-swatches i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.ai-module__theme-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ai-module__theme-desc {
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .ai-module__themes-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ai-module__log {

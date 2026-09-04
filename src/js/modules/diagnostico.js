@@ -16,7 +16,7 @@ const BUILTIN_PROBLEMS = [
   {
     name: 'Estrés postraumático',
     assigned: false,
-    indicators: ['PCL-5 ≥31 o IES-R ≥33', 'Intrusiones, evitación o hiperactivación'],
+    indicators: ['PCL-5 ≥31', 'Intrusiones, evitación o hiperactivación'],
     objectives: ['Reducir síntomas de impacto traumático', 'Fortalecer regulación emocional'],
   },
   {

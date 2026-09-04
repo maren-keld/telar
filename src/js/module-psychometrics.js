@@ -9,6 +9,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'Adecuada para detección de malestar emocional. En Chile se usan normas adaptadas; los puntajes DASS-21 se multiplican por 2 (DASS-42).',
     learnMore: 'No sustituye evaluación clínica integral.',
+    license: 'Dominio público (no vender la escala; resultados al clínico)',
   },
   eed: {
     authors: 'Telar (basado en DSQ)',
@@ -18,6 +19,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'No validado formalmente en Chile. Interpretación orientativa del perfil defensivo; no es diagnóstico independiente.',
     learnMore: 'Ver manual: Escala de Estilos Defensivos.',
+    license: 'Elaboración propia (Telar)',
   },
   escala_animo: {
     authors: 'Telar',
@@ -25,6 +27,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     reliability: '—',
     validity: 'Registro subjetivo VAS 1–100; sin estandarización en Chile.',
     learnMore: '1 = ánimo muy bajo, 100 = muy alto (últimos 7 días).',
+    license: 'Elaboración propia (Telar)',
   },
   escala_ansiedad: {
     authors: 'Telar',
@@ -32,6 +35,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     reliability: '—',
     validity: 'Registro subjetivo VAS 1–100; sin estandarización en Chile.',
     learnMore: '1 = ansiedad muy baja, 100 = muy alta (últimos 7 días).',
+    license: 'Elaboración propia (Telar)',
   },
   rosenberg: {
     authors: 'Rosenberg (1965)',
@@ -42,6 +46,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
       'Validado en población chilena (Rojas-Barahona et al., 2009). Normas locales disponibles para adolescentes y adultos.',
     learnMore:
       '5 ítems directos + 5 invertidos. Puntaje 10–40: bajo (10–25), medio (26–29), alto (30–40). No sustituye evaluación clínica integral.',
+    license: 'Dominio público (citar Rosenberg 1965)',
   },
   qols: {
     authors: 'Flanagan (1978); adaptación Burckhardt et al.',
@@ -51,6 +56,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'Validada en múltiples poblaciones; en Chile se usa en investigación y seguimiento de calidad de vida.',
     learnMore: 'Puntaje total 16–112 (mayor = mejor). Dominios orientativos, no diagnóstico.',
+    license: 'Uso con cita; confirmar titular (Mapi / Burckhardt)',
   },
   gad7: {
     authors: 'Spitzer, Kroenke, Williams & Löwe (2006)',
@@ -61,6 +67,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
       'Validado como tamizaje de trastorno de ansiedad generalizada. En Chile se usa en atención primaria y salud mental.',
     learnMore:
       'Puntaje 0–21: mínima (0–4), leve (5–9), moderada (10–14), severa (15–21). No sustituye evaluación clínica integral.',
+    license: 'Uso clínico con atribución (Pfizer / autores)',
   },
   asrs: {
     authors: 'Kessler et al. (2005); WHO',
@@ -68,9 +75,10 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     reliability:
       'Buena consistencia interna y validez de constructo en estudios internacionales con adultos.',
     validity:
-      'Tamizaje de TDAH en adultos (ASRS v1.1). Parte A: ≥4 de 6 síntomas positivos sugiere consistencia con TDAH.',
+      'Tamizaje de TDAH en adultos (ASRS v1.1). Screener de 6 ítems (Parte A): ≥4 síntomas positivos sugiere consistencia con TDAH.',
     learnMore:
-      'Escala 0–4 (Nunca → Muy a menudo). Parte B aporta contexto clínico adicional. No sustituye evaluación diagnóstica.',
+      'Escala 0–4 (Nunca → Muy a menudo). Screener WHO de 6 ítems; copyright World Health Organization. No sustituye evaluación diagnóstica.',
+    license: 'Screener de 6 ítems · copyright WHO (uso con atribución)',
   },
   pcl5: {
     authors: 'Weathers et al. (2013); DSM-5',
@@ -79,6 +87,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'Tamizaje TEPT DSM-5. Versión en español ampliamente usada. Punto de corte orientativo ≥31 (probable TEPT).',
     learnMore: 'Escala 0–4 (Nada → Extremadamente). Requiere confirmación clínica (p. ej. entrevista estructurada).',
+    license: 'Dominio público',
   },
   sprint_ecl: {
     authors: 'Norris et al.; validación chilena Leiva-Bianchi & Gallardo (2013)',
@@ -87,6 +96,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'Tamizaje breve de estrés postraumático. Ítems 1–11 suman 0–44; ítem 12 (ideación suicida) no suma.',
     learnMore: 'Validado en Chile tras terremoto/tsunami 2010. No sustituye evaluación clínica integral.',
+    license: 'Pendiente de permiso / oculto en el catálogo',
   },
   iesr: {
     authors: 'Weiss & Marmar (1997)',
@@ -94,7 +104,8 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     reliability: 'Alta consistencia interna en validaciones internacionales (α ≈ 0,79–0,92).',
     validity:
       'IES-R: intrusión, evitación e hiperactivación. Total 0–88; umbral orientativo ≥33 para impacto clínico elevado.',
-    learnMore: 'Escala 0–4 (últimos 7 días). Complementa PCL-5 y SPRINT-E-CL en seguimiento trauma.',
+    learnMore: 'Escala 0–4 (últimos 7 días). Oculto en el catálogo hasta permiso escrito del titular.',
+    license: 'Pendiente de permiso / oculto en el catálogo',
   },
   ades: {
     authors: 'Armstrong, Putnam & Carlson (1997)',
@@ -102,7 +113,8 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     reliability: 'Buena consistencia interna y validez en estudios con adolescentes disociativos.',
     validity:
       'Tamizaje de disociación (amnesia, absorción, influencia pasiva, despersonalización). Media total 0–10; ≥4 sugiere evaluación clínica.',
-    learnMore: 'Dominio público. Subescala A-DES-T (8 ítems taxon). No sustituye evaluación diagnóstica integral.',
+    learnMore: 'Subescala A-DES-T (8 ítems taxon). Uso con cita; confirmar titular (Sidran / autores). No sustituye evaluación diagnóstica integral.',
+    license: 'Uso con cita; confirmar titular (Sidran / autores)',
   },
   escala_fer: {
     authors: 'Telar',
@@ -112,6 +124,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
       'No validado formalmente. Aporta una panorámica clínica rápida de recursos protectores y factores de riesgo; no es diagnóstico independiente.',
     learnMore:
       '12 ítems Likert 0–4 (6 fortalezas + 6 riesgos). Incluye alerta automática ante ideación de daño.',
+    license: 'Elaboración propia (Telar)',
   },
   tcc_abc: {
     authors: 'Telar — elaboración propia',
@@ -278,7 +291,13 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
 };
 
 export function psychometricsFor(type) {
-  return getPsychometric(type) || LEGACY_MODULE_PSYCHOMETRICS[type] || null;
+  const raw = getPsychometric(type) || LEGACY_MODULE_PSYCHOMETRICS[type] || null;
+  if (!raw) return null;
+  if (raw.license) return raw;
+  if (String(raw.authors || '').includes('Telar')) {
+    return { ...raw, license: 'Elaboración propia (Telar)' };
+  }
+  return raw;
 }
 
 /** @deprecated */

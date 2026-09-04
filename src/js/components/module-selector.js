@@ -2,6 +2,7 @@ import { getModuleDefs } from '../config.js';
 import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
 import { openCreateModuleModal } from './create-module-modal.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
+import { isLicensePendingModule } from '../license-pending-modules.js';
 import { psychometricsFor } from '../module-psychometrics.js';
 import { moduleSearchBlob, tccHandoutDef, tccVariablesFor } from '../tcc-handout-defs.js';
 import {
@@ -50,7 +51,14 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', sho
       </div>
       <div class="mod-info-row">
         <span><strong>Validez (Chile):</strong> ${escapeHtml(psych.validity)}</span>
+      </div>
+      ${
+        psych.license
+          ? `<div class="mod-info-row">
+        <span><strong>Licencia:</strong> ${escapeHtml(psych.license)}</span>
       </div>`
+          : ''
+      }`
     : `
       <div class="mod-info-row">
         <span>${escapeHtml(def.description || 'Módulo clínico.')}</span>
@@ -211,7 +219,7 @@ export function selectorListInnerHtml({
   const catsHtml = cats
     .map((cat) => {
       const available = getModuleDefs();
-      const types = cat.types.filter((type) => available[type]);
+      const types = cat.types.filter((type) => available[type] && !isLicensePendingModule(type));
       if (!types.length) return '';
       const items = types
         .map((type) => {

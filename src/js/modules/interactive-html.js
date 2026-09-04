@@ -8,6 +8,7 @@
  * `window.Telar`.
  */
 import { getModule } from '../db.js';
+import { isColorTheme, themeCssVars } from '../module-themes.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { getCustomModuleByType } from '../custom-modules.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
@@ -61,13 +62,17 @@ const CONTENT_CSP =
  * Ensambla el documento completo que se sirve al iframe: CSP propia, bridge y
  * el HTML del terapeuta tal cual lo pegó.
  */
-export function buildInteractiveDocument(html, { title = 'Experiencia', initialData } = {}) {
+export function buildInteractiveDocument(html, { title = 'Experiencia', initialData, theme } = {}) {
   const source = String(html || '');
+  const palette = isColorTheme(theme)
+    ? `<style data-telar-theme="${escapeHtml(theme)}">:root{${themeCssVars(theme)}}body{background:var(--telar-paper);color:var(--telar-ink);}</style>`
+    : '';
   const head = `<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Security-Policy" content="${CONTENT_CSP}" />
 <title>${escapeHtml(title)}</title>
 <style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;}</style>
+${palette}
 ${bridgeScript(initialData)}`;
 
   if (/<html[\s>]/i.test(source)) {
@@ -96,15 +101,20 @@ export function interactiveModuleUrl(id) {
 
 const activeListeners = new Map();
 
-/** Suelta el listener de mensajes al desmontar el módulo. */
-export function teardownInteractiveHtml(moduleId) {
+/**
+ * Suelta el listener de mensajes al desmontar el módulo.
+ * `keepDoc`: no borres el HTML del esquema telar-mod:// — hace falta al re-pintar
+ * la ficha (p. ej. acaba de llegar la respuesta del enlace) porque el set nuevo
+ * usa el mismo id y un clear tardío deja el iframe en «Módulo no encontrado».
+ */
+export function teardownInteractiveHtml(moduleId, { keepDoc = false } = {}) {
   const key = String(moduleId ?? 'all');
   if (key === 'all') {
-    for (const off of activeListeners.values()) off();
+    for (const off of activeListeners.values()) off({ keepDoc });
     activeListeners.clear();
     return;
   }
-  activeListeners.get(key)?.();
+  activeListeners.get(key)?.({ keepDoc });
   activeListeners.delete(key);
 }
 
@@ -116,14 +126,21 @@ export async function renderInteractiveHtml(host, moduleRow) {
   }
 
   const data = parseJsonSafe(moduleRow.data, {});
+  const contentId = `${mod.id}-${moduleRow.id}`;
+  /* Re-bind del mismo módulo: suelta el listener viejo sin borrar el doc. */
+  teardownInteractiveHtml(moduleRow.id, { keepDoc: true });
+
   const doc = buildInteractiveDocument(mod.html, {
     title: mod.title,
     initialData: data.payload ?? null,
+    theme: mod.theme,
   });
-  const contentId = `${mod.id}-${moduleRow.id}`;
+
+  const theme = String(mod.theme || '').trim();
+  const themeAttr = theme && theme !== 'clinico' ? ` data-theme="${escapeHtml(theme)}"` : '';
 
   host.innerHTML = `
-    <div class="card interactive-module">
+    <div class="card interactive-module"${themeAttr}>
       <div class="module-card-head">
         <div>
           <h2 class="module-title" style="margin:0">${escapeHtml(mod.title)}</h2>
@@ -140,6 +157,11 @@ export async function renderInteractiveHtml(host, moduleRow) {
           referrerpolicy="no-referrer"
           height="${DEFAULT_HEIGHT}"></iframe>
       </div>
+      ${
+        data.summary
+          ? `<p class="interactive-module__summary">${escapeHtml(data.summary)}</p>`
+          : ''
+      }
       <p class="interactive-module__note" id="interactive-note-${moduleRow.id}"></p>
     </div>`;
 
@@ -196,9 +218,9 @@ export async function renderInteractiveHtml(host, moduleRow) {
   };
 
   window.addEventListener('message', onMessage);
-  teardownInteractiveHtml(moduleRow.id);
-  activeListeners.set(String(moduleRow.id), () => {
+  activeListeners.set(String(moduleRow.id), ({ keepDoc = false } = {}) => {
     window.removeEventListener('message', onMessage);
+    if (keepDoc) return;
     getInvoke()('interactive_module_clear', { id: contentId }).catch(() => {});
   });
 

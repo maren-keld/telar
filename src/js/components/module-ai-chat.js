@@ -13,10 +13,63 @@ import {
 } from '../../lib/questionnaire-schema.js';
 import { cancelChatCompletion, chatCompletion, createAiRequest } from '../ai-client.js';
 import { customModuleTypeId, newCustomModuleId, saveCustomModule } from '../custom-modules.js';
+import {
+  DEFAULT_MODULE_THEME,
+  MODULE_THEMES,
+  applyThemeToCandidate,
+  buildModuleAiSystemPrompt,
+  normalizeThemeId,
+} from '../module-themes.js';
 import { buildInteractiveDocument, interactiveModuleUrl } from '../modules/interactive-html.js';
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
 import { animateAndRemove, playOverlayOpen } from '../transitions.js';
 import { escapeHtml, toast } from '../utils.js';
+
+const THEME_LS = 'telar-ai-module-theme';
+
+function lastThemeId() {
+  try {
+    return normalizeThemeId(localStorage.getItem(THEME_LS));
+  } catch {
+    return DEFAULT_MODULE_THEME;
+  }
+}
+
+function rememberThemeId(id) {
+  try {
+    localStorage.setItem(THEME_LS, normalizeThemeId(id));
+  } catch {
+    /* storage lleno o bloqueado */
+  }
+}
+
+function themePickerHtml(selected) {
+  return `
+    <fieldset class="ai-module__themes">
+      <legend class="ai-module__themes-legend">Estilo visual</legend>
+      <p class="ai-module__themes-hint">
+        Los módulos de Telar son sobrios a propósito. Elige <strong>Colorido</strong> si quieres
+        apoyos visuales (botones grandes, feedback al tocar). Si pegas un CodePen y dejas
+        <strong>Clínico</strong>, la IA solo lo engancha a Telar: guarda en la ficha, sin
+        cambiarle los colores.
+      </p>
+      <div class="ai-module__themes-grid">
+        ${MODULE_THEMES.map((t) => {
+          const checked = t.id === selected ? 'checked' : '';
+          const featured = t.featured ? ' ai-module__theme--featured' : '';
+          const swatches = t.swatches
+            .map((c) => `<i style="background:${c}" aria-hidden="true"></i>`)
+            .join('');
+          return `<label class="ai-module__theme${featured}">
+            <input type="radio" name="ai-module-theme" value="${t.id}" ${checked} />
+            <span class="ai-module__theme-swatches">${swatches}</span>
+            <span class="ai-module__theme-name">${escapeHtml(t.label)}</span>
+            <span class="ai-module__theme-desc">${escapeHtml(t.short)}</span>
+          </label>`;
+        }).join('')}
+      </div>
+    </fieldset>`;
+}
 
 const SYSTEM_PROMPT = `Eres un asistente que crea módulos clínicos para Telar, una app de psicología clínica en español de Chile.
 
@@ -49,6 +102,8 @@ Opción B — experiencia interactiva. Bloque \`\`\`html con un fragmento autoco
   Telar.save(datos)       → guarda progreso
   Telar.done('resumen')   → marca completado con un resumen de texto
   Telar.resize(altura)    → ajusta la altura visible
+
+Si el terapeuta pega HTML/CSS/JS o un CodePen, adáptalo a esa lógica modular (un solo bloque html, sin red, con Telar.load/save/done/resize). El estilo visual lo manda el bloque «Estilo visual» más abajo.
 
 Elige la opción que mejor calce con lo que pide el terapeuta. Escribe todo en español de Chile, en segunda persona y sin tecnicismos innecesarios.`;
 
@@ -92,15 +147,16 @@ export function openModuleAiChat({ onCreated } = {}) {
       </header>
       <div class="ai-module-modal__body">
         <p class="ai-module__intro">
-          Describe el módulo que necesitas. Puede ser un cuestionario con puntaje o una experiencia
-          interactiva para enviarle al paciente. Solo se manda a la IA lo que escribas acá: ninguna
+          Describe el módulo o pega el HTML/CSS/JS de un CodePen. Puede ser un cuestionario con
+          puntaje o una experiencia interactiva. Solo se manda a la IA lo que escribas acá: ninguna
           ficha ni dato de paciente.
         </p>
+        ${themePickerHtml(lastThemeId())}
         <div class="ai-module__log" id="ai-module-log" aria-live="polite"></div>
         <div class="ai-module__preview" id="ai-module-preview" hidden></div>
         <label class="create-module-field">
           <span class="create-module-field__label">Qué necesitas</span>
-          <textarea id="ai-module-prompt" class="input" rows="3" placeholder="Ej. un registro semanal de sobrecarga sensorial, 8 ítems de 0 a 4, con subescalas de ruido y luz"></textarea>
+          <textarea id="ai-module-prompt" class="input" rows="3" placeholder="Ej. un registro de sobrecarga sensorial… o pega acá un CodePen para adaptarlo a Telar"></textarea>
         </label>
       </div>
       <footer class="create-module-modal__foot">
@@ -119,11 +175,18 @@ export function openModuleAiChat({ onCreated } = {}) {
   const sendBtn = overlay.querySelector('#ai-module-send');
   const saveBtn = overlay.querySelector('#ai-module-save');
 
+  const selectedTheme = () =>
+    normalizeThemeId(overlay.querySelector('input[name="ai-module-theme"]:checked')?.value);
+
   /** Historial completo: la IA necesita el contexto para corregir su propia salida. */
-  const history = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const history = [{ role: 'system', content: buildModuleAiSystemPrompt(SYSTEM_PROMPT, lastThemeId()) }];
   let candidate = null;
   let request = null;
   const previewId = `ai-preview-${newCustomModuleId()}`;
+
+  overlay.querySelectorAll('input[name="ai-module-theme"]').forEach((input) => {
+    input.addEventListener('change', () => rememberThemeId(input.value));
+  });
 
   const appendLog = (role, text) => {
     const row = document.createElement('div');
@@ -163,7 +226,7 @@ export function openModuleAiChat({ onCreated } = {}) {
       <h4 class="ai-module__preview-title">${escapeHtml(title)}</h4>
       <iframe class="cm-interactive__preview" title="Vista previa" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer"></iframe>`;
     if (!isTauriApp()) return;
-    const doc = buildInteractiveDocument(html, { title, initialData: null });
+    const doc = buildInteractiveDocument(html, { title, initialData: null, theme: selectedTheme() });
     await getInvoke()('interactive_module_set', { id: previewId, html: doc });
     previewEl.querySelector('iframe').src = interactiveModuleUrl(previewId);
   };
@@ -192,16 +255,16 @@ export function openModuleAiChat({ onCreated } = {}) {
         });
         return;
       }
-      candidate = { kind: 'questionnaire', def };
+      candidate = applyThemeToCandidate({ kind: 'questionnaire', def }, selectedTheme());
       appendLog('assistant', `Listo: «${def.title}», ${questionnaireItems(def).length} ítems. Revisa la vista previa y guárdalo.`);
-      showQuestionnaire(def);
+      showQuestionnaire(candidate.def);
       saveBtn.disabled = false;
       return;
     }
 
     const title = text.match(/^\s*#{0,3}\s*(.{3,80}?)\s*$/m)?.[1] || 'Experiencia interactiva';
     const cdn = [...block.code.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)["']/gi)].map((m) => m[1]);
-    candidate = { kind: 'interactive', html: block.code, title };
+    candidate = applyThemeToCandidate({ kind: 'interactive', html: block.code, title }, selectedTheme());
     appendLog(
       'assistant',
       cdn.length
@@ -218,6 +281,9 @@ export function openModuleAiChat({ onCreated } = {}) {
       promptEl.focus();
       return;
     }
+    const themeId = selectedTheme();
+    rememberThemeId(themeId);
+    history[0] = { role: 'system', content: buildModuleAiSystemPrompt(SYSTEM_PROMPT, themeId) };
     history.push({ role: 'user', content: prompt });
     appendLog('user', prompt);
     promptEl.value = '';
@@ -259,6 +325,7 @@ export function openModuleAiChat({ onCreated } = {}) {
             category: 'pruebas',
             def: candidate.def,
             defs: { es: candidate.def },
+            theme: candidate.theme || DEFAULT_MODULE_THEME,
             createdAt: new Date().toISOString(),
             createdByAi: true,
           }
@@ -268,6 +335,7 @@ export function openModuleAiChat({ onCreated } = {}) {
             title: candidate.title,
             instructions: '',
             html: candidate.html,
+            theme: candidate.theme || DEFAULT_MODULE_THEME,
             createdAt: new Date().toISOString(),
             createdByAi: true,
           };

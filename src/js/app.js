@@ -14,7 +14,7 @@ import { ensureCustomModulesLoaded } from './custom-modules.js';
 import { initLocaleFromProfile } from './i18n.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { teardownNeurofeedback } from './modules/neurofeedback.js';
-import { teardownBilateralStimulation } from './modules/index.js';
+import { teardownBilateralStimulation, teardownInteractiveHtml } from './modules/index.js';
 import { initAppUpdateChecker } from './app-updates.js';
 import { maybeSendUsagePing } from './usage-ping.js';
 import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLocalSubscriptionApiCache } from './subscription.js';
@@ -22,6 +22,7 @@ import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './
 import { scheduleAutoCloudBackup } from './cloud-backup.js';
 import { toast } from './utils.js';
 import { initMotion } from './transitions.js';
+import { ensureGlobalShareSync } from './share-sync.js';
 
 const app = document.getElementById('app');
 let lastRenderedView = '';
@@ -71,6 +72,7 @@ async function render() {
   if (lastRenderedView === 'workspace' && view !== 'workspace') {
     teardownNeurofeedback();
     teardownBilateralStimulation();
+    teardownInteractiveHtml('all');
     delete app.dataset.workspaceTreatmentId;
     delete app.dataset.workspaceModuleId;
     delete app.dataset.workspaceIndexMode;
@@ -160,6 +162,7 @@ async function render() {
 
     if (view !== 'unlock') {
       scheduleAutoCloudBackup();
+      ensureGlobalShareSync();
     }
   } catch (err) {
     console.error(err);

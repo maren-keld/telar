@@ -41,17 +41,16 @@ const LEGACY_TREATMENT_TEMPLATES = {
     id: 'trauma_regulacion',
     label: 'Trauma + regulación (adulto)',
     description:
-      'Tamizaje trauma (PCL-5, SPRINT, IES-R), plan de seguridad, regulación bilateral/NF. Añade A-DES manualmente si el paciente es adolescente.',
+      'Tamizaje trauma (PCL-5), plan de seguridad, regulación bilateral/NF. Añade A-DES manualmente si el paciente es adolescente.',
     featured: false,
     sessions: [
-      { label: 'Tamizaje trauma (1/2)', modules: ['pcl5', 'sprint_ecl'] },
-      { label: 'Tamizaje trauma (2/2)', modules: ['iesr', 'diagnostico'] },
+      { label: 'Tamizaje trauma', modules: ['pcl5', 'diagnostico'] },
       { label: 'Plan de seguridad', modules: ['tcc_plan_seguridad'] },
       {
         label: 'Regulación + apoyo',
         modules: ['tcc_abc', 'bilateral_stimulation', 'neurofeedback', 'escala_ansiedad', 'redes_apoyo'],
       },
-      { label: 'Seguimiento trauma', modules: ['iesr', 'sprint_ecl'] },
+      { label: 'Seguimiento trauma', modules: ['pcl5', 'escala_ansiedad'] },
       { label: 'NF relajación', modules: ['neurofeedback', 'escala_ansiedad'] },
       { label: 'Reevaluación', modules: ['pcl5'] },
     ],

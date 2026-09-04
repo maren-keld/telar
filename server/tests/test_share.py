@@ -77,6 +77,19 @@ def test_revocar_borra_el_enlace(api):
     assert api.get(f"/api/share/{token}").status_code == 410
 
 
+def test_notify_owner_sin_mailer_no_revienta(api):
+    bad = api.post("/api/share/notify-owner", json={"email": "no", "text": "hola"})
+    assert bad.status_code == 400
+    ok = api.post(
+        "/api/share/notify-owner",
+        json={"email": OWNER, "subject": "Telar", "text": "Llegaron las respuestas"},
+    )
+    assert ok.status_code == 200
+    body = ok.get_json()
+    assert body["ok"] is True
+    assert body["skipped"] is True
+
+
 def test_no_guarda_el_correo_en_claro(api):
     token = create(api).get_json()["token"]
     import app as api_module

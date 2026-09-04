@@ -112,7 +112,7 @@ export async function renderPcl5(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title">${escapeHtml(t('pcl5.title', 'PCL-5 — Tamizaje TEPT (DSM-5)'))}</h2>
+            <h2 class="module-title">${escapeHtml(t('pcl5.title', 'PCL-5'))}</h2>
             <p class="module-card-head__sub">${escapeHtml(t('pcl5.subtitle', '20 ítems · escala 0–4 · último mes · una vez por sesión.'))}</p>
           </div>
           <div class="badge badge--info module-card-head__badge" id="pcl5-progress" title="${escapeHtml(t('pcl5.progress', 'Ítems respondidos'))}">${answeredCount}/${PCL5_TOTAL}</div>

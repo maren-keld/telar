@@ -14,6 +14,7 @@ import { MODULE_PSYCHOMETRICS } from '../src/js/module-psychometrics.js';
 import { ANSIEDAD_DEPRESION_PSYCHOMETRICS } from '../src/packs/ansiedad-depresion/psychometrics.js';
 import { TCC_HANDOUT_DEFS } from '../src/js/tcc-handout-defs.js';
 import { EXTRA_HANDOUT_DEFS } from '../src/js/extra-handout-defs.js';
+import { LICENSE_PENDING_MODULE_TYPES } from '../src/js/license-pending-modules.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -217,6 +218,7 @@ const FOOTER_ITEMS = [
   ['blog/index.html', 'Blog'],
   ['equipo.html', 'Equipo'],
   ['privacidad.html', 'Privacidad'],
+  ['terminos.html', 'Términos'],
 ];
 
 function navHtml(depth) {
@@ -337,6 +339,14 @@ function psychBlock(psych) {
             <dt>Validez (Chile)</dt>
             <dd>${escapeHtml(psych.validity)}</dd>
           </div>
+          ${
+            psych.license
+              ? `<div class="module-psych-item">
+            <dt>Licencia</dt>
+            <dd>${escapeHtml(psych.license)}</dd>
+          </div>`
+              : ''
+          }
         </dl>
         ${psych.learnMore ? `<p class="module-learn-more">${escapeHtml(psych.learnMore)}</p>` : ''}`;
 }
@@ -414,6 +424,54 @@ function detailPage(id, def, psych, handout) {
             { '@type': 'ListItem', position: 2, name: 'Módulos', item: 'https://telarapp.cl/modules' },
             { '@type': 'ListItem', position: 3, name: label, item: canonical },
           ],
+        },
+      ],
+    },
+  });
+}
+
+function unavailablePage(id, def, psych) {
+  const label = def.label;
+  const pack = PACK_LABELS[def.packId] || def.packId;
+  const notice =
+    'Este instrumento no está disponible en Telar hasta obtener permiso escrito del titular de derechos. Los tratamientos que ya lo tienen siguen abriéndolo. Para tamizaje de trauma se usa PCL-5 (dominio público).';
+  const body = `
+    <article class="module-detail">
+      <section class="page-hero">
+        <div class="container">
+          <p class="module-breadcrumb"><a href="index.html">Módulos</a> · ${escapeHtml(CATEGORY_LABELS[def.category] || def.category)}</p>
+          <p class="post-meta"><span>${escapeHtml(pack)}</span><span>No disponible en el catálogo</span></p>
+          <h1>${escapeHtml(label)}</h1>
+          <p class="page-hero-lead">${escapeHtml(notice)}</p>
+        </div>
+      </section>
+      <section>
+        <div class="container module-detail-body">
+          <h2 class="section-title section-title--sm">Estado de licencia</h2>
+          <p>${escapeHtml(notice)}</p>
+          ${psychBlock(psych)}
+          <p class="module-footer-note">Telar es una herramienta de registro y seguimiento clínico. Este módulo no diagnostica ni prescribe; las decisiones clínicas son responsabilidad del profesional tratante.</p>
+          <p><a href="index.html" class="btn btn-secondary">← Volver al catálogo</a></p>
+        </div>
+      </section>
+    </article>`;
+
+  return pageShell({
+    title: `${label} — no disponible — Telar`,
+    description: notice.slice(0, 155),
+    canonical: `https://telarapp.cl/modules/${id}`,
+    depth: 1,
+    body,
+    schema: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: `${label} — no disponible — Telar`,
+          url: `https://telarapp.cl/modules/${id}`,
+          inLanguage: 'es-CL',
+          description: notice,
+          isPartOf: { '@type': 'WebSite', name: 'Telar', url: 'https://telarapp.cl/' },
         },
       ],
     },
@@ -520,6 +578,8 @@ const ids = Object.keys(modules).sort((a, b) =>
   modules[a].label.localeCompare(modules[b].label, 'es')
 );
 
+const catalogIds = ids.filter((id) => !LICENSE_PENDING_MODULE_TYPES.has(id));
+
 mkdirSync(OUT_DIR, { recursive: true });
 
 // Remove old generated pages (keep nothing stale)
@@ -528,7 +588,7 @@ for (const f of readdirSync(OUT_DIR)) {
 }
 
 const grouped = {};
-for (const id of ids) {
+for (const id of catalogIds) {
   const def = modules[id];
   const cat = def.category || 'otros';
   if (!grouped[cat]) grouped[cat] = [];
@@ -538,13 +598,16 @@ for (const cat of Object.keys(grouped)) {
   grouped[cat].sort((a, b) => a[1].label.localeCompare(b[1].label, 'es'));
 }
 
-writeFileSync(join(OUT_DIR, 'index.html'), indexPage(grouped, ids.length), 'utf8');
+writeFileSync(join(OUT_DIR, 'index.html'), indexPage(grouped, catalogIds.length), 'utf8');
 
 for (const id of ids) {
   const def = modules[id];
   const psych = PSYCH[id] || null;
   const handout = EXTRA_HANDOUT_DEFS[id] || TCC_HANDOUT_DEFS[id] || null;
-  writeFileSync(join(OUT_DIR, `${id}.html`), detailPage(id, def, psych, handout), 'utf8');
+  const html = LICENSE_PENDING_MODULE_TYPES.has(id)
+    ? unavailablePage(id, def, psych)
+    : detailPage(id, def, psych, handout);
+  writeFileSync(join(OUT_DIR, `${id}.html`), html, 'utf8');
 }
 
 // Nada de stub en landing/modules.html: con cleanUrls, ese archivo y
@@ -557,7 +620,7 @@ const SITEMAP = join(ROOT, 'landing/sitemap.xml');
 const MARK_START = '<!-- modules:start -->';
 const MARK_END = '<!-- modules:end -->';
 const today = new Date().toISOString().slice(0, 10);
-const moduleUrls = ids
+const moduleUrls = catalogIds
   .map(
     (id) => `  <url>
     <loc>https://telarapp.cl/modules/${id}</loc>
@@ -579,7 +642,7 @@ if (from === -1 || to === -1) {
     `${sitemap.slice(0, from + MARK_START.length)}\n${moduleUrls}\n  ${sitemap.slice(to)}`,
     'utf8'
   );
-  console.log(`Sitemap: ${ids.length} URLs de módulos actualizadas.`);
+  console.log(`Sitemap: ${catalogIds.length} URLs de módulos actualizadas.`);
 }
 
-console.log(`Generated ${ids.length} module pages + index in landing/modules/`);
+console.log(`Generated ${catalogIds.length} module pages + ${ids.length - catalogIds.length} pending + index in landing/modules/`);

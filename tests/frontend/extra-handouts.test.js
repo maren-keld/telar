@@ -58,6 +58,8 @@ test('las categorías agrupan por función en la hora, no por escuela', async ()
   assert.ok(byId.significado.types.includes('sig_felt_sense'));
   assert.ok(byId.tcc.types.includes('tcc_exposicion'));
   assert.ok(byId.tcc.types.includes('tcc_experimento'));
+  assert.ok(!byId.pruebas.types.includes('iesr'));
+  assert.ok(!byId.pruebas.types.includes('sprint_ecl'));
   assert.ok(!byId.intervencion.types.includes('tcc_exposicion'));
   assert.ok(!byId.tcc.types.includes('tcc_plan_seguridad'));
   assert.ok(!byId.tcc.types.includes('tcc_autoconceptos'));

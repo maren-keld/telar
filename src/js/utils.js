@@ -131,6 +131,21 @@ export function bindChileanRutInput(input) {
   });
 }
 
+/** Mensaje usable de un `throw` de Tauri: a veces es string, no Error. */
+export function invokeErrorMessage(err, fallback = 'Algo salió mal') {
+  if (err == null) return fallback;
+  if (typeof err === 'string' && err.trim()) return err.trim();
+  if (typeof err?.message === 'string' && err.message.trim()) return err.message.trim();
+  if (typeof err?.error === 'string' && err.error.trim()) return err.error.trim();
+  try {
+    const s = JSON.stringify(err);
+    if (s && s !== '{}' && s !== 'null') return s;
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
 export async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);

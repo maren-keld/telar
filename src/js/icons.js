@@ -53,6 +53,7 @@ export const SETTINGS_ICONS = {
   export: svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   wipe: svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>'),
   info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>'),
+  notify: svg('<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>'),
   supervision: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 19v-1a6 6 0 019.5-4.9"/><circle cx="17" cy="13" r="2.5"/><path d="M12.5 20v-.6a4.5 4.5 0 019 0v.6"/>'),
   update: svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'),
   resetPlan: ICON_SWAP,

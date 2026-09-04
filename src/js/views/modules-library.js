@@ -1,4 +1,5 @@
 import { getModuleDefs } from '../config.js';
+import { isLicensePendingModule } from '../license-pending-modules.js';
 import { CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openCreateModuleModal } from '../components/create-module-modal.js';
@@ -13,7 +14,7 @@ import {
   resolveModuleDef,
 } from '../custom-modules.js';
 import { exportPackToPath, installPackFromPath, modulesOfPack } from '../pack-import.js';
-import { escapeHtml, toast } from '../utils.js';
+import { escapeHtml, invokeErrorMessage, toast } from '../utils.js';
 import { openExternalUrl, pickPackFile, pickPackSavePath } from '../tauri-bridge.js';
 
 function moduleTile(type, def, { kind = '' } = {}) {
@@ -24,9 +25,14 @@ function moduleTile(type, def, { kind = '' } = {}) {
       : isCustom
         ? '<span class="badge badge--info">Personalizado</span>'
         : '';
+  const parts = (def.label || '').split(' — ');
+  const displayName = parts[0];
+  const categoryTag = parts[1]
+    ? `<span class="badge badge--subtle">${escapeHtml(parts[1])}</span>`
+    : '';
   return `
     <article class="module-tile${isCustom ? ' module-tile--custom' : ''}" data-type="${escapeHtml(type)}">
-      <h3 class="module-tile__title">${escapeHtml(def.label)}</h3>
+      <h3 class="module-tile__title">${escapeHtml(displayName)} ${categoryTag}</h3>
       <p class="module-tile__desc">${escapeHtml(def.description || 'Módulo clínico.')}</p>
       ${badge}
     </article>`;
@@ -46,7 +52,9 @@ export async function renderModulesLibrary(container, { onNavigate }) {
   const allCustom = listCustomModules();
   const ownMods = allCustom.filter((cm) => !cm.packId);
   const packs = listCustomModulePacks();
-  const builtins = Object.entries(getModuleDefs()).filter(([t]) => t !== 'selector_modulo');
+  const builtins = Object.entries(getModuleDefs()).filter(
+    ([t]) => t !== 'selector_modulo' && !isLicensePendingModule(t),
+  );
 
   const rerender = () => renderModulesLibrary(container, { onNavigate });
 
@@ -133,7 +141,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
           if (warnings.length) toast(warnings[0]);
         } catch (err) {
           console.error(err);
-          toast(err.message || 'No se pudo importar el pack');
+          toast(invokeErrorMessage(err, 'No se pudo importar el pack'));
         }
       },
     });
@@ -147,7 +155,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
       toast('Pack exportado');
     } catch (err) {
       console.error(err);
-      toast(err.message || 'No se pudo exportar el pack');
+      toast(invokeErrorMessage(err, 'No se pudo exportar el pack'));
     }
   });
 
@@ -162,7 +170,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
         toast('Pack exportado');
       } catch (err) {
         console.error(err);
-        toast(err.message || 'No se pudo exportar el pack');
+        toast(invokeErrorMessage(err, 'No se pudo exportar el pack'));
       }
     });
   });

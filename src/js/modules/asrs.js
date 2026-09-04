@@ -1,8 +1,9 @@
 import { bindAutoSave, collectFormData } from '../autobind.js';
 import {
-  ASRS_TOTAL,
+  ASRS_SCREENER_ITEMS,
   asrsScreenLabel,
   computeAsrsScores,
+  mergeAsrsScreenerAnswers,
 } from '../asrs-scoring.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
@@ -42,50 +43,13 @@ function items() {
       'asrs.q6',
       '¿Con qué frecuencia te sientes demasiado activo/a y te sientes impulsado/a a hacer cosas, como si estuvieras accionado/a por un motor?',
     ),
-    t(
-      'asrs.q7',
-      '¿Con qué frecuencia cometes errores de descuido cuando tienes que trabajar en un proyecto aburrido o difícil?',
-    ),
-    t(
-      'asrs.q8',
-      '¿Con qué frecuencia tienes dificultad para mantener la atención cuando haces un trabajo aburrido o repetitivo?',
-    ),
-    t(
-      'asrs.q9',
-      '¿Con qué frecuencia tienes dificultad para concentrarte en lo que la gente te dice, incluso cuando te hablan directamente?',
-    ),
-    t(
-      'asrs.q10',
-      '¿Con qué frecuencia pierdes cosas o tienes dificultad para encontrarlas en casa o en el trabajo?',
-    ),
-    t('asrs.q11', '¿Con qué frecuencia te distraes con la actividad o ruido a tu alrededor?'),
-    t(
-      'asrs.q12',
-      '¿Con qué frecuencia te levantas de tu asiento en reuniones u otras situaciones en las que se espera que permanezcas sentado/a?',
-    ),
-    t('asrs.q13', '¿Con qué frecuencia te sientes inquieto/a o agitado/a?'),
-    t(
-      'asrs.q14',
-      '¿Con qué frecuencia tienes dificultad para relajarte y desconectar cuando tienes tiempo para ti mismo/a?',
-    ),
-    t(
-      'asrs.q15',
-      '¿Con qué frecuencia te das cuenta de que hablas demasiado cuando estás en situaciones sociales?',
-    ),
-    t(
-      'asrs.q16',
-      'Cuando estás en una conversación, ¿con qué frecuencia terminas las frases de las personas con las que hablas, antes de que ellas terminen?',
-    ),
-    t(
-      'asrs.q17',
-      '¿Con qué frecuencia tienes dificultad para esperar tu turno en situaciones en las que hay que hacerlo?',
-    ),
-    t('asrs.q18', '¿Con qué frecuencia interrumpes a los demás cuando están ocupados?'),
   ];
 }
 
 function countAnswered(answers) {
-  return answers.filter((v) => v !== null && v !== undefined && v !== '').length;
+  return answers
+    .slice(0, ASRS_SCREENER_ITEMS)
+    .filter((v) => v !== null && v !== undefined && v !== '').length;
 }
 
 function itemRowHtml(idx, text, selected, opts) {
@@ -111,7 +75,7 @@ function itemRowHtml(idx, text, selected, opts) {
 
 function answersFromForm(form) {
   const fd = collectFormData(form);
-  return Array.from({ length: ASRS_TOTAL }, (_, i) => {
+  return Array.from({ length: ASRS_SCREENER_ITEMS }, (_, i) => {
     const v = fd[`q${i}`];
     return v === undefined ? null : Number(v);
   });
@@ -119,7 +83,7 @@ function answersFromForm(form) {
 
 export async function renderAsrs(host, moduleRow) {
   const data = parseJsonSafe(moduleRow.data, {});
-  const answers = Array.isArray(data.answers) ? data.answers : Array(ASRS_TOTAL).fill(null);
+  const answers = Array.isArray(data.answers) ? data.answers : Array(ASRS_SCREENER_ITEMS).fill(null);
   const scores = computeAsrsScores(answers);
   const answeredCount = countAnswered(answers);
   const opts = options();
@@ -131,10 +95,10 @@ export async function renderAsrs(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title">${escapeHtml(t('asrs.title', 'ASRS v1.1 — TDAH en adultos'))}</h2>
-            <p class="module-card-head__sub">${escapeHtml(t('asrs.subtitle', '18 ítems · escala 0–4 · últimos 6 meses · tamizaje WHO (Parte A).'))}</p>
+            <h2 class="module-title">${escapeHtml(t('asrs.title', 'ASRS v1.1'))}</h2>
+            <p class="module-card-head__sub">${escapeHtml(t('asrs.subtitle', '6 ítems · escala 0–4 · últimos 6 meses · screener WHO (Parte A).'))}</p>
           </div>
-          <div class="badge badge--info module-card-head__badge" id="asrs-progress" title="${escapeHtml(t('asrs.progress', 'Ítems respondidos'))}">${answeredCount}/${ASRS_TOTAL}</div>
+          <div class="badge badge--info module-card-head__badge" id="asrs-progress" title="${escapeHtml(t('asrs.progress', 'Ítems respondidos'))}">${answeredCount}/${ASRS_SCREENER_ITEMS}</div>
         </div>
 
         <div class="psych-scores asrs-scores" id="asrs-scores">
@@ -142,11 +106,6 @@ export async function renderAsrs(host, moduleRow) {
             <span class="psych-score-pill__label">${escapeHtml(t('asrs.partA', 'Parte A (tamizaje)'))}</span>
             <strong id="asrs-part-a">${scores.partAAnswered ? `${scores.partAPositive}/6` : '—'}</strong>
             <span id="asrs-screen-label">${escapeHtml(scores.partAAnswered >= 4 ? asrsScreenLabel(scores.screenPositive) : '—')}</span>
-          </div>
-          <div class="psych-score-pill asrs-score-pill asrs-score-pill--total" id="asrs-total-pill">
-            <span class="psych-score-pill__label">${escapeHtml(t('asrs.total', 'Suma total'))}</span>
-            <strong id="asrs-total">${scores.total === null ? '—' : scores.total}</strong>
-            <span>${escapeHtml(t('asrs.totalMax', 'máx. 72'))}</span>
           </div>
         </div>
       </div>
@@ -159,13 +118,10 @@ export async function renderAsrs(host, moduleRow) {
               ${opts.map((o) => `<span title="${escapeHtml(o.label)}">${escapeHtml(o.label)}</span>`).join('')}
             </div>
           </div>
-          <p class="asrs-section-label">${escapeHtml(t('asrs.sectionA', 'Parte A — Tamizaje (ítems 1–6)'))}</p>
-          ${itemList.slice(0, 6).map((text, idx) => itemRowHtml(idx, text, answers[idx], opts)).join('')}
-          <p class="asrs-section-label">${escapeHtml(t('asrs.sectionB', 'Parte B — Síntomas adicionales (ítems 7–18)'))}</p>
-          ${itemList.slice(6).map((text, idx) => itemRowHtml(idx + 6, text, answers[idx + 6], opts)).join('')}
+          ${itemList.map((text, idx) => itemRowHtml(idx, text, answers[idx], opts)).join('')}
         </form>
 
-        <p class="asrs-note">${escapeHtml(t('asrs.note', 'Adult ADHD Self-Report Scale (Kessler et al., WHO). Parte A ≥4 síntomas positivos sugiere tamizaje consistente con TDAH. No sustituye evaluación clínica.'))}</p>
+        <p class="asrs-note">${escapeHtml(t('asrs.note', 'Adult ADHD Self-Report Scale (ASRS-v1.1) Screener © World Health Organization. Uso con atribución; no se requiere aprobación previa para el screener de 6 ítems. Parte A ≥4 síntomas positivos sugiere tamizaje consistente con TDAH. No sustituye evaluación clínica.'))}</p>
       </div>
     </div>
   `;
@@ -174,21 +130,20 @@ export async function renderAsrs(host, moduleRow) {
   const progressEl = host.querySelector('#asrs-progress');
 
   const persist = async () => {
-    const next = answersFromForm(form);
+    const next = mergeAsrsScreenerAnswers(answersFromForm(form), answers);
     await syncModuleReadableText(moduleRow, { answers: next }, 'completado');
   };
   bindAutoSave(form, persist, workspaceAutoSaveStatus());
 
   const recomputeLive = () => {
-    const next = answersFromForm(form);
+    const next = mergeAsrsScreenerAnswers(answersFromForm(form), answers);
     const s = computeAsrsScores(next);
     const answered = countAnswered(next);
 
-    if (progressEl) progressEl.textContent = `${answered}/${ASRS_TOTAL}`;
+    if (progressEl) progressEl.textContent = `${answered}/${ASRS_SCREENER_ITEMS}`;
 
     const partAEl = host.querySelector('#asrs-part-a');
     const screenLabelEl = host.querySelector('#asrs-screen-label');
-    const totalEl = host.querySelector('#asrs-total');
     const screenPill = host.querySelector('#asrs-screen-pill');
 
     if (partAEl) partAEl.textContent = s.partAAnswered ? `${s.partAPositive}/6` : '—';
@@ -196,7 +151,6 @@ export async function renderAsrs(host, moduleRow) {
       screenLabelEl.textContent =
         s.partAAnswered >= 4 ? asrsScreenLabel(s.screenPositive) : '—';
     }
-    if (totalEl) totalEl.textContent = s.total === null ? '—' : String(s.total);
     if (screenPill) {
       const cls =
         s.partAAnswered >= 4 && s.screenPositive ? 'asrs-band--pos' : 'asrs-band--neg';

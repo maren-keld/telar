@@ -18,7 +18,7 @@ import {
   getTreatment,
   swapModuleToSelector,
 } from '../db.js';
-import { renderModule, teardownBilateralStimulation } from '../modules/index.js';
+import { renderModule, teardownBilateralStimulation, teardownInteractiveHtml } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
 import { exportCasePresentationPdf } from '../export-case-presentation-pdf.js';
@@ -29,7 +29,8 @@ import { tccHandoutDef } from '../tcc-handout-defs.js';
 import { ICON_DOWNLOAD, ICON_LINK, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
 import { openShareModuleModal } from '../components/share-module-modal.js';
 import { shareableContentFor } from '../share-content.js';
-import { shareInfo, startShareAutoSync } from '../share-sync.js';
+import { shareAnsweredAt, shareInfo } from '../share-sync.js';
+import { formatShareAnsweredAt } from '../share-notify.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
 import {
   bindCategoryCollapse,
@@ -56,13 +57,6 @@ const collapsedSessionsByTreatment = new Map();
 /** Posición de scroll del centro a restaurar tras re-render (p. ej. borrar módulo). */
 let pendingCenterScrollRestore = null;
 
-/** Consulta periódica de respuestas de pacientes; una sola por workspace abierto. */
-let stopShareSync = null;
-
-function stopShareAutoSync() {
-  stopShareSync?.();
-  stopShareSync = null;
-}
 
 export function moduleLabel(type) {
   return moduleLabelFor(type);
@@ -377,23 +371,31 @@ export async function renderWorkspace(
   container.querySelector('[data-back]')?.addEventListener('click', () => {
     teardownNeurofeedback();
     teardownBilateralStimulation();
-    stopShareAutoSync();
+    teardownInteractiveHtml('all');
     onNavigate({ view: 'treatments' });
   });
 
-  // Mientras el workspace esté abierto, las respuestas que manden los pacientes
-  // caen solas en su módulo.
-  stopShareAutoSync();
-  stopShareSync = startShareAutoSync(treatmentId, (applied) => {
-    if (!container.isConnected) return;
-    toast(applied === 1 ? 'Llegó una respuesta del paciente' : `Llegaron ${applied} respuestas`);
-    void renderWorkspace(container, {
-      treatmentId,
-      sessionId: activeSessionId,
-      moduleId: activeModule?.id,
-      onNavigate,
-    });
-  });
+  container._shareAppliedAbort?.abort();
+  const shareAppliedAbort = new AbortController();
+  container._shareAppliedAbort = shareAppliedAbort;
+  document.addEventListener(
+    'telar:share-applied',
+    (event) => {
+      if (!container.isConnected) return;
+      const items = event.detail?.items || [];
+      if (!items.some((item) => String(item.treatmentId) === String(treatmentId))) return;
+      const root = container.querySelector('#workspace-center-scroll');
+      pendingCenterScrollRestore = root?.scrollTop ?? 0;
+      void renderWorkspace(container, {
+        treatmentId,
+        sessionId: activeSessionId,
+        moduleId: activeModule?.id,
+        onNavigate,
+        forceFullRender: true,
+      });
+    },
+    { signal: shareAppliedAbort.signal },
+  );
 
   container.querySelector('#btn-patient-menu')?.addEventListener('click', (e) => {
     openWorkspacePatientMenu(e.currentTarget, treatment, {
@@ -744,8 +746,19 @@ function createBotoneraEl({ isActive }) {
   return actions;
 }
 
-function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
+function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, shareAnswered, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
   // Derecha → izquierda: cerrar, cambiar, imprimir, enviar, ayuda.
+  if (shareAnswered) {
+    const when = formatShareAnsweredAt(shareAnswered);
+    const tag = document.createElement('span');
+    tag.className = 'share-answered-tag';
+    tag.title = when ? `Respondido por el enlace · ${when}` : 'Respondido por el enlace';
+    tag.innerHTML = `<span class="share-answered-tag__label">Respondido por el enlace</span>${
+      when ? `<span class="share-answered-tag__when">${escapeHtml(when)}</span>` : ''
+    }`;
+    actions.appendChild(tag);
+  }
+
   if (isNf) {
     const helpBtn = document.createElement('button');
     helpBtn.type = 'button';
@@ -924,6 +937,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
         deletable,
         isNf,
         shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
+        shareAnswered: shareable ? shareAnsweredAt(mod.data) : null,
         moduleLabelText: moduleLabel(mod.module_type),
         onSwap: () => ctx.onSwap(mod.id, session.id),
         onPrint: () => printModulePdf(mod, treatment.patient_name),

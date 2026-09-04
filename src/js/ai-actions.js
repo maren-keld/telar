@@ -6,6 +6,7 @@
  * módulos y se aplican al tratamiento. El bloque se conserva en el contenido
  * de la nota (persiste sin migración de esquema) y se oculta al renderizar.
  */
+import { isLicensePendingModule } from './license-pending-modules.js';
 import { categoryLabel } from './module-categories.js';
 import { getModuleDefs } from './config.js';
 import { CUSTOM_ITEM_TYPES, isValidItemType, itemTypeNeedsOptions } from './custom-module-items.js';
@@ -27,13 +28,13 @@ const ACTION_BLOCK_RE =
 const APPLIED_MARKER_RE = /<!--\s*telar-action-applied:(\d+)\s*-->/gi;
 const DISMISSED_MARKER_RE = /<!--\s*telar-action-dismissed:(\d+)\s*-->/gi;
 
-/** Módulos que la IA no debe proponer (placeholders o de uso interno). */
+/** Módulos que la IA no debe proponer (placeholders, uso interno o licencia pendiente). */
 const NON_PROPOSABLE = new Set(['selector_modulo']);
 
 export function listProposableModules() {
   const defs = getModuleDefs();
   return Object.entries(defs)
-    .filter(([id]) => !NON_PROPOSABLE.has(id))
+    .filter(([id]) => !NON_PROPOSABLE.has(id) && !isLicensePendingModule(id))
     .map(([id, def]) => ({
       id,
       label: moduleLabelI18n(id, def.label) || def.label || id,
