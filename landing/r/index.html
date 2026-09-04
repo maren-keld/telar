@@ -81,6 +81,20 @@
     .error { color: #922b21; }
     [hidden] { display: none !important; }
     iframe.experience { width: 100%; border: 0; border-radius: var(--radius); min-height: 520px; }
+    .warn { background: #fdf2f0; border-color: #f0c4bc; color: #7a2e24; }
+    .acts h2, .quiz-title { font-size: 1.02rem; margin: 0 0 8px; }
+    .acts ul { margin: 0; padding-left: 1.2rem; }
+    .acts li { margin: 6px 0; }
+    .field { padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .field:last-child { border-bottom: 0; }
+    .field__label { display: block; font-weight: 600; margin: 0 0 6px; }
+    .hint { color: var(--muted); font-size: 0.88rem; margin: 0 0 10px; }
+    textarea.hw, input.hw-num {
+      width: 100%; font: inherit; color: inherit; background: var(--card);
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px;
+    }
+    textarea.hw { resize: vertical; min-height: 88px; line-height: 1.45; }
+    input.hw-num { min-height: 48px; font-size: 1.05rem; }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #10151d; --card: #171e28; --text: #e8edf5; --muted: #9aa8bd;
@@ -88,6 +102,7 @@
       }
       .opt { background: var(--card); }
       .bar { background: var(--card); }
+      .warn { background: #2a1a18; border-color: #5a3330; color: #f3c7c1; }
     }
   </style>
 </head>
@@ -96,7 +111,7 @@
     <div class="brand"><img src="/assets/icon.png" alt="" width="22" height="22"> Telar</div>
 
     <div id="loading" class="card center">
-      <p class="sub">Abriendo el cuestionario…</p>
+      <p class="sub">Abriendo…</p>
     </div>
 
     <div id="fail" class="card center" hidden>

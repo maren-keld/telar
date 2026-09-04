@@ -1,5 +1,5 @@
 /**
- * Cifrado de los formularios que se envían al paciente por enlace.
+ * Encriptado de los formularios que se envían al paciente por enlace.
  *
  * La llave se genera en la app, viaja solo en el fragmento (`#`) del enlace y
  * nunca se manda al servidor: los navegadores no incluyen el fragmento en la
@@ -14,7 +14,7 @@ const KEY_BYTES = 32;
 
 function subtle() {
   const c = globalThis.crypto;
-  if (!c?.subtle) throw new Error('Este navegador no soporta cifrado (WebCrypto).');
+  if (!c?.subtle) throw new Error('Este navegador no soporta encriptar datos (WebCrypto).');
   return c.subtle;
 }
 
@@ -55,7 +55,7 @@ async function importKey(keyB64Url) {
 }
 
 /**
- * Cifra un objeto. El resultado es base64 de `iv || ciphertext`, que es lo
+ * Encripta un objeto. El resultado es base64 de `iv || ciphertext`, que es lo
  * único que llega al servidor.
  */
 export async function encryptShare(keyB64Url, payload) {
@@ -70,7 +70,7 @@ export async function encryptShare(keyB64Url, payload) {
   return bytesToBase64(envelope);
 }
 
-/** Descifra un sobre creado por `encryptShare`. */
+/** Desencripta un sobre creado por `encryptShare`. */
 export async function decryptShare(keyB64Url, envelopeBase64) {
   const key = await importKey(keyB64Url);
   const envelope = base64ToBytes(String(envelopeBase64).trim());

@@ -131,6 +131,164 @@ function renderQuestionnaire(def, onSubmit) {
   refresh();
 }
 
+/* ------------------------ handout TCC / narrativa --------------------- */
+
+function fieldFilled(form, field) {
+  const name = field.name || field.key;
+  if (field.type === 'radio') {
+    return Boolean(form.querySelector(`input[name="${CSS.escape(name)}"]:checked`));
+  }
+  const input = form.querySelector(`[name="${CSS.escape(name)}"]`);
+  return Boolean(String(input?.value || '').trim());
+}
+
+function readField(form, field) {
+  const name = field.name || field.key;
+  if (field.type === 'radio') {
+    const checked = form.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+    return checked ? checked.value : '';
+  }
+  const input = form.querySelector(`[name="${CSS.escape(name)}"]`);
+  return String(input?.value || '');
+}
+
+function sectionHtml(s) {
+  const hint = s.hint ? `<p class="hint">${escapeHtml(s.hint)}</p>` : '';
+  if (s.type === 'radio') {
+    return `
+      <div class="field" data-field="${escapeHtml(s.key)}">
+        <p class="field__label">${escapeHtml(s.title)}</p>
+        ${hint}
+        <div class="opts" role="radiogroup" aria-label="${escapeHtml(s.title)}">
+          ${(s.options || [])
+            .map(
+              (o) => `<label class="opt">
+            <input type="radio" name="${escapeHtml(s.key)}" value="${escapeHtml(o.v)}" />
+            <span>${escapeHtml(o.label)}</span>
+          </label>`,
+            )
+            .join('')}
+        </div>
+      </div>`;
+  }
+  if (s.type === 'number') {
+    const min = Number.isFinite(s.min) ? s.min : 0;
+    const max = Number.isFinite(s.max) ? s.max : 100;
+    return `
+      <div class="field" data-field="${escapeHtml(s.key)}">
+        <label class="field__label" for="f-${escapeHtml(s.key)}">${escapeHtml(s.title)}</label>
+        ${hint}
+        <input class="hw-num" type="number" inputmode="numeric" id="f-${escapeHtml(s.key)}"
+               name="${escapeHtml(s.key)}" min="${min}" max="${max}" step="1" placeholder="${min}–${max}" />
+      </div>`;
+  }
+  const rows = Math.min(Math.max(Number(s.rows) || 4, 2), 12);
+  return `
+    <div class="field" data-field="${escapeHtml(s.key)}">
+      <label class="field__label" for="f-${escapeHtml(s.key)}">${escapeHtml(s.title)}</label>
+      ${hint}
+      <textarea class="hw" id="f-${escapeHtml(s.key)}" name="${escapeHtml(s.key)}" rows="${rows}"
+                placeholder="Escribe aquí…"></textarea>
+    </div>`;
+}
+
+function quizName(key) {
+  return `quiz__${key}`;
+}
+
+function quizItemHtml(q) {
+  const name = quizName(q.key);
+  return `
+    <div class="field" data-quiz="${escapeHtml(q.key)}">
+      <p class="field__label">${escapeHtml(q.prompt)}</p>
+      <div class="opts" role="radiogroup" aria-label="${escapeHtml(q.prompt)}">
+        ${(q.options || [])
+          .map(
+            (o) => `<label class="opt">
+          <input type="radio" name="${escapeHtml(name)}" value="${escapeHtml(o.v)}" />
+          <span>${escapeHtml(o.label)}</span>
+        </label>`,
+          )
+          .join('')}
+      </div>
+    </div>`;
+}
+
+function renderHandout(payload, onSubmit) {
+  const sections = payload.sections || [];
+  const quiz = payload.quiz || [];
+  const groups = payload.activityGroups || [];
+  const total = sections.length + quiz.length;
+  const host = el('form-host');
+
+  host.innerHTML = `
+    <div class="card">
+      <h1>${escapeHtml(payload.title || 'Tarea')}</h1>
+      ${payload.subtitle ? `<p class="sub">${escapeHtml(payload.subtitle)}</p>` : ''}
+      ${payload.intro ? `<p class="instructions">${escapeHtml(payload.intro)}</p>` : ''}
+    </div>
+    ${payload.warning ? `<div class="card warn" role="note">${escapeHtml(payload.warning)}</div>` : ''}
+    ${groups
+      .map(
+        (g) => `
+      <div class="card acts">
+        ${g.title ? `<h2>${escapeHtml(g.title)}</h2>` : ''}
+        <ul>${(g.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+      </div>`,
+      )
+      .join('')}
+    <form class="card" id="q-form">
+      ${sections.map((s) => sectionHtml(s)).join('')}
+      ${
+        quiz.length
+          ? `<h2 class="quiz-title">Casos prácticos</h2>
+             <p class="hint">Marca una opción en cada caso.</p>
+             ${quiz.map((q) => quizItemHtml(q)).join('')}`
+          : ''
+      }
+    </form>
+    <p class="note">Lo que escribas se encripta en este dispositivo y solo lo puede abrir tu terapeuta.
+      Esto no es un diagnóstico ni reemplaza una evaluación clínica.</p>`;
+
+  const form = el('q-form');
+  const checklist = [
+    ...sections.map((s) => ({ kind: 'field', key: s.key, type: s.type })),
+    ...quiz.map((q) => ({ kind: 'quiz', key: q.key, name: quizName(q.key), type: 'radio' })),
+  ];
+
+  const refresh = () => {
+    const answered = checklist.filter((item) => fieldFilled(form, item)).length;
+    el('count').textContent = `${answered} de ${total} completadas`;
+    el('send').disabled = answered === 0;
+  };
+
+  form.addEventListener('input', refresh);
+  form.addEventListener('change', refresh);
+
+  el('send').addEventListener('click', () => {
+    const missing = checklist.find((item) => !fieldFilled(form, item));
+    if (missing) {
+      const sel =
+        missing.kind === 'quiz'
+          ? `[data-quiz="${CSS.escape(missing.key)}"]`
+          : `[data-field="${CSS.escape(missing.key)}"]`;
+      form.querySelector(sel)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el('count').textContent = 'Falta completar un apartado';
+      return;
+    }
+    const fields = {};
+    for (const s of sections) fields[s.key] = readField(form, s);
+    const quizAnswers = {};
+    for (const q of quiz) quizAnswers[q.key] = readField(form, { name: quizName(q.key), type: 'radio' });
+    onSubmit({ fields, quiz: quiz.length ? quizAnswers : undefined });
+  });
+
+  el('loading').hidden = true;
+  host.hidden = false;
+  el('bar').hidden = false;
+  refresh();
+}
+
 /* ------------------------ experiencia interactiva --------------------- */
 
 function renderExperience(payload, onSubmit) {
@@ -246,6 +404,7 @@ async function main() {
   };
 
   if (payload.kind === 'interactive') renderExperience(payload, submit);
+  else if (payload.kind === 'handout') renderHandout(payload, submit);
   else renderQuestionnaire(payload.def || payload, submit);
   return undefined;
 }

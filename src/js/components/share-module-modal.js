@@ -31,9 +31,9 @@ async function copy(text) {
 
 /**
  * @param {object} moduleRow Fila de `session_modules`.
- * @param {{ label: string, def?: object, interactive?: object, onChange?: Function }} opts
+ * @param {{ label: string, def?: object, interactive?: object, handout?: object, onChange?: Function }} opts
  */
-export function openShareModuleModal(moduleRow, { label, def, interactive, onChange } = {}) {
+export function openShareModuleModal(moduleRow, { label, def, interactive, handout, onChange } = {}) {
   const root = document.getElementById('modal-root');
 
   const paint = (state) => {
@@ -61,7 +61,7 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
                   El enlace completo es la llave: si lo cortas, el paciente no podrá abrirlo.
                 </p>`
               : `<p class="share-modal__hint">
-                  Se crea un enlace con el cuestionario cifrado. Ni Telar ni el servidor pueden
+                  Se crea un enlace cifrado con este módulo. Ni Telar ni el servidor pueden
                   leer lo que responde el paciente: la llave viaja solo dentro del enlace.
                 </p>`
           }
@@ -103,7 +103,7 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, onCha
       btn.disabled = true;
       btn.textContent = 'Creando…';
       try {
-        const created = await createModuleShareLink(moduleRow, { def, interactive });
+        const created = await createModuleShareLink(moduleRow, { def, interactive, handout });
         const copied = await copy(created.url);
         toast(copied ? 'Enlace creado y copiado' : 'Enlace creado');
         const fresh = await getModule(moduleRow.id);

@@ -1,9 +1,10 @@
 /**
  * Compartir un módulo con el paciente por enlace y traer su respuesta.
  *
- * El cuestionario se cifra en la app, el servidor solo guarda el sobre y la
- * llave viaja en el fragmento del enlace. Mientras haya módulos esperando
- * respuesta, la app consulta cada cierto rato y vuelca lo que llegó en la ficha.
+ * El contenido (escala, tarea TCC/narrativa o experiencia) se cifra en la app,
+ * el servidor solo guarda el sobre y la llave viaja en el fragmento del enlace.
+ * Mientras haya módulos esperando respuesta, la app consulta cada cierto rato
+ * y vuelca lo que llegó en la ficha.
  */
 import { getModule, query } from './db.js';
 import { moduleLabelFor } from './custom-modules.js';
@@ -14,6 +15,7 @@ import { invokeErrorMessage, parseJsonSafe } from './utils.js';
 import { decryptShare, encryptShare, generateShareKey } from '../lib/share-crypto.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { announceShareResponses, shareAnsweredAt } from './share-notify.js';
+import { handoutStorage, patchFromHandoutResponse } from './share-handout.js';
 
 export { shareAnsweredAt };
 
@@ -124,26 +126,40 @@ async function shareContextFor(moduleRow) {
 /**
  * Crea el enlace para un módulo y lo deja registrado en su `data.share`.
  * @param {object} moduleRow Fila de `session_modules`.
- * @param {{ def?: object, interactive?: object, patientAlias?: string }} content
+ * @param {{ def?: object, interactive?: object, handout?: object, patientAlias?: string }} content
  * @returns {Promise<{ url: string, token: string, expiresAt: string }>}
  */
-export async function createModuleShareLink(moduleRow, { def, interactive, patientAlias } = {}) {
+export async function createModuleShareLink(moduleRow, { def, interactive, handout, patientAlias } = {}) {
   const email = String(loadProfile().email || '').trim();
   if (!email) {
     throw new Error('Agrega tu correo en Ajustes para poder enviar enlaces a pacientes.');
   }
-  if (!def && !interactive) throw new Error('Este módulo no se puede enviar por enlace.');
+  if (!def && !interactive && !handout) throw new Error('Este módulo no se puede enviar por enlace.');
 
   const key = generateShareKey();
-  const payload = interactive
-    ? {
-        kind: 'interactive',
-        title: interactive.title,
-        instructions: interactive.instructions || '',
-        html: interactive.html,
-        patientAlias: patientAlias || '',
-      }
-    : { kind: 'questionnaire', def, patientAlias: patientAlias || '' };
+  const alias = patientAlias || '';
+  let payload;
+  let kind;
+  let storage;
+  if (interactive) {
+    kind = 'interactive';
+    storage = { kind: 'interactive' };
+    payload = {
+      kind: 'interactive',
+      title: interactive.title,
+      instructions: interactive.instructions || '',
+      html: interactive.html,
+      patientAlias: alias,
+    };
+  } else if (handout) {
+    kind = 'handout';
+    storage = handoutStorage(handout);
+    payload = { kind: 'handout', ...handout, patientAlias: alias };
+  } else {
+    kind = 'questionnaire';
+    storage = def?.storage || { kind: 'answers' };
+    payload = { kind: 'questionnaire', def, patientAlias: alias };
+  }
 
   const payload_ct = await encryptShare(key, payload);
 
@@ -153,8 +169,8 @@ export async function createModuleShareLink(moduleRow, { def, interactive, patie
     token,
     key,
     secret: owner_secret,
-    kind: interactive ? 'interactive' : 'questionnaire',
-    storage: def?.storage || { kind: 'answers' },
+    kind,
+    storage,
     createdAt: new Date().toISOString(),
     expiresAt: expires_at,
   };
@@ -186,6 +202,9 @@ function patchFromResponse(share, response) {
       summary: typeof response?.summary === 'string' ? response.summary : '',
       completed_at: new Date().toISOString(),
     };
+  }
+  if (share.kind === 'handout' || share.storage?.kind === 'handout') {
+    return patchFromHandoutResponse(share.storage, response);
   }
   const answers = Array.isArray(response?.answers) ? response.answers : [];
   if (share.storage?.kind === 'field') {
