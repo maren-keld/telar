@@ -1,35 +1,35 @@
 /** Preferencias de asistente IA (AI-1). Modelo local se descarga aparte, no va en el .app. */
-import { BUNDLED_MISTRAL_API_KEY } from './ai-secrets.js';
 
 export const AI_MODES = {
   off: {
     id: 'off',
-    label: 'Desactivado (predeterminado)',
-    description: 'Sin asistente IA. Ningún dato clínico sale del equipo por IA.',
-  },
-  local: {
-    id: 'local',
-    label: 'IA local privada (recomendado)',
-    description:
-      'Ollama en tu equipo (~2–5 GB por modelo). Telar lo arranca solo. Los datos no salen del dispositivo. Tarda más en responder que una API.',
+    label: 'Desactivado',
+    description: 'Sin asistente. Ningún dato clínico sale del equipo por IA.',
   },
   api: {
     id: 'api',
-    label: 'API externa',
+    label: 'IA en la nube (recomendada)',
     description:
-      'Proveedor compatible OpenAI (p. ej. Mistral, UE). Requiere consentimiento explícito: el contexto clínico sale de tu equipo.',
+      'Mistral en Francia, lista para usar. La primera vez pedimos tu consentimiento: el contexto del caso sale de tu equipo. Telar no lo guarda.',
+  },
+  local: {
+    id: 'local',
+    label: 'En este computador',
+    description:
+      'Ollama en tu equipo (~2–5 GB). Nada sale del dispositivo. Es más lenta y suele responder peor en español clínico.',
   },
 };
 
-/** Orden en UI: desactivado primero (default). Local sigue siendo el modo recomendado. */
-export const AI_MODE_ORDER = ['off', 'local', 'api'];
+/** Nube primero (default). Local queda al fondo. */
+export const AI_MODE_ORDER = ['api', 'off', 'local'];
 
 /** Presets API — OpenAI-compatible. Mistral EU como default privacy-focused. */
 export const AI_API_PRESETS = {
   mistral: {
     id: 'mistral',
     label: 'Mistral AI (UE)',
-    description: 'Empresa europea con servidores en Francia. Requiere clave API propia.',
+    description:
+      'Servidores en Francia. Telar la activa la primera vez (la clave no viaja en el instalador). El caso no pasa por telarapp.cl.',
     serverCountry: 'Francia (Unión Europea)',
     baseUrl: 'https://api.mistral.ai/v1',
     defaultModel: 'mistral-small-latest',
@@ -42,7 +42,7 @@ export const AI_API_PRESETS = {
     id: 'anthropic',
     label: 'Anthropic (Claude)',
     description:
-      'Claude con tu propia clave API. Es el mejor para el creador de módulos. Los datos que envíes salen de tu equipo.',
+      'La más capaz (notas y módulos). Usas tu cuenta de Anthropic: pegas una clave. Los datos salen a Estados Unidos.',
     serverCountry: 'Estados Unidos',
     baseUrl: 'https://api.anthropic.com/v1',
     // Protocolo distinto a OpenAI: el Rust usa /messages y x-api-key.
@@ -95,7 +95,7 @@ export const AI_LOCAL_MODELS = [
     label: 'Qwen 2.5 3B (ligero)',
     sizeHint: '~2 GB descarga',
     ramHint: '8 GB RAM mínimo',
-    recommended: true,
+    recommended: false,
     diff: 'Rápido para probar el flujo. Menos matices en programas largos.',
     caution: 'En programas largos un modelo chico (Qwen 2.5 3B) puede cortar el listado.',
   },
@@ -124,13 +124,22 @@ export const AI_LOCAL_MODELS = [
 ];
 
 export const AI_DEFAULTS = {
-  aiMode: 'off',
+  aiMode: 'api',
   aiLocalModel: 'qwen2.5-3b-instruct-q4',
   aiApiProvider: 'mistral',
   aiApiBase: 'https://api.mistral.ai/v1',
   aiApiModel: 'mistral-small-latest',
-  aiApiKey: BUNDLED_MISTRAL_API_KEY || '',
+  aiApiKey: '',
 };
+
+/** La clave de Mistral ya no se embebe: la entrega el servidor al activar. */
+export function telarProvisionsMistral() {
+  return true;
+}
+
+export function hasBundledMistralKey() {
+  return telarProvisionsMistral();
+}
 
 /** Ollama OpenAI-compatible en el mismo equipo. */
 export const OLLAMA_LOCAL_API_BASE = 'http://127.0.0.1:11434/v1';
@@ -193,7 +202,7 @@ export function resolveAiConfig(profile = {}) {
     providerLabel: preset.label,
     apiBase,
     apiModel,
-    apiKey: profile.aiApiKey || '',
+    apiKey: preset.id === 'mistral' ? '' : profile.aiApiKey || '',
     keyRequired: preset.keyRequired !== false,
     keyHint: preset.keyHint || '',
     // 'anthropic' cambia de endpoint y cabeceras en Rust; vacío = OpenAI-compatible.

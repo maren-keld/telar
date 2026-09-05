@@ -326,6 +326,10 @@ def _create_schema():
 
         ensure_share_schema(conn, autoincrement)
 
+        from ai_keys import ensure_schema as ensure_ai_keys_schema
+
+        ensure_ai_keys_schema(conn, autoincrement)
+
 
 def mp_sdk():
     if not MP_TOKEN:
@@ -672,6 +676,12 @@ def create_user_preapproval(sdk, email: str, back_url: str):
     return None, None
 
 
+def _mistral_provision_ready() -> bool:
+    from ai_keys import provision_configured
+
+    return provision_configured()
+
+
 @APP.get("/api/health")
 def health():
     sandbox = subscription_sandbox_status()
@@ -692,6 +702,7 @@ def health():
         "return_url": FRONTEND_RETURN_URL,
         "dev_bypass": dev_bypass_enabled(),
         "usage_opens_total": usage_total,
+        "mistral_provision": _mistral_provision_ready(),
         **sandbox,
     })
 
@@ -1602,8 +1613,10 @@ def webhook():
 register_routes(APP)
 
 from share import register_routes as register_share_routes
+from ai_keys import register_routes as register_ai_key_routes
 
 register_share_routes(APP)
+register_ai_key_routes(APP)
 
 init_db()
 

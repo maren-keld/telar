@@ -14,6 +14,7 @@ import { loadProfile } from '../profile.js';
 import { escapeHtml, practitionerInitials, toast } from '../utils.js';
 import { bindSlidingTabs, revealStreaming } from '../transitions.js';
 import { resolveAiConfig } from '../ai-config.js';
+import { hasAiApiConsent } from '../ai-consent.js';
 import { cancelChatCompletion, chatCompletion, createAiRequest } from '../ai-client.js';
 import { openAiSettingsModal } from './open-ai-settings-modal.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
@@ -288,12 +289,14 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     }
     aiHint.hidden = false;
     aiHint.textContent =
-      'La IA está apagada. Al preguntar se abre la configuración; recomendamos IA local privada.';
+      'La IA está apagada. Al preguntar se abre la configuración; lo recomendado es Mistral (Francia).';
   };
 
   const ensureAiReady = () =>
     new Promise((resolve) => {
-      if (resolveAiConfig(loadProfile()).enabled) {
+      const profile = loadProfile();
+      const cfg = resolveAiConfig(profile);
+      if (cfg.enabled && (cfg.mode !== 'api' || hasAiApiConsent(profile))) {
         resolve(true);
         return;
       }
@@ -420,7 +423,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       if (!q || aiSend.dataset.busy === '1') return;
       const ready = await ensureAiReady();
       if (!ready) {
-        toast('Activa la IA local (recomendado) o una API para consultar el caso.');
+        toast('Activa la IA (Mistral, recomendada) o acepta el aviso para consultar el caso.');
         return;
       }
       lastAiQuestion = q;

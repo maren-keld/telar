@@ -36,7 +36,7 @@ pathlib.Path('src/packs/index.json').write_text(json.dumps({'packs': packs}) + '
 print('→ index.json de release:', packs)
 "
 
-echo "==> Clave Mistral embebida (release comercial)"
+echo "==> IA: sin clave embebida (el servidor la entrega al activar)"
 chmod +x "$ROOT/scripts/write-ai-secrets.sh"
 "$ROOT/scripts/write-ai-secrets.sh"
 

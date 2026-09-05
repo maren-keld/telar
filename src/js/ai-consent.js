@@ -23,18 +23,21 @@ export function getApiTransferNotice(profile = {}) {
     (profile.aiApiBase || preset.baseUrl || '').includes('127.0.0.1') ||
     (profile.aiApiBase || preset.baseUrl || '').includes('localhost');
 
+  const mistral = preset.id === 'mistral' && !isLocalhost;
+
   return {
     provider,
     serverCountry: isLocalhost ? 'Este equipo (localhost)' : serverCountry,
     dataSent: AI_API_DATA_SENT,
-    legalNote:
-      'La transferencia internacional de datos sensibles de salud es responsabilidad del profesional tratante, conforme a la Ley 19.628. Telar no almacena estos envíos en sus servidores.',
+    legalNote: mistral
+      ? 'Mistral es una empresa europea. Telar no almacena el envío (no pasa por telarapp.cl). Un resumen del caso sale de tu computador a Francia. No es un diagnóstico. El dato de salud es tu responsabilidad (Ley 19.628).'
+      : 'Telar no guarda estos envíos (no pasan por telarapp.cl). El destino es el proveedor que eliges. La responsabilidad del dato de salud es tuya, conforme a la Ley 19.628.',
   };
 }
 
 export function requireAiApiConsent(profile = {}) {
   if (hasAiApiConsent(profile)) return;
   throw new Error(
-    'Debes aceptar el aviso de transferencia de datos en Ajustes → Proveedor de IA antes de enviar contexto clínico a una API externa.',
+    'Antes de enviar un caso a la nube, acepta el aviso de transferencia (Francia / el proveedor que elijas) en Ajustes → Asistente IA.',
   );
 }

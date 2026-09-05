@@ -24,6 +24,10 @@ function apiBase() {
 }
 
 /** Id opaco y estable por instalación. Si no hay storage, no se envía nada. */
+export function getTelarDeviceId() {
+  return deviceId();
+}
+
 function deviceId() {
   try {
     let id = localStorage.getItem(DEVICE_ID_KEY);

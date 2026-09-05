@@ -64,7 +64,7 @@ function toolsAiSectionHtml(profile) {
       ${modeOptions}
     </select>
     <p class="tools-ai-summary" id="tools-ai-summary">${escapeHtml(aiSettingsSummary(profile))}</p>
-    <p class="tools-ai-slow" id="tools-ai-slow" ${mode === 'local' ? '' : 'hidden'}>La IA local tarda más en responder que una API.</p>
+    <p class="tools-ai-slow" id="tools-ai-slow" ${mode === 'local' ? '' : 'hidden'}>En este computador tarda más y suele responder peor que Mistral.</p>
     <div class="tools-ai-local" id="tools-ai-local" ${mode === 'local' ? '' : 'hidden'}>
       <label class="tools-ai-label" for="tools-ai-local-model">Modelo local</label>
       <select id="tools-ai-local-model" class="tools-ai-select" aria-label="Modelo local">
@@ -73,7 +73,7 @@ function toolsAiSectionHtml(profile) {
       <p class="tools-ai-install" id="tools-ai-install" aria-live="polite"></p>
     </div>
     <button type="button" class="btn btn-ghost btn-sm tools-ai-config" id="tools-ai-config">
-      ${mode === 'api' ? 'Configurar API…' : 'Descargar / gestionar modelos…'}
+      ${mode === 'api' ? 'Consentimiento y servicio…' : 'Descargar / gestionar modelos…'}
     </button>
     <div class="tools-section-divider"></div>`;
 }

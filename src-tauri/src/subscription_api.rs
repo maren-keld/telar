@@ -200,6 +200,23 @@ pub fn subscription_health(api_base: String) -> Result<Value, String> {
 }
 
 #[tauri::command]
+pub fn mistral_provision(
+    email: String,
+    device_id: String,
+    api_base: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_agent()
+        .post(&format!("{base}/api/ai/mistral-provision"))
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({
+            "email": email,
+            "device_id": device_id,
+        }));
+    handle_response(result, &base, "No se pudo activar la IA de Telar")
+}
+
+#[tauri::command]
 pub fn subscription_status(
     email: String,
     api_base: String,

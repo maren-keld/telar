@@ -354,7 +354,7 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
         <div class="settings-section">
           <h2 class="settings-section__title">Asistente IA</h2>
           <p class="settings-section__hint">
-            Por defecto está desactivada. El modo recomendado es IA local (Ollama): tarda más en responder y no sale de tu equipo. API externa requiere consentimiento y revisión del contexto.
+            Por defecto es Mistral (Francia). La primera vez pedimos consentimiento y Telar pide la clave al servidor: no viaja en el instalador. El caso sale de tu equipo; Telar no lo guarda. Lo de este computador es más privado y suele ser peor.
           </p>
         </div>
         <div class="settings-card">

@@ -5,6 +5,7 @@ use std::process::{Command, Stdio};
 use serde::Deserialize;
 
 mod ai_api;
+mod ai_secret;
 mod desktop_notify;
 mod backup;
 mod interactive;
@@ -483,6 +484,9 @@ pub fn run() {
             cloud_backup_folder_status_cmd,
             ai_api::ai_chat_completion,
             ai_api::ai_chat_cancel,
+            ai_secret::ai_mistral_key_load,
+            ai_secret::ai_mistral_key_store,
+            subscription_api::mistral_provision,
             ollama::ollama_status,
             ollama::ollama_ensure_running,
             ollama::ollama_pull_model,

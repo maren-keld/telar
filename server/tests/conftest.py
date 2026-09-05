@@ -26,6 +26,8 @@ TABLES = (
     "usage_opens",
     "landing_events",
     "shared_forms",
+    "ai_mistral_grants",
+    "ai_mistral_ip_hits",
 )
 
 

@@ -1,4 +1,5 @@
 import { resolveAiConfig } from './ai-config.js';
+import { ensureTelarMistralKey } from './ai-mistral-provision.js';
 import { assertOllamaModelReady } from './ollama-client.js';
 import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
@@ -42,9 +43,13 @@ export async function cancelChatCompletion(request) {
  * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number } }} opts
  */
 export async function chatCompletion({ messages, maxTokens = 512, profile, request } = {}) {
-  const cfg = resolveAiConfig(profile ?? loadProfile());
+  const resolvedProfile = profile ?? loadProfile();
+  const cfg = resolveAiConfig(resolvedProfile);
   if (!cfg.enabled) {
     throw new Error('Asistente IA desactivado. Actívalo en Ajustes → Proveedor de IA.');
+  }
+  if (cfg.mode === 'api' && cfg.providerId === 'mistral') {
+    cfg.apiKey = await ensureTelarMistralKey(resolvedProfile);
   }
   if (!cfg.apiBase) {
     throw new Error('Falta URL base de la API en Ajustes.');

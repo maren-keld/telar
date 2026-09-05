@@ -6,7 +6,9 @@ import {
   AI_MODES,
   getApiPreset,
   ollamaModelFromLocalId,
+  telarProvisionsMistral,
 } from '../ai-config.js';
+import { ensureTelarMistralKey } from '../ai-mistral-provision.js';
 import { getApiTransferNotice, hasAiApiConsent } from '../ai-consent.js';
 import { testAiConnection } from '../ai-client.js';
 import {
@@ -40,8 +42,8 @@ function apiConsentBlockHtml(profile, providerId) {
 
   return `
     <div class="ai-consent-notice" id="ai-api-consent-notice">
-      <p class="ai-consent-notice__title">Transferencia internacional de datos sensibles</p>
-      <p>Al usar <strong>API externa</strong>, Telar envía contexto clínico desde tu equipo hacia un tercero. Telar no almacena esos envíos.</p>
+      <p class="ai-consent-notice__title">La primera vez: el caso sale de tu computador</p>
+      <p>Si usas la IA en la nube, Telar envía contexto del caso a un tercero. <strong>Telar no lo guarda</strong> ni lo ve: va directo desde tu equipo.</p>
       <p><strong>Proveedor:</strong> ${escapeHtml(notice.provider)} · <strong>Servidores:</strong> ${escapeHtml(notice.serverCountry)}</p>
       <p><strong>Datos que pueden enviarse:</strong></p>
       <ul class="ai-consent-notice__list">
@@ -51,7 +53,7 @@ function apiConsentBlockHtml(profile, providerId) {
       ${acceptedLine}
       <label class="ai-consent-notice__check" id="ai-api-consent-label" ${accepted ? 'hidden' : ''}>
         <input type="checkbox" id="ai-api-consent" name="aiApiConsent" />
-        <span>He leído este aviso y asumo la responsabilidad del tratamiento de datos sensibles de mis pacientes al usar una API externa.</span>
+        <span>Entiendo que el contexto del caso viaja al proveedor indicado (con Mistral: Francia) y que Telar no lo almacena. Asumo la responsabilidad sobre los datos de mis pacientes.</span>
       </label>
     </div>`;
 }
@@ -60,9 +62,7 @@ function presetOptionsHtml(selectedId) {
   return Object.values(AI_API_PRESETS)
     .map((p) => {
       const rec =
-        p.recommended && p.id !== 'custom'
-          ? ' · recomendado privacidad'
-          : '';
+        p.id === 'mistral' ? ' · incluida en Telar' : '';
       return `<option value="${p.id}" ${selectedId === p.id ? 'selected' : ''}>${escapeHtml(p.label)}${rec}</option>`;
     })
     .join('');
@@ -174,8 +174,8 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
 
   const intro =
     source === 'dock' || source === 'tools'
-      ? 'El modo recomendado es <strong>IA local privada</strong>: Telar arranca Ollama y los datos no salen de tu computador. La API externa es el plan B (el contexto sale hacia el proveedor).'
-      : 'El modo recomendado es <strong>IA local privada</strong> (Ollama en este equipo). Si eliges API externa, el contexto clínico sale hacia el proveedor que configures — nunca hacia Telarapp.cl. Antes de cada consulta podrás revisar el contexto exacto.';
+      ? 'La IA recomendada es <strong>Mistral (Francia)</strong>, incluida en Telar. La primera vez te pedimos consentimiento: un resumen del caso sale de tu computador. Telar no lo guarda. Lo de este computador es más privado y suele responder peor.'
+      : 'La IA recomendada es <strong>Mistral en Francia</strong>. Telar la incluye. El contexto no pasa por telarapp.cl. Antes de cada consulta puedes revisar exactamente qué se envía.';
 
   const root = document.getElementById('modal-root');
   root.innerHTML = `
@@ -183,8 +183,8 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
       <div class="modal-card settings-ai-modal" role="dialog" aria-labelledby="ai-settings-title">
         <h2 id="ai-settings-title" class="modal-card__title">Asistente IA</h2>
         <p class="settings-ai-modal__intro">${intro}</p>
-        <p class="settings-ai-modal__recommend">Modo recomendado: <strong>IA local privada</strong> (Ollama). Telar lo abre solo. La API externa es el plan B.</p>
-        <p class="settings-ai-slow" role="note">La IA local tarda más en responder que una API.</p>
+        <p class="settings-ai-modal__recommend">Recomendada: <strong>Mistral</strong> (Europa, un clic). En este computador: opcional y más floja.</p>
+        <p class="settings-ai-slow" role="note">La IA en este computador tarda más y suele ser peor que Mistral.</p>
         <p class="settings-ai-busy" id="ai-download-lock" hidden>Descargando modelo. No cierres esta ventana hasta que termine.</p>
         <form id="ai-settings-form" class="settings-ai-form">
           <div class="settings-ai-split">
@@ -194,7 +194,7 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
                 .filter(Boolean)
                 .map(
                   (m) => `
-                <label class="settings-ai-mode${m.id === 'local' ? ' settings-ai-mode--preferred' : ''}">
+                <label class="settings-ai-mode${m.id === 'api' ? ' settings-ai-mode--preferred' : ''}">
                   <input type="radio" name="aiMode" value="${m.id}" ${mode === m.id ? 'checked' : ''} />
                   <span class="settings-ai-mode__text">
                     <strong>${escapeHtml(m.label)}</strong>
@@ -235,23 +235,34 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
 
           <div id="ai-panel-api" class="settings-ai-panel" ${vis.api}>
             ${apiConsentBlockHtml(profile, providerId)}
-            <label class="settings-ai-form__label" for="ai-api-provider">Proveedor</label>
+            <label class="settings-ai-form__label" for="ai-api-provider">Servicio</label>
             <select id="ai-api-provider" name="aiApiProvider" class="input">
               ${presetOptionsHtml(providerId)}
             </select>
             <p id="ai-preset-desc" class="settings-ai-panel__hint">${escapeHtml(preset.description)}</p>
 
-            <label class="settings-ai-form__label" for="ai-api-base">URL base de la API</label>
-            <input type="url" id="ai-api-base" name="aiApiBase" class="input" autocomplete="off"
-              placeholder="https://api.mistral.ai/v1"
-              value="${escapeHtml(apiBase)}"
-              ${isCustom ? '' : 'readonly'} />
+            <div id="ai-api-advanced" ${isCustom ? '' : 'hidden'}>
+              <label class="settings-ai-form__label" for="ai-api-base">URL del servicio</label>
+              <input type="url" id="ai-api-base" name="aiApiBase" class="input" autocomplete="off"
+                placeholder="https://api.mistral.ai/v1"
+                value="${escapeHtml(apiBase)}"
+                ${isCustom ? '' : 'readonly'} />
+            </div>
 
-            <label class="settings-ai-form__label" for="ai-api-key">Clave API</label>
-            <input type="password" id="ai-api-key" name="aiApiKey" class="input" autocomplete="off"
-              placeholder="Clave de tu proveedor"
-              value="${escapeHtml(profile.aiApiKey || '')}" />
-            <p id="ai-key-hint" class="settings-ai-panel__hint">${escapeHtml(preset.keyHint)}</p>
+            <div id="ai-api-key-row" ${providerId === 'mistral' && telarProvisionsMistral() ? 'hidden' : ''}>
+              <label class="settings-ai-form__label" for="ai-api-key">Clave (solo ChatGPT u otro)</label>
+              <input type="password" id="ai-api-key" name="aiApiKey" class="input" autocomplete="off"
+                placeholder="Se pega aquí; no la compartas"
+                value="${escapeHtml(profile.aiApiKey || '')}" />
+              <p id="ai-key-hint" class="settings-ai-panel__hint">${
+                providerId === 'mistral'
+                  ? 'Telar pide la clave al activar. No viaja en el instalador.'
+                  : escapeHtml(preset.keyHint)
+              }</p>
+            </div>
+            <p id="ai-mistral-included" class="settings-ai-panel__hint" ${
+              providerId === 'mistral' ? '' : 'hidden'
+            }>Mistral se activa con tu correo de Telar. La clave no viene en el instalador; queda solo en este computador.</p>
 
             <label class="ai-consent-notice__check">
               <input type="checkbox" name="aiPreviewAsk" ${profile.aiPreviewSkip ? '' : 'checked'} />
@@ -347,7 +358,18 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
   const applyPreset = (pid, keepCustomModel = false) => {
     const p = getApiPreset(pid);
     if (presetDesc) presetDesc.textContent = p.description;
-    if (keyHint) keyHint.textContent = p.keyHint;
+    const hideKey = pid === 'mistral' && telarProvisionsMistral();
+    const keyRow = root.querySelector('#ai-api-key-row');
+    const advanced = root.querySelector('#ai-api-advanced');
+    const included = root.querySelector('#ai-mistral-included');
+    if (keyRow) keyRow.hidden = hideKey;
+    if (advanced) advanced.hidden = pid !== 'custom';
+    if (included) included.hidden = !hideKey;
+    if (keyHint) {
+      keyHint.textContent = hideKey
+        ? 'Telar pide la clave al activar. No viaja en el instalador.'
+        : p.keyHint;
+    }
 
     if (apiModelList) {
       const current = keepCustomModel ? modelHidden?.value : p.defaultModel;
@@ -481,8 +503,8 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
     const p = getApiPreset(draftProfile.aiApiProvider);
     if (!draftProfile.aiApiBase && p.baseUrl) draftProfile.aiApiBase = p.baseUrl;
     if (!draftProfile.aiApiModel && p.defaultModel) draftProfile.aiApiModel = p.defaultModel;
-    if (p.keyRequired && !draftProfile.aiApiKey) {
-      toast('Indica la clave API antes de probar');
+    if (p.id !== 'mistral' && p.keyRequired && !draftProfile.aiApiKey) {
+      toast('Falta la clave para probar este servicio');
       return;
     }
 
@@ -510,7 +532,7 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
     }
   });
 
-  root.querySelector('[data-save]')?.addEventListener('click', () => {
+  root.querySelector('[data-save]')?.addEventListener('click', async () => {
     syncApiModelHidden();
     const fd = new FormData(form);
     const aiMode = fd.get('aiMode') || 'off';
@@ -522,37 +544,44 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
       aiApiProvider,
       aiApiBase: String(fd.get('aiApiBase') || presetOnSave.baseUrl || '').trim(),
       aiApiModel: String(fd.get('aiApiModel') || presetOnSave.defaultModel || '').trim(),
-      aiApiKey: String(fd.get('aiApiKey') || '').trim(),
+      aiApiKey: presetOnSave.id === 'mistral' ? '' : String(fd.get('aiApiKey') || '').trim(),
       aiPreviewSkip: !fd.get('aiPreviewAsk'),
     };
     if (aiMode === 'api') {
+      const profileNow = loadProfile();
       if (!patch.aiApiBase) {
-        toast('Indica la URL base de la API o elige otro proveedor');
+        toast('Falta la dirección del servicio. Elige Mistral o Personalizado.');
         return;
       }
       if (!patch.aiApiModel) {
         toast('Elige un modelo de IA');
         return;
       }
-      if (presetOnSave.keyRequired && !patch.aiApiKey) {
-        toast('Indica la clave API o elige Ollama local en localhost');
+      if (presetOnSave.id !== 'mistral' && presetOnSave.keyRequired && !patch.aiApiKey) {
+        toast('Pega la clave de ChatGPT u otro servicio (empieza con sk-).');
         return;
       }
-      const profileNow = loadProfile();
       const needsConsent = !hasAiApiConsent(profileNow);
       const consentBox = root.querySelector('#ai-api-consent');
       if (needsConsent && !consentBox?.checked) {
-        toast('Debes aceptar el aviso de transferencia de datos para guardar el modo API');
+        toast('Marca el consentimiento para usar la IA en la nube');
         root.querySelector('#ai-api-consent-notice')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
       if (needsConsent) {
         patch.aiApiConsentAt = new Date().toISOString();
       }
-    } else if (aiMode === 'off' || aiMode === 'local') {
-      // Conservar fecha de consentimiento por si vuelve a activar API.
     }
-    saveProfile(patch);
+    const next = saveProfile(patch);
+    if (aiMode === 'api' && presetOnSave.id === 'mistral') {
+      try {
+        toast('Activando Mistral…');
+        await ensureTelarMistralKey(next);
+      } catch (err) {
+        toast(err?.message || 'No se pudo activar Mistral. Revisa internet e inténtalo de nuevo.');
+        return;
+      }
+    }
     toast('Preferencias de IA guardadas');
     close(true);
   });

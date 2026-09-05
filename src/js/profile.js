@@ -2,6 +2,7 @@ import { AI_DEFAULTS } from './ai-config.js';
 
 const STORAGE_KEY = 'telar.practitioner';
 const DEFAULTS_MIGRATION_KEY = 'telar.defaults.dark-gender.v1';
+const AI_MISTRAL_DEFAULT_KEY = 'telar.defaults.ai-mistral-cloud.v1';
 
 const DEFAULTS = {
   name: '',
@@ -75,9 +76,29 @@ export function hideDxProblemName(name) {
 
 export function initThemeFromProfile() {
   migrateInterfaceDefaults();
+  migrateAiMistralDefault();
   const profile = loadProfile();
   applyTheme(profile.darkMode);
   applyPresentationMode(Boolean(profile.presentationMode));
+}
+
+/** Una vez: quien nunca prendió IA pasa a Mistral (nube). Local o API ya elegidos no se tocan. */
+export function migrateAiMistralDefault() {
+  try {
+    if (localStorage.getItem(AI_MISTRAL_DEFAULT_KEY)) return;
+    localStorage.setItem(AI_MISTRAL_DEFAULT_KEY, '1');
+    const p = loadProfile();
+    if (p.aiMode === 'off' && !p.aiApiConsentAt) {
+      saveProfile({
+        aiMode: 'api',
+        aiApiProvider: p.aiApiProvider || AI_DEFAULTS.aiApiProvider,
+        aiApiBase: p.aiApiBase || AI_DEFAULTS.aiApiBase,
+        aiApiModel: p.aiApiModel || AI_DEFAULTS.aiApiModel,
+      });
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Una sola vez: el producto pasa a oscuro y género femenino si no estaban definidos. */
