@@ -5,6 +5,7 @@ import { renderNewPatient } from './views/new-patient.js';
 import { renderReportes } from './views/reportes.js';
 import { renderSettings } from './views/settings.js';
 import { renderModulesLibrary } from './views/modules-library.js';
+import { renderModuleEditor } from './views/module-editor.js';
 import { renderGoals } from './views/goals.js';
 import { renderUnlock } from './views/unlock.js';
 import { renderWorkspace } from './views/workspace.js';
@@ -43,6 +44,8 @@ function navigate(patch) {
   const t = patch.treatmentId !== undefined ? patch.treatmentId : params.t;
   const s = patch.sessionId !== undefined ? patch.sessionId : params.s;
   const m = patch.moduleId !== undefined ? patch.moduleId : params.m;
+  const cm = patch.customModuleId !== undefined ? patch.customModuleId : params.cm;
+  const rv = patch.returnView !== undefined ? patch.returnView : params.rv;
   const tab = patch.tab !== undefined ? patch.tab : params.tab;
   const d = patch.date !== undefined ? patch.date : params.d;
   const billingFilter = patch.billingFilter !== undefined ? patch.billingFilter : params.bf;
@@ -50,6 +53,8 @@ function navigate(patch) {
   if (t) next.set('t', t);
   if (s) next.set('s', s);
   if (m) next.set('m', m);
+  if (cm) next.set('cm', cm);
+  if (rv) next.set('rv', rv);
   if (tab) next.set('tab', tab);
   if (d) next.set('d', d);
   if (billingFilter) next.set('bf', billingFilter);
@@ -60,7 +65,6 @@ function navigate(patch) {
 async function render() {
   const { parts, params } = parseRoute();
   let view = parts[0] || 'treatments';
-
   // Redirigir búsqueda heredada de la antigua vista agenda → treatments
   if (view === 'agenda' && params.q) {
     location.hash = `/treatments?${new URLSearchParams({ q: params.q }).toString()}`;
@@ -77,24 +81,32 @@ async function render() {
     delete app.dataset.workspaceModuleId;
     delete app.dataset.workspaceIndexMode;
     delete app.dataset.workspaceIndexType;
+    app._unmountCenterScrollSpy?.();
+    app._workspaceData = null;
   }
   lastRenderedView = view;
 
-  app.className = view === 'unlock' ? 'app-shell app-shell--unlock' : 'app-shell';
+  app.className =
+    view === 'unlock' ? 'app-shell app-shell--unlock' : view === 'module-editor' ? 'app-shell app-shell--editor' : 'app-shell';
 
   try {
     // Gate: DB debe estar desbloqueada para todo excepto unlock.
     if (isTauriApp() && view !== 'unlock') {
-      const invoke = getInvoke();
-      window.__telarStage = `render:db_status(${view})`;
-      const st = await invoke('db_status');
-      if (!st.unlocked) {
-        location.hash = '/unlock';
-        await renderUnlock(app, { onNavigate });
-        return;
+      if (!window.__telarDbUnlocked) {
+        const invoke = getInvoke();
+        window.__telarStage = `render:db_status(${view})`;
+        const st = await invoke('db_status');
+        if (!st.unlocked) {
+          location.hash = '/unlock';
+          await renderUnlock(app, { onNavigate });
+          return;
+        }
+        window.__telarDbUnlocked = true;
       }
       window.__telarStage = `render:custom_modules(${view})`;
       await ensureCustomModulesLoaded();
+    } else if (view === 'unlock') {
+      window.__telarDbUnlocked = false;
     }
     window.__telarStage = `render:view(${view})`;
 
@@ -141,6 +153,16 @@ async function render() {
       case 'modules':
         await renderModulesLibrary(app, { onNavigate });
         break;
+      case 'module-editor':
+        await renderModuleEditor(app, {
+          customModuleId: params.cm || '',
+          returnView: params.rv || 'modules',
+          treatmentId: params.t,
+          sessionId: params.s,
+          moduleId: params.m,
+          onNavigate,
+        });
+        break;
       case 'goals':
         await renderGoals(app, { onNavigate });
         break;
@@ -161,8 +183,13 @@ async function render() {
     }
 
     if (view !== 'unlock') {
-      scheduleAutoCloudBackup();
+      if (!window.__telarBackupScheduled) {
+        window.__telarBackupScheduled = true;
+        scheduleAutoCloudBackup();
+      }
       ensureGlobalShareSync();
+    } else {
+      window.__telarBackupScheduled = false;
     }
   } catch (err) {
     console.error(err);
@@ -180,19 +207,36 @@ async function render() {
 document.addEventListener('input', (e) => {
   const ta = e.target;
   if (ta.tagName !== 'TEXTAREA') return;
+  if (ta.hasAttribute('data-no-autoresize')) return;
   ta.style.height = '0';
   ta.style.height = ta.scrollHeight + 'px';
 });
 
-// Auto-resize textareas when added to DOM
+// Auto-resize textareas when added to DOM (un frame, no layout por cada nodo).
+let pendingTextareas = [];
+let textareaResizeRaf = 0;
+function queueTextareaResize(ta) {
+  pendingTextareas.push(ta);
+  if (textareaResizeRaf) return;
+  textareaResizeRaf = requestAnimationFrame(() => {
+    textareaResizeRaf = 0;
+    const list = pendingTextareas;
+    pendingTextareas = [];
+    for (const el of list) {
+      if (!el.isConnected || el.tagName !== 'TEXTAREA') continue;
+      if (el.hasAttribute('data-no-autoresize')) continue;
+      el.style.height = '0';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  });
+}
 new MutationObserver((mutations) => {
   for (const m of mutations) {
     for (const node of m.addedNodes) {
       if (node.nodeType !== 1) continue;
-      const tas = node.tagName === 'TEXTAREA' ? [node] : [...node.querySelectorAll('textarea')];
-      for (const ta of tas) {
-        ta.style.height = '0';
-        ta.style.height = ta.scrollHeight + 'px';
+      if (node.tagName === 'TEXTAREA') queueTextareaResize(node);
+      else if (node.querySelectorAll) {
+        node.querySelectorAll('textarea').forEach(queueTextareaResize);
       }
     }
   }

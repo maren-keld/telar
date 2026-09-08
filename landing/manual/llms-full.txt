@@ -1,0 +1,585 @@
+# Manual de Telar (texto completo para LLMs)
+
+Fuente: https://telarapp.cl/manual
+Idioma: es-CL
+
+---
+
+# Qué es Telar
+URL: https://telarapp.cl/manual/que-es-telar
+Aplicación de escritorio local-first para psicólogos clínicos en Chile y Latam.
+
+# Qué es Telar
+
+Telar es una aplicación de escritorio para **macOS y Windows** pensada para psicólogos clínicos. Organiza la ficha por **tratamientos → sesiones → módulos**, con escalas puntuadas, material de trabajo, neurofeedback opcional con Muse 2 e IA opcional sobre la ficha ya registrada.
+
+El profesional es el único usuario de la app. Los pacientes no tienen cuenta ni portal.
+
+## Para quién es
+
+- Psicólogos en consulta privada (Chile y Latam)
+- Seguimiento de TDAH adulto, trauma/TEPT, ansiedad y depresión
+- Equipos o programas que quieren medidas comparables **sin** nube clínica central
+
+## Modelo local-first
+
+Los datos clínicos se guardan **encriptados en el equipo del profesional**. El PIN de seis dígitos es la llave. Telar no aloja fichas en sus servidores.
+
+Internet solo se usa para: comprobar suscripción Pro, actualizaciones, IA opcional (si la activás) y un contador anónimo de uso (se puede desactivar en Ajustes).
+
+## Qué incluye
+
+- Programas por sesiones (plantillas o en blanco)
+- Escalas con puntuación automática y curvas longitudinales
+- Handouts TCC y herramientas narrativas, exportables a PDF
+- Estimulación bilateral visual (EMDR-adjacent; no es protocolo EMDR completo)
+- Neurofeedback con Muse 2 (en vivo en Demo; grabación/análisis/export en Pro)
+- IA opcional (apagada por defecto): Ollama local o API propia (BYOK)
+
+El catálogo público de módulos está en [Módulos clínicos](https://telarapp.cl/modules).
+
+## Demo y Pro
+
+| | Demo | Pro |
+|--|------|-----|
+| Precio | $0 CLP | $19.990 CLP/mes |
+| Pacientes activos | Hasta 3 | Ilimitados |
+| Módulos y escalas | Sí | Sí |
+| NF en vivo | Sí | Sí |
+| Grabar / analizar / exportar NF | Limitado | Completo |
+| PDF del tratamiento | — | Sí |
+| Respaldo encriptado a carpeta | — | Sí |
+| Curso NF + mentoría | — | Incluido |
+
+Detalle de precios: [telarapp.cl/precio](https://telarapp.cl/precio).
+
+## Qué no es Telar
+
+- No diagnostica, no prescribe ni sustituye el juicio clínico
+- No es un portal del paciente
+- El neurofeedback no es certificación BCIA, QEEG ni tratamiento médico por sí solo
+- La estimulación bilateral no sustituye formación ni protocolo EMDR de ocho fases
+
+## Código libre
+
+El motor de Telar es código libre ([AGPL-3.0](https://github.com/maren-keld/telar/blob/main/LICENSE)). Los packs clínicos comerciales y el backend de suscripción no forman parte del open core público.
+
+---
+
+# Instalación y primer acceso
+URL: https://telarapp.cl/manual/instalacion
+Descargar Telar en macOS o Windows, autorizar la primera apertura y crear el PIN.
+
+# Instalación y primer acceso
+
+Guía condensada. Si preferís capturas paso a paso, usá el tutorial visual [Cómo instalar Telar](https://telarapp.cl/blog/como-instalar-telar).
+
+## Requisitos
+
+- macOS reciente o Windows 10/11
+- Descargar solo desde [telarapp.cl/descargar](https://telarapp.cl/descargar) o el [repositorio oficial](https://github.com/maren-keld/telar/releases/latest)
+
+## macOS
+
+1. Descargá `Telar-macos.zip` desde la página de descargas.
+2. Descomprimí y arrastrá **Telar.app** a Aplicaciones.
+3. Primera apertura: clic derecho → **Abrir** (solo la primera vez).
+4. Si Gatekeeper bloquea la app: Ajustes del Sistema → Privacidad y seguridad → **Abrir de todos modos**. No la muevas a la papelera.
+
+## Windows 10/11
+
+1. Descargá `Telar-windows.exe`.
+2. Ejecutá el instalador y seguí el asistente.
+3. Si aparece SmartScreen: **Más información → Ejecutar de todas formas**. Telar está en beta y el instalador puede no tener certificado de editor todavía.
+
+## Crear el PIN
+
+Al abrir Telar por primera vez creás un **PIN de seis dígitos**. Ese PIN protege (y desbloquea) la base de datos clínica encriptada en tu equipo.
+
+- Anotalo en un lugar seguro. **Si lo olvidás, Telar no puede recuperar las fichas.**
+- En Mac, si el sistema lo permite, podés usar Touch ID en aperturas siguientes.
+
+## Onboarding
+
+Tras el PIN, Telar puede pedir nombre y correo del profesional (contacto y suscripción). Eso no envía la ficha clínica a servidores de Telar.
+
+## Actualizaciones
+
+Las versiones nuevas se publican en GitHub Releases y en la página de descargas. Instalá sobre la versión anterior; los datos locales permanecen en el equipo.
+
+---
+
+# Pacientes y tratamientos
+URL: https://telarapp.cl/manual/pacientes
+Crear pacientes, estados de tratamiento, etiquetas y el cupo Demo de 3 activos.
+
+# Pacientes y tratamientos
+
+La vista **Pacientes** es el punto de entrada habitual tras desbloquear Telar.
+
+## Jerarquía
+
+**Paciente → Tratamiento → Sesiones → Módulos**
+
+Un paciente puede tener uno o más tratamientos. Cada tratamiento agrupa sesiones; cada sesión contiene módulos (escalas, handouts, NF, etc.).
+
+## Crear un paciente
+
+1. En Pacientes, elegí **Nuevo paciente** (o equivalente en la UI).
+2. Completá los datos básicos.
+3. Opcional: elegí una **plantilla de programa** (por ejemplo TDAH 8 sesiones) o empezá en blanco.
+4. Se crea el tratamiento y se abre el workspace.
+
+## Estados del tratamiento
+
+| Estado | Uso típico |
+|--------|------------|
+| En tratamiento | Caso activo en consulta |
+| Pausa | Suspendido temporalmente |
+| Completado | Cierre acordado |
+| Abandonado | Interrupción sin cierre formal |
+| Archivado | Fuera de la lista activa |
+
+En el plan **Demo**, el cupo cuenta solo pacientes con al menos un tratamiento **en tratamiento**. Pausados, completados, abandonados y archivados **no** consumen cupo.
+
+## Cupo Demo (3 activos)
+
+El plan gratis permite hasta **3 pacientes activos**. Si intentás crear o reactivar un cuarto, Telar ofrece pasar a Pro.
+
+Para liberar cupo sin borrar datos: pasá un tratamiento a pausa o archivado.
+
+## Etiquetas
+
+Podés marcar pacientes con etiquetas clínicas de trabajo (por ejemplo alerta o derivado) para filtrar o priorizar en la lista. Las etiquetas son de organización; no sustituyen el registro clínico en módulos.
+
+## Abrir un caso
+
+Desde la lista, abrí el paciente o tratamiento. Entráis al **workspace**: barra lateral de sesiones/módulos y lienzo del módulo activo.
+
+---
+
+# El workspace
+URL: https://telarapp.cl/manual/workspace
+Sesiones, módulos, barra lateral, autosave y menús del caso.
+
+# El workspace
+
+El workspace es la pantalla de trabajo de un tratamiento: a la izquierda, la estructura del programa; al centro, el módulo abierto.
+
+## Barra lateral izquierda
+
+- Lista de **sesiones** del tratamiento
+- Dentro de cada sesión, los **módulos** asignados
+- Acciones para añadir sesión, añadir o cambiar módulo, y reordenar según el flujo del caso
+
+## Espacio central
+
+Al seleccionar un módulo se abre su formulario o intervención:
+
+- Escalas: ítems, puntuación automática, interpretación orientativa
+- Handouts: campos editables, a menudo exportables a PDF y para compartir a través de enlace
+- NF / bilateral: controles de sesión en vivo
+
+Los cambios se **guardan solos** (autosave). No hace falta un botón Guardar en cada pantalla.
+
+## Barra lateral derecha
+
+Desde el workspace podés acceder a acciones del caso, por ejemplo:
+
+- Datos y notas del paciente
+- Exportaciones (handouts, PDF de tratamiento en Pro, presentación)
+- Documentos de referencia locales que adjuntás vos (no son el manual de Telar)
+- Acciones de IA si la tenés activada
+
+## Navegación de la app
+
+Fuera del caso, la barra principal suele incluir:
+
+- **Pacientes** — lista por estado
+- **Reportes** — estadísticas agregadas locales
+- **Metas** — seguimiento de objetivos
+- **Módulos** — librería / catálogo en la app
+- **Ajustes** — PIN, idioma, IA, plan, contador de uso, respaldo Pro
+
+## Consejos de uso
+
+- Trabajá una sesión a la vez; añadí módulos según lo que ocurra en consulta
+- Las escalas repetidas en distintas sesiones alimentan las curvas de seguimiento
+- Si cerrás Telar, al volver desbloqueás con el PIN y retomás el mismo estado local
+
+---
+
+# Programas y plantillas
+URL: https://telarapp.cl/manual/programas
+Plantillas TDAH, TDAH+NF y trauma; programas en blanco.
+
+# Programas y plantillas
+
+Un **programa** es la secuencia de sesiones y módulos de un tratamiento. Podés partir de una plantilla o armarlo vacío.
+
+## Plantillas incluidas
+
+Al crear un paciente o tratamiento, Telar ofrece plantillas como:
+
+### TDAH adulto (8 sesiones)
+
+Evaluación con ASRS/GAD-7, organización cognitiva, activación, sesgos, autoconcepto y reevaluación. Útil como esqueleto editable, no como protocolo rígido.
+
+### TDAH + Neurofeedback (8 sesiones)
+
+Misma lógica, con sesiones de Muse 2 intercaladas (baseline, atención, estrés, cierre).
+
+### Trauma + regulación (adulto)
+
+Tamizaje con PCL-5, plan de seguridad, regulación, redes de apoyo, seguimiento y NF de relajación opcional.
+
+Más contexto clínico en el blog: [TDAH adulto](https://telarapp.cl/blog/tdah-adulto) y [Trauma y herramientas](https://telarapp.cl/blog/trauma-herramientas).
+
+## Programa en blanco
+
+Si elegís empezar vacío, creás sesiones y añadís módulos desde la librería según el caso. Las plantillas también se pueden editar después: quitar, añadir o reordenar módulos.
+
+## Criterio clínico
+
+Las plantillas son **apoyo de organización**. La decisión de qué aplicar, omitir o adaptar es siempre del profesional tratante.
+
+---
+
+# Catálogo de módulos
+URL: https://telarapp.cl/manual/modulos
+Categorías de módulos y cómo se usan en el workspace.
+
+# Catálogo de módulos
+
+Telar agrupa el trabajo clínico en **módulos**. Cada uno es una ficha o intervención que se coloca en una sesión.
+
+## Categorías
+
+1. **Conceptualización** — registro inicial, motivo, diagnóstico, nota de sesión, redes de apoyo, plan de seguridad
+2. **Pruebas** — escalas con scoring (ASRS, GAD-7, PCL-5, DASS-21, etc.)
+3. **Habilidades y tareas (TCC)** — ABC, sesgos, socrático, activación, exposición, etc.
+4. **Narrativa / significado** — externalización, felt sense, pregunta milagro, etc.
+5. **Intervención** — neurofeedback Muse 2, estimulación bilateral
+
+## Dónde ver el detalle
+
+- En la web: [telarapp.cl/modules](https://telarapp.cl/modules) — fichas con autor, rango etario, confiabilidad y validez en Chile cuando aplica
+- En la app: librería de módulos / selector al añadir a una sesión
+
+## Cómo se usan en consulta
+
+1. Abrí el workspace del tratamiento
+2. Elegí o creá la sesión
+3. Añadí el módulo
+4. Completalo en sesión (o como tarea entre sesiones si es un handout)
+5. Autosave; exportá PDF si el módulo lo permite
+
+## Packs
+
+La app comercial incluye packs clínicos (por ejemplo base compartida, TDAH adulto, trauma). El repositorio público open core incluye el pack **demo**. Importar/exportar `.telarpack` permite compartir módulos personalizados entre instalaciones.
+
+## Límites
+
+Algunos instrumentos pueden estar pendientes de permiso de licencia y no aparecen en el catálogo público hasta entonces. Los módulos no diagnostican ni prescriben.
+
+---
+
+# Escalas y seguimiento
+URL: https://telarapp.cl/manual/escalas
+Puntuación automática, curvas longitudinales y alertas clínicas orientativas.
+
+# Escalas y seguimiento
+
+Las escalas en Telar se completan como módulos de sesión. La app calcula puntajes y, cuando hay repeticiones, muestra evolución en el tiempo.
+
+## Flujo típico
+
+1. Añadí la escala a la sesión (por ejemplo GAD-7 o PCL-5)
+2. Completá los ítems en consulta o con el paciente presente
+3. Revisá el puntaje total y, si aplica, subescalas o rangos orientativos
+4. En sesiones posteriores, repetí la misma escala para ver la curva
+
+## Qué aporta Telar
+
+- Puntuación automática según las reglas del instrumento
+- Historial por tratamiento / paciente para seguimiento longitudinal
+- Metadatos clínicos en el [catálogo de módulos](https://telarapp.cl/modules) (autor, rango etario, confiabilidad, validez en Chile cuando está documentada)
+
+## Interpretación
+
+Los rangos y etiquetas en pantalla son **orientativos**. No sustituyen el juicio clínico, el contexto del caso ni la formación en el instrumento.
+
+## Alertas
+
+Algunos módulos o flujos pueden marcar señales de atención (por ejemplo riesgo o umbrales). Tratalas como recordatorios de proceso clínico, no como diagnóstico automatizado.
+
+## Escalas frecuentes
+
+ASRS, GAD-7, PCL-5, DASS-21, Rosenberg, QOLS, A-DES, EED, FER, ánimo y ansiedad subjetiva, entre otras. La lista completa y actualizada está en [Módulos](https://telarapp.cl/modules).
+
+---
+
+# Neurofeedback (Muse 2)
+URL: https://telarapp.cl/manual/neurofeedback
+Conectar Muse 2, sesión en vivo, diferencias Demo/Pro y límites clínicos.
+
+# Neurofeedback (Muse 2)
+
+Telar integra biofeedback EEG de **2 canales** con la banda **Interaxon Muse 2** (no Muse S ni otros modelos). Es un **complemento psicoeducativo** de la psicoterapia, no evaluación neuropsicológica ni tratamiento médico por sí solo.
+
+## Antes de la primera sesión
+
+1. Muse 2 cargada y emparejada por Bluetooth con el computador
+2. Telar abierto y desbloqueado
+3. Paciente con tratamiento y módulo **Neurofeedback** en la sesión
+
+## Sesión en vivo
+
+1. Abrí el módulo Neurofeedback en el workspace
+2. Conectá la banda desde la UI
+3. Elegí el protocolo (por ejemplo Atención o Calma, según la versión)
+4. Corré el feedback en consulta e integrálo al diálogo clínico
+
+## Demo vs Pro
+
+| Capacidad | Demo | Pro |
+|-----------|------|-----|
+| Conectar Muse 2 y ver feedback en vivo | Sí | Sí |
+| Grabar, analizar y exportar sesiones | Limitado | Completo |
+| Curso NF + mentoría | — | Incluido |
+
+Curso y formación: [telarapp.cl/neurofeedback](https://telarapp.cl/neurofeedback). Telar **no vende** la banda Muse 2.
+
+## Qué no es
+
+- No es certificación BCIA
+- No es QEEG ni diagnóstico
+- No sustituye el programa psicoterapéutico
+
+Si la banda no conecta, ver [Solución de problemas](solucion-problemas.html).
+
+---
+
+# Estimulación bilateral
+URL: https://telarapp.cl/manual/estimulacion-bilateral
+Estímulo visual bilateral en sesión; alcance EMDR-adjacent y límites.
+
+# Estimulación bilateral
+
+Telar incluye un generador de **estimulación bilateral visual** integrado al registro clínico. Está pensado como apoyo en estabilización o como herramienta para terapeutas con formación en EMDR.
+
+## Cómo usarlo
+
+1. Añadí el módulo de estimulación bilateral a la sesión
+2. Ajustá la velocidad (típicamente en un rango configurable, p. ej. 0,5–2 Hz)
+3. Usá el estímulo en el marco clínico que ya manejás
+4. Registrá lo relevante en el mismo tratamiento (notas, escalas, plan de seguridad si aplica)
+
+## Alcance clínico
+
+Es **EMDR-adjacent**: estimulación bilateral, no el protocolo completo de ocho fases ni la formación EMDR.
+
+- No sustituye supervisión ni credenciales en EMDR
+- No es un protocolo de trauma por sí solo
+- Las decisiones de cuándo y cómo usarlo son del profesional
+
+Ficha del módulo: [Estimulación bilateral](https://telarapp.cl/modules/bilateral_stimulation) (si está en el catálogo) y el artículo [Trauma y herramientas](https://telarapp.cl/blog/trauma-herramientas).
+
+---
+
+# IA opcional
+URL: https://telarapp.cl/manual/ia
+Activar IA, Ollama o BYOK, y usos sobre la ficha ya registrada.
+
+# IA opcional
+
+La IA en Telar está **desactivada por defecto**. Cuando la activás, trabaja sobre la ficha **ya registrada** en tu equipo. Los datos **no pasan por servidores de Telar**: usás un proveedor que vos configurás o un modelo local.
+
+## Activar
+
+1. Abrí **Ajustes**
+2. Sección de IA / asistente
+3. Elegí el modo:
+   - **Ollama (local)** — el modelo corre en tu máquina
+   - **BYOK** — API key de un proveedor (por ejemplo Mistral u otro compatible)
+4. Guardá y probá una acción simple
+
+Detalle de producto: [telarapp.cl/ia](https://telarapp.cl/ia).
+
+## Para qué sirve
+
+Ejemplos típicos (según la versión):
+
+- Proponer o ajustar un borrador de programa a partir de lo ya cargado
+- Redactar un borrador de email o resumen clínico
+- Ayudar a completar o revisar un módulo (siempre con revisión humana)
+
+## Buenas prácticas
+
+- Revisá siempre el texto antes de usarlo con pacientes o terceros
+- Preferí Ollama si querés que nada salga del computador
+- Con BYOK, el contenido enviado sigue las políticas del proveedor que elegiste
+- La IA no diagnostica ni reemplaza tu criterio
+
+## Desactivar
+
+Podés apagar la IA en Ajustes en cualquier momento. El resto de Telar sigue funcionando sin ella.
+
+---
+
+# Exportaciones e informes
+URL: https://telarapp.cl/manual/exportar
+PDF de handouts, PDF de tratamiento Pro y otras exportaciones.
+
+# Exportaciones e informes
+
+Telar permite sacar material del caso sin subir la ficha a la nube de Telar. Lo que exportás queda en archivos locales que vos controlás.
+
+## Handouts y material de trabajo
+
+Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** para entregar o archivar fuera de la app.
+
+1. Abrí el módulo completado (o parcialmente)
+2. Usá la acción de exportar / PDF del módulo
+3. Guardá el archivo donde corresponda (carpeta del paciente, impresora, etc.)
+
+## PDF del tratamiento (Pro)
+
+En Plan Pro podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso). En Demo esa exportación está restringida.
+
+## Presentación / otros
+
+Según la versión, el menú de herramientas del workspace puede ofrecer generación de presentación u otras salidas. Revisá el menú del caso en la app.
+
+## Neurofeedback
+
+La exportación de sesiones NF (CSV/PDF de resultados) forma parte de las capacidades **Pro** de grabación y análisis. Ver [Neurofeedback](neurofeedback.html).
+
+## Privacidad al exportar
+
+Un PDF o CSV fuera de Telar **ya no está** dentro de la base encriptada. Tratalo con el mismo cuidado que cualquier documento clínico en tu disco o nube personal.
+
+---
+
+# Privacidad y respaldo
+URL: https://telarapp.cl/manual/privacidad-respaldo
+Encriptación local, PIN, respaldo Pro con age y qué sale a Internet.
+
+# Privacidad y respaldo
+
+## Encriptación local
+
+La base clínica vive en el disco del profesional, cifrada. El **PIN** es la llave de acceso. Sin el PIN (y sin un respaldo recuperable), no hay acceso a las fichas.
+
+Más contexto: [Privacidad](https://telarapp.cl/privacidad) y el artículo [Privacidad local](https://telarapp.cl/blog/privacidad-local).
+
+## Qué sale a Internet
+
+Por defecto, Telar no envía fichas a servidores propios. Puede usar red para:
+
+- Comprobar suscripción Pro
+- Buscar actualizaciones
+- Contador anónimo de uso (desactivable en Ajustes)
+- IA opcional, solo si la activás (hacia Ollama local o el proveedor BYOK)
+
+## Respaldo Pro
+
+En Plan Pro podés activar un **respaldo automático diario encriptado** (formato age) hacia una **carpeta que elegís vos**.
+
+- Telar no aloja esos respaldos
+- Si la carpeta está en Google Drive, Dropbox, OneDrive o iCloud, es **tu** sincronización la que sube el archivo cifrado
+- Guardá la **clave de recuperación** cuando Telar la muestre: hace falta para restaurar
+
+## PIN olvidado
+
+Telar no puede “resetear” el PIN y devolver las fichas. La prevención es: PIN memorizado o anotado de forma segura, y respaldo Pro con clave de recuperación.
+
+## Exportar o borrar
+
+Podés exportar datos según las herramientas de la app y gestionar el ciclo de vida del caso (archivar, etc.). Al desinstalar el sistema operativo o borrar la carpeta de datos sin respaldo, las fichas se pierden.
+
+---
+
+# Planes Demo y Pro
+URL: https://telarapp.cl/manual/planes
+Comparativa Demo vs Pro, cupo de pacientes y suscripción.
+
+# Planes Demo y Pro
+
+## Demo ($0)
+
+- Hasta **3 pacientes activos** (en tratamiento)
+- Programas, escalas, handouts, NF en vivo
+- Sin tarjeta y sin fecha de vencimiento automática
+- Ideal para probar el flujo completo en consulta
+
+## Pro ($19.990 CLP/mes)
+
+- Pacientes **ilimitados**
+- Todo lo del Demo
+- Grabación, análisis y export de neurofeedback
+- PDF del tratamiento / programa
+- Respaldo diario encriptado a carpeta propia
+- Curso de neurofeedback con mentoría incluido
+
+Precios y detalle: [telarapp.cl/precio](https://telarapp.cl/precio).
+
+## Cómo suscribirse
+
+Desde la app (cuando llegás al límite Demo o desde Ajustes) o escribiendo a [contacto@telarapp.cl](mailto:contacto@telarapp.cl). La suscripción se valida en línea; la ficha clínica sigue local.
+
+## Si cancelás Pro
+
+La app vuelve al plan Demo con los datos intactos. Si tenés más de 3 pacientes activos, no perderás fichas, pero el cupo Demo limita **crear o reactivar** hasta liberar slots (pausa/archivo). Podés exportar cuando quieras.
+
+## Contador de uso
+
+Hay un ping anónimo de uso desactivable en Ajustes. No incluye contenido clínico.
+
+---
+
+# Solución de problemas
+URL: https://telarapp.cl/manual/solucion-problemas
+Gatekeeper, SmartScreen, Muse, PIN, actualizaciones y contacto.
+
+# Solución de problemas
+
+## macOS no abre Telar (Gatekeeper)
+
+1. No uses «Mover a la papelera»
+2. Ajustes del Sistema → Privacidad y seguridad
+3. **Abrir de todos modos** junto al aviso de Telar
+4. Guía con capturas: [Cómo instalar Telar](https://telarapp.cl/blog/como-instalar-telar)
+
+## Windows SmartScreen
+
+**Más información → Ejecutar de todas formas**. Descargá solo desde telarapp.cl o GitHub Releases oficiales.
+
+## Olvidé el PIN
+
+Telar no puede recuperar la base sin el PIN. Si tenés **respaldo Pro** y la **clave de recuperación**, restaurá desde ese flujo. Si no, los datos de esa instalación no son recuperables por el equipo de Telar.
+
+## Muse 2 no conecta
+
+- Confirmá que es **Muse 2** (no Muse S)
+- Bluetooth encendido; banda cargada
+- Cerrá otras apps que puedan estar usando la Muse
+- Reiniciá banda y Telar; volvé a emparejar desde el módulo NF
+- En algunos equipos, permisos de Bluetooth del sistema deben estar concedidos a Telar
+
+## La IA no responde
+
+- Verificá que esté activada en Ajustes
+- Ollama: que el servicio local esté corriendo y el modelo descargado
+- BYOK: API key válida, red disponible, cuota del proveedor
+- Revisá el mensaje de error en el modal de IA
+
+## Actualización o instalación rara
+
+Desinstalá/reinstalá desde el instalador oficial. Los datos suelen permanecer en la carpeta de aplicación del usuario; si algo falla tras actualizar, escribinos antes de borrar carpetas de datos.
+
+## Contacto
+
+[contacto@telarapp.cl](mailto:contacto@telarapp.cl) — instaladores, Pro, curso NF y soporte de producto.
+
+---

@@ -60,6 +60,7 @@ function apiConsentBlockHtml(profile, providerId) {
 
 function presetOptionsHtml(selectedId) {
   return Object.values(AI_API_PRESETS)
+    .filter((p) => !p.modulesOnly)
     .map((p) => {
       const rec =
         p.id === 'mistral' ? ' · incluida en Telar' : '';
@@ -262,7 +263,7 @@ export function openAiSettingsModal({ onSaved, onCancel, source, preferredLocalM
             </div>
             <p id="ai-mistral-included" class="settings-ai-panel__hint" ${
               providerId === 'mistral' ? '' : 'hidden'
-            }>Mistral se activa con tu correo de Telar. La clave no viene en el instalador; queda solo en este computador.</p>
+            }>Mistral se activa con tu correo de Telar (ficha y notas). Las experiencias interactivas usan Grok, también incluida: la clave no viene en el instalador.</p>
 
             <label class="ai-consent-notice__check">
               <input type="checkbox" name="aiPreviewAsk" ${profile.aiPreviewSkip ? '' : 'checked'} />

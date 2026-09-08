@@ -1,7 +1,9 @@
+import { coverageLabel } from '../clinic-country.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats, getTreatmentReport } from '../db.js';
 import { breakdownModel, isEmptyBreakdown, newPatientsModel } from '../reportes-charts.js';
 import { escapeHtml, formatDate, parseJsonSafe } from '../utils.js';
+import { enhanceReportesBoard } from '../stats-board.js';
 
 function newPatientsCardHtml(model) {
   const trendCls =
@@ -112,7 +114,7 @@ function renderDemographicsSection(demo) {
         ${breakdownCardHtml('Rangos de edad', demo.age_ranges)}
         ${breakdownCardHtml('Género', demo.gender)}
         ${breakdownCardHtml('Estado marital', demo.marital_status)}
-        ${breakdownCardHtml('Previsión', demo.prevision)}
+        ${breakdownCardHtml(coverageLabel(), demo.prevision)}
         ${breakdownCardHtml('Fuente', demo.source)}
       </div>
     </section>`;
@@ -167,4 +169,5 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
     </div>`;
 
   bindAppSidebar(container, { onNavigate });
+  enhanceReportesBoard(container, { dash, groups, demo });
 }

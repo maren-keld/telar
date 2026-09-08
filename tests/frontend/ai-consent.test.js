@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { AI_DEFAULTS, AI_LOCAL_MODELS, AI_MODE_ORDER, AI_MODES, resolveAiConfig, telarProvisionsMistral } from '../../src/js/ai-config.js';
+import { AI_DEFAULTS, AI_LOCAL_MODELS, AI_MODE_ORDER, AI_MODES, normalizeXaiApiKey, resolveAiConfig, telarProvisionsMistral } from '../../src/js/ai-config.js';
 import { getApiTransferNotice, hasAiApiConsent, requireAiApiConsent } from '../../src/js/ai-consent.js';
 
 test('AI default mode is cloud Mistral (consent still required before send)', () => {
@@ -55,4 +55,20 @@ test('getApiTransferNotice includes provider and data categories', () => {
   assert.match(notice.serverCountry, /Francia/i);
   assert.ok(notice.dataSent.length >= 4);
   assert.match(notice.legalNote, /19\.628/);
+});
+
+test('experiencias interactivas resuelven Grok, no Mistral', () => {
+  const clinical = resolveAiConfig({ aiMode: 'api', aiApiProvider: 'mistral' });
+  assert.equal(clinical.providerId, 'mistral');
+  const modules = resolveAiConfig({ aiMode: 'api', aiApiProvider: 'mistral' }, { purpose: 'modules' });
+  assert.equal(modules.providerId, 'xai');
+  assert.equal(modules.apiModel, 'grok-4.6');
+  assert.equal(modules.apiKey, '');
+  assert.match(modules.apiBase, /api\.x\.ai/);
+  assert.equal(modules.reasoningEffort, 'medium');
+});
+
+test('normalizeXaiApiKey corrige el prefijo duplicado', () => {
+  assert.equal(normalizeXaiApiKey('xai-xai-abc'), 'xai-abc');
+  assert.equal(normalizeXaiApiKey('xai-abc'), 'xai-abc');
 });

@@ -3,8 +3,10 @@ import {
   copyModuleDataBetweenTreatments,
   createTreatment,
   getSessionsWithModules,
+  listTreatmentsForPatient,
   updateTreatmentStatus,
 } from '../db.js';
+import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { escapeHtml, toast } from '../utils.js';
@@ -30,6 +32,11 @@ function dispatchWorkspaceMode(mode) {
   document.dispatchEvent(new CustomEvent('telar:workspace-mode', { detail: { mode } }));
 }
 
+function treatmentTitle(treatment) {
+  const name = escapeHtml(treatment.patient_name || 'Paciente');
+  return treatment.number > 1 ? `${name} · T${treatment.number}` : name;
+}
+
 export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate, onUpdated }) {
   const root = document.getElementById('modal-root');
   const rect = anchorEl.getBoundingClientRect();
@@ -37,6 +44,10 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
   const currentMode = getCurrentWorkspaceMode();
   const indexMode = getWorkspaceIndexMode();
   const isDark = profile.darkMode;
+
+  const siblings = (await listTreatmentsForPatient(treatment.patient_id)).filter(
+    (row) => String(row.id) !== String(treatment.id),
+  );
 
   const statusItems = Object.entries(TREATMENT_STATUS)
     .map(([k, v]) => {
@@ -49,15 +60,34 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     })
     .join('');
 
+  const siblingItems = siblings
+    .map((row) => {
+      const statusLabel = TREATMENT_STATUS[row.status]?.label || row.status;
+      return `
+        <button type="button" class="patient-menu-sibling" data-treatment-id="${row.id}">
+          <span class="patient-menu-sibling__label">Tratamiento ${row.number}</span>
+          <span class="patient-menu-sibling__status">${escapeHtml(statusLabel)}</span>
+        </button>`;
+    })
+    .join('');
+
   root.innerHTML = `
     <div class="dropdown-backdrop" id="workspace-patient-menu-backdrop">
       <div class="dropdown-menu patient-menu t-dropdown" data-origin="top-left" style="top:${rect.bottom + 4}px;left:${Math.max(8, Math.min(rect.left, window.innerWidth - 276))}px;max-height:${Math.max(160, window.innerHeight - rect.bottom - 12)}px">
-        <p class="dropdown-menu__title">${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` · T${treatment.number}` : ''}</p>
+        <p class="dropdown-menu__title">${treatmentTitle(treatment)}</p>
 
         <label class="dropdown-label">Estado del tratamiento</label>
         <div class="patient-menu-status-list">
           ${statusItems}
         </div>
+
+        ${
+          siblings.length
+            ? `<div class="patient-menu-divider"></div>
+        <label class="dropdown-label">Otros tratamientos</label>
+        <div class="patient-menu-sibling-list">${siblingItems}</div>`
+            : ''
+        }
 
         <button type="button" class="btn btn-ghost btn-block patient-menu-new-treatment" id="workspace-menu-new-treatment">
           + Añadir tratamiento
@@ -97,13 +127,14 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
 
   let currentStatus = treatment.status;
 
-  const close = () => { root.innerHTML = ''; };
+  const close = () => {
+    root.innerHTML = '';
+  };
 
   root.querySelector('#workspace-patient-menu-backdrop')?.addEventListener('click', (e) => {
     if (e.target.id === 'workspace-patient-menu-backdrop') close();
   });
 
-  // Status items
   root.querySelectorAll('[data-status]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const status = btn.dataset.status;
@@ -123,24 +154,36 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     });
   });
 
-  // Nuevo tratamiento
+  root.querySelectorAll('[data-treatment-id]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.treatmentId);
+      if (!id) return;
+      close();
+      if (onNavigate) await openTreatmentWorkspace(id, onNavigate);
+    });
+  });
+
   root.querySelector('#workspace-menu-new-treatment')?.addEventListener('click', async () => {
     const allowed = await requireActivePatientSlot({ patientId: treatment.patient_id });
     if (!allowed) return;
     try {
       const newId = await createTreatment(treatment.patient_id);
-      await copyModuleDataBetweenTreatments(treatment.id, newId, ['registro_inicial', 'motivo_consulta']);
+      try {
+        await copyModuleDataBetweenTreatments(treatment.id, newId, [
+          'registro_inicial',
+          'motivo_consulta',
+        ]);
+      } catch (copyErr) {
+        console.warn('No se pudo copiar registro/motivo al nuevo tratamiento', copyErr);
+      }
       close();
       toast('Nuevo tratamiento creado');
-      const sessions = await getSessionsWithModules(newId);
-      const firstMod = sessions[0]?.modules.find((m) => m.module_type === 'selector_modulo') || sessions[0]?.modules[0];
-      onNavigate?.({ treatmentId: newId, sessionId: sessions[0]?.id, moduleId: firstMod?.id });
+      if (onNavigate) await openTreatmentWorkspace(newId, onNavigate);
     } catch (err) {
       toast(err.message || 'No se pudo crear el tratamiento');
     }
   });
 
-  // Workspace mode
   root.querySelectorAll('[data-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const mode = btn.dataset.mode;
@@ -162,7 +205,6 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     });
   });
 
-  // Dark mode toggle
   const darkToggle = root.querySelector('#patient-menu-dark-toggle');
   if (darkToggle) {
     let dark = isDark;

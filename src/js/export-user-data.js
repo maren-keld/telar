@@ -27,6 +27,7 @@ function profileToCsv(profile) {
     correo: profile.email || '',
     celular: profile.phone || '',
     direccion: profile.address || '',
+    pais: profile.clinicCountry || '',
     plan: profile.plan || 'free',
     modo_oscuro: profile.darkMode ? '1' : '0',
     modo_presentacion: profile.presentationMode ? '1' : '0',

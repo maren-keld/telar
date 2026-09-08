@@ -16,6 +16,8 @@ const DEFAULTS = {
   presentationMode: false,
   usagePingOptOut: false,
   locale: 'es',
+  /** ISO-ish: CL, AR, UY, MX, PE, CO, ES, OTRO. Vacío = aún no eligió en onboarding. */
+  clinicCountry: '',
   plan: 'free',
   /** Aviso nativo cuando responden un test o handout por enlace. */
   notifyShareDesktop: true,
@@ -122,6 +124,7 @@ export function wipeProfileData() {
     darkMode,
     useTouchId,
     locale,
+    clinicCountry,
     aiMode,
     aiLocalModel,
     aiApiProvider,
@@ -139,6 +142,7 @@ export function wipeProfileData() {
       darkMode,
       useTouchId,
       locale: locale || 'es',
+      clinicCountry: clinicCountry || '',
       aiMode: aiMode || AI_DEFAULTS.aiMode,
       aiLocalModel: aiLocalModel || AI_DEFAULTS.aiLocalModel,
       aiApiProvider: aiApiProvider || AI_DEFAULTS.aiApiProvider,

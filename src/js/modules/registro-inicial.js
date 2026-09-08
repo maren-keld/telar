@@ -1,19 +1,19 @@
 import { bindAddressAutocomplete } from '../components/address-autocomplete.js';
 import { bindOccupationPicker } from '../components/occupation-picker.js';
-import { EDUCATION_OPTIONS, MARITAL_OPTIONS, PATIENT_GENDER_OPTIONS, PREVISION_OPTIONS, SOURCE_OPTIONS } from '../config.js';
+import {
+  bindNationalIdInput,
+  clinicCountryCode,
+  coverageOptions,
+  formatNationalId,
+  idSpecFor,
+} from '../clinic-country.js';
+import { EDUCATION_OPTIONS, MARITAL_OPTIONS, PATIENT_GENDER_OPTIONS, SOURCE_OPTIONS, normalizeEducationLevel } from '../config.js';
 import { upsertPatient } from '../db.js';
 import { ICON_COPY } from '../icons.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { bindAutoSave } from '../autobind.js';
 import { workspaceAutoSaveStatus } from '../save-status.js';
-import {
-  bindChileanRutInput,
-  calcAge,
-  escapeHtml,
-  formatChileanRut,
-  parseJsonSafe,
-  toast,
-} from '../utils.js';
+import { calcAge, escapeHtml, parseJsonSafe, toast } from '../utils.js';
 
 const OCCUPATION_OPTIONS = [
   'Trabajador independiente',
@@ -27,13 +27,22 @@ function birthParts(iso) {
     return { year: '', month: '', day: '' };
   }
   const [year, month, day] = iso.split('-');
-  return { year, month, day };
+  // Los <option> usan "3", no "03"; sin Number() el select queda vacío y el
+  // siguiente autoguardado borra la fecha de nacimiento.
+  return {
+    year: String(Number(year) || ''),
+    month: String(Number(month) || ''),
+    day: String(Number(day) || ''),
+  };
 }
 
 function isoFromParts(year, month, day) {
   if (!year || !month || !day) return '';
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
+
+/** Expuesto para tests: el select debe reconocer meses/días con cero a la izquierda. */
+export { birthParts, isoFromParts };
 
 function normalizeGenero(raw) {
   const value = String(raw || '').trim();
@@ -72,7 +81,8 @@ function monthOptions(selected) {
   let html = '<option value="">Mes</option>';
   names.forEach((name, i) => {
     const v = String(i + 1);
-    html += `<option value="${v}" ${String(selected) === v ? 'selected' : ''}>${name}</option>`;
+    const selectedMatch = Number(selected) === i + 1;
+    html += `<option value="${v}" ${selectedMatch ? 'selected' : ''}>${name}</option>`;
   });
   return html;
 }
@@ -81,7 +91,8 @@ function dayOptions(selected) {
   let html = '<option value="">Día</option>';
   for (let d = 1; d <= 31; d += 1) {
     const v = String(d);
-    html += `<option value="${v}" ${String(selected) === v ? 'selected' : ''}>${d}</option>`;
+    const selectedMatch = Number(selected) === d;
+    html += `<option value="${v}" ${selectedMatch ? 'selected' : ''}>${d}</option>`;
   }
   return html;
 }
@@ -91,6 +102,10 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
   const age = calcAge(data.birth_date);
   const generoInit = normalizeGenero(data.genero);
   const birth = birthParts(data.birth_date);
+  const country = clinicCountryCode();
+  const idSpec = idSpecFor(country);
+  const coverage = coverageOptions(data.prevision, country);
+  const educationLevel = normalizeEducationLevel(data.education_level);
 
   host.innerHTML = `
     <div class="card">
@@ -111,8 +126,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
           </select>
         </div>
         <div class="form-group">
-          <label>Número de ID (o RUT)</label>
-          <input name="id_number" id="registro-rut" data-sensitive value="${escapeHtml(formatChileanRut(data.id_number || ''))}" placeholder="12.345.678-9" />
+          <label>${escapeHtml(idSpec.label)}</label>
+          <input name="id_number" id="registro-rut" data-sensitive value="${escapeHtml(formatNationalId(data.id_number || '', country))}" placeholder="${escapeHtml(idSpec.placeholder)}" />
         </div>
         <div class="form-group">
           <label>Fecha de nacimiento</label>
@@ -150,31 +165,32 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
             <option value="">Seleccionar…</option>
             ${EDUCATION_OPTIONS.map(
               (o) =>
-                `<option ${data.education_level === o ? 'selected' : ''}>${escapeHtml(o)}</option>`,
+                `<option ${educationLevel === o ? 'selected' : ''}>${escapeHtml(o)}</option>`,
             ).join('')}
           </select>
         </div>
         <div class="form-group">
-          <label>Fuente</label>
+          <label>Cómo llegaste</label>
           <select name="source">
+            <option value="">Seleccionar…</option>
             ${SOURCE_OPTIONS.map(
-              (o) => `<option ${data.source === o ? 'selected' : ''}>${escapeHtml(o)}</option>`,
+              (o) =>
+                `<option value="${escapeHtml(o)}" ${data.source === o ? 'selected' : ''}>${escapeHtml(o)}</option>`,
             ).join('')}
           </select>
         </div>
         <div class="form-group">
-          <label>Previsión</label>
+          <label>${escapeHtml(coverage.spec.label)}</label>
           <select name="prevision">
-            ${PREVISION_OPTIONS.map((o) => {
-              const selected =
-                (data.prevision || 'Fonasa') === o ? 'selected' : '';
+            ${coverage.options.map((o) => {
+              const selected = coverage.selected === o ? 'selected' : '';
               return `<option ${selected}>${escapeHtml(o)}</option>`;
             }).join('')}
           </select>
         </div>
         <div class="form-group">
           <label>Ciudad</label>
-          <input name="address" id="registro-address" placeholder="Buscar ciudad o comuna en Chile…" value="${escapeHtml(data.address || '')}" autocomplete="off" />
+          <input name="address" id="registro-address" placeholder="Ciudad o comuna" value="${escapeHtml(data.address || '')}" autocomplete="off" />
         </div>
         <div class="form-group" data-no-autobind>
           <label>Ocupaciones</label>
@@ -231,8 +247,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       birth_date,
       marital_status: fd.get('marital_status'),
       source: fd.get('source'),
-      prevision: fd.get('prevision') || 'Fonasa',
-      education_level: fd.get('education_level') || '',
+      prevision: fd.get('prevision') || coverage.spec.defaultOption,
+      education_level: normalizeEducationLevel(fd.get('education_level') || ''),
       occupations,
     };
     await upsertPatient({
@@ -297,8 +313,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     }
   });
 
-  bindChileanRutInput(host.querySelector('#registro-rut'));
-  bindAddressAutocomplete(host.querySelector('#registro-address'), { onSelect: persist });
+  bindNationalIdInput(host.querySelector('#registro-rut'), country);
+  bindAddressAutocomplete(host.querySelector('#registro-address'), { onSelect: persist, country });
 
   bindAutoSave(host.querySelector('#form-registro'), persist, workspaceAutoSaveStatus());
 }

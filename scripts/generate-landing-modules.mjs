@@ -203,6 +203,7 @@ const NAV_ITEMS = [
   ['modules/index.html', 'Módulos'],
   ['cursos/index.html', 'Cursos'],
   ['blog/index.html', 'Blog'],
+  ['manual/index.html', 'Manual'],
   ['precio.html', 'Precio'],
   ['index.html#contacto', 'Contacto'],
 ];
@@ -215,6 +216,7 @@ const FOOTER_ITEMS = [
   ['neurofeedback.html', 'Curso de neurofeedback'],
   ['instituciones.html', 'Instituciones'],
   ['precio.html', 'Precio'],
+  ['manual/index.html', 'Manual'],
   ['blog/index.html', 'Blog'],
   ['equipo.html', 'Equipo'],
   ['privacidad.html', 'Privacidad'],

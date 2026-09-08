@@ -11,8 +11,10 @@ import {
   markAiActionDismissed,
   aiActionsHtml,
   markupModuleRefs,
+  normalizeAiDisplayText,
   parseAiActions,
   planModuleInserts,
+  userAskedForPatientEmail,
 } from '../../src/js/ai-actions.js';
 import { CUSTOM_ITEM_TYPES } from '../../src/js/custom-module-items.js';
 import { isModelPresent } from '../../src/js/ollama-client.js';
@@ -121,15 +123,47 @@ test('el prompt incluye los encabezados de ámbito y prohíbe ids inventados', (
   assert.match(prompt, /como máximo UNA vez/);
   assert.match(prompt, /NUNCA incluyas datos del paciente/);
   assert.match(prompt, /Bibliografía/);
+  assert.match(prompt, /Omite Bibliografía salvo/);
   assert.match(prompt, /No diagnosticas/);
   assert.match(prompt, /Puedes rechazar la premisa/);
   assert.match(prompt, /No adules/);
   assert.match(prompt, /No simules alianza/);
   assert.match(prompt, /nota_sesion es registro libre/);
+  assert.match(prompt, /EMAIL AL PACIENTE/);
+  assert.match(prompt, /No redactes un email/);
+  assert.match(prompt, /Por defecto: 1 párrafo/);
+  assert.match(prompt, /SOLO al firmar un email/);
+  assert.match(prompt, /Sin email de muestra/);
+  assert.doesNotMatch(prompt, /🗒️ Cuestionarios/);
   assert.doesNotMatch(prompt, /MIC/);
   assert.doesNotMatch(prompt, /Marcela/);
   assert.doesNotMatch(prompt, /Brooks/);
   assert.doesNotMatch(prompt, /DOCUMENTOS DE REFERENCIA/);
+});
+
+test('el molde de email al paciente solo entra si se pide un correo', () => {
+  const emailPrompt = buildAiSystemPrompt('CONTEXTO', {
+    practitioner: { name: 'Felipe Uppen', grammaticalGender: 'm' },
+    email: true,
+  });
+  assert.match(emailPrompt, /🗒️ Cuestionarios/);
+  assert.match(emailPrompt, /Escribe SOLO el email al paciente/);
+  assert.doesNotMatch(emailPrompt, /Sin email de muestra/);
+});
+
+test('userAskedForPatientEmail distingue queja de pedido', () => {
+  const chip = AI_QUICK_PROMPTS.find((p) => p.id === 'email');
+  assert.equal(userAskedForPatientEmail(chip.prompt), true);
+  assert.equal(userAskedForPatientEmail('Redacta un correo para Leopoldo sobre la terapia de pareja'), true);
+  assert.equal(userAskedForPatientEmail('genera el email post-sesión'), true);
+  assert.equal(
+    userAskedForPatientEmail(
+      'porque cada vez que te pregunto algo me das un email? le comenté al paciente que podriamos hacer terapia de pareja',
+    ),
+    false,
+  );
+  assert.equal(userAskedForPatientEmail('le comenté que podríamos hacer terapia de pareja'), false);
+  assert.equal(userAskedForPatientEmail('no me des emails'), false);
 });
 
 test('el prompt incluye documentos de referencia y pide citarlos por nombre', () => {
@@ -154,9 +188,10 @@ test('formatReferenceDocsForPrompt recorta textos largos', () => {
 });
 
 test('el editor admite ejercicios, escalas e indicaciones', () => {
-  for (const type of ['checkbox', 'text', 'scale', 'task', 'info']) {
+  for (const type of ['radio', 'checkbox', 'text', 'scale', 'task', 'info']) {
     assert.ok(CUSTOM_ITEM_TYPES[type], `falta tipo ${type}`);
   }
+  assert.equal(CUSTOM_ITEM_TYPES.radio.needsOptions, true);
   assert.equal(CUSTOM_ITEM_TYPES.checkbox.needsOptions, true);
   assert.equal(CUSTOM_ITEM_TYPES.task.needsOptions, false);
 });
@@ -226,7 +261,26 @@ test('los chips de IA explican qué hacen, no pegan el prompt en el tooltip', ()
   const programa = AI_QUICK_PROMPTS.find((p) => p.id === 'programa');
   assert.match(programa.prompt, /No repitas handouts/);
   const email = AI_QUICK_PROMPTS.find((p) => p.id === 'email');
-  assert.match(email.prompt, /Firma con el nombre del profesional/);
+  assert.match(email.prompt, /EMAIL AL PACIENTE/);
+  assert.match(email.prompt, /cuestionarios con sus enlaces/);
+  assert.match(email.prompt, /sin markdown/);
+});
+
+test('normalizeAiDisplayText deja la URL una sola vez y saca asides en cursiva', () => {
+  const url =
+    'https://telarapp.cl/r/RdaxQNLLpP_QNZyeEvmTZLtXuEUEAQN0#9rEZzBdliEnYkPeZH-yzICRBIuehq8nUIm9B_Vt4aNA';
+  const raw = [
+    'Email para el paciente:',
+    '*le comenté al paciente que podríamos hacer terapia de pareja*',
+    '',
+    `1.1 GAD-7 — Ansiedad generalizada: [${url}](${url})`,
+  ].join('\n');
+  const out = normalizeAiDisplayText(raw);
+  assert.doesNotMatch(out, /Email para el paciente/i);
+  assert.doesNotMatch(out, /^\*/m);
+  assert.match(out, /le comenté al paciente/);
+  assert.equal((out.match(/https:\/\/telarapp\.cl/g) || []).length, 1);
+  assert.doesNotMatch(out, /\[https:\/\//);
 });
 
 test('una acción aplicada conserva la card y marca su estado', () => {

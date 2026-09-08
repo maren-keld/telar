@@ -14,6 +14,12 @@ import { getInvoke } from './tauri-bridge.js';
 import { parseJsonSafe } from './utils.js';
 
 const MODULE_KINDS = ['questionnaire', 'interactive'];
+const NON_EXPORTABLE_PACK_IDS = new Set(['autismo-danyau']);
+
+export function isPackExportable(packOrId) {
+  const id = typeof packOrId === 'string' ? packOrId : packOrId?.id;
+  return packOrId?.exportable !== false && !NON_EXPORTABLE_PACK_IDS.has(String(id || '').toLowerCase());
+}
 
 /** Id estable y seguro para `custom_<id>`: solo letras, números y guiones. */
 export function packModuleId(packId, moduleId) {
@@ -50,6 +56,7 @@ export function parsePackContents(files, { lang = 'es' } = {}) {
   }
 
   const label = packLabel(pack);
+  const packExportable = isPackExportable(pack) && pack.exportable !== false;
   const modules = [];
   const warnings = [];
 
@@ -71,6 +78,7 @@ export function parsePackContents(files, { lang = 'es' } = {}) {
       category: entry.category || 'pruebas',
       packId: pack.id,
       packLabel: label,
+      exportable: packExportable && entry.exportable !== false,
       createdAt: new Date().toISOString(),
     };
 
@@ -125,7 +133,7 @@ export function parsePackContents(files, { lang = 'es' } = {}) {
     throw new Error(`No se pudo importar ningún módulo del pack.${warnings.length ? ` ${warnings[0]}` : ''}`);
   }
 
-  return { pack: { id: pack.id, label, version: pack.version || '', note: pack.note || '' }, modules, warnings };
+  return { pack: { id: pack.id, label, version: pack.version || '', note: pack.note || '', exportable: packExportable }, modules, warnings };
 }
 
 /** Lee el archivo y guarda sus módulos. @returns {Promise<{pack, modules, warnings}>} */
@@ -143,7 +151,7 @@ export function packFilesFor(modules, { id, label }) {
   const files = [];
   const entries = [];
 
-  for (const mod of modules) {
+  for (const mod of modules.filter((candidate) => candidate?.exportable !== false && isPackExportable(candidate?.packId || id))) {
     const slug = String(mod.id).split('--').pop() || mod.id;
     if (mod.kind === 'interactive') {
       const file = `interactive/${slug}.html`;
@@ -163,7 +171,7 @@ export function packFilesFor(modules, { id, label }) {
 
   files.unshift({
     name: 'pack.json',
-    content: JSON.stringify({ schema: 1, id, label, version: '1.0.0', modules: entries }, null, 2),
+    content: JSON.stringify({ schema: 1, id, label, version: '1.0.0', exportable: isPackExportable(id), modules: entries }, null, 2),
   });
   return files;
 }

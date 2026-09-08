@@ -1,4 +1,4 @@
-import { customModuleHandoutPayload, moduleLabelFor } from '../custom-modules.js';
+import { customModuleHandoutPayload, getCustomModuleByType, moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
 import { bindWorkspaceModuleDnD } from '../components/workspace-dnd.js';
@@ -13,11 +13,14 @@ import {
   canDeleteModule,
   deleteSessionModule,
   findModuleInTreatment,
+  getModule,
   getSessionModules,
   getSessionsWithModules,
   getTreatment,
   swapModuleToSelector,
 } from '../db.js';
+import { doneToastMessage, isModuleDone, toggleDoneOverride } from '../module-done.js';
+import { syncModuleReadableText } from '../readable-text.js';
 import { renderModule, teardownBilateralStimulation, teardownInteractiveHtml } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
@@ -29,6 +32,7 @@ import { tccHandoutDef } from '../tcc-handout-defs.js';
 import { ICON_DOWNLOAD, ICON_LINK, ICON_MORE_VERT, ICON_SWAP } from '../icons.js';
 import { openShareModuleModal } from '../components/share-module-modal.js';
 import { shareableContentFor } from '../share-content.js';
+import { shareCompletedByLinkLabel } from '../module-editor-model.js';
 import { shareAnsweredAt, shareInfo } from '../share-sync.js';
 import { formatShareAnsweredAt } from '../share-notify.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
@@ -37,10 +41,12 @@ import {
   canAddAnotherOfType,
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
+  getWorkspaceIndexType,
   resolveIndexType,
   sessionRuleHtml,
-  sessionsWithTypeOnly,
+  sessionsForCenter,
   setWorkspaceIndexType,
+  sidebarAddRowHtml,
   sidebarCategoryHtml,
   snapshotCategoryCollapse,
 } from '../workspace-index-mode.js';
@@ -63,6 +69,13 @@ export function moduleLabel(type) {
 }
 
 async function printModulePdf(mod, patientName) {
+  const customMod = getCustomModuleByType(mod.module_type);
+  if (customMod?.pdfPath && isTauriApp()) {
+    await getInvoke()('open_local_pdf', { path: customMod.pdfPath });
+    toast(`PDF adjunto: ${customMod.pdfName || 'archivo.pdf'}`);
+    return;
+  }
+  if (customMod?.kind === 'interactive') return;
   const data = parseJsonSafe(mod.data, {});
   const custom = customModuleHandoutPayload(mod.module_type, data);
   const def = tccHandoutDef(mod.module_type) || custom?.def;
@@ -101,6 +114,29 @@ export async function renderWorkspace(
     expandSessionId = null,
   },
 ) {
+  if (
+    !forceFullRender &&
+    moduleId &&
+    container.dataset.workspaceTreatmentId === String(treatmentId)
+  ) {
+    const indexMode = getWorkspaceIndexMode();
+    const card = container.querySelector(`#module-${moduleId}`);
+    const moduleType = card?.dataset.moduleType || '';
+    const indexType = indexMode === 'category' ? getWorkspaceIndexType() || moduleType : '';
+    if (
+      await tryFastModuleNavigation(container, {
+        treatmentId,
+        sessionId,
+        moduleId,
+        activeModule: card ? { id: moduleId, module_type: moduleType } : null,
+        indexMode,
+        indexType,
+      })
+    ) {
+      return;
+    }
+  }
+
   const treatment = await getTreatment(treatmentId);
   const sessions = await getSessionsWithModules(treatmentId);
   const activeModuleId = moduleId ? String(moduleId) : null;
@@ -182,6 +218,11 @@ export async function renderWorkspace(
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
   const preserveCenterScroll =
     pendingCenterScrollRestore != null || (sameTreatment && forceFullRender);
+  const keepNotes = sameTreatment ? container.querySelector('#rightsidebar') : null;
+  if (keepNotes) keepNotes.remove();
+
+  container._unmountHighlight?.();
+  container._unmountHighlight = null;
 
   container.innerHTML = `
     <div class="workspace-layout" id="workspace-layout">
@@ -195,9 +236,12 @@ export async function renderWorkspace(
         <div class="workspace-sidebar__scroll">
           ${
             indexMode === 'category'
-              ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, { treatmentId })
+              ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, {
+                  treatmentId,
+                  linkHtmlFn: indexModuleLinkHtml,
+                })
               : `${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
-          <button type="button" class="btn btn-ghost btn-block workspace-add-session" id="btn-add-session" title="${escapeHtml(t('workspace.addSession'))}">${escapeHtml(t('workspace.addSession'))}</button>`
+          ${sidebarAddRowHtml({ id: 'btn-add-session', extraClass: 'workspace-add-session', label: t('workspace.addSession') })}`
           }
         </div>
         <footer class="workspace-sidebar__footer">
@@ -240,6 +284,10 @@ export async function renderWorkspace(
       <div class="workspace-resizer workspace-resizer--right" data-resizer="right" aria-hidden="true"></div>
     </div>`;
 
+  if (keepNotes) {
+    container.querySelector('#rightsidebar')?.replaceWith(keepNotes);
+  }
+
   const layoutEl = container.querySelector('#workspace-layout');
   const leftSidebarEl = container.querySelector('#leftsidebar');
   const rightSidebarEl = container.querySelector('#rightsidebar');
@@ -254,7 +302,63 @@ export async function renderWorkspace(
   }
 
   const centerHost = container.querySelector('#center-modules');
-  let unmountHighlight = () => {};
+  container._workspaceData = {
+    treatmentId,
+    treatment,
+    sessions,
+    onNavigate,
+    activeSessionId,
+    activeModuleId: activeModule?.id,
+    activeModuleType: activeModule?.module_type || '',
+    refreshWorkspace: async (nextModuleId, nextSessionId) => {
+      const data = container._workspaceData;
+      if (!data) return;
+      data.sessions = await getSessionsWithModules(treatmentId);
+      data.treatment = (await getTreatment(treatmentId)) || data.treatment;
+      await paintCenterForModule(container, {
+        sessionId: nextSessionId ?? data.activeSessionId,
+        moduleId: nextModuleId ?? data.activeModuleId,
+      });
+    },
+    async onSwap(modId, sessId) {
+      const next = await swapModuleToSelector(modId);
+      onNavigate({
+        view: 'workspace',
+        treatmentId,
+        sessionId: next.sessionId || sessId,
+        moduleId: next.moduleId,
+      });
+    },
+    async onAddSession() {
+      const id = await addSession(treatmentId);
+      const mods = await getSessionModules(id);
+      const sel = mods.find((m) => m.module_type === 'selector_modulo');
+      onNavigate({ view: 'workspace', treatmentId, sessionId: id, moduleId: sel?.id });
+    },
+    async onDelete(deletedId) {
+      const data = container._workspaceData;
+      const root = container.querySelector('#workspace-center-scroll');
+      pendingCenterScrollRestore = root?.scrollTop ?? 0;
+      const list = data?.sessions || sessions;
+      const currentId = data?.activeModuleId ?? activeModule?.id;
+      const wasActive = String(deletedId) === String(currentId);
+      const remaining = list.flatMap((s) => s.modules).filter((m) => String(m.id) !== String(deletedId));
+      const all = list.flatMap((s) => s.modules);
+      const idx = all.findIndex((m) => String(m.id) === String(deletedId));
+      const neighbor = all[idx + 1] || all[idx - 1];
+      const next = wasActive ? neighbor || remaining[0] : activeModule;
+      const sess = next
+        ? list.find((s) => s.modules.some((m) => String(m.id) === String(next.id)))
+        : null;
+      await renderWorkspace(container, {
+        treatmentId,
+        sessionId: sess?.id ?? data?.activeSessionId ?? activeSessionId,
+        moduleId: next?.id,
+        onNavigate,
+        forceFullRender: true,
+      });
+    },
+  };
   if (sessions.length) {
     await renderAllCenterModules(centerHost, sessions, treatment, activeModule, {
       treatmentId,
@@ -263,51 +367,10 @@ export async function renderWorkspace(
       indexMode,
       indexType,
       onNavigate,
-      refreshWorkspace: async (moduleId, sessionId) => {
-        await renderWorkspace(container, {
-          treatmentId,
-          sessionId: sessionId ?? activeSessionId,
-          moduleId,
-          onNavigate,
-        });
-      },
-      async onSwap(modId, sessionId) {
-        const next = await swapModuleToSelector(modId);
-        onNavigate({
-          view: 'workspace',
-          treatmentId,
-          sessionId: next.sessionId || sessionId,
-          moduleId: next.moduleId,
-        });
-      },
-      async onAddSession() {
-        const id = await addSession(treatmentId);
-        const mods = await getSessionModules(id);
-        const sel = mods.find((m) => m.module_type === 'selector_modulo');
-        onNavigate({ view: 'workspace', treatmentId, sessionId: id, moduleId: sel?.id });
-      },
-      async onDelete(deletedId) {
-        const root = container.querySelector('#workspace-center-scroll');
-        pendingCenterScrollRestore = root?.scrollTop ?? 0;
-        const wasActive = String(deletedId) === String(activeModule?.id);
-        const remaining = sessions
-          .flatMap((s) => s.modules)
-          .filter((m) => String(m.id) !== String(deletedId));
-        const all = sessions.flatMap((s) => s.modules);
-        const idx = all.findIndex((m) => String(m.id) === String(deletedId));
-        const neighbor = all[idx + 1] || all[idx - 1];
-        const next = wasActive ? neighbor || remaining[0] : activeModule;
-        const sess = next
-          ? sessions.find((s) => s.modules.some((m) => String(m.id) === String(next.id)))
-          : null;
-        await renderWorkspace(container, {
-          treatmentId,
-          sessionId: sess?.id ?? activeSessionId,
-          moduleId: next?.id,
-          onNavigate,
-          forceFullRender: true,
-        });
-      },
+      refreshWorkspace: container._workspaceData.refreshWorkspace,
+      onSwap: (...args) => container._workspaceData.onSwap(...args),
+      onAddSession: () => container._workspaceData.onAddSession(),
+      onDelete: (deletedId) => container._workspaceData.onDelete(deletedId),
     });
   }
 
@@ -315,8 +378,7 @@ export async function renderWorkspace(
     activeModule &&
     (!moduleId || (indexMode === 'category' && String(activeModule.id) !== String(moduleId)))
   ) {
-    onNavigate({
-      view: 'workspace',
+    replaceWorkspaceHash({
       treatmentId,
       sessionId: activeSessionId,
       moduleId: activeModule.id,
@@ -386,11 +448,12 @@ export async function renderWorkspace(
       if (!items.some((item) => String(item.treatmentId) === String(treatmentId))) return;
       const root = container.querySelector('#workspace-center-scroll');
       pendingCenterScrollRestore = root?.scrollTop ?? 0;
+      const s = container._workspaceRenderState || {};
       void renderWorkspace(container, {
-        treatmentId,
-        sessionId: activeSessionId,
-        moduleId: activeModule?.id,
-        onNavigate,
+        treatmentId: s.treatmentId ?? treatmentId,
+        sessionId: s.sessionId ?? activeSessionId,
+        moduleId: s.moduleId ?? activeModule?.id,
+        onNavigate: s.onNavigate ?? onNavigate,
         forceFullRender: true,
       });
     },
@@ -410,30 +473,6 @@ export async function renderWorkspace(
     });
   });
 
-  container.querySelectorAll('.module-link').forEach((link) => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const type = link.dataset.indexType;
-      if (type) setWorkspaceIndexType(type);
-      if (type && activeModule?.module_type === type) {
-        return;
-      }
-      const mid = link.dataset.moduleId;
-      onNavigate({
-        view: 'workspace',
-        treatmentId,
-        sessionId: link.dataset.sessionId,
-        moduleId: mid,
-      });
-    });
-  });
-
-  container.querySelectorAll('.btn-add-module[data-session-id], .center-add-module').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      await openSessionSelector(treatmentId, Number(btn.dataset.sessionId), onNavigate);
-    });
-  });
-
   const goToAdded = (added) => {
     if (!added) return;
     if (added.moduleType) setWorkspaceIndexType(added.moduleType);
@@ -444,28 +483,12 @@ export async function renderWorkspace(
       moduleId: added.moduleId,
     });
   };
-
-  container.querySelectorAll('.btn-add-module[data-category-id]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      void openAddModuleSessionModal({
-        treatmentId,
-        categoryId: btn.dataset.categoryId,
-        preferredSessionId: activeSessionId,
-        onAdded: goToAdded,
-      });
-    });
-  });
-
-  container.querySelectorAll('.center-add-same-type').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      void openAddModuleSessionModal({
-        treatmentId,
-        presetType: btn.dataset.moduleType,
-        preferredSessionId: activeSessionId,
-        onAdded: goToAdded,
-      });
-    });
-  });
+  if (container._workspaceData) {
+    container._workspaceData.goToAdded = goToAdded;
+    container._workspaceData.activeSessionId = activeSessionId;
+    container._workspaceData.activeModuleType = activeModule?.module_type || '';
+  }
+  bindWorkspaceDelegatedClicks(container);
 
   container.querySelector('#btn-add-session')?.addEventListener('click', async () => {
     const id = await addSession(treatmentId);
@@ -488,11 +511,12 @@ export async function renderWorkspace(
         toast('Ese módulo no está en este tratamiento');
         return;
       }
-      onNavigate({
-        view: 'workspace',
+      void selectModuleInPlace(container, {
         treatmentId,
         sessionId: found.session_id,
         moduleId: found.module_id,
+        moduleType,
+        onNavigate,
       });
     },
     onExportPdf: async () => {
@@ -504,11 +528,12 @@ export async function renderWorkspace(
       toast(`${filename} — anonimizado, listo para supervisión`);
     },
     onTemplateApplied: async () => {
+      const s = container._workspaceRenderState || {};
       await renderWorkspace(container, {
-        treatmentId,
-        sessionId: activeSessionId,
-        moduleId: activeModule?.id,
-        onNavigate,
+        treatmentId: s.treatmentId ?? treatmentId,
+        sessionId: s.sessionId ?? activeSessionId,
+        moduleId: s.moduleId ?? activeModule?.id,
+        onNavigate: s.onNavigate ?? onNavigate,
         forceFullRender: true,
       });
     },
@@ -536,22 +561,25 @@ export async function renderWorkspace(
 
   bindSessionCollapse(container, activeModule, treatmentId);
   bindCategoryCollapse(container, activeModule, treatmentId);
+  bindDoneDots(container);
 
-  const notesApi = await mountNotesPanel(container.querySelector('#rightsidebar'), treatmentId, {
-    ...toolsOpts,
-    initialNotesScroll: savedNotesScroll,
-  });
-
-  // Restaurar tab activo después de re-render.
-  if (savedNotesTab && savedNotesTab !== 'notas') {
-    const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
-    if (tabBtn) tabBtn.click();
+  let notesApi = container._notesApi;
+  if (!keepNotes || !rightSidebarEl?.querySelector('.space-tools')) {
+    notesApi = await mountNotesPanel(rightSidebarEl, treatmentId, {
+      ...toolsOpts,
+      initialNotesScroll: savedNotesScroll,
+    });
+    container._notesApi = notesApi;
+    if (savedNotesTab && savedNotesTab !== 'notas') {
+      const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
+      if (tabBtn) tabBtn.click();
+    }
   }
 
-  unmountHighlight = mountTextHighlight(centerHost, {
+  container._unmountHighlight = mountTextHighlight(centerHost, {
     treatmentId,
     onNoteCreated: async () => {
-      await notesApi.focusNotasTab();
+      await notesApi?.focusNotasTab();
     },
   });
 
@@ -559,6 +587,12 @@ export async function renderWorkspace(
   container.dataset.workspaceModuleId = activeModule ? String(activeModule.id) : '';
   container.dataset.workspaceIndexMode = indexMode;
   container.dataset.workspaceIndexType = indexType || '';
+  container._workspaceRenderState = {
+    treatmentId,
+    sessionId: activeSessionId,
+    moduleId: activeModule?.id,
+    onNavigate,
+  };
 
   if (workspaceIndexModeListener) {
     document.removeEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
@@ -574,6 +608,180 @@ export async function renderWorkspace(
     });
   };
   document.addEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
+}
+
+function replaceWorkspaceHash({ treatmentId, sessionId, moduleId }) {
+  const next = new URLSearchParams();
+  if (treatmentId != null && treatmentId !== '') next.set('t', String(treatmentId));
+  if (sessionId != null && sessionId !== '') next.set('s', String(sessionId));
+  if (moduleId != null && moduleId !== '') next.set('m', String(moduleId));
+  const hash = `/workspace?${next}`;
+  if (location.hash.slice(1) === hash) return;
+  history.replaceState(null, '', `#${hash}`);
+}
+
+async function selectModuleInPlace(
+  container,
+  { treatmentId, sessionId, moduleId, moduleType, onNavigate },
+) {
+  const indexMode = getWorkspaceIndexMode();
+  if (indexMode === 'category' && moduleType) setWorkspaceIndexType(moduleType);
+  const indexType = indexMode === 'category' ? getWorkspaceIndexType() || moduleType || '' : '';
+  const card = container.querySelector(`#module-${moduleId}`);
+  const ok = await tryFastModuleNavigation(container, {
+    treatmentId,
+    sessionId,
+    moduleId,
+    activeModule: { id: moduleId, module_type: moduleType || card?.dataset.moduleType || '' },
+    indexMode,
+    indexType,
+  });
+  if (ok) {
+    replaceWorkspaceHash({ treatmentId, sessionId, moduleId });
+    return;
+  }
+  if (await paintCenterForModule(container, { sessionId, moduleId, moduleType })) {
+    replaceWorkspaceHash({ treatmentId, sessionId, moduleId });
+    return;
+  }
+  onNavigate({
+    view: 'workspace',
+    treatmentId,
+    sessionId,
+    moduleId,
+  });
+}
+
+function bindWorkspaceDelegatedClicks(container) {
+  if (container.dataset.workspaceClicksBound === '1') return;
+  container.dataset.workspaceClicksBound = '1';
+  container.addEventListener('click', (e) => {
+    const data = container._workspaceData;
+    if (!data) return;
+
+    const link = e.target.closest('.module-link');
+    if (link && container.contains(link)) {
+      e.preventDefault();
+      const type = link.dataset.indexType;
+      if (type) setWorkspaceIndexType(type);
+      if (type && data.activeModuleType === type) return;
+      void selectModuleInPlace(container, {
+        treatmentId: data.treatmentId,
+        sessionId: link.dataset.sessionId,
+        moduleId: link.dataset.moduleId,
+        moduleType: link.dataset.moduleType || type || '',
+        onNavigate: data.onNavigate,
+      });
+      return;
+    }
+
+    const addSessionMod = e.target.closest('.btn-add-module[data-session-id], .center-add-module');
+    if (addSessionMod && container.contains(addSessionMod)) {
+      void openSessionSelector(
+        data.treatmentId,
+        Number(addSessionMod.dataset.sessionId),
+        data.onNavigate,
+      );
+      return;
+    }
+
+    const addCat = e.target.closest('.btn-add-module[data-category-id]');
+    if (addCat && container.contains(addCat)) {
+      void openAddModuleSessionModal({
+        treatmentId: data.treatmentId,
+        categoryId: addCat.dataset.categoryId,
+        preferredSessionId: data.activeSessionId,
+        onAdded: data.goToAdded,
+      });
+      return;
+    }
+
+    const addSame = e.target.closest('.center-add-same-type');
+    if (addSame && container.contains(addSame)) {
+      void openAddModuleSessionModal({
+        treatmentId: data.treatmentId,
+        presetType: addSame.dataset.moduleType,
+        preferredSessionId: data.activeSessionId,
+        onAdded: data.goToAdded,
+      });
+    }
+  });
+}
+
+async function paintCenterForModule(container, { sessionId, moduleId, moduleType = '' } = {}) {
+  const data = container._workspaceData;
+  if (!data?.treatment || !data.sessions) return false;
+  const host = container.querySelector('#center-modules');
+  if (!host) return false;
+
+  await flushPendingAutoSaves();
+
+  const indexMode = getWorkspaceIndexMode();
+  if (indexMode === 'category' && moduleType) setWorkspaceIndexType(moduleType);
+  const indexType = indexMode === 'category' ? getWorkspaceIndexType() || moduleType || '' : '';
+
+  let activeModule = null;
+  let activeSessionId = sessionId;
+  const wanted = moduleId != null && moduleId !== '' ? String(moduleId) : '';
+  for (const session of data.sessions) {
+    const found = (session.modules || []).find((mod) => String(mod.id) === wanted);
+    if (found) {
+      activeModule = found;
+      activeSessionId = session.id;
+      break;
+    }
+  }
+  if (!activeModule && indexMode === 'category' && indexType) {
+    const match = data.sessions
+      .flatMap((session) => (session.modules || []).map((mod) => ({ session, module: mod })))
+      .find((row) => row.module.module_type === indexType);
+    if (match) {
+      activeModule = match.module;
+      activeSessionId = match.session.id;
+    }
+  }
+  if (!activeModule) {
+    const session =
+      data.sessions.find((row) => String(row.id) === String(sessionId)) || data.sessions[0];
+    activeSessionId = session?.id;
+    activeModule = session?.modules?.[0] || null;
+  }
+  if (!activeModule) return false;
+
+  data.activeSessionId = activeSessionId;
+  data.activeModuleId = activeModule.id;
+  data.activeModuleType = activeModule.module_type || '';
+  container.dataset.workspaceModuleId = String(activeModule.id);
+  container.dataset.workspaceIndexMode = indexMode;
+  container.dataset.workspaceIndexType = indexType || '';
+  container._workspaceRenderState = {
+    ...(container._workspaceRenderState || {}),
+    treatmentId: data.treatmentId,
+    sessionId: activeSessionId,
+    moduleId: activeModule.id,
+    onNavigate: data.onNavigate,
+  };
+
+  container._unmountCenterScrollSpy?.();
+  await renderAllCenterModules(host, data.sessions, data.treatment, activeModule, {
+    treatmentId: data.treatmentId,
+    activeSessionId,
+    activeModule,
+    indexMode,
+    indexType,
+    onNavigate: data.onNavigate,
+    refreshWorkspace: data.refreshWorkspace,
+    onSwap: data.onSwap,
+    onAddSession: data.onAddSession,
+    onDelete: data.onDelete,
+  });
+  bindModuleScrollSpy(container);
+  bindSessionCollapse(container, activeModule, data.treatmentId);
+  bindCategoryCollapse(container, activeModule, data.treatmentId);
+  setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
+  syncScrollToModule(container, activeModule.id);
+  scrollSidebarToModule(container, activeModule.id);
+  return true;
 }
 
 async function tryFastModuleNavigation(container, {
@@ -594,6 +802,11 @@ async function tryFastModuleNavigation(container, {
   const card = container.querySelector(`#module-${moduleId}`);
   if (!card) return false;
 
+  if (card.dataset.hydrated !== '1') {
+    const host = container.querySelector('#center-modules');
+    await host?._hydrateModule?.(moduleId);
+  }
+
   // Tras reemplazar el selector, el id es el mismo pero el tipo cambió — hay que re-renderizar.
   if (
     card.dataset.moduleType &&
@@ -605,11 +818,21 @@ async function tryFastModuleNavigation(container, {
 
   container.dataset.workspaceModuleId = String(moduleId);
   if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
+  container._workspaceRenderState = {
+    ...(container._workspaceRenderState || {}),
+    treatmentId,
+    sessionId,
+    moduleId,
+  };
+  if (container._workspaceData) {
+    container._workspaceData.activeSessionId = sessionId ?? container._workspaceData.activeSessionId;
+    container._workspaceData.activeModuleId = moduleId;
+    container._workspaceData.activeModuleType = activeModule.module_type || '';
+  }
 
   bindSessionCollapse(container, activeModule, treatmentId);
-  bindCategoryCollapse(container, activeModule, treatmentId);
   setActiveModuleHighlight(container, moduleId, activeModule.module_type);
-  syncScrollToModule(container, moduleId);
+  scrollToModule(container, moduleId, { force: false });
   scrollSidebarToModule(container, moduleId);
   return true;
 }
@@ -621,7 +844,13 @@ function syncScrollToModule(container, moduleId, pad = 20) {
   if (!root || !el) return;
   const rootRect = root.getBoundingClientRect();
   const elRect = el.getBoundingClientRect();
-  root.scrollTop = Math.max(0, root.scrollTop + (elRect.top - rootRect.top) - pad);
+  const isAbove = elRect.top < rootRect.top + pad;
+  const isBelow = elRect.bottom > rootRect.bottom - pad;
+  if (!isAbove && !isBelow) return;
+  const delta = isAbove
+    ? elRect.top - rootRect.top - pad
+    : elRect.bottom - rootRect.bottom + pad;
+  root.scrollTop = Math.max(0, root.scrollTop + delta);
 }
 
 function setActiveModuleHighlight(container, moduleId, moduleType = '') {
@@ -701,18 +930,39 @@ function scrollSidebarToModule(container, moduleId) {
   });
 }
 
+const KEEP_HYDRATED_TYPES = new Set(['neurofeedback', 'bilateral_stimulation']);
+
+function cardContainsFocus(wrap) {
+  const ae = typeof document !== 'undefined' ? document.activeElement : null;
+  return Boolean(ae && wrap.contains(ae));
+}
+
+function shouldKeepModuleMounted(wrap, moduleType) {
+  if (!wrap) return true;
+  if (KEEP_HYDRATED_TYPES.has(moduleType)) return true;
+  if (wrap.classList.contains('center-module-card--active')) return true;
+  if (cardContainsFocus(wrap)) return true;
+  return false;
+}
+
 function bindModuleScrollSpy(container) {
+  container._unmountCenterScrollSpy?.();
   const root = container.querySelector('#workspace-center-scroll');
-  const cards = container.querySelectorAll('.center-module-card');
+  const cards = [...container.querySelectorAll('.center-module-card')];
   if (!root || !cards.length) return;
 
+  const visible = new Set();
   let ticking = false;
   const pickVisible = () => {
     const rootRect = root.getBoundingClientRect();
     const mid = rootRect.top + rootRect.height * 0.35;
     let best = null;
     let bestDist = Infinity;
-    cards.forEach((card) => {
+    visible.forEach((card) => {
+      if (!card.isConnected) {
+        visible.delete(card);
+        return;
+      }
       const r = card.getBoundingClientRect();
       if (r.bottom < rootRect.top + 8 || r.top > rootRect.bottom - 8) return;
       const dist = Math.abs(r.top - mid);
@@ -723,6 +973,9 @@ function bindModuleScrollSpy(container) {
     });
     if (best?.dataset.moduleId) {
       setActiveModuleHighlight(container, best.dataset.moduleId, best.dataset.moduleType);
+      if (best.dataset.hydrated !== '1') {
+        void container.querySelector('#center-modules')?._hydrateModule?.(best.dataset.moduleId);
+      }
     }
   };
 
@@ -735,7 +988,35 @@ function bindModuleScrollSpy(container) {
     });
   };
 
+  let spyIo = null;
+  if (typeof IntersectionObserver === 'function') {
+    spyIo = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        onScroll();
+      },
+      { root, rootMargin: '0px', threshold: 0 },
+    );
+    for (const card of cards) spyIo.observe(card);
+  } else {
+    for (const card of cards) visible.add(card);
+  }
+
+  const rootRect = root.getBoundingClientRect();
+  for (const card of cards) {
+    const r = card.getBoundingClientRect();
+    if (r.bottom >= rootRect.top + 8 && r.top <= rootRect.bottom - 8) visible.add(card);
+  }
+
   root.addEventListener('scroll', onScroll, { passive: true });
+  container._unmountCenterScrollSpy = () => {
+    root.removeEventListener('scroll', onScroll);
+    spyIo?.disconnect();
+    container._unmountCenterScrollSpy = null;
+  };
   pickVisible();
 }
 
@@ -752,8 +1033,8 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     const when = formatShareAnsweredAt(shareAnswered);
     const tag = document.createElement('span');
     tag.className = 'share-answered-tag';
-    tag.title = when ? `Respondido por el enlace · ${when}` : 'Respondido por el enlace';
-    tag.innerHTML = `<span class="share-answered-tag__label">Respondido por el enlace</span>${
+    tag.title = when ? `${shareCompletedByLinkLabel()} · ${when}` : shareCompletedByLinkLabel();
+    tag.innerHTML = `<span class="share-answered-tag__label">${shareCompletedByLinkLabel()}</span>${
       when ? `<span class="share-answered-tag__when">${escapeHtml(when)}</span>` : ''
     }`;
     actions.appendChild(tag);
@@ -902,12 +1183,21 @@ function attachBotonera(wrap, actions) {
 
 async function renderAllCenterModules(host, sessions, treatment, activeModule, ctx) {
   teardownBilateralStimulation();
+  host._hydrateObserver?.disconnect();
+  host._hydrateObserver = null;
   host.innerHTML = '';
+  host._hydrateModule = null;
 
   const indexMode = ctx.indexMode || 'chrono';
   const indexType = ctx.indexType || '';
-  const displaySessions =
-    indexMode === 'category' ? sessionsWithTypeOnly(sessions, indexType) : sessions;
+  const displaySessions = sessionsForCenter(sessions, {
+    indexMode,
+    indexType,
+    sessionId: ctx.activeSessionId,
+    moduleId: activeModule?.id,
+  });
+
+  const pending = [];
 
   for (let si = 0; si < displaySessions.length; si++) {
     const session = displaySessions[si];
@@ -915,9 +1205,12 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
     for (const mod of session.modules) {
       const deletable = canDeleteModule(mod, session.modules);
-      const handout =
-        tccHandoutDef(mod.module_type) ||
-        customModuleHandoutPayload(mod.module_type, parseJsonSafe(mod.data, {}))?.def;
+      const customMod = getCustomModuleByType(mod.module_type);
+      const interactiveMod = customMod?.kind === 'interactive';
+      const handout = interactiveMod
+        ? (customMod.pdfPath ? { attached: true } : null)
+        : tccHandoutDef(mod.module_type) ||
+          customModuleHandoutPayload(mod.module_type, parseJsonSafe(mod.data, {}))?.def;
       const isActive = activeModule && String(mod.id) === String(activeModule.id);
       const wrap = document.createElement('article');
       wrap.className = `center-module-card${isActive ? ' center-module-card--active' : ''}`;
@@ -930,8 +1223,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
       const isNf = mod.module_type === 'neurofeedback';
       const shareable = shareableContentFor(mod.module_type);
-      const actions = createBotoneraEl({ isActive });
-      appendBotoneraCore(actions, {
+      const botoneraOpts = {
         swappable,
         handout,
         deletable,
@@ -952,20 +1244,14 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
           toast('Módulo eliminado');
           await ctx.onDelete(mod.id);
         },
-      });
+      };
 
       const body = document.createElement('div');
       body.className = 'center-module-card__body';
       wrap.appendChild(body);
+      wrap.dataset.hydrated = '0';
       host.appendChild(wrap);
-      await renderModule(body, mod, {
-        treatment,
-        sessionNumber: session.number,
-        patientName: treatment.patient_name,
-        onNavigate: ctx.onNavigate,
-        refreshWorkspace: ctx.refreshWorkspace,
-      });
-      attachBotonera(wrap, actions);
+      pending.push({ wrap, mod, session, botoneraOpts });
     }
 
     const lastMod = session.modules[session.modules.length - 1];
@@ -983,7 +1269,13 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       host.appendChild(addBtn);
     }
 
-    if (indexMode !== 'category' && si === displaySessions.length - 1 && ctx.onAddSession) {
+    const lastSession = sessions[sessions.length - 1];
+    if (
+      indexMode !== 'category' &&
+      ctx.onAddSession &&
+      lastSession &&
+      String(session.id) === String(lastSession.id)
+    ) {
       const addSessionBtn = document.createElement('button');
       addSessionBtn.type = 'button';
       addSessionBtn.className = 'btn btn-ghost btn-block center-add-session';
@@ -1006,6 +1298,95 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
   if (!host.children.length) {
     host.innerHTML = '<p class="empty-hint">Añade un módulo desde la barra izquierda.</p>';
+    return;
+  }
+
+  const hydrating = new Map();
+  const hydrateOne = (item) => {
+    if (!item || !item.wrap.isConnected) return Promise.resolve();
+    if (item.wrap.dataset.hydrated === '1' || item.wrap.dataset.hydrated === 'pending') {
+      return hydrating.get(String(item.mod.id)) || Promise.resolve();
+    }
+    const id = String(item.mod.id);
+    const existing = hydrating.get(id);
+    if (existing) return existing;
+    const job = (async () => {
+      item.wrap.dataset.hydrated = 'pending';
+      try {
+        const body = item.wrap.querySelector('.center-module-card__body');
+        if (!body) {
+          item.wrap.dataset.hydrated = '0';
+          return;
+        }
+        const actions = createBotoneraEl({
+          isActive: item.wrap.classList.contains('center-module-card--active'),
+        });
+        appendBotoneraCore(actions, item.botoneraOpts);
+        await renderModule(body, item.mod, {
+          treatment,
+          sessionNumber: item.session.number,
+          patientName: treatment.patient_name,
+          onNavigate: ctx.onNavigate,
+          refreshWorkspace: ctx.refreshWorkspace,
+        });
+        attachBotonera(item.wrap, actions);
+        item.wrap.style.minHeight = '';
+        item.wrap.dataset.hydrated = '1';
+      } catch (err) {
+        item.wrap.dataset.hydrated = '0';
+        throw err;
+      } finally {
+        hydrating.delete(id);
+      }
+    })();
+    hydrating.set(id, job);
+    return job;
+  };
+
+  const unhydrateOne = async (item) => {
+    const wrap = item?.wrap;
+    if (!wrap?.isConnected) return;
+    if (wrap.dataset.hydrated !== '1') return;
+    if (hydrating.has(String(item.mod.id))) return;
+    if (shouldKeepModuleMounted(wrap, item.mod.module_type)) return;
+    await flushPendingAutoSaves();
+    if (!wrap.isConnected) return;
+    if (wrap.dataset.hydrated !== '1') return;
+    if (hydrating.has(String(item.mod.id))) return;
+    if (shouldKeepModuleMounted(wrap, item.mod.module_type)) return;
+    teardownInteractiveHtml(item.mod.id);
+    const height = wrap.getBoundingClientRect().height;
+    wrap.style.minHeight = `${Math.max(160, Math.round(height))}px`;
+    const body = wrap.querySelector('.center-module-card__body');
+    if (body) body.innerHTML = '';
+    wrap.dataset.hydrated = '0';
+  };
+
+  host._hydrateModule = (moduleId) => {
+    const item = pending.find((row) => String(row.mod.id) === String(moduleId));
+    return hydrateOne(item);
+  };
+
+  const activeItem =
+    pending.find((item) => activeModule && String(item.mod.id) === String(activeModule.id)) ||
+    pending[0];
+  if (activeItem) await hydrateOne(activeItem);
+
+  const scrollRoot = host.closest('#workspace-center-scroll');
+  if (typeof IntersectionObserver === 'function') {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const item = pending.find((row) => row.wrap === entry.target);
+          if (!item) continue;
+          if (entry.isIntersecting) void hydrateOne(item);
+          else void unhydrateOne(item);
+        }
+      },
+      { root: scrollRoot, rootMargin: '200px 0px', threshold: 0 },
+    );
+    host._hydrateObserver = io;
+    for (const item of pending) io.observe(item.wrap);
   }
 }
 
@@ -1021,6 +1402,63 @@ async function openSessionSelector(treatmentId, sessionId, onNavigate) {
     treatmentId,
     sessionId,
     moduleId: sel.id,
+  });
+}
+
+function doneDotTitle(label, done) {
+  return done ? `${label}: completado` : `${label}: pendiente`;
+}
+
+function applyDoneDotState(btn, done, label) {
+  btn.classList.toggle('is-done', done);
+  btn.setAttribute('aria-pressed', done ? 'true' : 'false');
+  const title = doneDotTitle(label, done);
+  btn.setAttribute('aria-label', title);
+  btn.setAttribute('title', title);
+}
+
+function moduleDoneDotHtml(mod) {
+  if (!mod || mod.module_type === 'selector_modulo') {
+    return '<span class="module-done-dot module-done-dot--spacer" aria-hidden="true"></span>';
+  }
+  const label = moduleLabel(mod.module_type);
+  const done = isModuleDone(mod.module_type, mod.data);
+  const title = doneDotTitle(label, done);
+  return `<button type="button" class="module-done-dot${done ? ' is-done' : ''}" data-done-toggle data-module-id="${mod.id}" aria-pressed="${done ? 'true' : 'false'}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"></button>`;
+}
+
+function indexModuleLinkHtml({ first, active, count, label }) {
+  const extra = count > 1 ? `<span class="module-index-count">${count}</span>` : '';
+  return `<div class="module-row">${moduleDoneDotHtml(first.module)}<a href="#" class="module-link module-link--index${active ? ' active' : ''}" data-index-type="${escapeHtml(first.module.module_type)}" data-session-id="${first.session.id}" data-module-id="${first.module.id}"><span class="module-link__label">${escapeHtml(label)}</span>${extra}</a></div>`;
+}
+
+function bindDoneDots(container) {
+  if (container.dataset.doneDotsBound === '1') return;
+  container.dataset.doneDotsBound = '1';
+  container.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-done-toggle]');
+    if (!btn || !container.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const row = await getModule(btn.dataset.moduleId);
+      if (!row || row.module_type === 'selector_modulo') return;
+      const data = parseJsonSafe(row.data, {});
+      const patch = toggleDoneOverride(row.module_type, data);
+      await syncModuleReadableText(row, patch, row.status);
+      const done = isModuleDone(row.module_type, { ...data, ...patch });
+      const label = moduleLabel(row.module_type);
+      container.querySelectorAll(`[data-done-toggle][data-module-id="${row.id}"]`).forEach((el) => {
+        applyDoneDotState(el, done, label);
+      });
+      toast(doneToastMessage(label, done));
+    } catch (err) {
+      toast(err?.message || 'No se pudo actualizar el estado');
+    } finally {
+      btn.disabled = false;
+    }
   });
 }
 
@@ -1045,7 +1483,8 @@ function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionI
         m.module_type !== 'registro_inicial' &&
         m.module_type !== 'motivo_consulta' &&
         m.module_type !== 'selector_modulo';
-      return `<a href="#" class="module-link${active ? ' active' : ''}" data-session-id="${session.id}" data-module-id="${m.id}" data-module-type="${escapeHtml(m.module_type)}" data-draggable="${draggable ? 'true' : 'false'}" title="${escapeHtml(moduleLabel(m.module_type))}">${escapeHtml(moduleLabel(m.module_type))}</a>`;
+      const label = moduleLabel(m.module_type);
+      return `<div class="module-row">${moduleDoneDotHtml(m)}<a href="#" class="module-link${active ? ' active' : ''}" data-session-id="${session.id}" data-module-id="${m.id}" data-module-type="${escapeHtml(m.module_type)}" data-draggable="${draggable ? 'true' : 'false'}"><span class="module-link__label">${escapeHtml(label)}</span></a></div>`;
     })
     .join('');
 
@@ -1053,11 +1492,11 @@ function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionI
     <section class="session-block${startCollapsed ? ' session-block--collapsed' : ''}${activeInSession ? ' session-block--active' : ''}" data-session-id="${session.id}">
       <button type="button" class="session-block__title" data-session-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
         <span class="session-block__chevron" aria-hidden="true">▾</span>
-        ${escapeHtml(t('workspace.session'))} ${session.number}
+        <span class="session-block__label">${escapeHtml(t('workspace.session'))} ${session.number}</span>
       </button>
       <div class="session-block__body">
         <nav class="session-block__modules">${mods || `<span class="text-muted">${escapeHtml(t('workspace.noModules'))}</span>`}</nav>
-        <button type="button" class="btn btn-ghost btn-block btn-add-module" data-session-id="${session.id}" title="${escapeHtml(t('workspace.addModule'))}">${escapeHtml(t('workspace.addModule'))}</button>
+        ${sidebarAddRowHtml({ sessionId: session.id, extraClass: 'btn-add-module', label: t('workspace.addModule') })}
       </div>
     </section>`;
 }

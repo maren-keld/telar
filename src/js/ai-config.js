@@ -86,6 +86,21 @@ export const AI_API_PRESETS = {
     keyHint: 'Según tu proveedor',
     keyRequired: false,
   },
+  /** No aparece en el selector clínico: solo experiencias interactivas. */
+  xai: {
+    id: 'xai',
+    label: 'Grok (xAI)',
+    description:
+      'HTML de experiencias. Telar la activa; la clave no viaja en el instalador. El diseño sale a EE.UU., no la ficha.',
+    serverCountry: 'Estados Unidos',
+    baseUrl: 'https://api.x.ai/v1',
+    defaultModel: 'grok-4.6',
+    models: ['grok-4.6'],
+    keyHint: 'Telar pide la clave al activar. No viaja en el instalador.',
+    keyRequired: true,
+    modulesOnly: true,
+    reasoningEffort: 'medium',
+  },
 };
 
 /** Modelos locales sugeridos — cuantización Q4 para Apple Silicon / 16 GB RAM. */
@@ -137,6 +152,17 @@ export function telarProvisionsMistral() {
   return true;
 }
 
+export function telarProvisionsXai() {
+  return true;
+}
+
+/** xAI a veces se copia como xai-xai-… */
+export function normalizeXaiApiKey(raw = '') {
+  let key = String(raw || '').trim();
+  if (/^xai-xai-/i.test(key)) key = key.slice(4);
+  return key;
+}
+
 export function hasBundledMistralKey() {
   return telarProvisionsMistral();
 }
@@ -173,11 +199,30 @@ export function getApiPreset(providerId) {
   return AI_API_PRESETS[providerId] || AI_API_PRESETS.mistral;
 }
 
-/** Config resuelta para llamadas (ai-client.js). */
-export function resolveAiConfig(profile = {}) {
+/** Config resuelta para llamadas (ai-client.js).
+ *  `purpose: 'modules'` → Grok 4.6 (razonamiento medium) en el editor de módulos,
+ *  incluida cada iteración de HTML. Ficha y notas siguen en Mistral. */
+export function resolveAiConfig(profile = {}, { purpose } = {}) {
   const mode = profile.aiMode ?? AI_DEFAULTS.aiMode;
   if (mode === 'off') {
     return { enabled: false, mode: 'off' };
+  }
+  if (purpose === 'modules') {
+    const preset = getApiPreset('xai');
+    return {
+      enabled: true,
+      mode: 'api',
+      purpose: 'modules',
+      providerId: 'xai',
+      providerLabel: preset.label,
+      apiBase: preset.baseUrl,
+      apiModel: preset.defaultModel,
+      apiKey: '',
+      keyRequired: true,
+      keyHint: preset.keyHint || '',
+      apiProtocol: '',
+      reasoningEffort: preset.reasoningEffort || 'medium',
+    };
   }
   if (mode === 'local') {
     const localModel = profile.aiLocalModel || AI_DEFAULTS.aiLocalModel;

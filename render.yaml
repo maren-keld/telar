@@ -30,6 +30,9 @@ services:
       # Clave Mistral solo en Render. La app la pide al activar la IA.
       - key: MISTRAL_API_KEY
         sync: false
+      # Grok (experiencias interactivas). Misma idea: no va en el .app.
+      - key: XAI_API_KEY
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
       - key: BACKEND_URL

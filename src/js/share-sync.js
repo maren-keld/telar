@@ -24,6 +24,13 @@ export const SHARE_PUBLIC_BASE = 'https://telarapp.cl';
 
 const POLL_MS = 20_000;
 
+/** Solo enlaces vivos: `share_answered_at` no debe disparar el poll. */
+export const PENDING_SHARE_SQL = `json_extract(sm.data, '$.share.token') IS NOT NULL`;
+
+export function sharePollShouldRun(pendingCount) {
+  return Number(pendingCount) > 0;
+}
+
 function apiUrl(path) {
   return `${getSubscriptionApiBase()}${path}`;
 }
@@ -176,6 +183,7 @@ export async function createModuleShareLink(moduleRow, { def, interactive, hando
   };
   const fresh = await getModule(moduleRow.id);
   await syncModuleReadableText(fresh || moduleRow, { share }, fresh?.status || moduleRow.status);
+  startShareAutoSync();
 
   return { url: shareUrl(share), token, expiresAt: expires_at };
 }
@@ -192,6 +200,7 @@ export async function revokeModuleShare(moduleRow) {
   }
   const fresh = await getModule(moduleRow.id);
   await syncModuleReadableText(fresh || moduleRow, { share: null }, fresh?.status);
+  await stopSharePollIfIdle();
 }
 
 /** Traduce lo que respondió el paciente a los campos que guarda el módulo. */
@@ -270,29 +279,28 @@ export async function collectShareResponse(moduleRow) {
   };
 }
 
+const PENDING_SHARE_SELECT = `SELECT sm.id, sm.module_type, sm.status, sm.data,
+                s.number AS session_number, s.treatment_id, p.name AS patient_name
+           FROM session_modules sm
+           JOIN sessions s ON s.id = sm.session_id
+           JOIN treatments t ON t.id = s.treatment_id
+           JOIN patients p ON p.id = t.patient_id`;
+
 /** Módulos esperando respuesta. Sin treatmentId: todos los tratamientos. */
 export async function pendingShareModules(treatmentId) {
   const rows = treatmentId
-    ? await query(
-        `SELECT sm.id, sm.module_type, sm.status, sm.data,
-                s.number AS session_number, s.treatment_id, p.name AS patient_name
-           FROM session_modules sm
-           JOIN sessions s ON s.id = sm.session_id
-           JOIN treatments t ON t.id = s.treatment_id
-           JOIN patients p ON p.id = t.patient_id
-          WHERE s.treatment_id = ? AND sm.data LIKE '%"share"%'`,
-        [treatmentId],
-      )
-    : await query(
-        `SELECT sm.id, sm.module_type, sm.status, sm.data,
-                s.number AS session_number, s.treatment_id, p.name AS patient_name
-           FROM session_modules sm
-           JOIN sessions s ON s.id = sm.session_id
-           JOIN treatments t ON t.id = s.treatment_id
-           JOIN patients p ON p.id = t.patient_id
-          WHERE sm.data LIKE '%"share"%'`,
-      );
+    ? await query(`${PENDING_SHARE_SELECT} WHERE s.treatment_id = ? AND ${PENDING_SHARE_SQL}`, [
+        treatmentId,
+      ])
+    : await query(`${PENDING_SHARE_SELECT} WHERE ${PENDING_SHARE_SQL}`);
   return rows.filter((row) => shareInfo(row.data));
+}
+
+export async function countPendingShares() {
+  const [row] = await query(
+    `SELECT COUNT(*) AS n FROM session_modules sm WHERE ${PENDING_SHARE_SQL}`,
+  );
+  return Number(row?.n) || 0;
 }
 
 /**
@@ -303,6 +311,7 @@ export async function syncPendingShares(treatmentId) {
   const pending = await pendingShareModules(treatmentId);
   const applied = [];
   for (const row of pending) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const item = await collectShareResponse(row);
     if (item) applied.push(item);
   }
@@ -310,14 +319,30 @@ export async function syncPendingShares(treatmentId) {
 }
 
 let globalShareSyncStop = null;
+let sharePollStartupChecked = false;
+let sharePollOnApplied = null;
+
+function stopSharePoll() {
+  globalShareSyncStop?.();
+}
+
+async function stopSharePollIfIdle() {
+  try {
+    if (!sharePollShouldRun(await countPendingShares())) stopSharePoll();
+  } catch {
+    /* el próximo tick reintenta */
+  }
+}
 
 /**
- * Consulta periódica en toda la app (no depende de abrir el módulo).
- * También consulta inmediatamente al volver del background (el paciente
- * pudo responder mientras la app estaba minimizada y Render dormido).
+ * Consulta periódica solo mientras hay enlaces pendientes.
+ * También consulta al volver del background (el paciente pudo responder
+ * mientras la app estaba minimizada y Render dormido).
  * @returns {() => void} para detenerla.
  */
 export function startShareAutoSync(onApplied) {
+  if (onApplied) sharePollOnApplied = onApplied;
+  sharePollStartupChecked = true;
   if (globalShareSyncStop) return globalShareSyncStop;
   let stopped = false;
   let running = false;
@@ -330,8 +355,9 @@ export function startShareAutoSync(onApplied) {
       if (applied.length > 0 && !stopped) {
         announceShareResponses(applied);
         document.dispatchEvent(new CustomEvent('telar:share-applied', { detail: { items: applied } }));
-        onApplied?.(applied);
+        sharePollOnApplied?.(applied);
       }
+      if (!stopped) await stopSharePollIfIdle();
     } catch (e) {
       console.error('[share-sync] poll falló:', e?.message || e);
     } finally {
@@ -342,7 +368,6 @@ export function startShareAutoSync(onApplied) {
   void tick();
   const timer = setInterval(tick, POLL_MS);
 
-  /* Al volver del background/minimizado: tick inmediato sin esperar 20 s. */
   const onVisible = () => {
     if (document.visibilityState === 'visible' && !stopped) void tick();
   };
@@ -357,7 +382,13 @@ export function startShareAutoSync(onApplied) {
   return globalShareSyncStop;
 }
 
-/** Arranca el poll global una sola vez, cuando la ficha ya está desbloqueada. */
+/** Arranca el poll solo si hay enlaces pendientes (una vez por sesión desbloqueada). */
 export function ensureGlobalShareSync() {
-  startShareAutoSync();
+  if (globalShareSyncStop || sharePollStartupChecked) return;
+  sharePollStartupChecked = true;
+  void countPendingShares()
+    .then((n) => {
+      if (sharePollShouldRun(n)) startShareAutoSync();
+    })
+    .catch((e) => console.error('[share-sync] conteo inicial falló:', e?.message || e));
 }

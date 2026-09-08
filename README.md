@@ -2,7 +2,7 @@
 
 App de escritorio (macOS y Windows) para gestión clínica local: programas por sesiones, escalas longitudinales, handouts TCC, neurofeedback Muse 2 y planes Demo/Pro.
 
-**Sitio:** [telarapp.cl](https://telarapp.cl) · **Licencia:** [AGPL-3.0](LICENSE)
+**Sitio:** [telarapp.cl](https://telarapp.cl) · **Manual:** [telarapp.cl/manual](https://telarapp.cl/manual) · **Licencia:** [AGPL-3.0](LICENSE)
 
 ## Descargar
 

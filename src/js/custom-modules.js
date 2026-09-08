@@ -162,6 +162,9 @@ export function resolveModuleDef(moduleType) {
       category: custom.category || 'custom',
       description:
         custom.description || custom.instructions || def?.subtitle || 'Módulo personalizado.',
+      author: custom.author || '',
+      audience: custom.audience || 'todas',
+      where: custom.where || '',
       allowMultipleInSession: true,
       custom: true,
       kind: custom.kind || 'simple',
@@ -198,7 +201,7 @@ function plainHandoutText(value = '') {
  */
 export function customModuleHandoutPayload(moduleType, data = {}) {
   const custom = getCustomModuleByType(moduleType);
-  if (!custom) return null;
+  if (!custom || custom.kind === 'interactive') return null;
 
   const answers = data?.answers || {};
   const sections = [];
@@ -232,9 +235,11 @@ export function customModuleHandoutPayload(moduleType, data = {}) {
       ]
         .filter(Boolean)
         .join(' — ');
-    } else if (q.type === 'checkbox') {
+    } else if (q.type === 'checkbox' || q.type === 'radio') {
       hint = `Opciones: ${(q.options || []).join(' · ')}`;
-      values[q.id] = Array.isArray(answers[q.id]) ? answers[q.id].join(' · ') : '';
+      values[q.id] = Array.isArray(answers[q.id])
+        ? answers[q.id].join(' · ')
+        : String(answers[q.id] || '');
     } else if (q.type === 'scale') {
       hint = 'Escala de 0 a 10';
       values[q.id] = answers[q.id] === '' || answers[q.id] == null ? '' : String(answers[q.id]);

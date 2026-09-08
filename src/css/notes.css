@@ -167,8 +167,51 @@
 .notes-empty {
   font-size: 0.8rem;
   color: var(--text-muted);
-  padding: 12px 8px;
+  padding: 0;
+  margin: 0;
   line-height: 1.45;
+}
+
+.notes-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  gap: 10px;
+  padding: 28px 12px 16px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.notes-empty-state .dither-orb-empty {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+  gap: 14px;
+}
+
+.notes-empty-state .notes-empty {
+  max-width: 19rem;
+}
+
+.notes-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 3px 6px;
+  margin: 0 2px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  vertical-align: middle;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .space-tools__fab {
@@ -209,6 +252,8 @@
   border-radius: 1px var(--radius-lg) var(--radius-lg) 1px;
   overflow: visible;
   box-shadow: var(--shadow-card);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
 }
 
 .kindle-note--starred {
@@ -299,6 +344,33 @@
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.kindle-note__ai-answer--clamp {
+  max-height: calc(1.55em * 12);
+  overflow: hidden;
+}
+
+.kindle-note__ai-more {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kindle-note__ai-more[hidden] {
+  display: none;
+}
+
+.notes-older {
+  margin: 4px 0 8px;
+  font-size: 0.85rem;
 }
 
 .kindle-note__comment:focus {

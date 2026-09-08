@@ -361,17 +361,26 @@ const BUILTIN_DEFS = {
 };
 
 /**
+ * Schema de la escala (núcleo o pack), aunque no se pueda enviar por enlace.
+ * Sirve para saber si el formulario está completo (p. ej. IES-R en fichas viejas).
+ * @returns {object|null}
+ */
+export function questionnaireDefFor(moduleType) {
+  const builtin = BUILTIN_DEFS[moduleType];
+  if (builtin) return builtin();
+  const fromPack = getScorer(moduleType)?.shareDef;
+  if (typeof fromPack === 'function') return fromPack();
+  return fromPack || null;
+}
+
+/**
  * Definición declarativa de una escala para compartirla por enlace.
  * Los packs clínicos aportan la suya con `shareDef` en su scorer.
  * @returns {object|null}
  */
 export function toShareDef(moduleType) {
   if (isLicensePendingModule(moduleType)) return null;
-  const builtin = BUILTIN_DEFS[moduleType];
-  if (builtin) return builtin();
-  const fromPack = getScorer(moduleType)?.shareDef;
-  if (typeof fromPack === 'function') return fromPack();
-  return fromPack || null;
+  return questionnaireDefFor(moduleType);
 }
 
 /** ¿Esta escala se puede enviar al paciente por enlace? */

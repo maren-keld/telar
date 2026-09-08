@@ -20,6 +20,14 @@ import {
   buildModuleAiSystemPrompt,
   normalizeThemeId,
 } from '../module-themes.js';
+import { ensureInteractiveCloseable, extractInteractiveHtml } from '../interactive-experience.js';
+import {
+  GROK_REASONING_EFFORT,
+  INTERACTIVE_EDIT_SYSTEM,
+  buildInteractiveEditUserMessage,
+  moduleAiPurpose,
+  shouldUseGrokForModule,
+} from '../module-ai-route.js';
 import { buildInteractiveDocument, interactiveModuleUrl } from '../modules/interactive-html.js';
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
 import { animateAndRemove, playOverlayOpen } from '../transitions.js';
@@ -97,9 +105,9 @@ Opción A — cuestionario. Bloque \`\`\`json con esta forma (schema ${QUESTIONN
 Reglas: "kind" puede ser "sum", "mean" o "count-threshold"; con "count-threshold" hace falta "itemThresholds" con un umbral por ítem ({"gte":2} o {"lte":1}). Si hay ítems con "reverse" es obligatorio "scoring.reverseMax". Los índices de "subscales" e "items" son base 0. Un ítem puede ser deslizador: { "text": "...", "kind": "slider", "min": 0, "max": 10 }.
 No copies escalas con copyright (PHQ-9, GAD-7, AQ, RAADS y similares): esas ya vienen en Telar o requieren licencia.
 
-Opción B — experiencia interactiva. Bloque \`\`\`html con un fragmento autocontenido (puedes usar <style> y <script> inline). No hay internet dentro del módulo: nada de CDN, fuentes remotas ni fetch. Para guardar en la ficha del paciente usa el puente que Telar inyecta:
+Opción B — experiencia interactiva. Bloque \`\`\`html con un fragmento autocontenido (puedes usar <style> y <script> inline). No hay internet dentro del módulo: nada de CDN, fuentes remotas ni fetch. La actividad DEBE poder responderse (botones, colores, pasos o campos). Devuelve un FRAGMENTO: <style> y markup, sin <!doctype>, sin <html>, sin <head> ni <body>. Cierra todas las etiquetas <style>. Para guardar en la ficha del paciente usa el puente que Telar inyecta:
   Telar.load()            → datos guardados antes, o null
-  Telar.save(datos)       → guarda progreso
+  Telar.save(datos)       → guarda progreso (objeto con lo elegido)
   Telar.done('resumen')   → marca completado con un resumen de texto
   Telar.resize(altura)    → ajusta la altura visible
 
@@ -110,12 +118,12 @@ Elige la opción que mejor calce con lo que pide el terapeuta. Escribe todo en e
 function extractBlock(text) {
   const json = text.match(/```json\s*([\s\S]*?)```/i);
   if (json) return { kind: 'questionnaire', code: json[1].trim() };
-  const html = text.match(/```html\s*([\s\S]*?)```/i);
-  if (html) return { kind: 'interactive', code: html[1].trim() };
+  const html = extractInteractiveHtml(text);
+  if (html) return { kind: 'interactive', code: html };
   const any = text.match(/```\s*([\s\S]*?)```/);
   if (any) {
     const code = any[1].trim();
-    return { kind: code.startsWith('{') ? 'questionnaire' : 'interactive', code };
+    if (code.startsWith('{')) return { kind: 'questionnaire', code };
   }
   return null;
 }
@@ -225,10 +233,17 @@ export function openModuleAiChat({ onCreated } = {}) {
     previewEl.innerHTML = `
       <h4 class="ai-module__preview-title">${escapeHtml(title)}</h4>
       <iframe class="cm-interactive__preview" title="Vista previa" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer"></iframe>`;
-    if (!isTauriApp()) return;
+    if (!isTauriApp()) {
+      previewEl.querySelector('iframe').srcdoc = buildInteractiveDocument(html, {
+        title,
+        initialData: null,
+        theme: selectedTheme(),
+      });
+      return;
+    }
     const doc = buildInteractiveDocument(html, { title, initialData: null, theme: selectedTheme() });
     await getInvoke()('interactive_module_set', { id: previewId, html: doc });
-    previewEl.querySelector('iframe').src = interactiveModuleUrl(previewId);
+    previewEl.querySelector('iframe').src = `${interactiveModuleUrl(previewId)}?r=${Date.now()}`;
   };
 
   const handleReply = async (text) => {
@@ -263,15 +278,16 @@ export function openModuleAiChat({ onCreated } = {}) {
     }
 
     const title = text.match(/^\s*#{0,3}\s*(.{3,80}?)\s*$/m)?.[1] || 'Experiencia interactiva';
-    const cdn = [...block.code.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)["']/gi)].map((m) => m[1]);
-    candidate = applyThemeToCandidate({ kind: 'interactive', html: block.code, title }, selectedTheme());
+    const html = ensureInteractiveCloseable(block.code);
+    const cdn = [...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)["']/gi)].map((m) => m[1]);
+    candidate = applyThemeToCandidate({ kind: 'interactive', html, title }, selectedTheme());
     appendLog(
       'assistant',
       cdn.length
         ? `Generada, pero carga ${cdn[0]} desde internet y dentro de Telar no hay red. Pídele que lo reescriba sin librerías externas.`
         : 'Experiencia generada. Pruébala en la vista previa y guárdala si te sirve.',
     );
-    await showInteractive(block.code, title);
+    await showInteractive(html, title);
     saveBtn.disabled = false;
   };
 
@@ -284,7 +300,18 @@ export function openModuleAiChat({ onCreated } = {}) {
     const themeId = selectedTheme();
     rememberThemeId(themeId);
     history[0] = { role: 'system', content: buildModuleAiSystemPrompt(SYSTEM_PROMPT, themeId) };
-    history.push({ role: 'user', content: prompt });
+    const iteratingInteractive = candidate?.kind === 'interactive' && Boolean(candidate.html);
+    const useGrok = shouldUseGrokForModule();
+    let messages;
+    if (iteratingInteractive) {
+      messages = [
+        { role: 'system', content: INTERACTIVE_EDIT_SYSTEM },
+        { role: 'user', content: buildInteractiveEditUserMessage(prompt, candidate.html) },
+      ];
+    } else {
+      history.push({ role: 'user', content: prompt });
+      messages = [history[0], { role: 'user', content: prompt }];
+    }
     appendLog('user', prompt);
     promptEl.value = '';
     sendBtn.disabled = true;
@@ -292,9 +319,22 @@ export function openModuleAiChat({ onCreated } = {}) {
     const pending = appendLog('assistant', 'Generando…');
     request = createAiRequest();
     try {
-      const { text } = await chatCompletion({ messages: history, maxTokens: 4000, request });
+      const { text } = await chatCompletion({
+        messages,
+        maxTokens: 4000,
+        request,
+        purpose: moduleAiPurpose(),
+        reasoningEffort: useGrok ? GROK_REASONING_EFFORT : undefined,
+      });
       pending.remove();
-      history.push({ role: 'assistant', content: text });
+      if (!iteratingInteractive) {
+        history.push({
+          role: 'assistant',
+          content: extractInteractiveHtml(text)
+            ? 'Experiencia HTML generada. Los siguientes pedidos se aplican sobre el HTML completo.'
+            : text,
+        });
+      }
       await handleReply(text);
     } catch (err) {
       pending.remove();

@@ -14,6 +14,7 @@
  * hipótesis, evolución psicométrica (la curva), arco de sesiones, momentos
  * marcados y preguntas a supervisión.
  */
+import { coverageLabel } from './clinic-country.js';
 import { TREATMENT_STATUS, patientGenderLabel } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getClinicalNotes, getSessionsWithModules, getTreatment } from './db.js';
@@ -114,7 +115,7 @@ export function buildCasePresentationData({ treatment, sessions, notes = [], pro
     reg.genero ? `Género: ${patientGenderLabel(reg.genero) || reg.genero}` : '',
     occupationsText(reg.occupations) ? `Ocupación: ${occupationsText(reg.occupations)}` : '',
     reg.marital_status ? `Estado civil: ${reg.marital_status}` : '',
-    reg.prevision ? `Previsión: ${reg.prevision}` : '',
+    reg.prevision ? `${coverageLabel()}: ${reg.prevision}` : '',
     reg.source ? `Derivación: ${reg.source}` : '',
   ].filter(Boolean);
 

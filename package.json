@@ -1,6 +1,6 @@
 {
   "name": "telar",
-  "version": "0.1.0-beta.19",
+  "version": "0.1.0-beta.20",
   "description": "Consultorio clínico local con neurofeedback Muse 2 — Telar",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -13,7 +13,8 @@
     "test:frontend": "node --test tests/frontend/*.test.js",
     "test:e2e": "playwright test",
     "test:api": "python3 -m pytest server/tests",
-    "generate:landing-modules": "node scripts/generate-landing-modules.mjs"
+    "generate:landing-modules": "node scripts/generate-landing-modules.mjs",
+    "generate:landing-manual": "node scripts/generate-landing-manual.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

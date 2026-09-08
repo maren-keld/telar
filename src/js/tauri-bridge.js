@@ -95,6 +95,17 @@ export async function pickCodepenZip() {
   return normalizePickedPath(selected);
 }
 
+export async function pickPdfFile() {
+  if (!isTauriApp()) return null;
+  const selected = await getDialogOpen()({
+    directory: false,
+    multiple: false,
+    title: 'Adjuntar PDF imprimible',
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  return normalizePickedPath(selected);
+}
+
 /** @returns {Promise<string|null>} */
 export async function pickPackSavePath(defaultName) {
   if (!isTauriApp()) return null;

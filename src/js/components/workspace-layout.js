@@ -135,9 +135,13 @@ export function initWorkspaceSidebarResizers({ layoutEl, leftSidebarEl, rightSid
   if (window._telarWorkspaceResizeObserver) {
     window._telarWorkspaceResizeObserver.disconnect();
   }
+  if (window._telarWorkspaceResizeHandler) {
+    window.removeEventListener('resize', window._telarWorkspaceResizeHandler);
+  }
   const ro = new ResizeObserver(() => syncCompactOnResize());
   ro.observe(layoutEl);
   window._telarWorkspaceResizeObserver = ro;
+  window._telarWorkspaceResizeHandler = syncCompactOnResize;
   window.addEventListener('resize', syncCompactOnResize, { passive: true });
 
   const persist = (nextLeft, nextRight) => {

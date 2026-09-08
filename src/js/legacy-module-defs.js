@@ -72,7 +72,7 @@ const FALLBACK_LABELS = {
   dass21: 'DASS-21 — Depresión, ansiedad y estrés',
   gad7: 'GAD-7 — Ansiedad generalizada',
   asrs: 'ASRS v1.1 — TDAH en adultos',
-  pcl5: 'PCL-5 — TEPT (DSM-5)',
+  pcl5: 'PCL-5 — Tamizaje TEPT',
   sprint_ecl: 'SPRINT-E — TEPT breve',
   iesr: 'IES-R — Impacto de eventos',
   ades: 'ADES — Disociación',

@@ -4257,6 +4257,24 @@ section {
   font-size: 1.15rem;
 }
 
+.guide-photo {
+  margin: 1.75rem 0 0;
+}
+
+.guide-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #e8f1fb;
+}
+
+.guide-photo figcaption {
+  margin: 0.55rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 .guide-body h2 {
   margin: 3rem 0 1rem;
   font-size: clamp(1.5rem, 3vw, 2.1rem);
@@ -4385,5 +4403,307 @@ section {
   .download-mockup {
     transform: none;
     filter: drop-shadow(0 1.2rem 1.8rem rgba(55, 31, 18, 0.22));
+  }
+}
+
+/* ——— Manual (Ableton-style TOC + capítulo) ——— */
+.manual-page .manual-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  gap: 2.5rem;
+  width: min(100% - 2.5rem, 72rem);
+  margin: 0 auto;
+  padding: 2.5rem 0 5rem;
+  align-items: start;
+}
+
+.manual-toc {
+  position: sticky;
+  top: 5.5rem;
+  max-height: calc(100vh - 6.5rem);
+  overflow: auto;
+  padding: 0.25rem 0;
+}
+
+.manual-toc__label {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.manual-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--border);
+}
+
+.manual-toc__list a {
+  display: block;
+  padding: 0.35rem 0 0.35rem 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  margin-left: -1px;
+}
+
+.manual-toc__list a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.manual-toc__list a[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+  border-left-color: var(--text);
+}
+
+.manual-article__header {
+  margin-bottom: 2rem;
+}
+
+.manual-breadcrumb {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.manual-article__header h1 {
+  margin: 0 0 0.85rem;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  line-height: 1.05;
+}
+
+.manual-lead {
+  margin: 0;
+  max-width: 40rem;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  line-height: 1.55;
+}
+
+.manual-article__header .hero-actions {
+  margin-top: 1.5rem;
+}
+
+.manual-prose {
+  max-width: 42rem;
+}
+
+.manual-prose h2 {
+  margin: 2.75rem 0 0.9rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+}
+
+.manual-prose h3 {
+  margin: 2rem 0 0.65rem;
+  font-size: 1.15rem;
+}
+
+.manual-prose p,
+.manual-prose li {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.manual-prose ul,
+.manual-prose ol {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.manual-prose li + li {
+  margin-top: 0.35rem;
+}
+
+.manual-prose code {
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+
+.manual-callout {
+  margin: 1.5rem 0;
+  padding: 1.1rem 1.25rem;
+  border-left: 4px solid var(--success);
+  background: var(--success-soft);
+  color: var(--text-secondary);
+}
+
+.manual-table-wrap {
+  overflow-x: auto;
+  margin: 1.25rem 0 1.75rem;
+  border: 1px solid var(--border);
+}
+
+.manual-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.manual-table th,
+.manual-table td {
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+
+.manual-table th {
+  color: var(--text);
+  font-weight: 600;
+  background: var(--bg-card);
+}
+
+.manual-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.manual-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+.manual-index-card a {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+}
+
+.manual-index-card a:hover {
+  text-decoration: none;
+}
+
+.manual-index-card a:hover .manual-index-card__title {
+  text-decoration: underline;
+}
+
+.manual-index-card__num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding-top: 0.15rem;
+}
+
+.manual-index-card__title {
+  display: block;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.manual-index-card__summary {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.manual-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 3.5rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border);
+  max-width: 42rem;
+}
+
+.manual-pager a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.manual-pager a:hover {
+  text-decoration: none;
+}
+
+.manual-pager a:hover .manual-pager__title {
+  text-decoration: underline;
+}
+
+.manual-pager__next {
+  text-align: right;
+  justify-self: end;
+}
+
+.manual-pager__dir {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.manual-pager__title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .manual-page .manual-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+  }
+
+  .manual-toc {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .manual-toc__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    border-left: 0;
+  }
+
+  .manual-toc__list a {
+    border-left: 0;
+    margin-left: 0;
+    padding: 0.35rem 0.65rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+  }
+
+  .manual-toc__list a[aria-current="page"] {
+    border-color: var(--text);
+  }
+
+  .manual-pager {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-pager__next {
+    text-align: left;
+    justify-self: stretch;
   }
 }

@@ -58,8 +58,16 @@ def provision_configured() -> bool:
     return bool(_inference_key() or _admin_key())
 
 
+def xai_provision_configured() -> bool:
+    return bool(_xai_inference_key())
+
+
 def _inference_key() -> str:
     return os.environ.get("MISTRAL_API_KEY", "").strip()
+
+
+def _xai_inference_key() -> str:
+    return os.environ.get("XAI_API_KEY", "").strip()
 
 
 def _admin_key() -> str:
@@ -253,4 +261,50 @@ def register_routes(app) -> None:
             "api_key": api_key,
             "provider": "mistral",
             "source": source,
+        })
+
+    @app.post("/api/ai/xai-provision")
+    def xai_provision():
+        api = _api()
+        if not xai_provision_configured():
+            return jsonify({
+                "error": "Grok para experiencias aún no está habilitado en el servidor.",
+            }), 503
+
+        data = request.get_json(silent=True) or {}
+        email = api.normalize_payer_email(data.get("email") or "")
+        device_id = api.clean_field(data.get("device_id"), DEVICE_ID_MAX)
+        if not api.is_valid_payer_email(email):
+            return jsonify({"error": "Necesitamos el correo del profesional para activar Grok."}), 400
+        if len(device_id) < DEVICE_ID_MIN:
+            return jsonify({"error": "Falta el identificador de esta instalación."}), 400
+
+        email_hash = hashlib.sha256(f"{_salt()}:xai:{email}".encode()).hexdigest()
+        with api.db() as conn:
+            row = conn.execute(
+                "SELECT issue_count, last_issued_at FROM ai_mistral_grants WHERE email_hash = ?",
+                (email_hash,),
+            ).fetchone()
+            if _email_limited(row):
+                return jsonify({
+                    "error": "Demasiados intentos de activar Grok hoy. Prueba mañana o escribe a contacto@telarapp.cl.",
+                }), 429
+            ip_count = _bump_ip(conn, api.client_ip())
+            if ip_count > MAX_ISSUES_PER_IP_DAY:
+                return jsonify({
+                    "error": "Demasiados intentos desde esta red. Prueba más tarde.",
+                }), 429
+
+        shared = _xai_inference_key()
+        if not shared:
+            return jsonify({"error": "Grok para experiencias aún no está habilitado en el servidor."}), 503
+
+        with api.db() as conn:
+            _bump_email(conn, email_hash, "", "shared")
+
+        return jsonify({
+            "ok": True,
+            "api_key": shared,
+            "provider": "xai",
+            "source": "shared",
         })

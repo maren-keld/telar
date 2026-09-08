@@ -682,6 +682,12 @@ def _mistral_provision_ready() -> bool:
     return provision_configured()
 
 
+def _xai_provision_ready() -> bool:
+    from ai_keys import xai_provision_configured
+
+    return xai_provision_configured()
+
+
 @APP.get("/api/health")
 def health():
     sandbox = subscription_sandbox_status()
@@ -703,6 +709,7 @@ def health():
         "dev_bypass": dev_bypass_enabled(),
         "usage_opens_total": usage_total,
         "mistral_provision": _mistral_provision_ready(),
+        "xai_provision": _xai_provision_ready(),
         **sandbox,
     })
 

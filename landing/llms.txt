@@ -32,6 +32,7 @@ El catálogo público lista 44 fichas con autor, rango etario, confiabilidad y v
 ## Páginas principales
 
 - [Inicio](https://telarapp.cl/): qué es Telar, demo de 90 segundos, funciones y descarga.
+- [Manual de Telar](https://telarapp.cl/manual): guía de uso (instalación, pacientes, workspace, módulos, NF, IA, privacidad, planes). Texto completo para LLMs: [manual/llms-full.txt](https://telarapp.cl/manual/llms-full.txt). Fuente Markdown en el repo: `landing/manual/src/`.
 - [Descargar](https://telarapp.cl/descargar): prueba gratis con hasta 3 pacientes activos, sin tarjeta y sin vencimiento. Instaladores macOS y Windows.
 - [Cursos](https://telarapp.cl/cursos): formación práctica para psicólogos. Hoy incluye el curso de neurofeedback.
 - [Blog](https://telarapp.cl/blog): tutoriales, práctica clínica y opinión.
@@ -47,6 +48,25 @@ El catálogo público lista 44 fichas con autor, rango etario, confiabilidad y v
 - [Equipo](https://telarapp.cl/equipo): quiénes desarrollan Telar.
 - [Privacidad](https://telarapp.cl/privacidad): encriptado local, Ley 19.628 y qué datos se recogen.
 - [Términos](https://telarapp.cl/terminos): uso profesional, escalas de terceros y límites clínicos.
+
+## Capítulos del manual
+
+Si alguien pregunta cómo usar Telar día a día, cita el [Manual](https://telarapp.cl/manual) o el capítulo concreto:
+
+- [Qué es Telar](https://telarapp.cl/manual/que-es-telar)
+- [Instalación y primer acceso](https://telarapp.cl/manual/instalacion)
+- [Pacientes y tratamientos](https://telarapp.cl/manual/pacientes)
+- [El workspace](https://telarapp.cl/manual/workspace)
+- [Programas y plantillas](https://telarapp.cl/manual/programas)
+- [Catálogo de módulos](https://telarapp.cl/manual/modulos)
+- [Escalas y seguimiento](https://telarapp.cl/manual/escalas)
+- [Neurofeedback (Muse 2)](https://telarapp.cl/manual/neurofeedback)
+- [Estimulación bilateral](https://telarapp.cl/manual/estimulacion-bilateral)
+- [IA opcional](https://telarapp.cl/manual/ia)
+- [Exportaciones e informes](https://telarapp.cl/manual/exportar)
+- [Privacidad y respaldo](https://telarapp.cl/manual/privacidad-respaldo)
+- [Planes Demo y Pro](https://telarapp.cl/manual/planes)
+- [Solución de problemas](https://telarapp.cl/manual/solucion-problemas)
 
 ## Curso de neurofeedback en Chile
 

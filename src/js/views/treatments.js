@@ -117,7 +117,7 @@ export async function renderTreatments(container, { search = '', onNavigate, exp
       <div class="app-content">
         <div class="toolbar">
           <div class="search-bar">
-            <input type="search" id="agenda-search" placeholder="Buscar por nombre, RUT o teléfono" value="${escapeHtml(search)}" />
+            <input type="search" id="agenda-search" placeholder="Buscar por nombre, ID o teléfono" value="${escapeHtml(search)}" />
           </div>
           <button class="btn btn-primary" id="btn-add-treatment" title="Crear paciente y nuevo tratamiento">Añadir tratamiento</button>
         </div>

@@ -13,6 +13,7 @@ REQUIRED = (
     b"neurofeedback",
     b"btn-add-module",
     b"btn-add-session",
+    b"export const ICON_LINK",
 )
 
 

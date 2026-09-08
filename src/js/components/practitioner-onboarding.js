@@ -1,3 +1,4 @@
+import { CLINIC_COUNTRIES, isValidClinicCountry } from '../clinic-country.js';
 import { loadProfile, saveProfile } from '../profile.js';
 import { escapeHtml, toast } from '../utils.js';
 import { playOverlayOpen, animateAndRemove, shakeEl } from '../transitions.js';
@@ -7,15 +8,14 @@ function isValidEmail(raw) {
   return email.includes('@') && email.includes('.');
 }
 
-/** Falta nombre o email del profesional (requeridos para suscripción y plan Pro). */
+/** Falta nombre, email o país del profesional. */
 export function needsPractitionerOnboarding() {
   const profile = loadProfile();
-  return !profile.name?.trim() || !profile.email?.trim();
+  return !profile.name?.trim() || !profile.email?.trim() || !isValidClinicCountry(profile.clinicCountry);
 }
 
 /**
- * Onboarding suave una sola vez: nombre + email obligatorios.
- * No se puede cerrar sin completar (excepto si ya tiene ambos).
+ * Onboarding suave: nombre, email y país. No se puede cerrar sin completar.
  */
 export function openPractitionerOnboardingModal({ onDone } = {}) {
   if (!needsPractitionerOnboarding()) {
@@ -38,7 +38,8 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
           <h2 id="onboard-title">Bienvenido a Telar</h2>
         </header>
         <p class="subscribe-pro-modal__intro">
-          Antes de empezar, cuéntanos quién eres. El <strong>email</strong> se usa para el plan Pro y Mercado Pago.
+          Antes de empezar, cuéntanos quién eres y <strong>en qué país atiendes</strong>.
+          El email se usa para el plan Pro y Mercado Pago; el país adapta previsión, documento de identidad y ciudad.
         </p>
         <div class="practitioner-onboarding__form">
           <div class="form-group">
@@ -50,6 +51,16 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
             <label for="onboard-email">Correo electrónico</label>
             <input type="email" id="onboard-email" autocomplete="email"
               value="${escapeHtml(profile.email || '')}" placeholder="tu@email.com" />
+          </div>
+          <div class="form-group">
+            <label for="onboard-country">País donde atiendes</label>
+            <select id="onboard-country">
+              <option value="">Seleccionar…</option>
+              ${CLINIC_COUNTRIES.map((c) => {
+                const selected = String(profile.clinicCountry || '').toUpperCase() === c.id ? ' selected' : '';
+                return `<option value="${escapeHtml(c.id)}"${selected}>${escapeHtml(c.label)}</option>`;
+              }).join('')}
+            </select>
           </div>
           <p class="practitioner-onboarding__hint" id="onboard-hint" aria-live="polite"></p>
           <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="onboard-save">
@@ -64,12 +75,14 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
 
   const nameInput = overlay.querySelector('#onboard-name');
   const emailInput = overlay.querySelector('#onboard-email');
+  const countrySelect = overlay.querySelector('#onboard-country');
   const hint = overlay.querySelector('#onboard-hint');
   nameInput?.focus();
 
   overlay.querySelector('#onboard-save')?.addEventListener('click', () => {
     const name = nameInput?.value?.trim() || '';
     const email = emailInput?.value?.trim().toLowerCase() || '';
+    const clinicCountry = String(countrySelect?.value || '').toUpperCase();
     if (!name) {
       hint.textContent = 'Ingresa tu nombre.';
       shakeEl(nameInput);
@@ -82,7 +95,13 @@ export function openPractitionerOnboardingModal({ onDone } = {}) {
       emailInput?.focus();
       return;
     }
-    saveProfile({ name, email, onboardingComplete: true });
+    if (!isValidClinicCountry(clinicCountry)) {
+      hint.textContent = 'Elige el país donde atiendes.';
+      shakeEl(countrySelect);
+      countrySelect?.focus();
+      return;
+    }
+    saveProfile({ name, email, clinicCountry, onboardingComplete: true });
     toast('Perfil guardado');
     void animateAndRemove(overlay);
     onDone?.();

@@ -1,6 +1,6 @@
 import { bindAutoSave } from '../autobind.js';
 import { getCustomModuleByType, parseCustomModuleType } from '../custom-modules.js';
-import { CUSTOM_ITEM_TYPES } from '../custom-module-items.js';
+import { itemTypeNeedsOptions } from '../custom-module-items.js';
 import { getModule } from '../db.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
@@ -72,20 +72,37 @@ export async function renderCustomQuestionnaire(host, moduleRow, ctx) {
               <textarea name="a_${q.id}" rows="3" class="input">${escapeHtml(val)}</textarea>
             </div>`;
             }
-            const selected = Array.isArray(answers[q.id]) ? answers[q.id] : [];
-            return `
+            if (itemTypeNeedsOptions(q.type)) {
+              const isRadio = q.type === 'radio';
+              const selected = isRadio
+                ? String(answers[q.id] || '')
+                : Array.isArray(answers[q.id])
+                  ? answers[q.id]
+                  : [];
+              const inputType = isRadio ? 'radio' : 'checkbox';
+              return `
             <fieldset class="custom-q custom-q--choice">
               <legend class="custom-q__label">${escapeHtml(q.text)}</legend>
               ${(q.options || [])
                 .map(
-                  (opt, oi) => `
+                  (opt) => `
                 <label class="custom-q__option">
-                  <input type="checkbox" name="a_${q.id}" value="${escapeHtml(opt)}" ${selected.includes(opt) ? 'checked' : ''} />
+                  <input type="${inputType}" name="a_${q.id}" value="${escapeHtml(opt)}" ${
+                    isRadio
+                      ? selected === opt
+                        ? 'checked'
+                        : ''
+                      : selected.includes(opt)
+                        ? 'checked'
+                        : ''
+                  } />
                   <span>${escapeHtml(opt)}</span>
                 </label>`,
                 )
                 .join('')}
             </fieldset>`;
+            }
+            return '';
           })
           .join('')}
       </form>
@@ -107,6 +124,8 @@ export async function renderCustomQuestionnaire(host, moduleRow, ctx) {
         };
       } else if (q.type === 'text') {
         next.answers[q.id] = form.querySelector(`[name="a_${q.id}"]`)?.value || '';
+      } else if (q.type === 'radio') {
+        next.answers[q.id] = form.querySelector(`[name="a_${q.id}"]:checked`)?.value || '';
       } else {
         next.answers[q.id] = [...form.querySelectorAll(`[name="a_${q.id}"]:checked`)].map(
           (el) => el.value,

@@ -28,6 +28,18 @@ Assets: `Telar-macos.zip`, `Telar-windows.exe`, `telar-packs-bundle.tar.gz`.
 
 Carpeta estática `landing/` (incluye `vercel.json`). Publica con tu flujo habitual (p. ej. Vercel conectado al repo o deploy manual del directorio).
 
+Manual de usuario (Markdown → HTML):
+
+```bash
+npm run generate:landing-manual   # landing/manual/src/*.md → landing/manual/*.html + llms-full.txt
+```
+
+Catálogo de módulos:
+
+```bash
+npm run generate:landing-modules
+```
+
 ## API suscripciones (Render)
 
 Ver `server/README.md` y `./scripts/deploy-subscription-api.sh`.

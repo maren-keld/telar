@@ -1,3 +1,4 @@
+import { coverageLabel } from './clinic-country.js';
 import { getModuleDef, patientGenderLabel } from './config.js';
 import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
 import { formatTccHandoutReadable, tccHandoutDef } from './tcc-handout-defs.js';
@@ -320,8 +321,8 @@ export function buildReadableText(moduleType, data) {
         { key: 'phone', label: 'Teléfono' },
         { key: 'address', label: 'Dirección' },
         { key: 'marital_status', label: 'Estado civil' },
-        { key: 'prevision', label: 'Previsión' },
-        { key: 'source', label: 'Fuente' },
+        { key: 'prevision', label: coverageLabel() },
+        { key: 'source', label: 'Cómo llegaste' },
         { key: 'ocupaciones', label: 'Ocupaciones' },
       ]);
     case 'motivo_consulta': {

@@ -534,13 +534,11 @@ input[type='checkbox']:focus-visible {
 /* ── Streaming text (AI answer) ────────────────────────────────── */
 .t-stream-chunk {
   opacity: 0;
-  filter: blur(var(--stream-blur));
   animation: t-stream-in var(--stream-fade) var(--stream-ease) forwards;
 }
 @keyframes t-stream-in {
   to {
     opacity: 1;
-    filter: blur(0);
   }
 }
 
@@ -548,7 +546,6 @@ input[type='checkbox']:focus-visible {
   .t-stream-chunk {
     animation: none !important;
     opacity: 1;
-    filter: none;
   }
 }
 

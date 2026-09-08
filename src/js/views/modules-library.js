@@ -2,8 +2,6 @@ import { getModuleDefs } from '../config.js';
 import { isLicensePendingModule } from '../license-pending-modules.js';
 import { CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
-import { openCreateModuleModal } from '../components/create-module-modal.js';
-import { openModuleAiChat } from '../components/module-ai-chat.js';
 import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
 import {
   deleteCustomModulePack,
@@ -13,9 +11,10 @@ import {
   parseCustomModuleType,
   resolveModuleDef,
 } from '../custom-modules.js';
-import { exportPackToPath, installPackFromPath, modulesOfPack } from '../pack-import.js';
+import { exportPackToPath, installPackFromPath, isPackExportable, modulesOfPack } from '../pack-import.js';
 import { escapeHtml, invokeErrorMessage, toast } from '../utils.js';
 import { openExternalUrl, pickPackFile, pickPackSavePath } from '../tauri-bridge.js';
+import { ICON_CART, ICON_UPLOAD } from '../icons.js';
 
 function moduleTile(type, def, { kind = '' } = {}) {
   const isCustom = type.startsWith('custom_');
@@ -48,9 +47,11 @@ function customTiles(mods) {
     .join('');
 }
 
+const LIB_SCROLL_KEY = 'telar.modulesLibrary.scrollTop';
+
 export async function renderModulesLibrary(container, { onNavigate }) {
   const allCustom = listCustomModules();
-  const ownMods = allCustom.filter((cm) => !cm.packId);
+  const ownMods = allCustom.filter((cm) => !cm.packId && cm.exportable !== false);
   const packs = listCustomModulePacks();
   const builtins = Object.entries(getModuleDefs()).filter(
     ([t]) => t !== 'selector_modulo' && !isLicensePendingModule(t),
@@ -68,9 +69,8 @@ export async function renderModulesLibrary(container, { onNavigate }) {
             <p class="modules-library-page__sub">Todos los módulos disponibles en tu app.</p>
           </div>
           <div class="modules-library-head__actions">
-            <button type="button" class="btn btn-secondary" id="btn-buy-modules">Comprar módulos</button>
-            <button type="button" class="btn btn-secondary" id="btn-import-pack">Importar pack</button>
-            <button type="button" class="btn btn-secondary" id="btn-ai-module">Crear con IA</button>
+            <button type="button" class="btn btn-secondary" id="btn-buy-modules">${ICON_CART}Comprar módulos</button>
+            <button type="button" class="btn btn-secondary" id="btn-import-pack">${ICON_UPLOAD}Importar pack</button>
             <button type="button" class="btn btn-primary" id="btn-create-module-lib">+ Crear módulo</button>
           </div>
         </div>
@@ -98,7 +98,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
           <h2 class="modules-library-section__title">${escapeHtml(pack.label)}</h2>
           <p class="modules-library-section__blurb">Pack importado · ${pack.modules.length} ${pack.modules.length === 1 ? 'módulo' : 'módulos'}.</p>
           <div class="modules-library-head__actions modules-library-section__actions">
-            <button type="button" class="btn btn-ghost btn-sm" data-export-pack="${escapeHtml(pack.id)}">Exportar</button>
+            ${isPackExportable(pack.id) && pack.modules.some((mod) => mod.exportable !== false) ? `<button type="button" class="btn btn-ghost btn-sm" data-export-pack="${escapeHtml(pack.id)}">Exportar</button>` : ''}
             <button type="button" class="btn btn-ghost btn-sm" data-remove-pack="${escapeHtml(pack.id)}">Quitar pack</button>
           </div>
           <div class="modules-library-grid">${customTiles(pack.modules)}</div>
@@ -110,15 +110,35 @@ export async function renderModulesLibrary(container, { onNavigate }) {
 
   bindAppSidebar(container, { onNavigate });
 
+  const scroller = container.querySelector('.app-content');
+  if (scroller) {
+    const saved = Number(sessionStorage.getItem(LIB_SCROLL_KEY) || '0');
+    if (saved > 0) {
+      scroller.scrollTop = saved;
+      requestAnimationFrame(() => {
+        if (scroller.isConnected) scroller.scrollTop = saved;
+      });
+    }
+    scroller.addEventListener(
+      'scroll',
+      () => {
+        sessionStorage.setItem(LIB_SCROLL_KEY, String(scroller.scrollTop));
+      },
+      { passive: true },
+    );
+  }
+
   container.querySelector('#btn-create-module-lib')?.addEventListener('click', () => {
     requireProOrSubscribe({
-      onAllowed: () => openCreateModuleModal({ onCreated: rerender }),
-    });
-  });
-
-  container.querySelector('#btn-ai-module')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: () => openModuleAiChat({ onCreated: rerender }),
+      onAllowed: () =>
+        onNavigate({
+          view: 'module-editor',
+          customModuleId: '',
+          returnView: 'modules',
+          treatmentId: '',
+          sessionId: '',
+          moduleId: '',
+        }),
     });
   });
 
@@ -188,6 +208,9 @@ export async function renderModulesLibrary(container, { onNavigate }) {
   });
 
   container.querySelectorAll('.module-tile--custom').forEach((tile) => {
+    tile.addEventListener('mousedown', (e) => {
+      if (e.button === 0) e.preventDefault();
+    });
     tile.addEventListener('click', () => {
       const customId = parseCustomModuleType(tile.dataset.type);
       const mod = customId ? getCustomModule(customId) : null;
@@ -197,7 +220,16 @@ export async function renderModulesLibrary(container, { onNavigate }) {
         toast('Los módulos de un pack importado no se editan; se usan tal como vienen.');
         return;
       }
-      openCreateModuleModal({ module: mod, onCreated: rerender });
+      const scroller = container.querySelector('.app-content');
+      if (scroller) sessionStorage.setItem(LIB_SCROLL_KEY, String(scroller.scrollTop));
+      onNavigate({
+        view: 'module-editor',
+        customModuleId: mod.id,
+        returnView: 'modules',
+        treatmentId: '',
+        sessionId: '',
+        moduleId: '',
+      });
     });
   });
 }

@@ -63,11 +63,32 @@ fn handle_response(
     }
 }
 
-fn share_agent() -> ureq::Agent {
+fn share_poll_agent() -> ureq::Agent {
+    agent()
+}
+
+fn share_write_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(8))
+        .timeout(Duration::from_secs(15))
+        .build()
+}
+
+fn share_provision_agent() -> ureq::Agent {
     ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_secs(8))
         .timeout(Duration::from_secs(45))
         .build()
+}
+
+async fn share_blocking<T, F>(f: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| format!("Error interno de red: {e}"))?
 }
 
 fn share_status_and_body(
@@ -100,77 +121,93 @@ fn share_error(status: u16, body: &Value, fallback: &str) -> String {
 }
 
 #[tauri::command]
-pub fn share_create(api_base: String, owner_email: String, payload_ct: String) -> Result<Value, String> {
-    let base = validated_api_base(&api_base)?;
-    let result = share_agent()
-        .post(&format!("{base}/api/share"))
-        .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({
-            "owner_email": owner_email,
-            "payload_ct": payload_ct,
-        }));
-    let (status, body) = share_status_and_body(result, &base)?;
-    if status >= 400 {
-        return Err(share_error(status, &body, "No se pudo crear el enlace"));
-    }
-    Ok(body)
+pub async fn share_create(
+    api_base: String,
+    owner_email: String,
+    payload_ct: String,
+) -> Result<Value, String> {
+    share_blocking(move || {
+        let base = validated_api_base(&api_base)?;
+        let result = share_write_agent()
+            .post(&format!("{base}/api/share"))
+            .set("Content-Type", "application/json")
+            .send_json(serde_json::json!({
+                "owner_email": owner_email,
+                "payload_ct": payload_ct,
+            }));
+        let (status, body) = share_status_and_body(result, &base)?;
+        if status >= 400 {
+            return Err(share_error(status, &body, "No se pudo crear el enlace"));
+        }
+        Ok(body)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn share_collect(api_base: String, token: String, secret: String) -> Result<Value, String> {
-    let base = validated_api_base(&api_base)?;
-    let result = share_agent()
-        .get(&format!("{base}/api/share/{token}/response"))
-        .query("secret", &secret)
-        .call();
-    let (status, body) = share_status_and_body(result, &base)?;
-    if status == 410 {
-        return Ok(serde_json::json!({ "gone": true }));
-    }
-    if status >= 400 {
-        return Err(share_error(status, &body, "No se pudo consultar la respuesta"));
-    }
-    Ok(body)
+pub async fn share_collect(api_base: String, token: String, secret: String) -> Result<Value, String> {
+    share_blocking(move || {
+        let base = validated_api_base(&api_base)?;
+        let result = share_poll_agent()
+            .get(&format!("{base}/api/share/{token}/response"))
+            .query("secret", &secret)
+            .call();
+        let (status, body) = share_status_and_body(result, &base)?;
+        if status == 410 {
+            return Ok(serde_json::json!({ "gone": true }));
+        }
+        if status >= 400 {
+            return Err(share_error(status, &body, "No se pudo consultar la respuesta"));
+        }
+        Ok(body)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn share_notify_owner(
+pub async fn share_notify_owner(
     api_base: String,
     email: String,
     subject: String,
     text: String,
 ) -> Result<Value, String> {
-    let base = validated_api_base(&api_base)?;
-    let result = share_agent()
-        .post(&format!("{base}/api/share/notify-owner"))
-        .set("Content-Type", "application/json")
-        .send_json(serde_json::json!({
-            "email": email,
-            "subject": subject,
-            "text": text,
-        }));
-    let (status, body) = share_status_and_body(result, &base)?;
-    if status >= 400 {
-        return Err(share_error(status, &body, "No se pudo enviar el correo"));
-    }
-    Ok(body)
+    share_blocking(move || {
+        let base = validated_api_base(&api_base)?;
+        let result = share_write_agent()
+            .post(&format!("{base}/api/share/notify-owner"))
+            .set("Content-Type", "application/json")
+            .send_json(serde_json::json!({
+                "email": email,
+                "subject": subject,
+                "text": text,
+            }));
+        let (status, body) = share_status_and_body(result, &base)?;
+        if status >= 400 {
+            return Err(share_error(status, &body, "No se pudo enviar el correo"));
+        }
+        Ok(body)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn share_revoke(api_base: String, token: String, secret: String) -> Result<Value, String> {
-    let base = validated_api_base(&api_base)?;
-    let result = share_agent()
-        .delete(&format!("{base}/api/share/{token}"))
-        .query("secret", &secret)
-        .call();
-    let (status, body) = share_status_and_body(result, &base)?;
-    if status == 410 || status == 404 {
-        return Ok(serde_json::json!({ "ok": true, "gone": true }));
-    }
-    if status >= 400 {
-        return Err(share_error(status, &body, "No se pudo anular el enlace"));
-    }
-    Ok(body)
+pub async fn share_revoke(api_base: String, token: String, secret: String) -> Result<Value, String> {
+    share_blocking(move || {
+        let base = validated_api_base(&api_base)?;
+        let result = share_poll_agent()
+            .delete(&format!("{base}/api/share/{token}"))
+            .query("secret", &secret)
+            .call();
+        let (status, body) = share_status_and_body(result, &base)?;
+        if status == 410 || status == 404 {
+            return Ok(serde_json::json!({ "ok": true, "gone": true }));
+        }
+        if status >= 400 {
+            return Err(share_error(status, &body, "No se pudo anular el enlace"));
+        }
+        Ok(body)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -206,7 +243,7 @@ pub fn mistral_provision(
     api_base: String,
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
-    let result = share_agent()
+    let result = share_provision_agent()
         .post(&format!("{base}/api/ai/mistral-provision"))
         .set("Content-Type", "application/json")
         .send_json(serde_json::json!({
@@ -214,6 +251,23 @@ pub fn mistral_provision(
             "device_id": device_id,
         }));
     handle_response(result, &base, "No se pudo activar la IA de Telar")
+}
+
+#[tauri::command]
+pub fn xai_provision(
+    email: String,
+    device_id: String,
+    api_base: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_provision_agent()
+        .post(&format!("{base}/api/ai/xai-provision"))
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({
+            "email": email,
+            "device_id": device_id,
+        }));
+    handle_response(result, &base, "No se pudo activar Grok para experiencias")
 }
 
 #[tauri::command]

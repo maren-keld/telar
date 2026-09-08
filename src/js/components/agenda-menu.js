@@ -109,7 +109,14 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
     if (!allowed) return;
     try {
       const newId = await createTreatment(row.patient_id);
-      await copyModuleDataBetweenTreatments(row.treatment_id, newId, ['registro_inicial', 'motivo_consulta']);
+      try {
+        await copyModuleDataBetweenTreatments(row.treatment_id, newId, [
+          'registro_inicial',
+          'motivo_consulta',
+        ]);
+      } catch (copyErr) {
+        console.warn('No se pudo copiar registro/motivo al nuevo tratamiento', copyErr);
+      }
       close();
       toast('Nuevo tratamiento creado');
       if (onNavigate) await openTreatmentWorkspace(newId, onNavigate);

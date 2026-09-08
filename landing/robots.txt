@@ -8,8 +8,9 @@ Disallow: /index2
 Disallow: /r
 Disallow: /r/
 
-# Resumen para modelos de lenguaje (curso de neurofeedback en Chile y resto del producto)
+# Resumen para modelos de lenguaje (producto + manual)
 # https://telarapp.cl/llms.txt
+# Manual completo: https://telarapp.cl/manual/llms-full.txt
 
 User-agent: GPTBot
 Allow: /

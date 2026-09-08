@@ -1,6 +1,6 @@
 [package]
 name = "telar"
-version = "0.1.0-beta.19"
+version = "0.1.0-beta.20"
 description = "Gestión local de pacientes de neurofeedback"
 authors = ["Telar contributors"]
 license = "AGPL-3.0-only"
@@ -45,7 +45,7 @@ tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSRunLoop", "NSDate", "NSString", "NSObjCRuntime"] }
+objc2-foundation = { version = "0.3", features = ["NSRunLoop", "NSDate", "NSString", "NSObjCRuntime", "NSUserNotification"] }
 objc2-local-authentication = "0.3"
 block2 = "0.6"
 security-framework = "=3.6.0"

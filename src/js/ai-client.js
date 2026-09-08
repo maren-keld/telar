@@ -1,5 +1,6 @@
 import { resolveAiConfig } from './ai-config.js';
 import { ensureTelarMistralKey } from './ai-mistral-provision.js';
+import { ensureTelarXaiKey } from './ai-xai-provision.js';
 import { assertOllamaModelReady } from './ollama-client.js';
 import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
@@ -40,15 +41,17 @@ export async function cancelChatCompletion(request) {
 
 /**
  * Chat completion OpenAI-compatible vía Rust (sin restricciones CSP).
- * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number } }} opts
+ * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number }, purpose?: 'modules', reasoningEffort?: string }} opts
  */
-export async function chatCompletion({ messages, maxTokens = 512, profile, request } = {}) {
+export async function chatCompletion({ messages, maxTokens = 512, profile, request, purpose, reasoningEffort } = {}) {
   const resolvedProfile = profile ?? loadProfile();
-  const cfg = resolveAiConfig(resolvedProfile);
+  const cfg = resolveAiConfig(resolvedProfile, { purpose });
   if (!cfg.enabled) {
     throw new Error('Asistente IA desactivado. Actívalo en Ajustes → Proveedor de IA.');
   }
-  if (cfg.mode === 'api' && cfg.providerId === 'mistral') {
+  if (cfg.mode === 'api' && cfg.providerId === 'xai') {
+    cfg.apiKey = await ensureTelarXaiKey(resolvedProfile);
+  } else if (cfg.mode === 'api' && cfg.providerId === 'mistral') {
     cfg.apiKey = await ensureTelarMistralKey(resolvedProfile);
   }
   if (!cfg.apiBase) {
@@ -70,8 +73,12 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
   }
 
   if (request?.aborted) throw new Error('cancelado');
+  const effort =
+    cfg.providerId === 'xai'
+      ? String(reasoningEffort || cfg.reasoningEffort || '').trim()
+      : '';
   try {
-    const response = await getInvoke()('ai_chat_completion', {
+    const payload = {
       apiBase: cfg.apiBase,
       apiKey: cfg.apiKey || '',
       model: cfg.apiModel,
@@ -79,7 +86,9 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
       maxTokens,
       requestId: request?.id || 0,
       provider: cfg.apiProtocol || '',
-    });
+    };
+    if (effort) payload.reasoningEffort = effort;
+    const response = await getInvoke()('ai_chat_completion', payload);
     if (request?.aborted) throw new Error('cancelado');
 
     const text = extractAssistantText(response);

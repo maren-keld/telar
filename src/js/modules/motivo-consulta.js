@@ -16,6 +16,11 @@ export const IA_ANAMNESIS_PROMPTS = [
 
 export const IA_ANAMNESIS_PLACEHOLDER = IA_ANAMNESIS_PROMPTS.map((p) => p.q).join('\n');
 
+/** Placeholder HTML: &#10; para que WebKit respete una pregunta por línea. */
+export function iaAnamnesisPlaceholderAttr() {
+  return IA_ANAMNESIS_PROMPTS.map((p) => escapeHtml(p.q)).join('&#10;');
+}
+
 /** Un solo campo; si solo hay respuestas viejas por pregunta, las junta. */
 export function relacionIaDisplay(data = {}) {
   const notes = String(data.relacion_ia || '').trim();
@@ -150,7 +155,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
         <div class="form-group anamnesis-ia" style="margin-bottom:16px">
           <label for="motivo-relacion-ia">Relación con la IA</label>
           <p class="form-hint">Cómo se lleva con chatbots (ChatGPT y similares). Recorre las cinco preguntas.</p>
-          <textarea name="relacion_ia" id="motivo-relacion-ia" rows="8" placeholder="${escapeHtml(IA_ANAMNESIS_PLACEHOLDER)}">${escapeHtml(relacionIaDisplay(data))}</textarea>
+          <textarea name="relacion_ia" id="motivo-relacion-ia" class="anamnesis-ia__field" rows="6" data-no-autoresize placeholder="${iaAnamnesisPlaceholderAttr()}">${escapeHtml(relacionIaDisplay(data))}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label for="motivo-urgencia">Urgencia / prioridad</label>

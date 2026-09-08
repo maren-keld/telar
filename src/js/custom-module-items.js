@@ -6,6 +6,7 @@
  * ciclo entre ellos.
  */
 export const CUSTOM_ITEM_TYPES = {
+  radio: { label: 'Opción única', needsOptions: true },
   checkbox: { label: 'Opción múltiple', needsOptions: true },
   text: { label: 'Texto libre', needsOptions: false },
   scale: { label: 'Escala 0–10', needsOptions: false },

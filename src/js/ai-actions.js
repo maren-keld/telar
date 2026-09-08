@@ -22,6 +22,26 @@ import { addModuleToSession, execute, getSessions, getTreatmentModules } from '.
 import { moduleLabelI18n } from './i18n.js';
 import { escapeHtml } from './utils.js';
 
+/**
+ * La IA a veces envuelve URLs en markdown [url](url) o mete un aside en *cursiva*.
+ * El panel no parsea links: hay que dejar texto listo para copiar.
+ */
+export function normalizeAiDisplayText(text) {
+  let out = String(text || '');
+  out = out.replace(/^\s*Email para el paciente:\s*/i, '');
+  out = out.replace(/\[([^\]]+)\]\s*\((https?:\/\/[^)\s]+)\)/g, (_, label, url) => {
+    const a = String(label || '').trim();
+    const b = String(url || '').trim();
+    if (!b) return a;
+    if (!a || a === b || /^https?:\/\//i.test(a)) return b;
+    return `${a} ${b}`;
+  });
+  out = out.replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
+  out = out.replace(/^\*([^*\n]+)\*\s*$/gm, '$1');
+  out = out.replace(/^_([^_\n]+)_\s*$/gm, '$1');
+  return out;
+}
+
 /** Cierre opcional: los modelos cortan el JSON al llegar al tope de tokens. */
 const ACTION_BLOCK_RE =
   /```[ \t]*(?:json[ \t]+)?telar-(plan|module)[ \t]*\r?\n?([\s\S]*?)(?:```|$)/gi;
@@ -74,7 +94,56 @@ El clínico adjuntó estos archivos. Úsalos si aportan al caso. Si los citas, p
 ${blocks.join('\n\n')}`;
 }
 
-export function buildAiSystemPrompt(context, { practitioner, referenceDocs } = {}) {
+const PATIENT_EMAIL_TEMPLATE = `Cuando SÍ te pidan un correo al paciente, escribe SOLO el cuerpo listo para copiar. Sin asunto, sin título tipo «Email para el paciente», sin # markdown, sin asteriscos, sin cursiva, sin Bibliografía, sin bloques telar-plan, sin ids entre corchetes.
+Nunca uses markdown de enlace [texto](url). Escribe la URL cruda una sola vez, en la misma línea que el nombre: 1.1 GAD-7 https://telarapp.cl/r/...
+Estructura:
+
+Hola {primer nombre},
+
+{1 o 2 frases cercanas. Sin jerga.}
+
+1 🗒️ Cuestionarios
+Tienes que ir accediendo a cada enlace, e ir respondiendo los ítems. Las respuestas me llegan solamente a mí y las revisaremos la próxima reunión:
+
+1.1 Nombre https://telarapp.cl/r/...
+(Solo cuestionarios con URL en «Enlaces y tareas». Si no hay ninguno, omite la sección 1.)
+
+2 📋 Tareas
+
+2.1 Refuerza lo que conversamos en la sesión:
+   - 2 a 4 líneas concretas de lo trabajado. Sin diagnosticar.
+
+2.2 Realizar este módulo de actividades y casos prácticos:
+
+Nombre: https://...
+(Si dice «sin enlace aún», nombra el módulo y no inventes URL.)
+
+3 ⏱️ Horarios
+Si el contexto trae horas, lístalas. Si no: «Si necesitas coordinar un horario, avísame y lo vemos.» Nunca inventes días, horas, secretarias ni WhatsApp.
+
+Cierre corto + «Atentamente,» + nombre de IDENTIDAD + «Psicólogo» o «Psicóloga» (si no hay género: «Psicoterapeuta»).
+Usa los enlaces literales del contexto. Cada URL una vez, sin corchetes ni paréntesis extra.`;
+
+/** True si el clínico pidió redactar un correo al paciente (texto libre o chip «Generar email»). */
+export function userAskedForPatientEmail(question) {
+  const q = String(question || '').trim();
+  if (!q) return false;
+  if (/\bEMAIL AL PACIENTE\b/.test(q)) return true;
+  const mentionsMail = /\b(e-?mails?|correos?)\b/i.test(q);
+  if (!mentionsMail) return false;
+  if (/\bno\s+(me\s+)?(des|quiero|pidas?|redactes?)\b.{0,24}\b(e-?mails?|correos?)\b/i.test(q)) {
+    return false;
+  }
+  if (/[¿?]/.test(q) && !/\b(redacta|genera|escribe|arma|prepara)\b/i.test(q)) return false;
+  return (
+    /\b(redacta|genera|escribe|arma|prepara|haz(?:me)?|dame|quiero|necesito|m[aá]nd(?:a|ame))\b.{0,48}\b(e-?mails?|correos?)\b/i.test(
+      q,
+    ) ||
+    /\b(e-?mails?|correos?)\b.{0,48}\b(paciente|consultante|post-sesi[oó]n|post\s+sesi[oó]n)\b/i.test(q)
+  );
+}
+
+export function buildAiSystemPrompt(context, { practitioner, referenceDocs, email } = {}) {
   const name = String(practitioner?.name || '').trim();
   const gender = practitioner?.grammaticalGender;
   const genderLine =
@@ -84,19 +153,35 @@ export function buildAiSystemPrompt(context, { practitioner, referenceDocs } = {
         ? 'La profesional es mujer: usa femenino (quedo atenta, atenta a lo que necesites).'
         : 'No asumas el género del profesional. Evita «atento/atenta»; usa «Quedo disponible» o «Cualquier cosa que necesites, escríbeme».';
   const signLine = name
-    ? `El profesional se llama ${name}. En emails y textos al paciente fírmalos con ese nombre. Nunca uses placeholders como [Tu nombre], «Tu nombre» ni iniciales inventadas.`
-    : 'Si no conoces el nombre del profesional, firma solo con «Psicoterapeuta» — nunca con [Tu nombre].';
+    ? `El profesional se llama ${name}. Usa ese nombre SOLO al firmar un email al paciente cuando te lo pidan. En el resto de respuestas no lo nombres ni escribas «para ti, ${name}».`
+    : 'Si no conoces el nombre del profesional, firma emails solo con «Psicoterapeuta» — nunca con [Tu nombre].';
   const docsBlock = formatReferenceDocsForPrompt(referenceDocs);
+  const emailBlock = email
+    ? `\nEMAIL AL PACIENTE\n${PATIENT_EMAIL_TEMPLATE}\n`
+    : `\nEMAIL AL PACIENTE
+No redactes un email, ni un ejemplo de email, ni expliques la política de emails, salvo que te pidan explícitamente un correo al paciente (o el chip «Generar email»).
+`;
+  const finalRule = email
+    ? `REGLA FINAL
+Escribe SOLO el email al paciente, con la estructura de EMAIL AL PACIENTE. Sin bibliografía, sin análisis clínico extra, sin protocolos.`
+    : `REGLA FINAL
+Responde solo lo preguntado. Sin email de muestra, sin bibliografía de relleno, sin tutear al profesional por su nombre, sin protocolos de varias fases salvo que los pidan.`;
 
-  return `Eres un asistente clínico de apoyo al psicoterapeuta. Responde de forma concisa y fundamentada, en español de Chile.
+  return `Eres un asistente clínico de apoyo al psicoterapeuta. Español de Chile. Corto y concreto.
 
 POSICIÓN
 - Apoyas al psicoterapeuta. No diagnosticas, no prescribes, no sustituyes el juicio clínico.
 - Puedes rechazar la premisa si hay fallo lógico, dato inventado o pedido que exceda la ficha.
 - No adules ni confirmes por cortesía. Si la hipótesis es débil, dilo.
 - No simules alianza, empatía terapéutica ni “estar con” el profesional o el paciente.
-- Distingue hecho de la ficha, inferencia y especulación. Lo no verificable, no lo afirmes.
+- Distingue hecho de la ficha, inferencia y especulación. Lo que no esté en el contexto, no lo inventes (nombres extra, violencia, sustancias, diagnósticos, horarios).
 - Prefiere una pregunta precisa a un plan largo cuando falte información.
+
+LARGO
+- Responde lo que preguntaron. Por defecto: 1 párrafo o hasta 8 líneas.
+- No escribas ensayos, ni 3 enfoques, ni «resumen de acciones», ni meta-explicaciones sobre cómo funcionas.
+- Programa, plan de sesiones o módulo nuevo: ahí sí puedes extendarte y usar En Telar / Fuera de Telar.
+- Una mención al pasar (p. ej. terapia de pareja) no es un pedido de protocolo.
 
 IDENTIDAD DEL PROFESIONAL
 ${signLine}
@@ -104,17 +189,17 @@ ${genderLine}
 
 FORMATO
 - Evita listas con asteriscos; usa numeración o texto corrido.
-- Cuando propongas intervenciones, separa siempre con estos dos encabezados literales:
+- En Telar / Fuera de Telar: SOLO cuando propongas qué hacer ahora (módulos o sesión). Encabezados literales:
   "En Telar:" para lo que se registra en módulos de la app.
-  "Fuera de Telar:" para lo que ocurre en sesión presencial, material impreso, derivaciones o coordinación.
-- Al citar un módulo de Telar escribe una sola vez su etiqueta y su id entre corchetes, por ejemplo: GAD-7 [gad7]. No repitas la etiqueta ni el id. Usa solo ids del catálogo.
-
+  "Fuera de Telar:" para sesión presencial, material impreso, derivaciones o coordinación.
+- Al citar un módulo de Telar escribe una sola vez su etiqueta y su id entre corchetes, por ejemplo: GAD-7 [gad7]. No repitas la etiqueta ni el id. Usa solo ids del catálogo. En emails al paciente escribe solo la etiqueta visible, nunca el id.
+${emailBlock}
 BIBLIOGRAFÍA
-- En respuestas clínicas (programas, resúmenes, hipótesis, sugerencias), cierra con un encabezado literal "Bibliografía" y 2 a 6 fuentes (papers, libros, guías) que respalden lo dicho. Formato: Autor (año). Título. Revista o editorial.
-- Si usaste un documento de referencia del tratamiento, inclúyelo también con el nombre exacto del archivo.
-- No inventes DOI, URLs ni artículos inexistentes. Prefiere fuentes canónicas (APA, NICE, OMS, Beck, Linehan, Barlow, DSM-5-TR, CIE-11, papers clásicos del tema).
-- Omite la sección en emails al paciente y en bloques telar-plan / telar-module.
-- Si no hay respaldo real, omite la sección.
+- Omite Bibliografía salvo que te pidan fuentes, evidencia o un protocolo.
+- Si la incluyes: encabezado literal "Bibliografía" y 2 a 4 fuentes reales. Formato: Autor (año). Título. Revista o editorial.
+- Si usaste un documento de referencia del tratamiento, cítalo con el nombre exacto del archivo.
+- No inventes DOI, URLs ni artículos inexistentes. Prefiere APA, NICE, OMS, Beck, Linehan, Barlow, DSM-5-TR, CIE-11.
+- Nunca en emails al paciente ni en bloques telar-plan / telar-module.
 
 MÓDULOS DISPONIBLES EN TELAR
 ${buildModuleCatalogText()}
@@ -140,10 +225,12 @@ Si el usuario pide un módulo, cuestionario o registro que no existe en el catá
 \`\`\`telar-module
 {"title":"Nombre del módulo","instructions":"Para qué sirve","questions":[{"text":"Enunciado","type":"text"}]}
 \`\`\`
-Tipos de ítem válidos: "text", "checkbox" (requiere "options"), "scale" (0–10), "task" (ejercicio entre sesiones), "info" (indicación sin respuesta).
-En "text"/"checkbox"/"scale" el campo "text" es un enunciado corto (una línea). En "task" e "info" puedes usar markdown ligero (**negrita**, *cursiva*) y saltos de línea para el cuerpo del ejercicio.
+Tipos de ítem válidos: "text", "radio" (opción única, requiere "options"), "checkbox" (opción múltiple, requiere "options"), "scale" (0–10), "task" (ejercicio entre sesiones), "info" (indicación sin respuesta).
+En "text"/"radio"/"checkbox"/"scale" el campo "text" es un enunciado corto (una línea). En "task" e "info" puedes usar markdown ligero (**negrita**, *cursiva*) y saltos de línea para el cuerpo del ejercicio.
 No inventes ids que no estén en el catálogo. Máximo 12 sesiones en el JSON. No incluyas ningún bloque si el usuario no pidió un programa ni un módulo.
 ${docsBlock ? `\n${docsBlock}\n` : ''}
+${finalRule}
+
 Contexto del caso:
 
 ${context}`;
@@ -161,9 +248,9 @@ export const AI_QUICK_PROMPTS = [
   {
     id: 'email',
     label: 'Generar email',
-    hint: 'Redacta el correo post-sesión: resumen, tarea de la semana y firma del profesional.',
+    hint: 'Redacta el correo post-sesión: cuestionarios, tareas de la semana, horarios y firma.',
     prompt:
-      'Redacta el cuerpo de un email para enviar al paciente después de la sesión de hoy: resumen breve de lo trabajado, elementos a reforzar durante la semana y qué módulos debe traer resueltos para la próxima sesión. Tono cercano y profesional, sin jerga técnica. Firma con el nombre del profesional (el que aparece en IDENTIDAD).',
+      'Redacta el email post-sesión para el paciente con la estructura de EMAIL AL PACIENTE: saludo, 1 cuestionarios con sus enlaces reales (URL cruda, una vez, sin markdown), 2 tareas (refuerzo + módulos), 3 horarios solo si están en el contexto, cierre y firma. Tono cercano y profesional, sin jerga técnica. Sin título ni notas internas.',
   },
   {
     id: 'modulo',
@@ -269,11 +356,13 @@ export function markupModuleRefs(html = '') {
 
   const placeholders = [];
   const stash = (id, label) => {
+    const clean = String(label || '').trim();
+    if (!clean) return '';
     const i = placeholders.length;
     placeholders.push({
       id,
-      label,
-      html: `<button type="button" class="ai-mod-tag" data-module-type="${escapeHtml(id)}">${escapeHtml(label)}</button>`,
+      label: clean,
+      html: `<button type="button" class="ai-mod-tag" data-module-type="${escapeHtml(id)}">${escapeHtml(clean)}</button>`,
     });
     return `%%TELARMOD${i}%%`;
   };
@@ -392,6 +481,14 @@ function ingestParsed(kind, parsed, actions) {
 /** Ficha de ingreso: solo sesión 1, nunca otra vez. */
 const INTAKE_ONCE = new Set(['registro_inicial', 'motivo_consulta']);
 
+/** Quita el «Sesión N:» del label si el UI ya muestra el número. */
+export function cleanSessionLabel(raw, i) {
+  const fallback = `Sesión ${i + 1}`;
+  let label = String(raw || fallback).trim();
+  label = label.replace(/^(?:sesión|session)\s*\d+\s*[:.\-–—]?\s*/i, '').trim();
+  return label || fallback;
+}
+
 function sanitizePlan(raw) {
   const known = new Set(listProposableModules().map((m) => m.id));
   const sessions = [];
@@ -416,7 +513,7 @@ function sanitizePlan(raw) {
       modules.push(modId);
     });
     sessions.push({
-      label: String(s?.label || `Sesión ${i + 1}`).trim(),
+      label: cleanSessionLabel(s?.label, i),
       modules,
     });
   });
@@ -473,6 +570,9 @@ export function parseAiActions(rawContent = '') {
   text = text
     .replace(/```[ \t]*(?:json[ \t]+)?telar-(?:plan|module)[\s\S]*?(?:```|$)/gi, '')
     .replace(/```[\s\S]*$/g, '')
+    .replace(/^\s*Programa ajustado\s*\(JSON\)\s*:?\s*$/gim, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   actions.forEach((action, index) => {

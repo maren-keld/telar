@@ -18,6 +18,7 @@ export async function flushPendingAutoSaves() {
 export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) {
   if (!root) return () => {};
   let timer = null;
+  let dirty = false;
 
   const saveNow = async () => {
     if (timer) {
@@ -28,11 +29,14 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
       pendingAutoSaves.delete(handle);
       return;
     }
+    if (!dirty) return;
+    dirty = false;
     try {
       onStatus?.('guardando');
       await saveFn();
       onStatus?.('guardado');
     } catch (e) {
+      dirty = true;
       console.error(e);
       onStatus?.('error');
     }
@@ -42,6 +46,7 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
   pendingAutoSaves.add(handle);
 
   const run = () => {
+    dirty = true;
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
@@ -56,6 +61,7 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
     const instant =
       e.type === 'change' && (t.type === 'radio' || t.type === 'checkbox' || t.tagName === 'SELECT');
     if (instant) {
+      dirty = true;
       void saveNow();
       return;
     }

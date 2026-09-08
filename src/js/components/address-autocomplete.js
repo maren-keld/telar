@@ -1,19 +1,20 @@
+import { nominatimCountryCode } from '../clinic-country.js';
 import { suggestAddresses } from '../chile-map.js';
 import { escapeHtml } from '../utils.js';
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
 const DEBOUNCE_MS = 350;
 
-async function fetchNominatim(query) {
+async function fetchNominatim(query, countryCode) {
   const q = String(query || '').trim();
   if (q.length < 3) return [];
   const params = new URLSearchParams({
     q,
     format: 'json',
     addressdetails: '1',
-    countrycodes: 'cl',
     limit: '8',
   });
+  if (countryCode) params.set('countrycodes', countryCode);
   try {
     const res = await fetch(`${NOMINATIM}?${params}`, {
       headers: { Accept: 'application/json' },
@@ -26,13 +27,14 @@ async function fetchNominatim(query) {
   }
 }
 
-/** Autocompletado de direcciones (Nominatim/OSM en Chile + comunas locales offline).
+/** Autocompletado de direcciones (Nominatim/OSM + comunas locales en Chile).
  *  El dropdown se monta como portal en <body> con position:fixed para evitar que
  *  cualquier overflow:hidden de los ancestros lo recorte. */
-export function bindAddressAutocomplete(input, { onSelect } = {}) {
+export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
   if (!input || input.dataset.addressAutocomplete) return;
   input.dataset.addressAutocomplete = '1';
   input.setAttribute('autocomplete', 'off');
+  const countryCode = nominatimCountryCode(country);
 
   // Portal al body para que no quede recortado por overflow:hidden
   const list = document.createElement('ul');
@@ -64,11 +66,11 @@ export function bindAddressAutocomplete(input, { onSelect } = {}) {
       return;
     }
 
-    const local = suggestAddresses(q);
+    const local = countryCode === 'cl' ? suggestAddresses(q) : [];
     const id = ++reqId;
     let remote = [];
     if (q.length >= 3) {
-      remote = await fetchNominatim(q);
+      remote = await fetchNominatim(q, countryCode);
     }
     if (id !== reqId || suppressSuggest) return;
 

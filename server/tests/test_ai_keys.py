@@ -13,8 +13,10 @@ def provision(api, email="persona@example.com", device_id="11111111-2222-3333-44
 def test_health_reports_provision_off_by_default(api, monkeypatch):
     monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
     monkeypatch.delenv("MISTRAL_ADMIN_API_KEY", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
     body = api.get("/api/health").json
     assert body["mistral_provision"] is False
+    assert body["xai_provision"] is False
 
 
 def test_unconfigured_server_returns_503(api, monkeypatch):
@@ -70,3 +72,27 @@ def test_admin_key_preferred_over_shared(api, monkeypatch):
     assert response.status_code == 200
     assert response.json["api_key"] == "sk-unique-for-user"
     assert response.json["source"] == "admin"
+
+
+def xai_provision(api, email="persona@example.com", device_id="11111111-2222-3333-4444-555555555555"):
+    return api.post(
+        "/api/ai/xai-provision",
+        json={"email": email, "device_id": device_id},
+    )
+
+
+def test_xai_unconfigured_returns_503(api, monkeypatch):
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    response = xai_provision(api)
+    assert response.status_code == 503
+    assert "Grok" in response.json["error"]
+
+
+def test_xai_shared_key_is_issued(api, monkeypatch):
+    monkeypatch.setenv("XAI_API_KEY", "xai-test-key")
+    response = xai_provision(api)
+    assert response.status_code == 200
+    assert response.json["ok"] is True
+    assert response.json["api_key"] == "xai-test-key"
+    assert response.json["provider"] == "xai"
+    assert response.json["source"] == "shared"

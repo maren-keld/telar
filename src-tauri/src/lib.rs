@@ -141,6 +141,26 @@ fn open_external_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_local_pdf(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let p = PathBuf::from(path.trim());
+    let ext = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if ext != "pdf" {
+        return Err("Solo se puede abrir un PDF adjunto.".into());
+    }
+    if !p.is_file() {
+        return Err("No se encontró el PDF adjunto. Vuelve a adjuntarlo en el editor.".into());
+    }
+    app.shell()
+        .open(p.to_string_lossy().to_string(), None)
+        .map_err(|e| format!("No se pudo abrir el PDF: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
 async fn open_pdf_export(
     app: tauri::AppHandle,
     filename: String,
@@ -471,6 +491,7 @@ pub fn run() {
             db_select,
             db_execute,
             open_external_url,
+            open_local_pdf,
             open_pdf_export,
             save_data_export,
             save_calendar_export,
@@ -486,7 +507,10 @@ pub fn run() {
             ai_api::ai_chat_cancel,
             ai_secret::ai_mistral_key_load,
             ai_secret::ai_mistral_key_store,
+            ai_secret::ai_xai_key_load,
+            ai_secret::ai_xai_key_store,
             subscription_api::mistral_provision,
+            subscription_api::xai_provision,
             ollama::ollama_status,
             ollama::ollama_ensure_running,
             ollama::ollama_pull_model,

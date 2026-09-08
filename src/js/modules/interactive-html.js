@@ -8,14 +8,20 @@
  * `window.Telar`.
  */
 import { getModule } from '../db.js';
+import { ensureInteractiveCloseable, unwrapInteractiveDocument } from '../interactive-experience.js';
 import { isColorTheme, themeCssVars } from '../module-themes.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { getCustomModuleByType } from '../custom-modules.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+import { ICON_REFRESH } from '../icons.js';
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
 
-const DEFAULT_HEIGHT = 540;
-const MAX_HEIGHT = 1400;
+const DEFAULT_HEIGHT = 360;
+
+const STAGE_CSS = `html,body{margin:0;padding:0;height:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;box-sizing:border-box}
+body{min-height:100%;display:flex;align-items:center;justify-content:center;overflow:auto}
+.telar-stage{width:min(100%,480px);max-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
+.telar-stage>*{max-width:100%;box-sizing:border-box}`;
 
 const BRIDGE_MARKER = '__telar_bridge__';
 
@@ -41,6 +47,80 @@ function bridgeScript(initialData) {
     /** Ajusta la altura visible del módulo. */
     resize: function (height) { post('resize', Number(height) || 0); }
   };
+  function harden() {
+    document.addEventListener('submit', function (e) { e.preventDefault(); }, true);
+    document.querySelectorAll('button').forEach(function (el) {
+      if (el.id === 'telar-finish') return;
+      var type = (el.getAttribute('type') || '').toLowerCase();
+      if (!type || type === 'submit') el.setAttribute('type', 'button');
+    });
+    document.querySelectorAll('input[type="submit"]').forEach(function (el) {
+      if (el.id === 'telar-finish') return;
+      el.setAttribute('type', 'button');
+    });
+    var selectors = ['[data-step]', '.step', '.screen', '.slide', '[data-page]', 'form > fieldset', 'form > section', 'main > section', '.pregunta', '.panel'];
+    var steps = [];
+    for (var s = 0; s < selectors.length; s++) {
+      var found = document.querySelectorAll(selectors[s]);
+      if (found.length >= 2) { steps = Array.prototype.slice.call(found); break; }
+    }
+    if (steps.length < 2) {
+      var form = document.querySelector('form');
+      if (form) {
+        var kids = Array.prototype.filter.call(form.children, function (el) {
+          var tag = el.tagName;
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'BR') return false;
+          if (el.id === 'telar-finish' || (el.classList && el.classList.contains('telar-closebar'))) return false;
+          return true;
+        });
+        if (kids.length >= 2) steps = kids;
+      }
+    }
+    if (steps.length < 2) return;
+    function isOn(el) {
+      if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+      if (el.classList.contains('is-hidden') || el.classList.contains('hidden')) return false;
+      if ((el.style && el.style.display) === 'none') return false;
+      return true;
+    }
+    function show(n) {
+      if (n < 0 || n >= steps.length) return;
+      steps.forEach(function (el, idx) {
+        var on = idx === n;
+        el.hidden = !on;
+        el.style.display = on ? '' : 'none';
+        el.setAttribute('aria-hidden', on ? 'false' : 'true');
+      });
+      try { if (window.Telar && Telar.resize) Telar.resize(document.documentElement.scrollHeight); } catch (err) {}
+    }
+    var vis = [];
+    steps.forEach(function (el, idx) { if (isOn(el)) vis.push(idx); });
+    if (vis.length !== 1) show(0);
+    function navDir(el) {
+      var t = ((el.textContent || el.value || '') + ' ' + (el.getAttribute('aria-label') || ''))
+        .replace(/\\s+/g, ' ').trim().toLowerCase();
+      if (/(siguiente|continuar|comenzar|empezar|adelante|\\bnext\\b)/.test(t)) return 1;
+      if (/(atrás|atras|anterior|volver|\\bback\\b)/.test(t)) return -1;
+      return 0;
+    }
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button, input[type="button"], [role="button"], a[href="#"]') : null;
+      if (!btn || btn.id === 'telar-finish') return;
+      var dir = navDir(btn);
+      if (!dir) return;
+      var before = steps.map(isOn).join(',');
+      setTimeout(function () {
+        if (before !== steps.map(isOn).join(',')) return;
+        var cur = 0;
+        var now = [];
+        steps.forEach(function (el, idx) { if (isOn(el)) now.push(idx); });
+        if (now.length === 1) cur = now[0];
+        show(cur + dir);
+      }, 0);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', harden);
+  else harden();
   window.addEventListener('load', function () {
     post('resize', document.documentElement.scrollHeight);
   });
@@ -63,7 +143,7 @@ const CONTENT_CSP =
  * el HTML del terapeuta tal cual lo pegó.
  */
 export function buildInteractiveDocument(html, { title = 'Experiencia', initialData, theme } = {}) {
-  const source = String(html || '');
+  const source = unwrapInteractiveDocument(html);
   const palette = isColorTheme(theme)
     ? `<style data-telar-theme="${escapeHtml(theme)}">:root{${themeCssVars(theme)}}body{background:var(--telar-paper);color:var(--telar-ink);}</style>`
     : '';
@@ -71,16 +151,9 @@ export function buildInteractiveDocument(html, { title = 'Experiencia', initialD
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Security-Policy" content="${CONTENT_CSP}" />
 <title>${escapeHtml(title)}</title>
-<style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;}</style>
+<style>${STAGE_CSS}</style>
 ${palette}
 ${bridgeScript(initialData)}`;
-
-  if (/<html[\s>]/i.test(source)) {
-    if (/<head[\s>]/i.test(source)) {
-      return source.replace(/<head([^>]*)>/i, `<head$1>\n${head}\n`);
-    }
-    return source.replace(/<html([^>]*)>/i, `<html$1>\n<head>\n${head}\n</head>\n`);
-  }
 
   return `<!doctype html>
 <html lang="es">
@@ -88,7 +161,9 @@ ${bridgeScript(initialData)}`;
 ${head}
 </head>
 <body>
+<div class="telar-stage">
 ${source}
+</div>
 </body>
 </html>`;
 }
@@ -130,7 +205,7 @@ export async function renderInteractiveHtml(host, moduleRow) {
   /* Re-bind del mismo módulo: suelta el listener viejo sin borrar el doc. */
   teardownInteractiveHtml(moduleRow.id, { keepDoc: true });
 
-  const doc = buildInteractiveDocument(mod.html, {
+  const doc = buildInteractiveDocument(ensureInteractiveCloseable(mod.html), {
     title: mod.title,
     initialData: data.payload ?? null,
     theme: mod.theme,
@@ -146,9 +221,9 @@ export async function renderInteractiveHtml(host, moduleRow) {
           <h2 class="module-title" style="margin:0">${escapeHtml(mod.title)}</h2>
           ${mod.instructions ? `<p class="module-card-head__sub">${escapeHtml(mod.instructions)}</p>` : ''}
         </div>
-        ${data.completed_at ? '<div class="badge badge--ok module-card-head__badge">Completada</div>' : ''}
       </div>
       <div class="interactive-module__frame-wrap">
+        <button type="button" class="interactive-module__reload" title="Recargar experiencia" aria-label="Recargar experiencia">${ICON_REFRESH}</button>
         <iframe
           class="interactive-module__frame"
           id="interactive-frame-${moduleRow.id}"
@@ -171,6 +246,7 @@ export async function renderInteractiveHtml(host, moduleRow) {
   if (!isTauriApp()) {
     note.textContent = 'Las experiencias interactivas solo corren en la app de escritorio Telar.';
     frame.remove();
+    host.querySelector('.interactive-module__reload')?.remove();
     return;
   }
 
@@ -195,8 +271,6 @@ export async function renderInteractiveHtml(host, moduleRow) {
     const msg = event.data;
     if (!msg || msg[BRIDGE_MARKER] !== 1) return;
     if (msg.kind === 'resize') {
-      const h = Math.min(Math.max(Number(msg.payload) || DEFAULT_HEIGHT, 240), MAX_HEIGHT);
-      frame.height = String(h);
       return;
     }
     if (msg.kind === 'save') {
@@ -204,12 +278,14 @@ export async function renderInteractiveHtml(host, moduleRow) {
       return;
     }
     if (msg.kind === 'done') {
-      const summary = typeof msg.payload === 'string' ? msg.payload : '';
+      const raw = msg.payload;
+      const summary = typeof raw === 'string' ? raw : raw != null ? JSON.stringify(raw) : '';
+      const extra = raw && typeof raw === 'object' ? { payload: raw } : {};
       void (async () => {
         const fresh = await getModule(moduleRow.id);
         await syncModuleReadableText(
           fresh || moduleRow,
-          { summary, completed_at: new Date().toISOString() },
+          { summary, completed_at: new Date().toISOString(), ...extra },
           'completado',
         );
         toast('Experiencia completada');
@@ -224,5 +300,11 @@ export async function renderInteractiveHtml(host, moduleRow) {
     getInvoke()('interactive_module_clear', { id: contentId }).catch(() => {});
   });
 
-  frame.src = interactiveModuleUrl(contentId);
+  let rev = 0;
+  const loadFrame = () => {
+    rev += 1;
+    frame.src = `${interactiveModuleUrl(contentId)}?r=${rev}`;
+  };
+  host.querySelector('.interactive-module__reload')?.addEventListener('click', loadFrame);
+  loadFrame();
 }

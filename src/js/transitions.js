@@ -187,11 +187,21 @@ export function bindSlidingTabs(bar) {
 
 export function revealStreaming(container) {
   if (!container) return;
-  const kids = [...container.children];
-  kids.forEach((kid, i) => {
-    kid.classList.add('t-stream-chunk');
-    kid.style.animationDelay = `calc(${i} * var(--stream-gap))`;
-  });
+  // Un solo bloque: animar cada <br>/tag dejaba blur y opacity pegados.
+  const wrap = document.createElement('div');
+  wrap.className = 't-stream-chunk';
+  while (container.firstChild) wrap.appendChild(container.firstChild);
+  container.appendChild(wrap);
+  wrap.addEventListener(
+    'animationend',
+    () => {
+      wrap.classList.remove('t-stream-chunk');
+      wrap.style.filter = 'none';
+      wrap.style.opacity = '1';
+      wrap.style.animationDelay = '';
+    },
+    { once: true },
+  );
 }
 
 /** Caja del tooltip dentro del viewport (sin translate CSS que lo recorte). */
@@ -213,9 +223,11 @@ function initTooltips() {
   document.body.appendChild(tip);
 
   let hideTimer = 0;
+  let showTimer = 0;
   let active = null;
 
   const hide = () => {
+    clearTimeout(showTimer);
     tip.classList.remove('is-open');
     active = null;
   };
@@ -275,18 +287,34 @@ function initTooltips() {
       const el = e.target.closest?.('[title], [data-tooltip]');
       if (!el || el === tip) return;
       if (el.closest('textarea, select, option, .kindle-note__comment')) return;
+      if (
+        el.closest('#leftsidebar .workspace-sidebar__scroll') &&
+        (el.classList.contains('module-link') ||
+          el.classList.contains('module-row--add') ||
+          el.classList.contains('module-link__label'))
+      ) {
+        return;
+      }
       const raw = el.getAttribute('data-tooltip') || el.getAttribute('title') || '';
       const text = raw.trim();
       if (!text) return;
       const labelEl = el.querySelector('.module-link__label') || el;
       const label = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      const truncated = labelEl.scrollWidth > labelEl.clientWidth + 1;
       if (el.hasAttribute('title')) {
         el.setAttribute('data-tooltip', text);
         el.removeAttribute('title');
       }
-      if (label && label === text && !truncated) return;
-      show(el, text);
+      const overflowLabel =
+        el.classList.contains('module-link') ||
+        el.classList.contains('module-link__label') ||
+        Boolean(el.querySelector?.('.module-link__label'));
+      if (label && label === text && !overflowLabel) return;
+      if (overflowLabel && label && label === text) {
+        const truncated = labelEl.scrollWidth > labelEl.clientWidth + 1;
+        if (!truncated) return;
+      }
+      clearTimeout(showTimer);
+      showTimer = window.setTimeout(() => show(el, text), 160);
     },
     true,
   );
@@ -294,9 +322,9 @@ function initTooltips() {
   document.addEventListener(
     'pointerout',
     (e) => {
-      if (!active) return;
+      if (!active && !showTimer) return;
       const to = e.relatedTarget;
-      if (to && (active.contains(to) || to === tip)) return;
+      if (to && active && (active.contains(to) || to === tip)) return;
       hideTimer = window.setTimeout(hide, 40);
     },
     true,

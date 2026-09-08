@@ -20,9 +20,12 @@ export const ICON_PALETTE = svg(
 );
 export const ICON_COPY = svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>');
 export const ICON_DOWNLOAD = svg('<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>');
+export const ICON_CART = svg('<circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 11.2a2 2 0 002 1.6h8.7a2 2 0 001.9-1.4L21 8H6"/>');
+export const ICON_UPLOAD = svg('<path d="M12 16V3M7 8l5-5 5 5"/><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5"/>');
 export const ICON_MORE_VERT = svg('<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>');
 export const ICON_SEARCH = svg('<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>');
 export const ICON_CLOSE = svg('<path d="M18 6L6 18M6 6l12 12"/>');
+export const ICON_BACK = svg('<path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>');
 export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
 export const ICON_WAND = svg(
   '<path d="M15 4v4M13 6h4M5 20L13 12"/><path d="M16.5 3.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5L14.5 5.5l1.5-.5z"/>',
@@ -35,7 +38,13 @@ export const ICON_EXPAND = svg(
   '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
 );
 export const ICON_SWAP = svg('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>');
-export const ICON_LINK = svg('<path d="M10 13a5 5 0 007.07 0l2.12-2.12a5 5 0 00-7.07-7.07L11 4.93"/><path d="M14 11a5 5 0 00-7.07 0L4.81 13.12a5 5 0 007.07 7.07L13 19.07"/>');
+export const ICON_LINK = svg(
+  '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
+);
+export const ICON_SEND = `<svg class="nav-icon-svg" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true"><path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+export const ICON_REFRESH = svg(
+  '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>',
+);
 
 export const SETTINGS_ICONS = {
   name: svg('<circle cx="12" cy="8" r="4"/><path d="M6 20v-1a6 6 0 0112 0v1"/>'),

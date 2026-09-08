@@ -1,11 +1,23 @@
+#[cfg(target_os = "windows")]
 use std::process::Command;
 
 #[cfg(target_os = "macos")]
-fn escape_swift(value: &str) -> String {
-    value
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
+#[allow(deprecated)]
+fn notify_macos(title: &str, body: &str) {
+    // `osascript display notification` makes macOS attribute the notification
+    // to Script Editor/osascript. That is why clicking it opened an editor and
+    // why it showed the wrong icon. Creating it from the app process associates
+    // it with Telar's bundle, so Notification Center activates Telar on click
+    // and uses the app icon.
+    use objc2::rc::Retained;
+    use objc2_foundation::{NSString, NSUserNotification, NSUserNotificationCenter};
+
+    let notification: Retained<NSUserNotification> = NSUserNotification::new();
+    let title = NSString::from_str(title);
+    let body = NSString::from_str(body);
+    notification.setTitle(Some(&title));
+    notification.setInformativeText(Some(&body));
+    NSUserNotificationCenter::defaultUserNotificationCenter().deliverNotification(&notification);
 }
 
 #[cfg(target_os = "windows")]
@@ -13,54 +25,11 @@ fn escape_ps(value: &str) -> String {
     value.replace('\'', "''")
 }
 
-/// Aviso nativo al responder un test o handout. Sin crate extra.
-///
-/// macOS: usa UNUserNotificationCenter vía `swift` inline para que el clic en
-/// la notificación traiga Telar al frente (osascript la atribuye a Script Editor).
-#[tauri::command]
-pub fn show_desktop_notification(title: String, body: String) -> Result<(), String> {
+fn notify_blocking(title: String, body: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let t = escape_swift(&title);
-        let b = escape_swift(&body);
-        let swift = format!(
-            r#"
-import UserNotifications
-import Foundation
-
-let sem = DispatchSemaphore(value: 0)
-let center = UNUserNotificationCenter.current()
-center.requestAuthorization(options: [.alert, .sound]) {{ _, _ in sem.signal() }}
-sem.wait()
-
-let content = UNMutableNotificationContent()
-content.title = "{t}"
-content.body  = "{b}"
-content.sound = .default
-
-let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-let sem2 = DispatchSemaphore(value: 0)
-center.add(req) {{ _ in sem2.signal() }}
-sem2.wait()
-"#
-        );
-        let status = Command::new("swift")
-            .args(["-e", &swift])
-            .status()
-            .map_err(|e| format!("No se pudo mostrar la notificación: {e}"))?;
-        if !status.success() {
-            // Fallback a osascript si swift falla (p.ej. Xcode no instalado).
-            let osa = format!(
-                "display notification \"{}\" with title \"{}\"",
-                body.replace('\\', "\\\\").replace('"', "\\\""),
-                title.replace('\\', "\\\\").replace('"', "\\\""),
-            );
-            Command::new("osascript")
-                .args(["-e", &osa])
-                .status()
-                .map_err(|e| format!("Notificación fallback falló: {e}"))?;
-        }
-        return Ok(());
+        notify_macos(&title, &body);
+        Ok(())
     }
 
     #[cfg(target_os = "windows")]
@@ -82,12 +51,22 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             .args(["-NoProfile", "-NonInteractive", "-Command", &script])
             .status()
             .map_err(|e| format!("No se pudo mostrar la notificación: {e}"))?;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = (title, body);
+        Ok(())
     }
-    Ok(())
+}
+
+/// Aviso nativo al responder un test o handout. Sin crate extra.
+///
+/// macOS: API nativa de Cocoa; Windows: toast nativo vía PowerShell.
+#[tauri::command]
+pub async fn show_desktop_notification(title: String, body: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || notify_blocking(title, body))
+        .await
+        .map_err(|e| format!("Error interno al notificar: {e}"))?
 }

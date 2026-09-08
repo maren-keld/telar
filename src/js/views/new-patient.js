@@ -1,3 +1,4 @@
+import { bindNationalIdInput, idSpecFor } from '../clinic-country.js';
 import { createTreatment, upsertPatient } from '../db.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
@@ -6,6 +7,7 @@ import { escapeHtml, toast } from '../utils.js';
 
 export function renderNewPatient(container, { onNavigate }) {
   const templates = listTreatmentTemplates();
+  const idSpec = idSpecFor();
   const templateOptions = [
     '<option value="">Sin plantilla (solo registro inicial)</option>',
     ...templates.map(
@@ -25,8 +27,8 @@ export function renderNewPatient(container, { onNavigate }) {
             <input name="name" required />
           </div>
           <div class="form-group" style="margin-bottom:12px">
-            <label>RUT / ID</label>
-            <input name="id_number" />
+            <label>${escapeHtml(idSpec.label)}</label>
+            <input name="id_number" id="new-patient-id" placeholder="${escapeHtml(idSpec.placeholder)}" />
           </div>
           <div class="form-group" style="margin-bottom:12px">
             <label>Plantilla de programa (opcional)</label>
@@ -38,6 +40,7 @@ export function renderNewPatient(container, { onNavigate }) {
     </div>`;
 
   container.querySelector('[data-back]')?.addEventListener('click', () => onNavigate({ view: 'treatments' }));
+  bindNationalIdInput(container.querySelector('#new-patient-id'));
 
   container.querySelector('#form-new-patient')?.addEventListener('submit', async (e) => {
     e.preventDefault();

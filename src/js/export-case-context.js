@@ -2,8 +2,54 @@ import { getClinicalNotes, getSessionsWithModules, getTreatment } from './db.js'
 import { buildReadableText } from './readable-text.js';
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
 import { moduleLabelFor } from './custom-modules.js';
+import { questionnaireDefFor } from './questionnaire-defs.js';
+import { shareableContentFor } from './share-content.js';
+import { shareAnsweredAt, shareInfo, shareUrl } from './share-sync.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
+
+function homeworkKind(moduleType, shareable) {
+  if (shareable?.def || questionnaireDefFor(moduleType)) return 'cuestionario';
+  return 'tarea';
+}
+
+function sessionHasPendingShare(session) {
+  return (session.modules || []).some((mod) => shareInfo(parseJsonSafe(mod.data, {})));
+}
+
+/**
+ * Enlaces y handouts que el email post-sesión puede citar.
+ * Prioriza sesiones con enlace activo; si no hay, la última sesión.
+ */
+export function formatPatientHomeworkForPrompt(sessions) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const pendingIds = new Set(list.filter(sessionHasPendingShare).map((s) => s.id));
+  const last = list[list.length - 1];
+  const lines = [];
+
+  for (const session of list) {
+    const include = pendingIds.size ? pendingIds.has(session.id) : session.id === last?.id;
+    if (!include) continue;
+    for (const mod of session.modules || []) {
+      if (!mod || mod.module_type === 'selector_modulo') continue;
+      const data = parseJsonSafe(mod.data, {});
+      if (shareAnsweredAt(data)) continue;
+      const share = shareInfo(data);
+      const shareable = shareableContentFor(mod.module_type);
+      if (!share && !shareable) continue;
+      const url = share ? shareUrl(share) : '';
+      lines.push(
+        `- Sesión ${session.number}: ${moduleLabelFor(mod.module_type)} [${mod.module_type}] (${homeworkKind(mod.module_type, shareable)}) — ${url || 'sin enlace aún'}`,
+      );
+    }
+  }
+
+  if (!lines.length) return '';
+  return `## Enlaces y tareas para el paciente
+Usa estos URLs literales en emails. No inventes ni acortes enlaces telarapp.cl. Si dice «sin enlace aún», nombra el módulo sin URL.
+
+${lines.join('\n')}`;
+}
 
 /** Construye el contexto clínico como texto markdown (sin guardar a disco). */
 export async function buildCaseContextText(treatmentId) {
@@ -20,8 +66,14 @@ export async function buildCaseContextText(treatmentId) {
     '## Resumen psicométrico (última aplicación por escala)',
     buildPsychometricSummaryBlock(sessions) || '_Sin puntajes psicométricos registrados._',
     '',
-    '## Módulos por sesión',
   ];
+
+  const homework = formatPatientHomeworkForPrompt(sessions);
+  if (homework) {
+    parts.push(homework, '');
+  }
+
+  parts.push('## Módulos por sesión');
 
   for (const session of sessions) {
     parts.push(`\n### Sesión ${session.number}`);

@@ -10,6 +10,7 @@ import {
 } from '../workspace-index-mode.js';
 import {
   applyModuleSearch,
+  bindSelectorItemClicks,
   previewHtml,
   selectorListInnerHtml,
 } from './module-selector.js';
@@ -215,12 +216,10 @@ export function openAddModuleSessionModal({
       listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
         if (allowed.size && !allowed.has(btn.dataset.type)) {
           btn.remove();
-          return;
         }
-        btn.addEventListener('click', () => {
-          if (btn.disabled) return;
-          showPreview(btn.dataset.type);
-        });
+      });
+      bindSelectorItemClicks(listEl, (btn) => {
+        showPreview(btn.dataset.type);
       });
       listEl.querySelectorAll('.mod-selector-cat').forEach((cat) => {
         if (!cat.querySelector('.mod-selector-item')) cat.remove();

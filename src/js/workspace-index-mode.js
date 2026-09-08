@@ -90,6 +90,36 @@ export function sessionsWithTypeOnly(sessions, moduleType) {
     .filter((session) => session.modules.length);
 }
 
+/** En cronológico el centro solo pinta una sesión; en categoría, un tipo. */
+export function sessionsForCenter(sessions, { indexMode, indexType, sessionId, moduleId } = {}) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (indexMode === 'category') return sessionsWithTypeOnly(list, indexType);
+  const sid = sessionId != null && sessionId !== '' ? String(sessionId) : '';
+  let session = sid ? list.find((row) => String(row.id) === sid) : null;
+  if (!session && moduleId != null && moduleId !== '') {
+    session = list.find((row) =>
+      (row.modules || []).some((mod) => String(mod.id) === String(moduleId)),
+    );
+  }
+  return session ? [session] : list.slice(0, 1);
+}
+
+export function sidebarAddRowHtml({
+  sessionId,
+  categoryId,
+  id = '',
+  extraClass = '',
+  label,
+} = {}) {
+  const attrs = [];
+  if (id) attrs.push(`id="${escapeHtml(id)}"`);
+  if (sessionId != null && sessionId !== '') attrs.push(`data-session-id="${sessionId}"`);
+  if (categoryId) attrs.push(`data-category-id="${escapeHtml(categoryId)}"`);
+  const cls = ['module-row', 'module-row--add', extraClass].filter(Boolean).join(' ');
+  const text = String(label || '').replace(/^\+\s*/, '');
+  return `<button type="button" class="${cls}" ${attrs.join(' ')} title="${escapeHtml(text)}"><span class="module-done-dot module-done-dot--add" aria-hidden="true">+</span><span class="module-link__label">${escapeHtml(text)}</span></button>`;
+}
+
 export function sessionRuleHtml(sessionNumber) {
   const label = `${escapeHtml(t('workspace.session'))} ${Number(sessionNumber) || ''}`;
   return `<div class="session-rule" role="separator"><span class="session-rule__label">${label}</span></div>`;
@@ -144,52 +174,62 @@ export function listAddableModuleOptions(categoryId = null) {
   return out;
 }
 
-export function sidebarCategoryHtml(sessions, activeModule, moduleLabelFn, { treatmentId } = {}) {
-  const used = buildUsedModuleIndex(sessions);
-  const usedTypes = [...used.keys()];
-  const activeType = resolveIndexType(sessions, activeModule);
-  const blocks = [];
-
-  for (const cat of categoryOrder()) {
-    const types = usedTypes.filter((type) => categoryIdForType(type) === cat.id);
-    if (cat.id === 'otros' && !types.length && !listCustomModules().length) continue;
-    const startCollapsed = isCategoryCollapsed(treatmentId, cat.id, {
-      empty: !types.length,
-      hasActive: types.includes(activeType),
-    });
-    const links = types
-      .map((type) => {
-        const occ = used.get(type) || [];
-        const first = occ[0];
-        if (!first) return '';
-        const active = activeType === type;
-        const count = occ.length;
-        const label = moduleLabelFn(type);
-        return `<a href="#" class="module-link module-link--index${active ? ' active' : ''}" data-index-type="${escapeHtml(type)}" data-session-id="${first.session.id}" data-module-id="${first.module.id}" title="${escapeHtml(label)}"><span class="module-link__label">${escapeHtml(label)}</span>${count > 1 ? `<span class="module-index-count">${count}</span>` : ''}</a>`;
-      })
-      .join('');
-    blocks.push(`
-      <section class="index-cat${startCollapsed ? ' index-cat--collapsed' : ''}" data-category-id="${escapeHtml(cat.id)}">
+function functionCatHtml(cat, types, used, activeType, moduleLabelFn, treatmentId, linkHtmlFn) {
+  const collapseId = cat.id;
+  const startCollapsed = isCategoryCollapsed(treatmentId, collapseId, {
+    empty: !types.length,
+    hasActive: types.includes(activeType),
+  });
+  const links = types
+    .map((type) => {
+      const occ = used.get(type) || [];
+      const first = occ[0];
+      if (!first) return '';
+      const active = activeType === type;
+      const count = occ.length;
+      const label = moduleLabelFn(type);
+      const body = linkHtmlFn
+        ? linkHtmlFn({ type, first, active, count, label })
+        : `<a href="#" class="module-link module-link--index${active ? ' active' : ''}" data-index-type="${escapeHtml(type)}" data-session-id="${first.session.id}" data-module-id="${first.module.id}"><span class="module-link__label">${escapeHtml(label)}</span>${count > 1 ? `<span class="module-index-count">${count}</span>` : ''}</a>`;
+      return body;
+    })
+    .join('');
+  return `
+      <section class="index-cat${startCollapsed ? ' index-cat--collapsed' : ''}" data-category-id="${escapeHtml(collapseId)}" data-function-cat="${escapeHtml(cat.id)}">
         <button type="button" class="index-cat__title" data-index-cat-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
           <span class="index-cat__chevron" aria-hidden="true">▾</span>
-          ${escapeHtml(cat.label)}
+          <span class="index-cat__label">${escapeHtml(cat.label)}</span>
         </button>
         <div class="index-cat__body">
           <nav class="session-block__modules">${links || ''}</nav>
-          <button type="button" class="btn btn-ghost btn-block btn-add-module" data-category-id="${escapeHtml(cat.id)}" title="${escapeHtml(t('workspace.addModule'))}">${escapeHtml(t('workspace.addModule'))}</button>
+          ${sidebarAddRowHtml({ categoryId: cat.id, extraClass: 'btn-add-module', label: t('workspace.addModule') })}
         </div>
-      </section>`);
+      </section>`;
+}
+
+export function sidebarCategoryHtml(sessions, activeModule, moduleLabelFn, { treatmentId, linkHtmlFn } = {}) {
+  const used = buildUsedModuleIndex(sessions);
+  const usedTypes = [...used.keys()];
+  const activeType = resolveIndexType(sessions, activeModule);
+  const sections = [];
+
+  for (const cat of categoryOrder()) {
+    const types = usedTypes.filter((type) => categoryIdForType(type) === cat.id);
+    if (cat.id === 'otros' && !types.length) continue;
+    sections.push(functionCatHtml(cat, types, used, activeType, moduleLabelFn, treatmentId, linkHtmlFn));
   }
 
-  return blocks.join('');
+  return sections.join('');
 }
 
 const collapsedCategoriesByTreatment = new Map();
 
 export function snapshotCategoryCollapse(container, treatmentId) {
-  if (!container.querySelector('.index-cat')) return;
+  if (!container.querySelector('.index-cat') && !container.querySelector('.index-where')) return;
   const ids = new Set(
-    [...container.querySelectorAll('.index-cat--collapsed')].map((el) => String(el.dataset.categoryId)),
+    [...container.querySelectorAll('.index-cat--collapsed, .index-where--collapsed')].map((el) =>
+      String(el.dataset.categoryId),
+    ),
   );
   collapsedCategoriesByTreatment.set(String(treatmentId), ids);
 }
@@ -214,6 +254,19 @@ export function bindCategoryCollapse(container, activeModule, treatmentId) {
   if (container.dataset.indexCatCollapseBound !== '1') {
     container.dataset.indexCatCollapseBound = '1';
     container.addEventListener('click', (e) => {
+      const whereBtn = e.target.closest('[data-index-where-toggle]');
+      if (whereBtn && container.contains(whereBtn)) {
+        const drawer = whereBtn.closest('.index-where');
+        if (!drawer) return;
+        const collapsed = drawer.classList.toggle('index-where--collapsed');
+        whereBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        rememberCategoryCollapsed(
+          container.dataset.workspaceTreatmentId,
+          drawer.dataset.categoryId,
+          collapsed,
+        );
+        return;
+      }
       const btn = e.target.closest('[data-index-cat-toggle]');
       if (!btn || !container.contains(btn)) return;
       const block = btn.closest('.index-cat');
@@ -235,6 +288,12 @@ export function bindCategoryCollapse(container, activeModule, treatmentId) {
       block.classList.remove('index-cat--collapsed');
       block.querySelector('[data-index-cat-toggle]')?.setAttribute('aria-expanded', 'true');
       rememberCategoryCollapsed(treatmentId, block.dataset.categoryId, false);
+    }
+    const drawer = link?.closest('.index-where');
+    if (drawer?.classList.contains('index-where--collapsed')) {
+      drawer.classList.remove('index-where--collapsed');
+      drawer.querySelector('[data-index-where-toggle]')?.setAttribute('aria-expanded', 'true');
+      rememberCategoryCollapsed(treatmentId, drawer.dataset.categoryId, false);
     }
   }
 }

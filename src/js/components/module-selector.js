@@ -1,6 +1,6 @@
 import { getModuleDefs } from '../config.js';
 import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
-import { openCreateModuleModal } from './create-module-modal.js';
+import { takePendingCustomModuleType } from '../module-editor-model.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { isLicensePendingModule } from '../license-pending-modules.js';
 import { psychometricsFor } from '../module-psychometrics.js';
@@ -16,8 +16,30 @@ import {
 } from '../db.js';
 import { escapeHtml, toast } from '../utils.js';
 import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
+import { whereFor, whereLabel } from '../module-where.js';
 
 export { CATEGORIES };
+
+/** Evita que el click en un ítem mueva el scroll del workspace o de la lista. */
+export function bindSelectorItemClicks(listEl, onPick) {
+  if (!listEl) return;
+  listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => {
+      if (e.button === 0) e.preventDefault();
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (btn.disabled) return;
+      const listTop = listEl.scrollTop;
+      const center = listEl.closest('#workspace-center-scroll');
+      const centerTop = center?.scrollTop;
+      onPick(btn);
+      btn.focus({ preventScroll: true });
+      listEl.scrollTop = listTop;
+      if (center && centerTop != null) center.scrollTop = centerTop;
+    });
+  });
+}
 
 function searchTextForType(type, def, psych, customTitle) {
   if (customTitle) {
@@ -63,11 +85,22 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', sho
       <div class="mod-info-row">
         <span>${escapeHtml(def.description || 'Módulo clínico.')}</span>
       </div>
+      ${
+        def.author
+          ? `<div class="mod-info-row"><span><strong>Autor:</strong> ${escapeHtml(def.author)}</span></div>`
+          : ''
+      }
       ${variablesRow(type)}`;
+
+  const whereId = whereFor(type);
+  const whereLine = whereId
+    ? `<p class="mod-info__where">${escapeHtml(whereLabel(whereId))}</p>`
+    : '';
 
   return `
     <div class="mod-info">
       <h3 class="mod-info__title">${escapeHtml(def.label)}</h3>
+      ${whereLine}
       ${rows}
       ${psych?.learnMore ? `<p class="mod-info__note">${escapeHtml(psych.learnMore)}</p>` : ''}
       ${
@@ -126,20 +159,13 @@ export async function mountModuleSelector(host, ctx) {
   host.querySelector('#btn-create-module')?.addEventListener('click', () => {
     requireProOrSubscribe({
       onAllowed: () =>
-        openCreateModuleModal({
-          onCreated: async ({ moduleType }) => {
-            await loadSelectorList({
-              treatmentId: ctx.treatmentId,
-              sessionId: ctx.sessionId,
-              selectorModuleId: ctx.selectorModuleId,
-              onNavigate: ctx.onNavigate,
-              refreshWorkspace: ctx.refreshWorkspace,
-              listEl: host.querySelector('#mod-selector-list'),
-              previewEl: host.querySelector('#mod-selector-preview'),
-              searchInput: host.querySelector('#mod-selector-search'),
-              selectType: moduleType,
-            });
-          },
+        ctx.onNavigate({
+          view: 'module-editor',
+          customModuleId: '',
+          returnView: 'workspace',
+          treatmentId: ctx.treatmentId,
+          sessionId: ctx.sessionId,
+          moduleId: ctx.selectorModuleId,
         }),
     });
   });
@@ -180,7 +206,12 @@ export function selectorListInnerHtml({
         const type = `custom_${cm.id}`;
         const inUse = inTreatment.has(type) || inSession.has(type);
         const def = resolveModuleDef(type) || { label: cm.title };
-        const search = searchTextForType(type, def, null, cm.title);
+        const search = searchTextForType(
+          type,
+          def,
+          null,
+          `${cm.title} ${cm.description || ''} ${cm.author || ''} ${cm.audience || ''}`,
+        );
         return `
           <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}">
             <span>${escapeHtml(cm.title)}</span>
@@ -345,25 +376,26 @@ async function loadSelectorList(ctx) {
     });
   };
 
-  listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      if (btn.disabled || selecting) return;
-      const type = btn.dataset.type;
-      selectedType = type;
-      const def = resolveModuleDef(type) || { label: type, description: 'Módulo clínico.' };
-      const psych = def.custom ? null : psychometricsFor(type);
+  bindSelectorItemClicks(listEl, (btn) => {
+    if (selecting) return;
+    const type = btn.dataset.type;
+    selectedType = type;
+    const def = resolveModuleDef(type) || { label: type, description: 'Módulo clínico.' };
+    const psych = def.custom ? null : psychometricsFor(type);
 
-      listEl.querySelectorAll('.mod-selector-item').forEach((b) => {
-        b.classList.toggle('active', b === btn);
-      });
-
-      previewEl.innerHTML = previewHtml(type, def, psych);
-      bindSelectButton();
+    listEl.querySelectorAll('.mod-selector-item').forEach((b) => {
+      b.classList.toggle('active', b === btn);
     });
+
+    previewEl.innerHTML = previewHtml(type, def, psych);
+    bindSelectButton();
   });
 
   if (ctx.selectType) {
     const btn = listEl.querySelector(`[data-type="${ctx.selectType}"]`);
     btn?.click();
+  } else {
+    const pending = takePendingCustomModuleType();
+    if (pending) listEl.querySelector(`[data-type="${pending}"]`)?.click();
   }
 }

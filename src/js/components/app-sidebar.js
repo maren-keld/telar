@@ -48,7 +48,7 @@ export function renderAppSidebar(activeNav = 'treatments') {
 }
 
 export function bindAppSidebar(container, { onNavigate }) {
-  const clearCtx = { treatmentId: '', sessionId: '', moduleId: '', search: '', tab: '', date: '', billingFilter: '' };
+  const clearCtx = { treatmentId: '', sessionId: '', moduleId: '', customModuleId: '', returnView: '', search: '', tab: '', date: '', billingFilter: '' };
   container.querySelector('[data-nav="agenda"]')?.addEventListener('click', () => {
     onNavigate({ view: 'agenda', ...clearCtx });
   });

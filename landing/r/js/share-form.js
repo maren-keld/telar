@@ -316,6 +316,63 @@ function renderExperience(payload, onSubmit) {
       done: function(s){ post('done', s); },
       resize: function(h){ post('resize', Number(h) || 0); }
     };
+    function harden() {
+      document.addEventListener('submit', function (e) { e.preventDefault(); }, true);
+      document.querySelectorAll('button').forEach(function (el) {
+        if (el.id === 'telar-finish') return;
+        var type = (el.getAttribute('type') || '').toLowerCase();
+        if (!type || type === 'submit') el.setAttribute('type', 'button');
+      });
+      document.querySelectorAll('input[type="submit"]').forEach(function (el) {
+        el.setAttribute('type', 'button');
+      });
+      var selectors = ['[data-step]', '.step', '.screen', '.slide', '[data-page]', 'form > fieldset', 'form > section', 'main > section'];
+      var steps = [];
+      for (var s = 0; s < selectors.length; s++) {
+        var found = document.querySelectorAll(selectors[s]);
+        if (found.length >= 2) { steps = Array.prototype.slice.call(found); break; }
+      }
+      if (steps.length < 2) return;
+      function isOn(el) {
+        if (el.hidden || el.getAttribute('aria-hidden') === 'true') return false;
+        if ((el.style && el.style.display) === 'none') return false;
+        return true;
+      }
+      function show(n) {
+        if (n < 0 || n >= steps.length) return;
+        steps.forEach(function (el, idx) {
+          var on = idx === n;
+          el.hidden = !on;
+          el.style.display = on ? '' : 'none';
+        });
+      }
+      var vis = [];
+      steps.forEach(function (el, idx) { if (isOn(el)) vis.push(idx); });
+      if (vis.length !== 1) show(0);
+      function navDir(el) {
+        var t = ((el.textContent || el.value || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();
+        if (/(siguiente|continuar|comenzar|empezar|adelante|\\bnext\\b)/.test(t)) return 1;
+        if (/(atrás|atras|anterior|volver|\\bback\\b)/.test(t)) return -1;
+        return 0;
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('button, input[type="button"]') : null;
+        if (!btn) return;
+        var dir = navDir(btn);
+        if (!dir) return;
+        var before = steps.map(isOn).join(',');
+        setTimeout(function () {
+          if (before !== steps.map(isOn).join(',')) return;
+          var cur = 0;
+          var now = [];
+          steps.forEach(function (el, idx) { if (isOn(el)) now.push(idx); });
+          if (now.length === 1) cur = now[0];
+          show(cur + dir);
+        }, 0);
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', harden);
+    else harden();
     window.addEventListener('load', function(){ post('resize', document.documentElement.scrollHeight); });
   })();</scr` + `ipt>`;
 

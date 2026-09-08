@@ -26,6 +26,7 @@ import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-up
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
 import { getLocale, localeLabel, setLocale, t } from '../i18n.js';
 import { SETTINGS_ICONS } from '../icons.js';
+import { CLINIC_COUNTRIES, clinicCountryLabel, isValidClinicCountry } from '../clinic-country.js';
 
 let settingsRenderGen = 0;
 
@@ -42,6 +43,7 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'presentationMode',
   'usagePing',
   'locale',
+  'clinicCountry',
   'backupCloud',
   'exportData',
   'wipeData',
@@ -80,6 +82,39 @@ function openLanguagePicker(onPick) {
   root.querySelectorAll('[data-lang]').forEach((btn) => {
     btn.addEventListener('click', () => {
       onPick(btn.dataset.lang);
+      close();
+    });
+  });
+}
+
+function openCountryPicker(onPick) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-backdrop" data-close>
+      <div class="modal-card" role="dialog" aria-labelledby="country-title">
+        <h2 id="country-title" class="modal-card__title">${escapeHtml(t('settings.chooseCountry'))}</h2>
+        <div class="settings-lang-options">
+          ${CLINIC_COUNTRIES.map(
+            (c) =>
+              `<button type="button" class="btn btn-secondary btn-block" data-country="${escapeHtml(c.id)}">${escapeHtml(c.label)}</button>`,
+          ).join('')}
+        </div>
+        <div class="modal-card__actions">
+          <button type="button" class="btn btn-ghost" data-cancel>${escapeHtml(t('settings.cancel', 'Cancelar'))}</button>
+        </div>
+      </div>
+    </div>`;
+
+  const close = () => {
+    root.innerHTML = '';
+  };
+  root.querySelector('[data-cancel]')?.addEventListener('click', close);
+  root.querySelector('[data-close]')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) close();
+  });
+  root.querySelectorAll('[data-country]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      onPick(btn.dataset.country);
       close();
     });
   });
@@ -274,6 +309,14 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
           ${row({ icon: SETTINGS_ICONS.email, title: t('settings.email'), subtitle: profile.email || '—', dataField: 'email' })}
           ${row({ icon: SETTINGS_ICONS.phone, title: t('settings.phone'), subtitle: profile.phone || '—', dataField: 'phone' })}
           ${row({ icon: SETTINGS_ICONS.address, title: t('settings.address'), subtitle: profile.address || '—', dataField: 'address' })}
+          ${row({
+            icon: SETTINGS_ICONS.address,
+            title: t('settings.country'),
+            subtitle: isValidClinicCountry(profile.clinicCountry)
+              ? clinicCountryLabel(profile.clinicCountry)
+              : t('settings.chooseCountry'),
+            dataField: 'clinicCountry',
+          })}
           ${row({
             icon: SETTINGS_ICONS.locale,
             title: t('settings.language'),
@@ -508,6 +551,15 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
       if (code === getLocale()) return;
       setLocale(code);
       toast(t('toast.langChanged'));
+      renderSettings(container, { onNavigate });
+    });
+  });
+
+  container.querySelector('[data-field="clinicCountry"]')?.addEventListener('click', () => {
+    openCountryPicker((code) => {
+      if (!isValidClinicCountry(code) || code === loadProfile().clinicCountry) return;
+      saveProfile({ clinicCountry: code });
+      toast(t('toast.saved'));
       renderSettings(container, { onNavigate });
     });
   });

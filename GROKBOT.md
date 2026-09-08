@@ -2,9 +2,11 @@
 
 Este archivo es el rastro local para Grok Bot en este Mac.
 No hay MCP de Grok en Cursor. Grok Bot ya conoce `/Users/felipeuppen/telar`.
-Léelo cuando el tema sea **Psypilot**, **Marcela**, **MIC**, **index2**, **IA local**, **firma Windows**, **contactos** o **permisos de escalas**.
+Léelo cuando el tema sea **Psypilot**, **Marcela**, **MIC**, **index2**, **IA local**, **firma Windows**, **contactos**, **permisos de escalas** o **Mentea**.
 
-Fecha: 4 sep 2026. App: `0.1.0-beta.18`. Contacto: contacto@telarapp.cl.
+**WIP de la app (no git):** `docs/current-status.md` — qué hay en el working tree ahora. Léelo primero si el tema es código en curso. Refrescar: `./scripts/refresh-current-status.sh`. No copiar el dump de git acá.
+
+Fecha: 8 sep 2026. App publicada: `0.1.0-beta.20`. Contacto: contacto@telarapp.cl.
 
 **CRM privado (no git):** `docs/crm-contactos.md` — Danyau, Raúl, Katerin, Pamela, Sara, Marcela, Luis, Aye. Actualizarlo después de cada conversación. `docs/` está gitignored.
 
@@ -111,6 +113,16 @@ Psypilot Teams = EHR multi-user en su nube. Telar: `instituciones.html` — mism
 ## Categoría de módulos
 
 Id interno `significado` (no migrar). Label visible: **Narrativa**.
+
+Tercer eje (dónde ocurre el trabajo), no reemplaza las 5 de función: **En sesión** / **Entre sesiones** / **Ficha**. Ver `src/js/module-where.js`. El puntito de hecho es por instancia (`module-done.js`), no el `status` de autosave.
+
+## Mentea
+
+**somosmentea.com** — España. Catálogo de PDFs (área, población, tipo de recurso: guía / ficha / visual / psicoedu / herramienta de sesión). No es una ficha de caso.
+
+- **Redes, no código.** No hay API pública obvia. Idea: partnership o API a futuro, si ellos quieren. No scrapear el catálogo ni embeber PDFs sin permiso (mismo problema de licencias que IES-R).
+- **No mezclar** su taxonomía de librería con el catálogo clínico de Telar. Las 5 categorías de función se quedan. De su “tipo de recurso” solo copiamos la distinción sesión vs ficha de trabajo, y en Telar son tres cajones (el canal del enlace no es el proceso).
+- Si hay ficha de contacto, actualizar a mano el CRM gitignored (`docs/crm-contactos.md`). No inventar email ni “ya hablamos”.
 
 ## Pain point #1: instalación / firma Windows
 

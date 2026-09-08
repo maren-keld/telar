@@ -72,3 +72,31 @@ test('bindAutoSave guarda de inmediato al marcar un radio', async () => {
   await Promise.resolve();
   assert.equal(writes, 1);
 });
+
+test('flushPendingAutoSaves no escribe si no hubo input', async () => {
+  const root = fakeRoot();
+  let writes = 0;
+  bindAutoSave(root, async () => {
+    writes += 1;
+  }, { debounceMs: 10_000 });
+
+  await flushPendingAutoSaves();
+  assert.equal(writes, 0);
+});
+
+test('flush suelta el handle si el nodo ya no está conectado', async () => {
+  const root = fakeRoot();
+  let writes = 0;
+  bindAutoSave(root, async () => {
+    writes += 1;
+  }, { debounceMs: 10_000 });
+
+  root.emit('input', fakeField());
+  root.isConnected = false;
+  await flushPendingAutoSaves();
+  assert.equal(writes, 0);
+
+  root.isConnected = true;
+  await flushPendingAutoSaves();
+  assert.equal(writes, 0);
+});

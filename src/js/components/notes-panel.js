@@ -22,6 +22,7 @@ import { buildCaseContextText } from '../export-case-context.js';
 import {
   AI_QUICK_PROMPTS,
   aiActionsHtml,
+  userAskedForPatientEmail,
   applyAiModule,
   applyAiPlan,
   buildAiSystemPrompt,
@@ -29,6 +30,7 @@ import {
   markAiActionApplied,
   markAiActionDismissed,
   markupModuleRefs,
+  normalizeAiDisplayText,
   parseAiActions,
 } from '../ai-actions.js';
 import { listReferenceDocuments } from './reference-documents-modal.js';
@@ -37,12 +39,29 @@ import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
 import { ICON_COPY, ICON_PALETTE } from '../icons.js';
 import { mountThinkingOrb } from '../thinking-orb.js';
+import { ditherOrbMarkup, mountDitherOrb } from '../dither-orb.js';
+import { visibleNotesWindow } from '../notes-window.js';
 
 const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
   <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const PERFIL_ONLY_SELECTED_KEY = (treatmentId) => `telar.perfil.onlySelected.${treatmentId}`;
+
+const NOTES_MOD_KBD =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '')
+    ? '⌘'
+    : 'Ctrl+';
+
+function notesKbd(key, title) {
+  return `<kbd class="notes-kbd" title="${escapeHtml(title)}">${NOTES_MOD_KBD}${escapeHtml(key)}</kbd>`;
+}
+
+const NOTES_EMPTY_HTML = `<div class="notes-empty-state">
+  ${ditherOrbMarkup({ coreId: 'notes-empty-orb', title: 'Pregunta a la IA sobre el caso' })}
+  <p class="notes-empty">${notesKbd('N', 'Añadir una nota')} Pulsa + Nota para añadir un comentario. ${notesKbd('I', 'Consultar a la IA sobre el caso')} Consulta a la IA sobre el caso.</p>
+  <p class="notes-empty">También puedes seleccionar texto en un módulo para crear una anotación.</p>
+</div>`;
 
 function readPerfilOnlySelected(treatmentId) {
   try {
@@ -110,7 +129,13 @@ const PERFIL_CROSS_REFS = {
   },
 };
 
+let notesPanelDocAbort = null;
+
 export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
+  notesPanelDocAbort?.abort();
+  notesPanelDocAbort = new AbortController();
+  const notesPanelSignal = notesPanelDocAbort.signal;
+
   let refreshList = async () => {};
   let activeTab = 'notas';
   try {
@@ -123,6 +148,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   }
   const profile = loadProfile();
   const defaultInitials = practitionerInitials(profile.name);
+  let showAllNotes = false;
 
   container.innerHTML = `
     <div class="space-tools" data-active-tab="${activeTab}">
@@ -144,7 +170,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <div class="notes-scroll notes-scroll--prejump" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
-        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
+        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica (${NOTES_MOD_KBD}N)"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
         <div class="ai-dock__chips" id="ai-dock-chips">
@@ -154,7 +180,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           ).join('')}
         </div>
         <div class="ai-dock__input-row">
-          <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" rows="1"></textarea>
+          <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" title="Consulta a la IA (${NOTES_MOD_KBD}I)" rows="1"></textarea>
           <p class="ai-dock__thinking" id="ai-dock-thinking" hidden aria-live="polite">
             <span class="ai-dock__thinking-orb" id="ai-dock-thinking-orb"></span>
             <span class="ai-dock__thinking-label t-shimmer" id="ai-dock-thinking-label" data-text="Pensando...">Pensando...</span>
@@ -186,31 +212,108 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     });
   };
 
-  refreshList = async ({ scrollBottom = false, streamNoteId = null } = {}) => {
+  let stopNotesEmptyOrb = () => {};
+  const paintNotesEmpty = () => {
+    stopNotesEmptyOrb();
+    stopNotesEmptyOrb = () => {};
+    listEl.innerHTML = NOTES_EMPTY_HTML;
+    stopNotesEmptyOrb = mountDitherOrb(listEl.querySelector('#notes-empty-orb'), { size: 92 });
+  };
+
+  refreshList = async ({
+    scrollBottom = false,
+    streamNoteId = null,
+    appendNoteId = null,
+    removeNoteId = null,
+    restoreOlderScroll = null,
+  } = {}) => {
     await flushPendingAutoSaves();
+    if (activeTab !== 'notas') {
+      stopNotesEmptyOrb();
+      stopNotesEmptyOrb = () => {};
+    }
     if (activeTab === 'notas') {
+      const bindOpts = {
+        treatmentId,
+        onApplied: toolsOpts.onTemplateApplied || null,
+        onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
+        onRemoved: (id) => refreshList({ removeNoteId: id }),
+      };
+
+      if (removeNoteId != null) {
+        listEl.querySelector(`[data-id="${removeNoteId}"]`)?.remove();
+        if (!listEl.querySelector('.kindle-note')) paintNotesEmpty();
+        revealNotes();
+        return;
+      }
+
       const all = await getClinicalNotes(treatmentId);
       const sorted = [...all].sort((a, b) =>
         String(a.created_at || '').localeCompare(String(b.created_at || '')),
       );
       if (!sorted.length) {
-        listEl.innerHTML = `<p class="notes-empty">Pulsa + Nota para añadir un comentario. También puedes seleccionar texto en un módulo para crear una anotación.</p>`;
+        paintNotesEmpty();
         revealNotes();
         return;
       }
+
+      const already = appendNoteId != null ? listEl.querySelector(`[data-id="${appendNoteId}"]`) : null;
+      if (already) {
+        if (streamNoteId) {
+          const answer = already.querySelector('.kindle-note__ai-answer');
+          revealStreaming(answer);
+        }
+        if (scrollBottom) jumpNotesToEnd();
+        else revealNotes();
+        return;
+      }
+
+      if (appendNoteId != null && listEl.querySelector('.kindle-note')) {
+        const note = sorted.find((n) => String(n.id) === String(appendNoteId));
+        if (note) {
+          listEl.querySelector('.notes-empty-state')?.remove();
+          stopNotesEmptyOrb();
+          stopNotesEmptyOrb = () => {};
+          listEl.insertAdjacentHTML('beforeend', kindleNoteHtml(note, defaultInitials));
+          bindNoteCards(listEl, refreshList, bindOpts);
+          scheduleAiAnswerClamps(listEl.querySelector(`[data-id="${note.id}"]`));
+          if (streamNoteId) {
+            const answer = listEl.querySelector(`[data-id="${streamNoteId}"] .kindle-note__ai-answer`);
+            revealStreaming(answer);
+          }
+          if (scrollBottom) jumpNotesToEnd();
+          else revealNotes();
+          return;
+        }
+      }
+
       const savedScroll = listEl.scrollTop;
-      listEl.innerHTML = sorted.map((n) => kindleNoteHtml(n, defaultInitials)).join('');
-      bindNoteCards(listEl, refreshList, {
-        treatmentId,
-        onApplied: toolsOpts.onTemplateApplied || null,
-        onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
+      stopNotesEmptyOrb();
+      stopNotesEmptyOrb = () => {};
+      const { notes, hiddenCount } = visibleNotesWindow(sorted, { showAll: showAllNotes });
+      const older =
+        hiddenCount > 0
+          ? `<button type="button" class="btn btn-ghost btn-block notes-older" id="notes-older">Ver ${hiddenCount} anteriores</button>`
+          : '';
+      listEl.innerHTML = `${older}${notes.map((n) => kindleNoteHtml(n, defaultInitials)).join('')}`;
+      bindNoteCards(listEl, refreshList, bindOpts);
+      listEl.querySelector('#notes-older')?.addEventListener('click', () => {
+        showAllNotes = true;
+        const prevHeight = listEl.scrollHeight;
+        const prevTop = listEl.scrollTop;
+        void refreshList({ restoreOlderScroll: { prevHeight, prevTop } });
       });
+      scheduleAiAnswerClamps(listEl);
       if (streamNoteId) {
         const answer = listEl.querySelector(`[data-id="${streamNoteId}"] .kindle-note__ai-answer`);
         revealStreaming(answer);
       }
       if (scrollBottom) jumpNotesToEnd();
-      else {
+      else if (restoreOlderScroll) {
+        listEl.scrollTop =
+          restoreOlderScroll.prevTop + (listEl.scrollHeight - restoreOlderScroll.prevHeight);
+        revealNotes();
+      } else {
         listEl.scrollTop = savedScroll;
         revealNotes();
       }
@@ -262,7 +365,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       color: 'yellow',
       authorInitials: defaultInitials,
     });
-    await refreshList({ scrollBottom: true });
+    await refreshList({ scrollBottom: true, appendNoteId: id });
     listEl.querySelector(`[data-note-id="${id}"]`)?.focus();
   });
 
@@ -318,7 +421,9 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     }
     syncDockHint();
   };
-  document.addEventListener('telar:ai-config-changed', onAiConfigChanged);
+  document.addEventListener('telar:ai-config-changed', onAiConfigChanged, {
+    signal: notesPanelSignal,
+  });
 
   {
     const AI_INPUT_MAX_H = 120;
@@ -450,11 +555,12 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
               content: buildAiSystemPrompt(context, {
                 practitioner: loadProfile(),
                 referenceDocs,
+                email: userAskedForPatientEmail(q),
               }),
             },
             { role: 'user', content: q },
           ],
-          maxTokens: local ? 1600 : 2600,
+          maxTokens: local ? 1200 : 1600,
           request,
         });
         if (request.aborted) throw new Error('cancelado');
@@ -466,22 +572,22 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         const noteId = await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'teal',
-          content: text,
+          content: normalizeAiDisplayText(text),
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        await refreshList({ scrollBottom: true, streamNoteId: noteId });
+        await refreshList({ scrollBottom: true, streamNoteId: noteId, appendNoteId: noteId });
       } catch (err) {
         const msg = err?.message || 'Error al consultar la IA.';
         if (/cancelado/i.test(msg)) return;
-        await addClinicalNote(treatmentId, {
+        const errId = await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'yellow',
           content: msg,
           authorInitials: 'IA',
           sourceLabel: q,
         });
-        await refreshList({ scrollBottom: true });
+        await refreshList({ scrollBottom: true, appendNoteId: errId });
       } finally {
         if (aiRequest === request) aiRequest = null;
         if (!request.aborted) {
@@ -536,17 +642,35 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     await refreshList({ scrollBottom: true });
   };
 
-  container._telarScoresAbort?.abort();
-  const scoresAbort = new AbortController();
-  container._telarScoresAbort = scoresAbort;
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (!container.isConnected) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.repeat) return;
+      const key = e.key.toLowerCase();
+      if (key !== 'n' && key !== 'i') return;
+      if (document.getElementById('modal-root')?.querySelector('.modal-backdrop, .modal-card')) return;
+      e.preventDefault();
+      if (key === 'n') {
+        void (async () => {
+          if (activeTab !== 'notas') await focusNotasTab();
+          container.querySelector('#btn-add-note')?.click();
+        })();
+        return;
+      }
+      void (async () => {
+        if (activeTab !== 'notas') await focusNotasTab();
+        aiInput?.focus();
+      })();
+    },
+    { signal: notesPanelSignal },
+  );
+
   let scoresRefreshing = false;
   document.addEventListener(
     'telar:module-data-saved',
     () => {
-      if (!container.isConnected) {
-        scoresAbort.abort();
-        return;
-      }
+      if (!container.isConnected) return;
       if (activeTab !== 'puntajes' || scoresRefreshing) return;
       scoresRefreshing = true;
       void refreshList()
@@ -555,7 +679,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           scoresRefreshing = false;
         });
     },
-    { signal: scoresAbort.signal },
+    { signal: notesPanelSignal },
   );
 
   return {
@@ -859,7 +983,7 @@ function defaultsFor(tab) {
 }
 
 function renderMarkdown(text) {
-  const html = escapeHtml(text)
+  const html = escapeHtml(normalizeAiDisplayText(text))
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
@@ -871,6 +995,35 @@ function renderMarkdown(text) {
     .replace(/^[-•]\s+/gm, '· ')
     .replace(/\n/g, '<br>');
   return markupModuleRefs(html);
+}
+
+function bindAiAnswerClamp(card) {
+  const answer = card.querySelector('.kindle-note__ai-answer');
+  const more = card.querySelector('.kindle-note__ai-more');
+  if (!answer || !more || more.dataset.clampBound === '1') return;
+  const overflow = answer.scrollHeight > answer.clientHeight + 2;
+  if (!overflow) {
+    answer.classList.remove('kindle-note__ai-answer--clamp');
+    more.hidden = true;
+    return;
+  }
+  more.hidden = false;
+  more.dataset.clampBound = '1';
+  more.addEventListener('click', () => {
+    answer.classList.remove('kindle-note__ai-answer--clamp');
+    more.hidden = true;
+  });
+}
+
+function scheduleAiAnswerClamps(root) {
+  if (!root) return;
+  const run = () => {
+    const cards = root.matches?.('.kindle-note')
+      ? [root]
+      : [...root.querySelectorAll('.kindle-note')];
+    cards.forEach(bindAiAnswerClamp);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(run));
 }
 
 function kindleNoteHtml(note, fallbackInitials) {
@@ -893,7 +1046,8 @@ function kindleNoteHtml(note, fallbackInitials) {
   const bodyContent = isAi
     ? `
         ${source ? `<p class="kindle-note__source kindle-note__source--question">${escapeHtml(source)}</p>` : ''}
-        <div class="kindle-note__ai-answer">${renderMarkdown(ai.text)}</div>
+        <div class="kindle-note__ai-answer kindle-note__ai-answer--clamp">${renderMarkdown(ai.text)}</div>
+        <button type="button" class="kindle-note__ai-more" hidden>Ver más</button>
         ${aiActionsHtml(ai.actions, note.id)}`
     : `
         ${source ? `<p class="kindle-note__source">${escapeHtml(source)}</p>` : ''}
@@ -917,9 +1071,11 @@ function kindleNoteHtml(note, fallbackInitials) {
     </article>`;
 }
 
-function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null, onJumpToModuleType = null } = {}) {
+function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null, onJumpToModuleType = null, onRemoved = null } = {}) {
   ensurePaletteClose();
   listEl.querySelectorAll('.kindle-note').forEach((card) => {
+    if (card.dataset.notesBound === '1') return;
+    card.dataset.notesBound = '1';
     const id = Number(card.dataset.id);
     const ta = card.querySelector('.kindle-note__comment');
 
@@ -977,7 +1133,8 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
 
     card.querySelector('.note-delete')?.addEventListener('click', async () => {
       await deleteClinicalNote(id);
-      await rerender();
+      if (onRemoved) await onRemoved(id);
+      else await rerender();
     });
 
     card.querySelectorAll('.ai-dialog').forEach((actionEl) => {

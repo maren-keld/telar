@@ -143,6 +143,7 @@ async fn stream_chat_completion(
     messages: Value,
     max_tokens: u32,
     request_id: u64,
+    reasoning_effort: Option<String>,
 ) -> Result<Value, String> {
     if is_cancelled(request_id) {
         return Err("cancelado".into());
@@ -167,12 +168,21 @@ async fn stream_chat_completion(
         req = req.header(AUTHORIZATION, format!("Bearer {key}"));
     }
 
-    let send = req.json(&json!({
+    let mut body = json!({
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
         "stream": true,
-    }));
+    });
+    if let Some(effort) = reasoning_effort
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        body["reasoning_effort"] = json!(effort);
+    }
+
+    let send = req.json(&body);
 
     let response = tokio::select! {
         biased;
@@ -440,6 +450,7 @@ pub async fn ai_chat_completion(
     max_tokens: Option<u32>,
     request_id: Option<u64>,
     provider: Option<String>,
+    reasoning_effort: Option<String>,
 ) -> Result<Value, String> {
     let max_tokens = max_tokens.unwrap_or(512);
     let request_id = request_id.unwrap_or(0);
@@ -449,7 +460,16 @@ pub async fn ai_chat_completion(
         )
         .await;
     }
-    stream_chat_completion(api_base, api_key, model, messages, max_tokens, request_id).await
+    stream_chat_completion(
+        api_base,
+        api_key,
+        model,
+        messages,
+        max_tokens,
+        request_id,
+        reasoning_effort,
+    )
+    .await
 }
 
 #[cfg(test)]

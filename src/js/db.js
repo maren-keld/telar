@@ -5,6 +5,16 @@ import { parseJsonSafe } from './utils.js';
 import { getInvoke, isTauriApp, loadSqlDatabase } from './tauri-bridge.js';
 
 let dbInstance = null;
+let clinicalAlertCache = null;
+let clinicalAlertInflight = null;
+
+function invalidateClinicalAlertCache() {
+  clinicalAlertCache = null;
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('telar:module-data-saved', invalidateClinicalAlertCache);
+}
 
 async function loadDatabase() {
   if (dbInstance) return dbInstance;
@@ -27,7 +37,7 @@ export async function execute(sql, params = []) {
   return db.execute(sql, params);
 }
 
-async function loadClinicalAlertIds() {
+async function loadClinicalAlertIdsUncached() {
   const placeholders = VITAL_RISK_LABELS.map(() => '?').join(', ');
   const spaceRows = await query(
     `SELECT treatment_id, label FROM treatment_space_checks
@@ -41,7 +51,10 @@ async function loadClinicalAlertIds() {
     spaceByTreatment.get(id).push(row.label);
   }
   const mods = await query(
-    `SELECT s.treatment_id, sm.module_type, sm.data
+    `SELECT s.treatment_id, sm.module_type,
+            json_extract(sm.data, '$.urgencia') AS urgencia,
+            json_extract(sm.data, '$.answers[11]') AS sprint_item,
+            json_extract(sm.data, '$.answers[6]') AS fer_item
      FROM session_modules sm
      JOIN sessions s ON s.id = sm.session_id
      WHERE sm.module_type IN ('motivo_consulta', 'sprint_ecl', 'escala_fer')
@@ -51,7 +64,19 @@ async function loadClinicalAlertIds() {
   for (const row of mods) {
     const id = Number(row.treatment_id);
     if (!modsByTreatment.has(id)) modsByTreatment.set(id, []);
-    modsByTreatment.get(id).push(row);
+    let data = {};
+    if (row.module_type === 'motivo_consulta' && row.urgencia) {
+      data = { urgencia: row.urgencia };
+    } else if (row.module_type === 'sprint_ecl' && row.sprint_item != null) {
+      const answers = [];
+      answers[11] = Number(row.sprint_item);
+      data = { answers };
+    } else if (row.module_type === 'escala_fer' && row.fer_item != null) {
+      const answers = [];
+      answers[6] = Number(row.fer_item);
+      data = { answers };
+    }
+    modsByTreatment.get(id).push({ module_type: row.module_type, data });
   }
   const map = new Map();
   const allIds = new Set([...spaceByTreatment.keys(), ...modsByTreatment.keys()]);
@@ -63,6 +88,20 @@ async function loadClinicalAlertIds() {
     if (reasons.length) map.set(id, reasons);
   }
   return map;
+}
+
+async function loadClinicalAlertIds() {
+  if (clinicalAlertCache) return clinicalAlertCache;
+  if (clinicalAlertInflight) return clinicalAlertInflight;
+  clinicalAlertInflight = loadClinicalAlertIdsUncached()
+    .then((map) => {
+      clinicalAlertCache = map;
+      return map;
+    })
+    .finally(() => {
+      clinicalAlertInflight = null;
+    });
+  return clinicalAlertInflight;
 }
 
 export async function getAgendaGroups(search = '') {
@@ -324,13 +363,23 @@ export async function treatmentHasModuleType(treatmentId, moduleType) {
   return rows.length > 0;
 }
 
-export async function getSessionsWithModules(treatmentId) {
-  const sessions = await getSessions(treatmentId);
-  const out = [];
-  for (const s of sessions) {
-    out.push({ ...s, modules: await getSessionModules(s.id) });
+/** Junta sesiones + módulos en memoria. Una consulta de cada, no N+1. */
+export function attachModulesToSessions(sessions, modules) {
+  const bySession = new Map();
+  for (const m of modules || []) {
+    const sid = m.session_id;
+    if (!bySession.has(sid)) bySession.set(sid, []);
+    bySession.get(sid).push(m);
   }
-  return out;
+  return (sessions || []).map((s) => ({ ...s, modules: bySession.get(s.id) || [] }));
+}
+
+export async function getSessionsWithModules(treatmentId) {
+  const [sessions, modules] = await Promise.all([
+    getSessions(treatmentId),
+    getTreatmentModules(treatmentId),
+  ]);
+  return attachModulesToSessions(sessions, modules);
 }
 
 export async function bootstrapDefaultTreatment(treatmentId) {
@@ -347,10 +396,12 @@ export async function bootstrapDefaultTreatment(treatmentId) {
   if (!(await treatmentHasModuleType(treatmentId, 'motivo_consulta'))) {
     await addModuleToSession(sessionId, 'motivo_consulta', treatmentId);
   }
-  const mods = await getSessionModules(sessionId);
+  let mods = await getSessionModules(sessionId);
   if (!mods.find((m) => m.module_type === 'selector_modulo')) {
     await addModuleToSession(sessionId, 'selector_modulo', treatmentId);
+    mods = await getSessionModules(sessionId);
   }
+  return { sessionId, modules: mods };
 }
 
 function firstWorkspaceModule(session) {
@@ -364,12 +415,10 @@ function firstWorkspaceModule(session) {
 }
 
 export async function resolveWorkspaceEntry(treatmentId) {
-  await bootstrapDefaultTreatment(treatmentId);
-  const sessions = await getSessionsWithModules(treatmentId);
-  const session = sessions[0];
-  if (!session) return { sessionId: null, moduleId: null };
-  const mod = firstWorkspaceModule(session);
-  return { sessionId: session.id, moduleId: mod?.id ?? null };
+  const boot = await bootstrapDefaultTreatment(treatmentId);
+  if (!boot?.sessionId) return { sessionId: null, moduleId: null };
+  const mod = firstWorkspaceModule({ modules: boot.modules });
+  return { sessionId: boot.sessionId, moduleId: mod?.id ?? null };
 }
 
 export async function applyTreatmentTemplate(treatmentId, templateId) {
@@ -436,7 +485,8 @@ export async function createTreatment(patientId, { templateId = null } = {}) {
   return treatmentId;
 }
 
-/** Copia data/readable_text/status de módulos homólogos entre tratamientos del mismo paciente. */
+/** Copia data/status de módulos homólogos entre tratamientos del mismo paciente.
+ * El readable_text vive dentro de `data` (JSON), no como columna. */
 export async function copyModuleDataBetweenTreatments(sourceTreatmentId, destTreatmentId, moduleTypes) {
   const srcSessions = await getSessionsWithModules(sourceTreatmentId);
   const dstSessions = await getSessionsWithModules(destTreatmentId);
@@ -448,10 +498,22 @@ export async function copyModuleDataBetweenTreatments(sourceTreatmentId, destTre
     const dst = dstMods.find((m) => m.module_type === type);
     if (!src || !dst) continue;
     await execute(
-      `UPDATE session_modules SET data = ?, status = ?, readable_text = ?, updated_at = datetime('now') WHERE id = ?`,
-      [src.data || '{}', src.status || 'pendiente', src.readable_text || '', dst.id],
+      `UPDATE session_modules SET data = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
+      [src.data || '{}', src.status || 'pendiente', dst.id],
     );
   }
+}
+
+/** Todos los tratamientos de un paciente, ordenados por número. */
+export async function listTreatmentsForPatient(patientId) {
+  return query(
+    `SELECT t.id, t.number, t.status, t.patient_id, p.name AS patient_name
+       FROM treatments t
+       JOIN patients p ON p.id = t.patient_id
+      WHERE t.patient_id = ?
+      ORDER BY t.number ASC`,
+    [patientId],
+  );
 }
 
 export async function updateTreatmentStatus(treatmentId, status) {
@@ -656,10 +718,21 @@ export async function replaceSelectorWithModule(selectorModuleId, moduleType, tr
 
 export async function getPatientDemographicsStats() {
   const patients = await query(
-    `SELECT gender, birth_date, marital_status, source, address FROM patients`,
+    `SELECT p.gender, p.birth_date, p.marital_status, p.source, p.address
+       FROM patients p
+      WHERE EXISTS (
+        SELECT 1 FROM treatments t
+         WHERE t.patient_id = p.id AND t.status != 'archivado'
+      )`,
   );
   const registroRows = await query(
-    `SELECT data FROM session_modules WHERE module_type = 'registro_inicial' AND data IS NOT NULL AND data != '{}'`,
+    `SELECT sm.data
+       FROM session_modules sm
+       JOIN sessions s ON s.id = sm.session_id
+       JOIN treatments t ON t.id = s.treatment_id
+      WHERE sm.module_type = 'registro_inicial'
+        AND t.status != 'archivado'
+        AND sm.data IS NOT NULL AND sm.data != '{}'`,
   );
 
   const ageBuckets = {
@@ -736,8 +809,17 @@ export async function getPatientDemographicsStats() {
 }
 
 export async function getDashboardStats() {
-  const [{ total_patients }] = await query(`SELECT COUNT(*) AS total_patients FROM patients`);
-  const [{ total_treatments }] = await query(`SELECT COUNT(*) AS total_treatments FROM treatments`);
+  const [{ total_patients }] = await query(
+    `SELECT COUNT(DISTINCT p.id) AS total_patients
+       FROM patients p
+      WHERE EXISTS (
+        SELECT 1 FROM treatments t
+         WHERE t.patient_id = p.id AND t.status != 'archivado'
+      )`,
+  );
+  const [{ total_treatments }] = await query(
+    `SELECT COUNT(*) AS total_treatments FROM treatments WHERE status != 'archivado'`,
+  );
 
   const months = await query(
     `WITH RECURSIVE months(m) AS (
@@ -749,6 +831,10 @@ export async function getDashboardStats() {
              COALESCE(COUNT(p.id), 0) AS new_patients
       FROM months
       LEFT JOIN patients p ON strftime('%Y-%m', p.created_at) = months.m
+        AND EXISTS (
+          SELECT 1 FROM treatments t
+           WHERE t.patient_id = p.id AND t.status != 'archivado'
+        )
       GROUP BY months.m
       ORDER BY months.m`,
   );
@@ -873,6 +959,7 @@ export async function setSpaceCheck(treatmentId, category, label, checked) {
      ON CONFLICT(treatment_id, category, label) DO UPDATE SET checked = excluded.checked, updated_at = datetime('now')`,
     [treatmentId, category, label, checked ? 1 : 0],
   );
+  invalidateClinicalAlertCache();
 }
 
 const SESSION_SCHEDULE_JOIN = `

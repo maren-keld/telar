@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Telar — Guía de uso para psicólogos</title>
+  <meta name="description" content="Manual de usuario de Telar: instalación, pacientes, workspace, escalas, neurofeedback Muse 2, IA opcional, privacidad y planes Demo/Pro.">
+  <link rel="canonical" href="https://telarapp.cl/manual">
+  <meta property="og:title" content="Manual de Telar — Guía de uso para psicólogos">
+  <meta property="og:description" content="Manual de usuario de Telar: instalación, pacientes, workspace, escalas, neurofeedback Muse 2, IA opcional, privacidad y planes Demo/Pro.">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="es_CL">
+  <meta property="og:url" content="https://telarapp.cl/manual">
+  <meta property="og:site_name" content="Telar">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "name": "Manual de Telar",
+        "url": "https://telarapp.cl/manual",
+        "inLanguage": "es-CL",
+        "description": "Manual de usuario de la aplicación clínica Telar para psicólogos.",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Telar",
+          "url": "https://telarapp.cl/"
+        },
+        "mainEntity": {
+          "@type": "ItemList",
+          "numberOfItems": 14,
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Qué es Telar",
+              "url": "https://telarapp.cl/manual/que-es-telar"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Instalación y primer acceso",
+              "url": "https://telarapp.cl/manual/instalacion"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Pacientes y tratamientos",
+              "url": "https://telarapp.cl/manual/pacientes"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "El workspace",
+              "url": "https://telarapp.cl/manual/workspace"
+            },
+            {
+              "@type": "ListItem",
+              "position": 5,
+              "name": "Programas y plantillas",
+              "url": "https://telarapp.cl/manual/programas"
+            },
+            {
+              "@type": "ListItem",
+              "position": 6,
+              "name": "Catálogo de módulos",
+              "url": "https://telarapp.cl/manual/modulos"
+            },
+            {
+              "@type": "ListItem",
+              "position": 7,
+              "name": "Escalas y seguimiento",
+              "url": "https://telarapp.cl/manual/escalas"
+            },
+            {
+              "@type": "ListItem",
+              "position": 8,
+              "name": "Neurofeedback (Muse 2)",
+              "url": "https://telarapp.cl/manual/neurofeedback"
+            },
+            {
+              "@type": "ListItem",
+              "position": 9,
+              "name": "Estimulación bilateral",
+              "url": "https://telarapp.cl/manual/estimulacion-bilateral"
+            },
+            {
+              "@type": "ListItem",
+              "position": 10,
+              "name": "IA opcional",
+              "url": "https://telarapp.cl/manual/ia"
+            },
+            {
+              "@type": "ListItem",
+              "position": 11,
+              "name": "Exportaciones e informes",
+              "url": "https://telarapp.cl/manual/exportar"
+            },
+            {
+              "@type": "ListItem",
+              "position": 12,
+              "name": "Privacidad y respaldo",
+              "url": "https://telarapp.cl/manual/privacidad-respaldo"
+            },
+            {
+              "@type": "ListItem",
+              "position": 13,
+              "name": "Planes Demo y Pro",
+              "url": "https://telarapp.cl/manual/planes"
+            },
+            {
+              "@type": "ListItem",
+              "position": 14,
+              "name": "Solución de problemas",
+              "url": "https://telarapp.cl/manual/solucion-problemas"
+            }
+          ]
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Telar",
+            "item": "https://telarapp.cl/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Manual",
+            "item": "https://telarapp.cl/manual"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <link rel="icon" href="../assets/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"></noscript>
+  <link rel="stylesheet" href="../css/style.css?v=20260905a">
+</head>
+<body class="manual-page">
+
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="../index.html" class="brand">
+        <img src="../assets/icon.png" alt="" width="28" height="28">
+        Telar
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Abrir menú" aria-controls="nav-links" aria-expanded="false" id="nav-toggle">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Navegación principal">
+        <a href="../index.html#valor">Funciones</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="../modules/index.html">Módulos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="../cursos/index.html">Cursos</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="../blog/index.html">Blog</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="index.html" aria-current="page">Manual</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="../precio.html">Precio</a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a href="../index.html#contacto">Contacto</a>
+      </nav>
+      <div class="nav-actions">
+        <a href="../descargar.html" class="btn btn-primary btn-nav">Probar gratis</a>
+      </div>
+    </div>
+  </header>
+<main id="contenido">
+
+  <div class="manual-layout">
+    <nav class="manual-toc" aria-label="Capítulos del manual">
+  <p class="manual-toc__label">Manual</p>
+  <ol class="manual-toc__list">
+    <li><a href="index.html" aria-current="page">Índice</a></li>
+    <li><a href="que-es-telar.html">Qué es Telar</a></li>
+    <li><a href="instalacion.html">Instalación y primer acceso</a></li>
+    <li><a href="pacientes.html">Pacientes y tratamientos</a></li>
+    <li><a href="workspace.html">El workspace</a></li>
+    <li><a href="programas.html">Programas y plantillas</a></li>
+    <li><a href="modulos.html">Catálogo de módulos</a></li>
+    <li><a href="escalas.html">Escalas y seguimiento</a></li>
+    <li><a href="neurofeedback.html">Neurofeedback (Muse 2)</a></li>
+    <li><a href="estimulacion-bilateral.html">Estimulación bilateral</a></li>
+    <li><a href="ia.html">IA opcional</a></li>
+    <li><a href="exportar.html">Exportaciones e informes</a></li>
+    <li><a href="privacidad-respaldo.html">Privacidad y respaldo</a></li>
+    <li><a href="planes.html">Planes Demo y Pro</a></li>
+    <li><a href="solucion-problemas.html">Solución de problemas</a></li>
+  </ol>
+</nav>
+    <div class="manual-article">
+      <header class="manual-article__header">
+        <p class="section-label">Documentación</p>
+        <h1>Manual de Telar</h1>
+        <p class="manual-lead">Guía de uso de la aplicación de escritorio: instalación, pacientes, workspace, módulos, neurofeedback, IA y privacidad.</p>
+        <div class="hero-actions">
+          <a href="../descargar.html" class="btn btn-primary btn-lg">Descargar Telar</a>
+          <a href="que-es-telar.html" class="btn btn-secondary btn-lg">Empezar a leer</a>
+        </div>
+      </header>
+      <ol class="manual-index-list">
+
+        <li class="manual-index-card">
+          <a href="que-es-telar.html">
+            <span class="manual-index-card__num">01</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Qué es Telar</span>
+              <span class="manual-index-card__summary">Aplicación de escritorio local-first para psicólogos clínicos en Chile y Latam.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="instalacion.html">
+            <span class="manual-index-card__num">02</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Instalación y primer acceso</span>
+              <span class="manual-index-card__summary">Descargar Telar en macOS o Windows, autorizar la primera apertura y crear el PIN.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="pacientes.html">
+            <span class="manual-index-card__num">03</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Pacientes y tratamientos</span>
+              <span class="manual-index-card__summary">Crear pacientes, estados de tratamiento, etiquetas y el cupo Demo de 3 activos.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="workspace.html">
+            <span class="manual-index-card__num">04</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">El workspace</span>
+              <span class="manual-index-card__summary">Sesiones, módulos, barra lateral, autosave y menús del caso.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="programas.html">
+            <span class="manual-index-card__num">05</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Programas y plantillas</span>
+              <span class="manual-index-card__summary">Plantillas TDAH, TDAH+NF y trauma; programas en blanco.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="modulos.html">
+            <span class="manual-index-card__num">06</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Catálogo de módulos</span>
+              <span class="manual-index-card__summary">Categorías de módulos y cómo se usan en el workspace.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="escalas.html">
+            <span class="manual-index-card__num">07</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Escalas y seguimiento</span>
+              <span class="manual-index-card__summary">Puntuación automática, curvas longitudinales y alertas clínicas orientativas.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="neurofeedback.html">
+            <span class="manual-index-card__num">08</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Neurofeedback (Muse 2)</span>
+              <span class="manual-index-card__summary">Conectar Muse 2, sesión en vivo, diferencias Demo/Pro y límites clínicos.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="estimulacion-bilateral.html">
+            <span class="manual-index-card__num">09</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Estimulación bilateral</span>
+              <span class="manual-index-card__summary">Estímulo visual bilateral en sesión; alcance EMDR-adjacent y límites.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="ia.html">
+            <span class="manual-index-card__num">10</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">IA opcional</span>
+              <span class="manual-index-card__summary">Activar IA, Ollama o BYOK, y usos sobre la ficha ya registrada.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="exportar.html">
+            <span class="manual-index-card__num">11</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Exportaciones e informes</span>
+              <span class="manual-index-card__summary">PDF de handouts, PDF de tratamiento Pro y otras exportaciones.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="privacidad-respaldo.html">
+            <span class="manual-index-card__num">12</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Privacidad y respaldo</span>
+              <span class="manual-index-card__summary">Encriptación local, PIN, respaldo Pro con age y qué sale a Internet.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="planes.html">
+            <span class="manual-index-card__num">13</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Planes Demo y Pro</span>
+              <span class="manual-index-card__summary">Comparativa Demo vs Pro, cupo de pacientes y suscripción.</span>
+            </span>
+          </a>
+        </li>
+        <li class="manual-index-card">
+          <a href="solucion-problemas.html">
+            <span class="manual-index-card__num">14</span>
+            <span class="manual-index-card__body">
+              <span class="manual-index-card__title">Solución de problemas</span>
+              <span class="manual-index-card__summary">Gatekeeper, SmartScreen, Muse, PIN, actualizaciones y contacto.</span>
+            </span>
+          </a>
+        </li>
+      </ol>
+    </div>
+  </div>
+</main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div>
+        <strong>Telar</strong><br>
+        Software de código libre · Datos clínicos 100% locales<br>
+        2026
+      </div>
+      <nav class="footer-links" aria-label="Enlaces del pie">
+        <a href="../index.html">Inicio</a>
+        <a href="../descargar.html">Descargar</a>
+        <a href="../modules/index.html">Módulos</a>
+        <a href="../cursos/index.html">Cursos</a>
+        <a href="../neurofeedback.html">Curso de neurofeedback</a>
+        <a href="../instituciones.html">Instituciones</a>
+        <a href="../precio.html">Precio</a>
+        <a href="index.html">Manual</a>
+        <a href="../blog/index.html">Blog</a>
+        <a href="../equipo.html">Equipo</a>
+        <a href="../privacidad.html">Privacidad</a>
+        <a href="../terminos.html">Términos</a>
+        <a href="mailto:contacto@telarapp.cl">contacto@telarapp.cl</a>
+        <a href="https://github.com/maren-keld/telar" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/maren-keld/telar/blob/main/LICENSE" target="_blank" rel="noopener">Licencia AGPL-3.0</a>
+      </nav>
+    </div>
+  </footer>
+  <script src="../js/download.js?v=20260905a"></script>
+  <script src="../js/track.js?v=20260905a"></script>
+  <script src="../js/nav.js?v=20260905a"></script>
+</body>
+</html>

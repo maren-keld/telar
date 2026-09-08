@@ -1,3 +1,4 @@
+import { coverageLabel, idSpecFor } from './clinic-country.js';
 import { TREATMENT_STATUS, patientGenderLabel } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getSessionsWithModules, getTreatment } from './db.js';
@@ -170,14 +171,14 @@ export async function exportTreatmentPdf(treatmentId) {
   y += 2;
   const patientLines = [
     ['Nombre', patient.nombre || treatment.patient_name],
-    ['RUT/ID', patient.id_number],
+    [idSpecFor().shortLabel, patient.id_number],
     ['Nacimiento', patient.birth_date],
     ['Género', patientGenderLabel(patient.genero) || patient.genero],
     ['Email', patient.email],
     ['Teléfono', patient.phone],
     ['Dirección', patient.address],
     ['Estado civil', patient.marital_status],
-    ['Previsión', patient.prevision],
+    [coverageLabel(), patient.prevision],
     ['Fuente', patient.source],
     ['Tratamiento n.º', treatment.number],
     ['Estado', statusLabel],

@@ -140,10 +140,10 @@ export const MARITAL_OPTIONS = [
 
 export const EDUCATION_OPTIONS = [
   'Sin estudios formales',
-  'Educación básica incompleta',
-  'Educación básica completa',
-  'Educación media incompleta',
-  'Educación media completa',
+  'Educación primaria incompleta',
+  'Educación primaria completa',
+  'Educación secundaria incompleta',
+  'Educación secundaria completa',
   'Educación técnica / profesional incompleta',
   'Educación técnica / profesional completa',
   'Educación universitaria incompleta',
@@ -152,10 +152,20 @@ export const EDUCATION_OPTIONS = [
   'Otro',
 ];
 
+/** Valores viejos (básica/media, Chile) → primaria/secundaria. */
+export function normalizeEducationLevel(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  return s
+    .replace(/Educaci[oó]n b[aá]sica/gi, 'Educación primaria')
+    .replace(/Educaci[oó]n media/gi, 'Educación secundaria');
+}
+
 export const SOURCE_OPTIONS = [
   'Recomendación de otro cliente',
   'Redes sociales',
   'Búsqueda web',
   'Derivación profesional',
+  'A través de IA (ChatGPT, Gemini, Claude, etc.)',
   'Otro',
 ];
