@@ -17,6 +17,8 @@ import {
   getSessionModules,
   getSessionsWithModules,
   getTreatment,
+  isSessionDone,
+  setSessionDone,
   swapModuleToSelector,
 } from '../db.js';
 import { doneToastMessage, isModuleDone, toggleDoneOverride } from '../module-done.js';
@@ -339,16 +341,17 @@ export async function renderWorkspace(
       const data = container._workspaceData;
       const root = container.querySelector('#workspace-center-scroll');
       pendingCenterScrollRestore = root?.scrollTop ?? 0;
-      const list = data?.sessions || sessions;
-      const currentId = data?.activeModuleId ?? activeModule?.id;
+      const list = await getSessionsWithModules(treatmentId);
+      if (data) data.sessions = list;
+      const currentId = data?.activeModuleId;
       const wasActive = String(deletedId) === String(currentId);
-      const remaining = list.flatMap((s) => s.modules).filter((m) => String(m.id) !== String(deletedId));
-      const all = list.flatMap((s) => s.modules);
-      const idx = all.findIndex((m) => String(m.id) === String(deletedId));
-      const neighbor = all[idx + 1] || all[idx - 1];
-      const next = wasActive ? neighbor || remaining[0] : activeModule;
+      const remaining = list.flatMap((s) => s.modules || []);
+      const sameSession = list.find((s) => String(s.id) === String(data?.activeSessionId));
+      const next = wasActive
+        ? sameSession?.modules?.[0] || remaining[0]
+        : remaining.find((m) => String(m.id) === String(currentId)) || remaining[0];
       const sess = next
-        ? list.find((s) => s.modules.some((m) => String(m.id) === String(next.id)))
+        ? list.find((s) => (s.modules || []).some((m) => String(m.id) === String(next.id)))
         : null;
       await renderWorkspace(container, {
         treatmentId,
@@ -490,18 +493,6 @@ export async function renderWorkspace(
   }
   bindWorkspaceDelegatedClicks(container);
 
-  container.querySelector('#btn-add-session')?.addEventListener('click', async () => {
-    const id = await addSession(treatmentId);
-    const mods = await getSessionModules(id);
-    const sel = mods.find((m) => m.module_type === 'selector_modulo');
-    onNavigate({
-      view: 'workspace',
-      treatmentId,
-      sessionId: id,
-      moduleId: sel?.id,
-    });
-  });
-
   const toolsOpts = {
     treatmentId,
     onNavigate,
@@ -562,6 +553,7 @@ export async function renderWorkspace(
   bindSessionCollapse(container, activeModule, treatmentId);
   bindCategoryCollapse(container, activeModule, treatmentId);
   bindDoneDots(container);
+  bindSessionDoneDots(container);
 
   let notesApi = container._notesApi;
   if (!keepNotes || !rightSidebarEl?.querySelector('.space-tools')) {
@@ -704,6 +696,12 @@ function bindWorkspaceDelegatedClicks(container) {
         preferredSessionId: data.activeSessionId,
         onAdded: data.goToAdded,
       });
+      return;
+    }
+
+    const addSessionBtn = e.target.closest('#btn-add-session');
+    if (addSessionBtn && container.contains(addSessionBtn)) {
+      void data.onAddSession?.();
     }
   });
 }
@@ -776,12 +774,60 @@ async function paintCenterForModule(container, { sessionId, moduleId, moduleType
     onDelete: data.onDelete,
   });
   bindModuleScrollSpy(container);
-  bindSessionCollapse(container, activeModule, data.treatmentId);
-  bindCategoryCollapse(container, activeModule, data.treatmentId);
+  paintLeftSidebarIndex(container, data.sessions, activeModule);
   setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
   syncScrollToModule(container, activeModule.id);
   scrollSidebarToModule(container, activeModule.id);
   return true;
+}
+
+function paintLeftSidebarIndex(container, sessions, activeModule) {
+  const data = container._workspaceData;
+  if (!data || !sessions) return;
+  const scroll = container.querySelector('#leftsidebar .workspace-sidebar__scroll');
+  if (!scroll) return;
+  snapshotSessionCollapse(container, data.treatmentId);
+  snapshotCategoryCollapse(container, data.treatmentId);
+  const saved = scroll.scrollTop;
+  const indexMode = getWorkspaceIndexMode();
+  scroll.innerHTML =
+    indexMode === 'category'
+      ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, {
+          treatmentId: data.treatmentId,
+          linkHtmlFn: indexModuleLinkHtml,
+        })
+      : `${sessions
+          .map((s) => sidebarSessionHtml(s, activeModule, { treatmentId: data.treatmentId }))
+          .join('')}
+          ${sidebarAddRowHtml({
+            id: 'btn-add-session',
+            extraClass: 'workspace-add-session',
+            label: t('workspace.addSession'),
+          })}`;
+  scroll.scrollTop = saved;
+  bindSessionCollapse(container, activeModule, data.treatmentId);
+  bindCategoryCollapse(container, activeModule, data.treatmentId);
+  bindDoneDots(container);
+  bindSessionDoneDots(container);
+  if (indexMode !== 'category') {
+    bindWorkspaceModuleDnD(container, {
+      treatmentId: data.treatmentId,
+      activeModuleId: activeModule?.id,
+      onNavigate: data.onNavigate,
+      onMoved: async ({ sessionId: movedSessionId, moduleId: movedModuleId }) => {
+        const root = container.querySelector('#workspace-center-scroll');
+        pendingCenterScrollRestore = root?.scrollTop ?? 0;
+        await renderWorkspace(container, {
+          treatmentId: data.treatmentId,
+          sessionId: movedSessionId,
+          moduleId: movedModuleId ?? activeModule?.id,
+          onNavigate: data.onNavigate,
+          forceFullRender: true,
+          expandSessionId: movedSessionId,
+        });
+      },
+    });
+  }
 }
 
 async function tryFastModuleNavigation(container, {
@@ -1240,9 +1286,16 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
             onChange: () => ctx.refreshWorkspace?.(),
           }),
         onDelete: async () => {
-          await deleteSessionModule(mod.id);
-          toast('Módulo eliminado');
-          await ctx.onDelete(mod.id);
+          if (wrap.dataset.deleting === '1') return;
+          wrap.dataset.deleting = '1';
+          try {
+            await deleteSessionModule(mod.id);
+            toast('Módulo eliminado');
+            await ctx.onDelete(mod.id);
+          } catch (err) {
+            wrap.dataset.deleting = '';
+            throw err;
+          }
         },
       };
 
@@ -1427,6 +1480,13 @@ function moduleDoneDotHtml(mod) {
   return `<button type="button" class="module-done-dot${done ? ' is-done' : ''}" data-done-toggle data-module-id="${mod.id}" aria-pressed="${done ? 'true' : 'false'}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"></button>`;
 }
 
+function sessionDoneDotHtml(session) {
+  const done = isSessionDone(session);
+  const label = `${t('workspace.session')} ${session.number}`;
+  const title = doneDotTitle(label, done);
+  return `<button type="button" class="module-done-dot${done ? ' is-done' : ''}" data-session-done data-session-id="${session.id}" data-session-number="${session.number}" aria-pressed="${done ? 'true' : 'false'}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"></button>`;
+}
+
 function indexModuleLinkHtml({ first, active, count, label }) {
   const extra = count > 1 ? `<span class="module-index-count">${count}</span>` : '';
   return `<div class="module-row">${moduleDoneDotHtml(first.module)}<a href="#" class="module-link module-link--index${active ? ' active' : ''}" data-index-type="${escapeHtml(first.module.module_type)}" data-session-id="${first.session.id}" data-module-id="${first.module.id}"><span class="module-link__label">${escapeHtml(label)}</span>${extra}</a></div>`;
@@ -1462,6 +1522,33 @@ function bindDoneDots(container) {
   });
 }
 
+function bindSessionDoneDots(container) {
+  if (container.dataset.sessionDoneBound === '1') return;
+  container.dataset.sessionDoneBound = '1';
+  container.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-session-done]');
+    if (!btn || !container.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const next = !btn.classList.contains('is-done');
+      await setSessionDone(btn.dataset.sessionId, next);
+      const label = `${t('workspace.session')} ${btn.dataset.sessionNumber || ''}`.trim();
+      applyDoneDotState(btn, next, label);
+      const data = container._workspaceData;
+      const sess = data?.sessions?.find((s) => String(s.id) === String(btn.dataset.sessionId));
+      if (sess) sess.done = next ? 1 : 0;
+      toast(next ? `${label}: completada` : `${label}: pendiente`);
+    } catch (err) {
+      toast(err?.message || 'No se pudo actualizar la sesión');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionId } = {}) {
   const modCount = session.modules.length;
   const activeInSession =
@@ -1490,10 +1577,12 @@ function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionI
 
   return `
     <section class="session-block${startCollapsed ? ' session-block--collapsed' : ''}${activeInSession ? ' session-block--active' : ''}" data-session-id="${session.id}">
-      <button type="button" class="session-block__title" data-session-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
-        <span class="session-block__chevron" aria-hidden="true">▾</span>
-        <span class="session-block__label">${escapeHtml(t('workspace.session'))} ${session.number}</span>
-      </button>
+      <div class="module-row session-block__head">
+        ${sessionDoneDotHtml(session)}
+        <button type="button" class="session-block__title" data-session-toggle aria-expanded="${startCollapsed ? 'false' : 'true'}">
+          <span class="session-block__label">${escapeHtml(t('workspace.session'))} ${session.number}</span>
+        </button>
+      </div>
       <div class="session-block__body">
         <nav class="session-block__modules">${mods || `<span class="text-muted">${escapeHtml(t('workspace.noModules'))}</span>`}</nav>
         ${sidebarAddRowHtml({ sessionId: session.id, extraClass: 'btn-add-module', label: t('workspace.addModule') })}

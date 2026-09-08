@@ -34,6 +34,20 @@ test('los 12 módulos nuevos tienen definición, renderer y PDF', () => {
   }
 });
 
+test('jerarquía de exposición es una escalera con situación y SUDS por peldaño', () => {
+  const def = tccHandoutDef('tcc_exposicion');
+  assert.equal(def.layout, 'hierarchy');
+  assert.equal(def.hierarchy.steps.length, 6);
+  assert.equal(def.hierarchy.steps[0].situation, 's1');
+  assert.equal(def.hierarchy.steps[0].suds, 'suds1');
+  assert.equal(def.hierarchy.steps[0].label, 'Más fácil');
+  assert.equal(def.hierarchy.steps[5].situation, 's6');
+  assert.equal(def.hierarchy.steps[5].label, 'Más temida');
+  assert.equal(def.hierarchy.avoid.key, 'evitacion');
+  assert.equal(def.hierarchy.firstStep.key, 'primer_paso');
+  assert.match(def.intro, /escalera/);
+});
+
 test('el registro de pensamientos formatea columnas con datos', () => {
   const text = formatTccHandoutReadable('tcc_registro_pensamientos', {
     situacion: 'Reunión de equipo',

@@ -2531,6 +2531,32 @@ html[data-presentation='on'] .genogram-node__name::after {
   cursor: pointer;
 }
 
+.module-tile--deletable {
+  position: relative;
+  padding-right: 36px;
+}
+
+.module-tile__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.module-tile__delete:hover {
+  background: var(--danger-soft, #f8e4e4);
+  color: var(--danger, #b42318);
+}
+
 .module-tile--custom:hover {
   border-color: var(--accent);
   background: var(--accent-soft);

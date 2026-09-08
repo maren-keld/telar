@@ -515,12 +515,33 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       const request = aiRequest;
       request.aborted = true;
       stopThinking();
+      listEl.querySelector('[data-pending-ai="1"]')?.remove();
+      if (!listEl.querySelector('.kindle-note')) paintNotesEmpty();
       aiInput.value = lastAiQuestion;
       autoGrow();
       delete aiSend.dataset.busy;
       syncSendState();
       toast('Consulta detenida');
       void cancelChatCompletion(request);
+    };
+
+    const showPendingAiQuestion = (question) => {
+      listEl.querySelector('.notes-empty-state')?.remove();
+      stopNotesEmptyOrb();
+      stopNotesEmptyOrb = () => {};
+      listEl.insertAdjacentHTML(
+        'beforeend',
+        `<article class="kindle-note kindle-note--teal kindle-note--ia kindle-note--pending" data-pending-ai="1">
+          <div class="kindle-note__body">
+            <p class="kindle-note__source kindle-note__source--question">${escapeHtml(question)}</p>
+            <p class="kindle-note__ai-answer">Pensando…</p>
+          </div>
+          <div class="kindle-note__rail">
+            <span class="kindle-note__rail-btn kindle-note__author" title="Respuesta IA">IA</span>
+          </div>
+        </article>`,
+      );
+      jumpNotesToEnd();
     };
 
     const sendAiQuestion = async () => {
@@ -537,6 +558,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       const request = createAiRequest();
       aiRequest = request;
       startThinking();
+      showPendingAiQuestion(q);
       try {
         const context = await buildCaseContextText(treatmentId);
         if (request.aborted) throw new Error('cancelado');
@@ -576,10 +598,16 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           authorInitials: 'IA',
           sourceLabel: q,
         });
+        listEl.querySelector('[data-pending-ai="1"]')?.remove();
         await refreshList({ scrollBottom: true, streamNoteId: noteId, appendNoteId: noteId });
       } catch (err) {
         const msg = err?.message || 'Error al consultar la IA.';
-        if (/cancelado/i.test(msg)) return;
+        if (/cancelado/i.test(msg)) {
+          listEl.querySelector('[data-pending-ai="1"]')?.remove();
+          if (!listEl.querySelector('.kindle-note')) paintNotesEmpty();
+          return;
+        }
+        listEl.querySelector('[data-pending-ai="1"]')?.remove();
         const errId = await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'yellow',

@@ -3,7 +3,9 @@ import { isLicensePendingModule } from '../license-pending-modules.js';
 import { CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
+import { openConfirmModal } from '../components/confirm-modal.js';
 import {
+  deleteCustomModule,
   deleteCustomModulePack,
   getCustomModule,
   listCustomModulePacks,
@@ -16,8 +18,9 @@ import { escapeHtml, invokeErrorMessage, toast } from '../utils.js';
 import { openExternalUrl, pickPackFile, pickPackSavePath } from '../tauri-bridge.js';
 import { ICON_CART, ICON_UPLOAD } from '../icons.js';
 
-function moduleTile(type, def, { kind = '' } = {}) {
+function moduleTile(type, def, { kind = '', deletable = false } = {}) {
   const isCustom = type.startsWith('custom_');
+  const customId = deletable ? parseCustomModuleType(type) : null;
   const badge =
     kind === 'interactive'
       ? '<span class="badge badge--info">Interactiva</span>'
@@ -29,20 +32,24 @@ function moduleTile(type, def, { kind = '' } = {}) {
   const categoryTag = parts[1]
     ? `<span class="badge badge--subtle">${escapeHtml(parts[1])}</span>`
     : '';
+  const del = customId
+    ? `<button type="button" class="module-tile__delete" data-delete-custom="${escapeHtml(customId)}" aria-label="Quitar de la librería" title="Quitar de la librería">×</button>`
+    : '';
   return `
-    <article class="module-tile${isCustom ? ' module-tile--custom' : ''}" data-type="${escapeHtml(type)}">
+    <article class="module-tile${isCustom ? ' module-tile--custom' : ''}${customId ? ' module-tile--deletable' : ''}" data-type="${escapeHtml(type)}">
+      ${del}
       <h3 class="module-tile__title">${escapeHtml(displayName)} ${categoryTag}</h3>
       <p class="module-tile__desc">${escapeHtml(def.description || 'Módulo clínico.')}</p>
       ${badge}
     </article>`;
 }
 
-function customTiles(mods) {
+function customTiles(mods, { deletable = false } = {}) {
   return mods
     .map((cm) => {
       const type = `custom_${cm.id}`;
       const def = resolveModuleDef(type) || { label: cm.title, description: cm.instructions || '' };
-      return moduleTile(type, def, { kind: cm.kind });
+      return moduleTile(type, def, { kind: cm.kind, deletable });
     })
     .join('');
 }
@@ -88,7 +95,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
           <div class="modules-library-head__actions modules-library-section__actions">
             <button type="button" class="btn btn-ghost btn-sm" data-export-own>Exportar como pack</button>
           </div>
-          <div class="modules-library-grid">${customTiles(ownMods)}</div>
+          <div class="modules-library-grid">${customTiles(ownMods, { deletable: true })}</div>
         </section>`
             : ''
         }
@@ -101,7 +108,7 @@ export async function renderModulesLibrary(container, { onNavigate }) {
             ${isPackExportable(pack.id) && pack.modules.some((mod) => mod.exportable !== false) ? `<button type="button" class="btn btn-ghost btn-sm" data-export-pack="${escapeHtml(pack.id)}">Exportar</button>` : ''}
             <button type="button" class="btn btn-ghost btn-sm" data-remove-pack="${escapeHtml(pack.id)}">Quitar pack</button>
           </div>
-          <div class="modules-library-grid">${customTiles(pack.modules)}</div>
+          <div class="modules-library-grid">${customTiles(pack.modules, { deletable: true })}</div>
         </section>`,
           )
           .join('')}
@@ -207,9 +214,28 @@ export async function renderModulesLibrary(container, { onNavigate }) {
     });
   });
 
+  container.querySelectorAll('[data-delete-custom]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.deleteCustom;
+      const mod = id ? getCustomModule(id) : null;
+      if (!mod) return;
+      const ok = await openConfirmModal({
+        title: '¿Quitar módulo?',
+        message: `Se quita «${mod.title || 'este módulo'}» de tu librería. Las respuestas ya guardadas en las fichas se mantienen.`,
+        confirmLabel: 'Quitar',
+      });
+      if (!ok) return;
+      await deleteCustomModule(id);
+      toast('Módulo quitado de la librería');
+      await rerender();
+    });
+  });
+
   container.querySelectorAll('.module-tile--custom').forEach((tile) => {
     tile.addEventListener('mousedown', (e) => {
-      if (e.button === 0) e.preventDefault();
+      if (e.button === 0 && !e.target.closest('[data-delete-custom]')) e.preventDefault();
     });
     tile.addEventListener('click', () => {
       const customId = parseCustomModuleType(tile.dataset.type);

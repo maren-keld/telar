@@ -1839,18 +1839,6 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   color: var(--accent);
 }
 
-.session-block__chevron {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-  margin: 0 0 0 4px;
-  font-size: 11px;
-  transition: transform 0.15s ease;
-}
-
 .session-block__label {
   flex: 1 1 auto;
   min-width: 0;
@@ -1859,18 +1847,20 @@ html[data-theme='dark'] .nf-feedback-status--artifact {
   line-height: 1.4;
 }
 
-.session-block--collapsed .session-block__chevron {
-  transform: rotate(-90deg);
-}
-
 .session-block--collapsed .session-block__body {
   display: none;
 }
 
+.workspace-sidebar .session-block__head {
+  margin-bottom: 6px;
+}
+
 .workspace-sidebar .session-block__title {
   font-size: 13px;
-  width: calc(100% + 16px);
-  margin: 0 -8px 6px;
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .workspace-sidebar .module-row {
@@ -4906,6 +4896,99 @@ html[data-theme='dark'] .tcc-warning {
 
 .tcc-section {
   margin-bottom: 16px;
+}
+
+.tcc-ladder {
+  margin: 0 0 20px;
+  padding: 12px 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-muted, var(--bg-card));
+}
+
+.tcc-ladder__head {
+  margin: 0 0 10px;
+}
+
+.tcc-ladder__title {
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.tcc-ladder__legend {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.tcc-ladder__rung {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  gap: 8px;
+  align-items: start;
+  margin: 0 0 8px;
+  padding: 8px 0 8px 10px;
+  border-left: 3px solid var(--border);
+}
+
+.tcc-ladder__rung--easy {
+  border-left-color: var(--success, #3d9b6e);
+}
+
+.tcc-ladder__rung--hard {
+  border-left-color: var(--danger, #b42318);
+}
+
+.tcc-ladder__step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+}
+
+.tcc-ladder__num {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tcc-ladder__tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tcc-ladder__sit textarea {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+}
+
+.tcc-ladder__suds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.tcc-ladder__suds input {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .tcc-ladder__rung {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .tcc-ladder__suds {
+    grid-column: 2;
+  }
 }
 
 .tcc-section__label {

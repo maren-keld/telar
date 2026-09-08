@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachModulesToSessions, canDeleteModule, canMoveModule } from '../../src/js/db.js';
+import { attachModulesToSessions, canDeleteModule, canMoveModule, isSessionDone } from '../../src/js/db.js';
 
 const mod = (id, type) => ({ id, module_type: type, session_id: 1, sort_order: id });
 
@@ -50,4 +50,11 @@ test('attachModulesToSessions agrupa sin N+1', () => {
   assert.equal(out[1].modules.length, 1);
   assert.equal(out[0].modules[0].id, 10);
   assert.equal(out[1].modules[0].module_type, 'pcl5');
+});
+
+test('el check de sesión es un flag manual 0/1', () => {
+  assert.equal(isSessionDone({ done: 1 }), true);
+  assert.equal(isSessionDone({ done: 0 }), false);
+  assert.equal(isSessionDone({}), false);
+  assert.equal(isSessionDone({ done: '1' }), true);
 });

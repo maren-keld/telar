@@ -229,12 +229,23 @@ export async function moveModuleToPosition(moduleId, targetSessionId, insertInde
 
 export async function deleteSessionModule(moduleId) {
   const mod = await getModule(moduleId);
-  if (!mod) throw new Error('Módulo no encontrado');
+  // Ya no está: el clic duplicado o un render viejo no debe tirar toast ni
+  // dejar la tarjeta fantasma. La UI se refresca igual.
+  if (!mod) return false;
   const sessionMods = await getSessionModules(mod.session_id);
   if (!canDeleteModule(mod, sessionMods)) {
     throw new Error('Este módulo no se puede eliminar.');
   }
   await execute(`DELETE FROM session_modules WHERE id = ?`, [moduleId]);
+  return true;
+}
+
+export function isSessionDone(session) {
+  return Number(session?.done) === 1;
+}
+
+export async function setSessionDone(sessionId, done) {
+  await execute(`UPDATE sessions SET done = ? WHERE id = ?`, [done ? 1 : 0, sessionId]);
 }
 
 /** Reemplaza un módulo clínico por el selector. Si es el único de la sesión, lo convierte in situ. */

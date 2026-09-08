@@ -55,6 +55,52 @@ function sectionFieldHtml(s, data, moduleId) {
     </div>`;
 }
 
+function hierarchyFormHtml(def, data, moduleId) {
+  const h = def.hierarchy || {};
+  const avoid = h.avoid || { key: 'evitacion', title: 'Qué se está evitando', rows: 3 };
+  const first = h.firstStep || { key: 'primer_paso', title: 'Primera exposición acordada', rows: 4 };
+  const steps = Array.isArray(h.steps) ? h.steps : [];
+  const last = steps.length - 1;
+  const rows = steps
+    .map((step, i) => {
+      const n = i + 1;
+      const sit = data[step.situation] ?? '';
+      const suds = data[step.suds];
+      const sudsVal = suds !== '' && suds != null ? escapeHtml(String(suds)) : '';
+      const rungClass =
+        i === 0 ? ' tcc-ladder__rung--easy' : i === last ? ' tcc-ladder__rung--hard' : '';
+      const tag = step.label
+        ? `<span class="tcc-ladder__tag">${escapeHtml(step.label)}</span>`
+        : '';
+      return `
+        <div class="tcc-ladder__rung${rungClass}">
+          <div class="tcc-ladder__step">
+            <span class="tcc-ladder__num">${n}</span>
+            ${tag}
+          </div>
+          <label class="tcc-ladder__sit">
+            <textarea name="${escapeHtml(step.situation)}" rows="2" placeholder="Situación concreta…" aria-label="Situación ${n}">${escapeHtml(sit)}</textarea>
+          </label>
+          <label class="tcc-ladder__suds">
+            <span>SUDS</span>
+            <input type="number" name="${escapeHtml(step.suds)}" min="0" max="100" step="1" value="${sudsVal}" placeholder="0–100" aria-label="SUDS peldaño ${n}" />
+          </label>
+        </div>`;
+    })
+    .join('');
+
+  return `
+    ${sectionFieldHtml(avoid, data, moduleId)}
+    <section class="tcc-ladder" aria-label="Escalera de exposición">
+      <div class="tcc-ladder__head">
+        <p class="tcc-ladder__title">Escalera</p>
+        <p class="tcc-ladder__legend">Arriba = más fácil. Abajo = más temida. SUDS: 0 nada · 100 el peor imaginable.</p>
+      </div>
+      ${rows}
+    </section>
+    ${sectionFieldHtml(first, data, moduleId)}`;
+}
+
 function quizHtml(quizDef, answers) {
   return quizDef
     .map(
@@ -116,7 +162,11 @@ export async function renderTccGeneric(host, moduleRow) {
         )
         .join('')}
       <form id="tcc-generic-form-${moduleRow.id}">
-        ${(def.sections || []).map((s) => sectionFieldHtml(s, data, moduleRow.id)).join('')}
+        ${
+          def.layout === 'hierarchy'
+            ? hierarchyFormHtml(def, data, moduleRow.id)
+            : (def.sections || []).map((s) => sectionFieldHtml(s, data, moduleRow.id)).join('')
+        }
         ${
           quizDef.length
             ? `

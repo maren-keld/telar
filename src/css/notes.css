@@ -332,6 +332,10 @@
   border-left: 3px solid var(--accent);
 }
 
+.kindle-note--pending {
+  opacity: 0.8;
+}
+
 .kindle-note__source--question {
   font-style: italic;
   font-weight: 500;
