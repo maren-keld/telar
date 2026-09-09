@@ -240,3 +240,34 @@ export function bindNationalIdInput(input, country = clinicCountryCode()) {
     input.value = formatNationalId(input.value, country);
   });
 }
+
+/** Rótulo de la ficha psicométrica: Validez (Chile), Validez (Argentina), etc. */
+export function validityHeading(country = clinicCountryCode()) {
+  const code = isValidClinicCountry(country) ? country : 'CL';
+  if (code === 'OTRO') return 'Validez (local)';
+  return `Validez (${clinicCountryLabel(code)})`;
+}
+
+/**
+ * Adapta menciones de uso en Chile al país del clínico.
+ * No reescribe validaciones publicadas (población/muestra chilena, "Validado en Chile").
+ */
+export function localizeValidityText(text, country = clinicCountryCode()) {
+  const source = String(text || '');
+  if (!source) return source;
+  const code = isValidClinicCountry(country) ? country : 'CL';
+  if (code === 'CL') return source;
+  const label = code === 'OTRO' ? 'tu país' : clinicCountryLabel(code);
+  const held = [];
+  const protectedRe =
+    /población chilena|muestra chilena|validaci[oó]n chilena|validado en Chile/gi;
+  let out = source.replace(protectedRe, (m) => {
+    held.push(m);
+    return `\u0000${held.length - 1}\u0000`;
+  });
+  out = out.replace(/en Chile/gi, (m) => (m.startsWith('E') ? `En ${label}` : `en ${label}`));
+  held.forEach((m, i) => {
+    out = out.replace(`\u0000${i}\u0000`, m);
+  });
+  return out;
+}

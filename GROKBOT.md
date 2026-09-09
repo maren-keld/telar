@@ -6,7 +6,7 @@ Léelo cuando el tema sea **Psypilot**, **Marcela**, **MIC**, **index2**, **IA l
 
 **WIP de la app (no git):** `docs/current-status.md` — qué hay en el working tree ahora. Léelo primero si el tema es código en curso. Refrescar: `./scripts/refresh-current-status.sh`. No copiar el dump de git acá.
 
-Fecha: 8 sep 2026. App publicada: `0.1.0-beta.21`. Contacto: contacto@telarapp.cl.
+Fecha: 9 sep 2026. App publicada: `0.1.0-beta.22`. Contacto: contacto@telarapp.cl.
 
 **CRM privado (no git):** `docs/crm-contactos.md` — Danyau, Raúl, Katerin, Pamela, Sara, Marcela, Luis, Aye. Actualizarlo después de cada conversación. `docs/` está gitignored.
 

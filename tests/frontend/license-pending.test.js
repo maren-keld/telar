@@ -71,3 +71,13 @@ test('el preview del selector muestra licencia cuando existe', () => {
   assert.match(psychometricsFor('asrs').license, /WHO/);
   assert.match(psychometricsFor('tcc_abc').license, /Telar/);
 });
+
+test('el preview de validez sigue el país pedido', () => {
+  const psych = psychometricsFor('gad7');
+  const cl = previewHtml('gad7', { label: 'GAD-7' }, psych, { country: 'CL' });
+  const ar = previewHtml('gad7', { label: 'GAD-7' }, psych, { country: 'AR' });
+  assert.match(cl, /Validez \(Chile\)/);
+  assert.match(ar, /Validez \(Argentina\)/);
+  assert.doesNotMatch(ar, /Validez \(Chile\)/);
+  assert.match(ar, /En Argentina se usa/);
+});

@@ -22,7 +22,6 @@ import {
   QUESTIONNAIRE_EDIT_SYSTEM,
   buildInteractiveEditUserMessage,
   buildQuestionnaireEditUserMessage,
-  looksLikeInteractivePrompt,
   moduleAiPurpose,
   shouldUseGrokForModule,
 } from '../module-ai-route.js';
@@ -57,32 +56,6 @@ const ITEM_PLACEHOLDERS = {
   info: 'Indicación para el paciente',
 };
 
-const DUAL_SYSTEM = `Eres un asistente que crea módulos clínicos para Telar, en español de Chile.
-
-Devuelves EXACTAMENTE UN bloque de código y nada de texto fuera de él, salvo una frase corta.
-
-Elige la opción que mejor calce con lo que pide el terapeuta.
-
-Opción A — cuestionario. Bloque \`\`\`json con esta forma:
-{
-  "questions": [
-    { "text": "Enunciado", "type": "text" },
-    { "text": "Elige una", "type": "radio", "options": ["Nunca", "A veces", "Siempre"] },
-    { "text": "Marca las que apliquen", "type": "checkbox", "options": ["A", "B"] },
-    { "text": "Del 0 al 10, intensidad", "type": "scale" },
-    { "text": "Ejercicio o tarea", "type": "task" },
-    { "text": "Indicación para el paciente", "type": "info" }
-  ]
-}
-Tipos válidos: text, radio (opción única, con options), checkbox (opción múltiple, con options), scale (0–10), task, info.
-
-Opción B — experiencia interactiva. Bloque \`\`\`html con un FRAGMENTO compacto: <style>, markup y <script> al final. Sin <!doctype>, sin <html>, sin <head> y sin <body>. Cierra <style> y <script>. Sin CDN ni fetch. CSS mínimo.
-Viewport: vive DENTRO de un módulo Telar (~680×360), centrada como tarjeta. No uses 100vh, 100vw ni height:100% en el root.
-Navegación: NUNCA uses <form> para pasar de paso. Siguiente / Atrás / Comenzar: type="button". Un paso a la vez. En el último: Telar.save(datos) y Telar.done('resumen breve').
-
-El título del módulo Telar lo pone el terapeuta: no lo reescribas ni pongas un H1 enorme con el nombre del módulo.
-Si piden un cambio, reescribe el bloque completo ya corregido.`;
-
 const INTERACTIVE_ONLY_SYSTEM = `Crea o corrige una experiencia interactiva clínica para Telar, en español de Chile.
 
 Devuelve SOLO un bloque \`\`\`html\`\`\` con un FRAGMENTO compacto: <style>, markup y <script> al final. Sin <!doctype>, sin <html>, sin <head> y sin <body>. Cierra <style> y <script>. Nada fuera del bloque. Sin CDN ni fetch. CSS mínimo, sin comentarios.
@@ -97,6 +70,23 @@ Navegación:
 Si piden un color de fondo, ponlo en html y body (o un wrapper a 100%) para que se vea en la vista previa del editor, no solo en una tarjeta chica.
 
 Este módulo YA es una experiencia interactiva: no devuelvas un cuestionario JSON.`;
+
+const QUESTIONNAIRE_ONLY_SYSTEM = `Crea un cuestionario clínico para Telar, en español de Chile.
+
+Devuelve SOLO un bloque \`\`\`json\`\`\` con esta forma:
+{
+  "questions": [
+    { "text": "Enunciado", "type": "text" },
+    { "text": "Elige una", "type": "radio", "options": ["Nunca", "A veces", "Siempre"] },
+    { "text": "Marca las que apliquen", "type": "checkbox", "options": ["A", "B"] },
+    { "text": "Del 0 al 10, intensidad", "type": "scale" },
+    { "text": "Ejercicio o tarea", "type": "task" },
+    { "text": "Indicación para el paciente", "type": "info" }
+  ]
+}
+Tipos válidos: text, radio (opción única, con options), checkbox (opción múltiple, con options), scale (0–10), task, info.
+
+Este módulo YA es un cuestionario: no devuelvas HTML. El título del módulo Telar lo pone el terapeuta. Si piden un cambio, reescribe el JSON completo ya corregido.`;
 
 function newQuestion(index) {
   return { id: `q${index}`, text: '', type: 'checkbox', options: [''] };
@@ -141,12 +131,12 @@ export async function renderModuleEditor(container, {
   container.innerHTML = `
     <div class="module-editor">
       <header class="module-editor__bar">
-        <button type="button" class="module-editor__back" id="cm-back" aria-label="Volver">${ICON_BACK} Atrás</button>
+        <button type="button" class="module-editor__back" id="cm-back" aria-label="Creador de módulos">${ICON_BACK} Creador de módulos</button>
         <p class="module-editor__status" id="cm-save-status" hidden></p>
       </header>
       <div class="module-editor__stage">
         <div class="module-editor__canvas">
-          <article class="card module-editor__module${initialKind === 'questionnaire' ? ' is-questionnaire' : ''}">
+          <article class="card module-editor__module${isEdit && initialKind === 'questionnaire' ? ' is-questionnaire' : ''}">
             <div class="module-card-head">
               <div>
                 <input type="text" class="module-editor__title" id="cm-title" placeholder="Nombre del módulo" value="${escapeHtml(existing?.title || '')}" />
@@ -159,12 +149,12 @@ export async function renderModuleEditor(container, {
                 <button type="button" class="module-delete-btn" disabled tabindex="-1" title="Eliminar módulo">×</button>
               </div>
             </div>
-            <div class="module-editor__body" data-kind="${initialKind}">
-              <div id="cm-questions-panel" ${initialKind === 'interactive' ? 'hidden' : ''}>
+            <div class="module-editor__body" data-kind="${isEdit ? initialKind : ''}">
+              <div id="cm-questions-panel" ${isEdit && initialKind === 'questionnaire' ? '' : 'hidden'}>
                 <div id="cm-questions"></div>
                 <button type="button" class="btn btn-dashed btn-block" id="cm-add-question">+ Agregar ítem (pregunta, ejercicio o indicación)</button>
               </div>
-              <div class="module-editor__interactive" id="cm-interactive-panel" ${initialKind === 'questionnaire' ? 'hidden' : ''}>
+              <div class="module-editor__interactive" id="cm-interactive-panel" ${isEdit && initialKind === 'interactive' ? '' : 'hidden'}>
                 <div class="interactive-module__frame-wrap module-editor__preview-wrap">
                   <button type="button" class="interactive-module__reload" id="cm-reload-preview" hidden title="Recargar" aria-label="Recargar">${ICON_REFRESH}</button>
                   <iframe class="interactive-module__frame" id="cm-preview-frame" title="Vista previa" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" hidden></iframe>
@@ -181,7 +171,11 @@ export async function renderModuleEditor(container, {
             <button type="button" class="module-editor__tab" data-rail="otros" role="tab">Otros</button>
           </div>
           <div class="module-editor__panels">
-            <section data-rail-panel="chat">
+            <section data-rail-panel="chat" class="module-editor__chat-panel">
+              <div class="module-editor__kind-chips" role="radiogroup" aria-label="Tipo de módulo">
+                <button type="button" class="module-editor__kind-chip" data-kind-chip="interactive" aria-pressed="false">Experiencia interactiva</button>
+                <button type="button" class="module-editor__kind-chip" data-kind-chip="questionnaire" aria-pressed="false">Cuestionario</button>
+              </div>
               <div class="cm-interactive-chat module-editor__chat">
                 <div class="cm-interactive-chat__log" id="cm-interactive-log" aria-live="polite">
                   <div class="module-editor__chat-empty" id="cm-chat-empty">
@@ -190,7 +184,7 @@ export async function renderModuleEditor(container, {
                 </div>
                 <form class="cm-interactive-chat__form" id="cm-interactive-form">
                   <div class="cm-interactive-chat__compose">
-                    <textarea class="input" id="cm-interactive-prompt" rows="2" placeholder="Ej.: un registro de ánimo, o una tarjeta de respiración con cuatro pasos."></textarea>
+                    <textarea class="input" id="cm-interactive-prompt" rows="2" placeholder="Elige el tipo arriba, luego pide el módulo."></textarea>
                     <p class="cm-interactive-chat__thinking" id="cm-interactive-thinking" hidden aria-live="polite">
                       <span class="cm-interactive-chat__thinking-orb" id="cm-interactive-thinking-orb"></span>
                       <span class="cm-interactive-chat__thinking-label t-shimmer" id="cm-interactive-thinking-label" data-text="Pensando...">Pensando...</span>
@@ -255,6 +249,8 @@ export async function renderModuleEditor(container, {
   const pdfStatus = root.querySelector('#cm-pdf-status');
 
   let kind = initialKind;
+  let kindChosen = isEdit;
+  let kindLocked = isEdit;
   let interactiveHtml = existing?.kind === 'interactive' ? existing.html || '' : '';
   let pdfName = existing?.pdfName || '';
   let pdfPath = existing?.pdfPath || '';
@@ -263,7 +259,6 @@ export async function renderModuleEditor(container, {
   let previewRev = 0;
   let interactiveRequest = null;
   let stopEmptyOrb = () => {};
-  let interactiveChatLocked = false;
   const kindSelect = root.querySelector('#cm-kind');
 
   const hideChatEmpty = () => {
@@ -273,34 +268,55 @@ export async function renderModuleEditor(container, {
   };
 
   const syncKindLockUi = () => {
-    const qOpt = kindSelect?.querySelector('option[value="questionnaire"]');
-    if (qOpt) qOpt.disabled = interactiveChatLocked;
     if (kindSelect) {
-      kindSelect.title = interactiveChatLocked
-        ? 'Ya hablaste con la IA en modo experiencia interactiva; no se puede cambiar a cuestionario.'
+      kindSelect.disabled = kindLocked;
+      kindSelect.title = kindLocked
+        ? 'Ya elegiste el tipo y hablaste con la IA; no se puede cambiar.'
         : '';
     }
+    root.querySelectorAll('[data-kind-chip]').forEach((btn) => {
+      const match = kindChosen && btn.dataset.kindChip === kind;
+      btn.classList.toggle('is-active', match);
+      btn.disabled = kindLocked;
+      btn.setAttribute('aria-pressed', match ? 'true' : 'false');
+      btn.title = kindLocked ? 'Ya no se puede cambiar el tipo de este módulo.' : '';
+    });
   };
 
-  const lockInteractiveKind = () => {
-    interactiveChatLocked = true;
+  const lockKind = () => {
+    kindLocked = true;
+    kindChosen = true;
     syncKindLockUi();
+  };
+
+  const promptPlaceholderFor = (nextKind) => {
+    if (nextKind === 'interactive') {
+      return interactiveHtml
+        ? 'Pide un cambio: el botón Siguiente, otro paso, el tono…'
+        : 'Ej.: una tarjeta de respiración con cuatro pasos.';
+    }
+    if (nextKind === 'questionnaire') {
+      return 'Ej.: un registro de ánimo, una escala likert de 8 ítems.';
+    }
+    return 'Elige el tipo arriba, luego pide el módulo.';
   };
 
   const setKind = (next, { fromUser = false } = {}) => {
     const want = next === 'interactive' ? 'interactive' : 'questionnaire';
-    if (fromUser && !canSwitchModuleKind(want, { interactiveChatLocked })) {
-      if (kindSelect) kindSelect.value = 'interactive';
-      toast('Este módulo ya es una experiencia interactiva. No se puede pasar a cuestionario.');
+    if (fromUser && !canSwitchModuleKind(want, { kindLocked, currentKind: kind })) {
+      if (kindSelect) kindSelect.value = kind;
+      toast('Ya elegiste el tipo y hablaste con la IA. No se puede cambiar.');
       return;
     }
     kind = want;
+    kindChosen = true;
     if (kindSelect) kindSelect.value = kind;
     root.querySelector('#cm-questions-panel').hidden = kind !== 'questionnaire';
     root.querySelector('#cm-interactive-panel').hidden = kind !== 'interactive';
     const bodyEl = root.querySelector('.module-editor__body');
     if (bodyEl) bodyEl.dataset.kind = kind;
     root.querySelector('.module-editor__module')?.classList.toggle('is-questionnaire', kind === 'questionnaire');
+    if (promptEl) promptEl.placeholder = promptPlaceholderFor(kind);
     syncKindLockUi();
   };
 
@@ -602,13 +618,13 @@ export async function renderModuleEditor(container, {
   };
 
   const messagesForTurn = (prompt) => {
-    if (interactiveHtml) {
-      return [
-        { role: 'system', content: INTERACTIVE_EDIT_SYSTEM },
-        { role: 'user', content: buildInteractiveEditUserMessage(prompt, interactiveHtml) },
-      ];
-    }
-    if (interactiveChatLocked || kind === 'interactive') {
+    if (kind === 'interactive' || interactiveHtml) {
+      if (interactiveHtml) {
+        return [
+          { role: 'system', content: INTERACTIVE_EDIT_SYSTEM },
+          { role: 'user', content: buildInteractiveEditUserMessage(prompt, interactiveHtml) },
+        ];
+      }
       return [
         { role: 'system', content: INTERACTIVE_ONLY_SYSTEM },
         { role: 'user', content: prompt },
@@ -621,20 +637,23 @@ export async function renderModuleEditor(container, {
         { role: 'user', content: buildQuestionnaireEditUserMessage(prompt, currentQs) },
       ];
     }
-    if (looksLikeInteractivePrompt(prompt)) {
-      return [
-        { role: 'system', content: INTERACTIVE_ONLY_SYSTEM },
-        { role: 'user', content: prompt },
-      ];
-    }
     return [
-      { role: 'system', content: DUAL_SYSTEM },
+      { role: 'system', content: QUESTIONNAIRE_ONLY_SYSTEM },
       { role: 'user', content: prompt },
     ];
   };
 
   root.querySelectorAll('[data-rail]').forEach((btn) => {
     btn.addEventListener('click', () => setRail(btn.dataset.rail));
+  });
+  root.querySelectorAll('[data-kind-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (kindLocked) {
+        toast('Ya elegiste el tipo y hablaste con la IA. No se puede cambiar.');
+        return;
+      }
+      setKind(btn.dataset.kindChip, { fromUser: true });
+    });
   });
   kindSelect?.addEventListener('change', () => setKind(kindSelect.value, { fromUser: true }));
   root.querySelector('#cm-add-question')?.addEventListener('click', () => addQuestion());
@@ -662,7 +681,7 @@ export async function renderModuleEditor(container, {
         [css ? `<style>${css}</style>` : '', body, js ? `<script>${js}</script>` : ''].filter(Boolean).join('\n'),
       );
       setKind('interactive');
-      lockInteractiveKind();
+      lockKind();
       setRail('chat');
       await renderInteractivePreview();
       await persist({ quiet: true });
@@ -687,7 +706,7 @@ export async function renderModuleEditor(container, {
   });
 
   promptEl?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
+    if (event.key !== 'Enter' || event.shiftKey) return;
     event.preventDefault();
     root.querySelector('#cm-interactive-form')?.requestSubmit();
   });
@@ -700,7 +719,11 @@ export async function renderModuleEditor(container, {
     }
     const prompt = promptEl?.value?.trim();
     if (!prompt) return;
-    if (kind === 'interactive') lockInteractiveKind();
+    if (!kindChosen) {
+      toast('Elige experiencia interactiva o cuestionario.');
+      return;
+    }
+    lockKind();
     const iterating = Boolean(interactiveHtml);
     appendInteractiveMessage('user', prompt);
     promptEl.value = '';
@@ -708,7 +731,6 @@ export async function renderModuleEditor(container, {
     const current = createAiRequest();
     interactiveRequest = current;
     try {
-      const preferInteractive = interactiveChatLocked || kind === 'interactive' || looksLikeInteractivePrompt(prompt);
       const useGrok = shouldUseGrokForModule();
       const { text } = await chatCompletion({
         request: current,
@@ -718,11 +740,14 @@ export async function renderModuleEditor(container, {
         messages: messagesForTurn(prompt),
       });
       if (current.aborted) return;
-      const parsed = parseAiModuleReply(text, { preferInteractive });
+      const parsed = parseAiModuleReply(text, {
+        preferInteractive: kind === 'interactive',
+        preferQuestionnaire: kind === 'questionnaire',
+      });
       if (!parsed) throw new Error('La IA no devolvió un módulo válido. Intenta describirlo de otra forma.');
       if (parsed.kind === 'interactive') {
         setKind('interactive');
-        lockInteractiveKind();
+        lockKind();
         interactiveHtml = ensureInteractiveCloseable(parsed.html);
         appendInteractiveMessage(
           'assistant',
@@ -754,8 +779,13 @@ export async function renderModuleEditor(container, {
   });
 
   renderPdfStatus();
+  if (isEdit) {
+    setKind(initialKind);
+    lockKind();
+  } else {
+    syncKindLockUi();
+  }
   if (interactiveHtml) {
-    lockInteractiveKind();
     void renderInteractivePreview();
   }
   if (chatEmptyEl && !chatEmptyEl.hidden) {

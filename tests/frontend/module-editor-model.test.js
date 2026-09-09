@@ -61,10 +61,18 @@ test('una experiencia interactiva no arrastra preguntas', () => {
   assert.equal(record.questions, undefined);
 });
 
-test('si ya se habló en interactivo no se puede pasar a cuestionario', () => {
+test('si ya se habló no se puede cambiar el tipo', () => {
   assert.equal(canSwitchModuleKind('questionnaire', { interactiveChatLocked: true }), false);
   assert.equal(canSwitchModuleKind('interactive', { interactiveChatLocked: true }), true);
   assert.equal(canSwitchModuleKind('questionnaire', { interactiveChatLocked: false }), true);
+  assert.equal(
+    canSwitchModuleKind('interactive', { kindLocked: true, currentKind: 'questionnaire' }),
+    false,
+  );
+  assert.equal(
+    canSwitchModuleKind('questionnaire', { kindLocked: true, currentKind: 'questionnaire' }),
+    true,
+  );
 });
 
 test('la IA puede devolver cuestionario o HTML', () => {
@@ -74,6 +82,11 @@ test('la IA puede devolver cuestionario o HTML', () => {
   const html = parseAiModuleReply('```html\n<div class="card"><button>Ok</button></div>\n```');
   assert.equal(html.kind, 'interactive');
   assert.match(html.html, /button/);
+});
+
+test('con tipo cuestionario no se acepta HTML', () => {
+  const parsed = parseAiModuleReply('```html\n<div>sí</div>\n```', { preferQuestionnaire: true });
+  assert.equal(parsed, null);
 });
 
 test('con chat interactivo bloqueado se ignora el JSON y se usa el HTML', () => {

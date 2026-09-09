@@ -17,6 +17,7 @@ import {
 import { escapeHtml, toast } from '../utils.js';
 import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { whereFor, whereLabel } from '../module-where.js';
+import { clinicCountryCode, localizeValidityText, validityHeading } from '../clinic-country.js';
 
 export { CATEGORIES };
 
@@ -58,8 +59,9 @@ function variablesRow(type) {
     </div>`;
 }
 
-export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', showAction = true } = {}) {
+export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', showAction = true, country } = {}) {
   const hasPsych = Boolean(psych);
+  const countryCode = country || clinicCountryCode();
   const rows = hasPsych
     ? `
       <div class="mod-info-row">
@@ -72,7 +74,7 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', sho
         <span><strong>Confiabilidad:</strong> ${escapeHtml(psych.reliability)}</span>
       </div>
       <div class="mod-info-row">
-        <span><strong>Validez (Chile):</strong> ${escapeHtml(psych.validity)}</span>
+        <span><strong>${escapeHtml(validityHeading(countryCode))}:</strong> ${escapeHtml(localizeValidityText(psych.validity, countryCode))}</span>
       </div>
       ${
         psych.license

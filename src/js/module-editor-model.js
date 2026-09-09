@@ -34,8 +34,14 @@ export const EDITOR_KINDS = [
   { id: 'interactive', label: 'Experiencia interactiva' },
 ];
 
-export function canSwitchModuleKind(nextKind, { interactiveChatLocked = false } = {}) {
-  if (interactiveChatLocked && nextKind !== 'interactive') return false;
+export function canSwitchModuleKind(
+  nextKind,
+  { kindLocked = false, interactiveChatLocked = false, currentKind = '' } = {},
+) {
+  const locked = kindLocked || interactiveChatLocked;
+  if (!locked) return true;
+  if (currentKind) return nextKind === currentKind;
+  if (interactiveChatLocked) return nextKind === 'interactive';
   return true;
 }
 
@@ -74,33 +80,38 @@ export function questionsFromAiJson(code) {
     .filter(Boolean);
 }
 
-export function parseAiModuleReply(text, { preferInteractive = false } = {}) {
+export function parseAiModuleReply(text, { preferInteractive = false, preferQuestionnaire = false } = {}) {
   const raw = String(text || '');
   const html = extractInteractiveHtml(raw);
-  if (preferInteractive && html) return { kind: 'interactive', html };
+  if (preferInteractive) {
+    return html ? { kind: 'interactive', html } : null;
+  }
+
+  const questionsFromCode = (code) => {
+    try {
+      const questions = questionsFromAiJson(code);
+      return questions.length ? { kind: 'questionnaire', questions } : null;
+    } catch {
+      return null;
+    }
+  };
 
   const telar = raw.match(/```telar-module\s*([\s\S]*?)```/i)?.[1]?.trim();
   const json = raw.match(/```json\s*([\s\S]*?)```/i)?.[1]?.trim();
   const code = telar || json;
-  if (code && !preferInteractive) {
-    try {
-      const questions = questionsFromAiJson(code);
-      if (questions.length) return { kind: 'questionnaire', questions };
-    } catch {
-      /* JSON inválido: sigue con HTML si hay */
-    }
+  if (code) {
+    const parsed = questionsFromCode(code);
+    if (parsed) return parsed;
   }
+
+  if (preferQuestionnaire) return null;
 
   if (html) return { kind: 'interactive', html };
 
   const any = raw.match(/```(?!html)\s*([\s\S]*?)```/i)?.[1]?.trim();
-  if (any?.startsWith('{') && !preferInteractive) {
-    try {
-      const questions = questionsFromAiJson(any);
-      if (questions.length) return { kind: 'questionnaire', questions };
-    } catch {
-      /* ignore */
-    }
+  if (any?.startsWith('{')) {
+    const parsed = questionsFromCode(any);
+    if (parsed) return parsed;
   }
   return null;
 }

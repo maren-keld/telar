@@ -7,7 +7,9 @@ import {
   formatNationalId,
   idSpecFor,
   isValidClinicCountry,
+  localizeValidityText,
   nominatimCountryCode,
+  validityHeading,
 } from '../../src/js/clinic-country.js';
 import { normalizeEducationLevel } from '../../src/js/config.js';
 import { iaAnamnesisPlaceholderAttr, IA_ANAMNESIS_PLACEHOLDER } from '../../src/js/modules/motivo-consulta.js';
@@ -57,4 +59,31 @@ test('placeholder de IA: una pregunta por línea, sin líneas en blanco', () => 
   assert.ok(lines.every((line) => line.startsWith('¿') && !line.includes('\n')));
   assert.ok(iaAnamnesisPlaceholderAttr().includes('&#10;'));
   assert.doesNotMatch(iaAnamnesisPlaceholderAttr(), /&#10;&#10;/);
+});
+
+test('el rótulo de validez sigue el país del clínico', () => {
+  assert.equal(validityHeading('CL'), 'Validez (Chile)');
+  assert.equal(validityHeading('AR'), 'Validez (Argentina)');
+  assert.equal(validityHeading('ES'), 'Validez (España)');
+  assert.equal(validityHeading('MX'), 'Validez (México)');
+  assert.equal(validityHeading('OTRO'), 'Validez (local)');
+});
+
+test('el texto de validez localiza el uso, no las muestras chilenas', () => {
+  assert.match(
+    localizeValidityText('En Chile se usa en atención primaria y salud mental.', 'AR'),
+    /En Argentina se usa/,
+  );
+  assert.doesNotMatch(
+    localizeValidityText('En Chile se usa en atención primaria y salud mental.', 'AR'),
+    /En Chile se usa/,
+  );
+  const rosenberg = localizeValidityText(
+    'Validado en población chilena (Rojas-Barahona et al., 2009). Normas locales disponibles.',
+    'ES',
+  );
+  assert.match(rosenberg, /población chilena/);
+  assert.doesNotMatch(rosenberg, /población española|población España/i);
+  assert.match(localizeValidityText('sin estandarización en Chile.', 'MX'), /México/);
+  assert.match(localizeValidityText('Validado en Chile tras terremoto/tsunami 2010.', 'AR'), /Validado en Chile/);
 });
