@@ -117,9 +117,16 @@ export function nfErrorMessage(err) {
 }
 
 function displayProtocolLabel(meta) {
+  if (meta?.protocol_id === 'atencion') return 'Beta frontal relativa';
+  if (meta?.protocol_id === 'relajacion') return 'Alpha/theta relativa';
   const raw = meta?.protocol || '';
-  if (/relajaci/i.test(raw)) return 'Calma';
+  if (/relajaci|calma/i.test(raw)) return 'Alpha/theta relativa';
+  if (/atenci/i.test(raw)) return 'Beta frontal relativa';
   return raw || nfPreset('relajacion').label;
+}
+
+function displayLocations(locations) {
+  return (locations || []).map((name) => ({ FP1: 'AF7', FP2: 'AF8' })[name] || name);
 }
 
 export function parseAnalyzeOutput(raw) {
@@ -151,6 +158,8 @@ export function parseAnalyzeOutput(raw) {
     relaxation_pct: parts[4] ?? 0,
     calm_pct: parts[5] ?? 0,
     attentive_pct: parts[6] ?? 0,
+    alpha_theta_relative_score: parts[5] ?? 0,
+    beta_frontal_relative_score: parts[6] ?? 0,
     baseline_calm_pct: hasBaseline ? numOrNull(parts[7]) : null,
     baseline_attentive_pct: hasBaseline ? numOrNull(parts[8]) : null,
     delta_calm_pct: hasBaseline ? numOrNull(parts[9]) : null,
@@ -162,22 +171,22 @@ export function parseAnalyzeOutput(raw) {
 }
 
 function buildLiveSeries(liveTrace, protocol) {
-  const trainedAtt = /atenci/i.test(protocol || '');
+  const trainedAtt = /atenci|beta frontal/i.test(protocol || '');
   const trainLive = (liveTrace || []).filter((p) => p.phase === 'training' && p.pct != null);
   if (!trainLive.length) return null;
   const t0 = trainLive[0].t;
   const live = trainLive.map((p) => ({ t: (p.t - t0) / 1000, v: p.pct }));
-  return { live, label: trainedAtt ? 'atención' : 'calma' };
+  return { live, label: trainedAtt ? 'índice beta frontal' : 'índice alpha/theta' };
 }
 
 function avgLivePct(liveTrace, protocol) {
-  const trainedAtt = /atenci/i.test(protocol || '');
+  const trainedAtt = /atenci|beta frontal/i.test(protocol || '');
   const pts = (liveTrace || []).filter((p) => p.phase === 'training' && p.pct != null);
   if (!pts.length) return null;
   const avg = pts.reduce((a, p) => a + p.pct, 0) / pts.length;
   return {
     value: Math.round(avg * 10) / 10,
-    label: trainedAtt ? 'Atención' : 'Calma',
+    label: trainedAtt ? 'Índice beta frontal' : 'Índice alpha/theta',
   };
 }
 
@@ -265,8 +274,8 @@ export function destroyNfResultCharts() {
 }
 
 function buildNfEvolutionPoints(sessions) {
-  const calm = [];
-  const att = [];
+  const alphaTheta = [];
+  const betaFrontal = [];
   sessions.forEach((s) => {
     const mod = s.modules?.find((m) => m.module_type === 'neurofeedback');
     if (!mod) return;
@@ -274,10 +283,15 @@ function buildNfEvolutionPoints(sessions) {
     const res = data.last_results;
     if (!res) return;
     const label = `S${s.number}`;
-    if (res.calm_pct != null) calm.push({ label, value: res.calm_pct });
-    if (res.attentive_pct != null) att.push({ label, value: res.attentive_pct });
+    const spec = res.spectral || {};
+    if (spec.delta_alpha_theta_log_index != null) {
+      alphaTheta.push({ label, value: spec.delta_alpha_theta_log_index });
+    }
+    if (spec.delta_attention_log_index != null) {
+      betaFrontal.push({ label, value: spec.delta_attention_log_index });
+    }
   });
-  return { calm, att };
+  return { alphaTheta, betaFrontal };
 }
 
 async function mountEvolutionChart(host, treatmentId) {
@@ -286,8 +300,8 @@ async function mountEvolutionChart(host, treatmentId) {
   if (!wrap || !treatmentId) return;
   try {
     const sessions = await getSessionsWithModules(treatmentId);
-    const { calm, att } = buildNfEvolutionPoints(sessions);
-    if (calm.length < 2 && att.length < 2) {
+    const { alphaTheta, betaFrontal } = buildNfEvolutionPoints(sessions);
+    if (alphaTheta.length < 2 && betaFrontal.length < 2) {
       wrap.hidden = true;
       return;
     }
@@ -298,33 +312,36 @@ async function mountEvolutionChart(host, treatmentId) {
     const prev = Chart.getChart(canvas);
     if (prev) prev.destroy();
     const datasets = [];
-    if (calm.length >= 2) {
+    if (alphaTheta.length >= 2) {
       datasets.push({
-        label: 'Calma %',
-        data: calm.map((p) => p.value),
+        label: 'Cambio índice alpha/theta (log-ratio)',
+        data: alphaTheta.map((p) => p.value),
         borderColor: '#6FA3E8',
         backgroundColor: 'transparent',
         tension: 0.25,
         pointRadius: 3,
       });
     }
-    if (att.length >= 2) {
+    if (betaFrontal.length >= 2) {
       datasets.push({
-        label: 'Atención %',
-        data: att.map((p) => p.value),
+        label: 'Cambio índice beta frontal (log-ratio)',
+        data: betaFrontal.map((p) => p.value),
         borderColor: '#e6a817',
         backgroundColor: 'transparent',
         tension: 0.25,
         pointRadius: 3,
       });
     }
-    const labels = (calm.length >= att.length ? calm : att).map((p) => p.label);
+    const labels = (alphaTheta.length >= betaFrontal.length ? alphaTheta : betaFrontal).map((p) => p.label);
     evolutionChart = new Chart(canvas.getContext('2d'), {
       type: 'line',
       data: { labels, datasets },
       options: {
         scales: {
-          y: { min: 0, max: 100, ticks: { color: tickColor } },
+          y: {
+            title: { display: true, text: 'Cambio vs línea base (log-ratio)', color: tickColor },
+            ticks: { color: tickColor },
+          },
           x: { ticks: { color: tickColor } },
         },
         plugins: { legend: { labels: { color: tickColor } } },
@@ -338,11 +355,11 @@ async function mountEvolutionChart(host, treatmentId) {
 
 function renderExplainCard({ kind, trained }) {
   const isCalm = kind === 'calm';
-  const title = isCalm ? 'Calma' : 'Atención';
+  const title = isCalm ? 'Índice alpha/theta' : 'Índice beta frontal';
   const cat = isCalm ? 'Índice espectral · sienes' : 'Índice espectral · frente';
   const body = isCalm
-    ? 'Más alpha (8–12 Hz) y theta (4–8 Hz) frente a beta, en TP9 y TP10, comparado con tu línea base de ojos abiertos. No mide tono parasimpático ni “mente sin rumiación”.'
-    : 'Más beta estrecha (15–20 Hz) frente a theta y delta, promedio de FP1 y FP2, comparado con tu línea base. No es un diagnóstico de TDAH ni de “atención estable”.'
+    ? 'Más alpha (8–12 Hz) y theta (4–8 Hz) frente a beta, en TP9 y TP10, comparado con la línea base de ojos abiertos. Es un proxy EEG de entrenamiento: no mide calma, tono parasimpático ni “mente sin rumiación”.'
+    : 'Más beta estrecha (15–20 Hz) frente a theta y delta, promedio de AF7 y AF8, comparado con la línea base. Es un proxy EEG de entrenamiento: no mide atención ni diagnostica TDAH.'
   const role = trained ? 'Métrica entrenada hoy' : 'Solo referencia';
   const mod = isCalm ? 'calm' : 'attent';
   const trainedMod = trained ? ' nf-state-card--trained' : ' nf-state-card--reference';
@@ -360,8 +377,8 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
     return '<p class="nf-results-empty">Graba una sesión y detén la grabación para ver los resultados aquí.</p>';
   }
   const protocolLabel = displayProtocolLabel(meta);
-  const trainedCalm = /calma|relajaci/i.test(meta?.protocol || '');
-  const trainedAtt = /atenci/i.test(meta?.protocol || '');
+  const trainedCalm = meta?.protocol_id === 'relajacion' || /calma|relajaci|alpha/i.test(meta?.protocol || '');
+  const trainedAtt = meta?.protocol_id === 'atencion' || /atenci|beta frontal/i.test(meta?.protocol || '');
   const calmCard = renderExplainCard({ kind: 'calm', trained: trainedCalm });
   const attCard = renderExplainCard({ kind: 'attent', trained: trainedAtt });
   const cardsHtml = trainedAtt ? attCard + calmCard : calmCard + attCard;
@@ -396,12 +413,9 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
     fsHz != null && fsHz !== ''
       ? `<li><span>Frecuencia de muestreo efectiva</span><span>${escapeHtml(String(fsHz))} Hz${fsOff ? ' (desvío &gt;2 % de 256)' : ''}</span></li>`
       : '',
-    results.has_baseline
-      ? `<li><span>Calma vs línea base</span><span>${fmtDelta(results.delta_calm_pct)}</span></li>`
-      : `<li><span>Calma vs línea base</span><span>—</span></li>`,
-    results.has_baseline
-      ? `<li><span>Atención vs línea base</span><span>${fmtDelta(results.delta_attentive_pct)}</span></li>`
-      : `<li><span>Atención vs línea base</span><span>—</span></li>`,
+    `<li><span>Cambio índice alpha/theta</span><span>${fmtDelta(spec.delta_alpha_theta_log_index)} log-ratio</span></li>`,
+    `<li><span>Cambio índice beta frontal</span><span>${fmtDelta(spec.delta_attention_log_index)} log-ratio</span></li>`,
+    `<li><span>Ventanas válidas de entrenamiento</span><span>${fmtDelta(spec.valid_training_windows)}</span></li>`,
   ].join('');
   return `
     <div class="nf-results">
@@ -410,8 +424,8 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
       <p class="nf-results__sub nf-results__disclaimer">${escapeHtml(NF_HELP_MESSAGE)}</p>
       ${incompleteBanner}
       ${chartBlock}
-      <h3 class="nf-results__heading nf-results__heading--secondary">¿Qué significan calma y atención?</h3>
-      <p class="nf-results__sub">El % es respecto a tu reposo de esta sesión (ojos abiertos). 50 % = igual que la línea base. El orbe se adapta para el entrenamiento; el número no.</p>
+      <h3 class="nf-results__heading nf-results__heading--secondary">¿Qué significan estos índices?</h3>
+      <p class="nf-results__sub">La escala 0–100 transforma la distancia estadística respecto al reposo de esta sesión; no es un porcentaje de un estado mental. 50 = media de la línea base. El orbe adapta su umbral por separado.</p>
       <div class="nf-results__cards" id="nf-results-cards">
         ${cardsHtml}
       </div>
@@ -424,7 +438,7 @@ export function renderResults(results, meta, sessionNotes = '', showExport = fal
       <h3 class="nf-results__details-title">Detalles</h3>
       <ul class="details-list nf-results__details">
         <li><span>Dispositivo</span><span>${escapeHtml(meta?.device || 'Muse 2')}</span></li>
-        <li><span>Ubicaciones</span><span>${escapeHtml((meta?.locations || []).join(', ') || '—')}</span></li>
+        <li><span>Ubicaciones</span><span>${escapeHtml(displayLocations(meta?.locations).join(', ') || '—')}</span></li>
         <li><span>Fecha de inicio</span><span>${formatDate(meta?.started_at)}</span></li>
         <li><span>Fecha de finalización</span><span>${formatDate(meta?.ended_at)}</span></li>
         <li><span>Duración de sesión</span><span>${formatDuration(meta?.duration_sec)}</span></li>

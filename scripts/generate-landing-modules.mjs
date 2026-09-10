@@ -33,10 +33,10 @@ const EXTRA_PSYCH = {
   neurofeedback: {
     authors: 'Telar — complemento psicoeducativo',
     ageRange: 'Adolescentes y adultos',
-    reliability: 'Biofeedback EEG de 2 canales (Muse 2); no es equipamiento diagnóstico.',
+    reliability: 'Muse 2 registra 4 canales; cada índice usa 2. No es equipamiento diagnóstico.',
     validity:
       'Entrenamiento de autorregulación integrado al seguimiento clínico; no sustituye evaluación ni tratamiento médico.',
-    learnMore: 'Protocolos Atención y Calma. Incluido en Plan Demo (en vivo) y Plan Pro (grabación y export).',
+    learnMore: 'Índices EEG relativos alpha/theta y beta frontal. No miden estados mentales ni diagnostican. Incluido en Plan Demo (en vivo) y Plan Pro (grabación y export).',
   },
   bilateral_stimulation: {
     authors: 'Telar — elaboración propia',

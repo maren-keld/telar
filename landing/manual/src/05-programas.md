@@ -19,11 +19,11 @@ Evaluación con ASRS/GAD-7, organización cognitiva, activación, sesgos, autoco
 
 ### TDAH + Neurofeedback (8 sesiones)
 
-Misma lógica, con sesiones de Muse 2 intercaladas (baseline, atención, estrés, cierre).
+Misma lógica, con sesiones de Muse 2 intercaladas (línea base e índices beta frontal o alpha/theta). Son proxies EEG experimentales: no miden atención ni diagnostican TDAH.
 
 ### Trauma + regulación (adulto)
 
-Tamizaje con PCL-5, plan de seguridad, regulación, redes de apoyo, seguimiento y NF de relajación opcional.
+Tamizaje con PCL-5, plan de seguridad, regulación, redes de apoyo, seguimiento y biofeedback alpha/theta opcional. El índice no mide relajación ni trauma de forma directa.
 
 Más contexto clínico en el blog: [TDAH adulto](https://telarapp.cl/blog/tdah-adulto) y [Trauma y herramientas](https://telarapp.cl/blog/trauma-herramientas).
 

@@ -405,13 +405,43 @@ pub(crate) fn app_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("No se pudo resolver caché: {e}"))
 }
 
-pub(crate) fn install_encrypted_db_file(app: &tauri::AppHandle, source: &Path) -> Result<(), String> {
-    let dest = encrypted_db_path(app)?;
+pub(crate) fn sibling_tmp_path(dest: &Path) -> PathBuf {
+    let mut name = dest
+        .file_name()
+        .unwrap_or_else(|| std::ffi::OsStr::new("telar.enc.db"))
+        .to_os_string();
+    name.push(".tmp");
+    dest.with_file_name(name)
+}
+
+/// Copia a `dest.tmp` en el mismo directorio y hace rename (reemplazo atómico en Unix).
+pub(crate) fn install_db_file_atomic(source: &Path, dest: &Path) -> Result<(), String> {
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("No se pudo crear AppConfig: {e}"))?;
     }
-    fs::copy(source, &dest).map_err(|e| format!("No se pudo instalar base restaurada: {e}"))?;
+    let tmp = sibling_tmp_path(dest);
+    fs::copy(source, &tmp).map_err(|e| format!("No se pudo escribir copia temporal: {e}"))?;
+    if dest.exists() && cfg!(windows) {
+        fs::remove_file(dest).map_err(|e| {
+            let _ = fs::remove_file(&tmp);
+            format!("No se pudo reemplazar la base: {e}")
+        })?;
+    }
+    fs::rename(&tmp, dest).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        format!("No se pudo instalar la base restaurada: {e}")
+    })?;
     Ok(())
+}
+
+pub(crate) fn rollback_db_file(pre_backup: &Path, dest: &Path) -> Result<(), String> {
+    fs::copy(pre_backup, dest).map_err(|e| format!("No se pudo revertir la base: {e}"))?;
+    Ok(())
+}
+
+pub(crate) fn install_encrypted_db_file(app: &tauri::AppHandle, source: &Path) -> Result<(), String> {
+    let dest = encrypted_db_path(app)?;
+    install_db_file_atomic(source, &dest)
 }
 
 pub(crate) fn reopen_encrypted_db(app: &tauri::AppHandle, pin: &str) -> Result<(), String> {
@@ -687,19 +717,60 @@ pub struct DbQueryArgs {
     pub values: Vec<JsonValue>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DbBatchArgs {
+    pub statements: Vec<DbQueryArgs>,
+}
+
+fn execute_on_conn(conn: &Connection, args: &DbQueryArgs) -> Result<(u64, i64), String> {
+    validate_execute_sql(&args.query)?;
+    let vals: Vec<SqlValue> = args.values.iter().map(json_to_sql_value).collect();
+    let mut stmt = conn
+        .prepare(&args.query)
+        .map_err(|e| format!("SQL error: {e}"))?;
+    let changed = stmt
+        .execute(params_from_iter(vals.iter()))
+        .map_err(|e| format!("SQL execute error: {e}"))?;
+    let last_id = conn.last_insert_rowid();
+    Ok((changed as u64, last_id))
+}
+
 #[tauri::command]
 pub fn db_execute(args: DbQueryArgs) -> Result<(u64, i64), String> {
-    validate_execute_sql(&args.query)?;
+    with_conn(|conn| execute_on_conn(conn, &args))
+}
+
+/// Varios INSERT/UPDATE/DELETE en una transacción. BEGIN no se acepta desde JS.
+#[tauri::command]
+pub fn db_execute_batch(args: DbBatchArgs) -> Result<(), String> {
+    if args.statements.len() > 32 {
+        return Err("Demasiadas operaciones en el lote.".into());
+    }
+    for stmt in &args.statements {
+        validate_execute_sql(&stmt.query)?;
+    }
+    if args.statements.is_empty() {
+        return Ok(());
+    }
     with_conn(|conn| {
-        let vals: Vec<SqlValue> = args.values.iter().map(json_to_sql_value).collect();
-        let mut stmt = conn
-            .prepare(&args.query)
-            .map_err(|e| format!("SQL error: {e}"))?;
-        let changed = stmt
-            .execute(params_from_iter(vals.iter()))
-            .map_err(|e| format!("SQL execute error: {e}"))?;
-        let last_id = conn.last_insert_rowid();
-        Ok((changed as u64, last_id))
+        conn.execute("BEGIN IMMEDIATE", [])
+            .map_err(|e| format!("BEGIN: {e}"))?;
+        let result = (|| {
+            for stmt in &args.statements {
+                execute_on_conn(conn, stmt)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => conn
+                .execute("COMMIT", [])
+                .map_err(|e| format!("COMMIT: {e}"))
+                .map(|_| ()),
+            Err(e) => {
+                let _ = conn.execute("ROLLBACK", []);
+                Err(e)
+            }
+        }
     })
 }
 
@@ -737,7 +808,13 @@ pub fn db_select(args: DbQueryArgs) -> Result<Vec<HashMap<String, JsonValue>>, S
 
 #[cfg(test)]
 mod tests {
-    use super::{lockout_delay_secs, validate_execute_sql, validate_select_sql};
+    use super::{
+        install_db_file_atomic, lockout_delay_secs, rollback_db_file, validate_execute_sql,
+        validate_select_sql,
+    };
+    use rusqlite::Connection;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn pin_lockout_delay_escalates() {
@@ -759,6 +836,115 @@ mod tests {
         assert!(validate_execute_sql("INSERT INTO t VALUES (1)").is_ok());
         assert!(validate_execute_sql("UPDATE t SET x=1").is_ok());
         assert!(validate_execute_sql("SELECT 1").is_err());
+    }
+
+    const OLD_010_SQL: &str = r#"
+DELETE FROM patients
+WHERE EXISTS (
+  SELECT 1 FROM patients WHERE lower(trim(name)) = 'paciente sin nombre'
+)
+AND id != (
+  SELECT id FROM patients
+  WHERE lower(trim(name)) = 'paciente sin nombre'
+  ORDER BY datetime(created_at) DESC, id DESC
+  LIMIT 1
+);
+"#;
+
+    fn seed_ana_and_unnamed(conn: &Connection) {
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        conn.execute_batch(include_str!("../migrations/001_init.sql"))
+            .unwrap();
+        conn.execute(
+            "INSERT INTO patients (name, created_at, updated_at) VALUES ('Ana Pérez', '2026-01-01 10:00:00', '2026-01-01 10:00:00')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO patients (name, created_at, updated_at) VALUES ('Paciente sin nombre', '2026-01-02 10:00:00', '2026-01-02 10:00:00')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO treatments (patient_id, number) VALUES (1, 1)",
+            [],
+        )
+        .unwrap();
+    }
+
+    fn patient_names(conn: &Connection) -> Vec<String> {
+        let mut stmt = conn.prepare("SELECT name FROM patients ORDER BY id").unwrap();
+        stmt.query_map([], |row| row.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn old_010_sql_deletes_named_patients() {
+        let conn = Connection::open_in_memory().unwrap();
+        seed_ana_and_unnamed(&conn);
+        conn.execute_batch(OLD_010_SQL).unwrap();
+        let names = patient_names(&conn);
+        assert!(
+            !names.iter().any(|n| n == "Ana Pérez"),
+            "el SQL viejo borra a Ana: {names:?}"
+        );
+        let treatments: i64 = conn
+            .query_row("SELECT COUNT(*) FROM treatments", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(treatments, 0, "CASCADE se lleva el tratamiento de Ana");
+    }
+
+    #[test]
+    fn new_010_sql_does_not_delete_any_patients() {
+        let conn = Connection::open_in_memory().unwrap();
+        seed_ana_and_unnamed(&conn);
+        conn.execute(
+            "INSERT INTO patients (name, created_at, updated_at) VALUES ('Paciente sin nombre', '2026-03-01 10:00:00', '2026-03-01 10:00:00')",
+            [],
+        )
+        .unwrap();
+        conn.execute_batch(include_str!("../migrations/010_cleanup_test_patients.sql"))
+            .unwrap();
+        let names = patient_names(&conn);
+        assert_eq!(names.len(), 3, "010 no debe borrar fichas: {names:?}");
+        assert!(names.iter().any(|n| n == "Ana Pérez"));
+        let unnamed: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM patients WHERE lower(trim(name)) = 'paciente sin nombre'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(unnamed, 2);
+        let treatments: i64 = conn
+            .query_row("SELECT COUNT(*) FROM treatments", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(treatments, 1);
+    }
+
+    #[test]
+    fn install_db_file_atomic_replaces_dest() {
+        let dir = TempDir::new().unwrap();
+        let dest = dir.path().join("telar.enc.db");
+        let staged = dir.path().join("staged.db");
+        fs::write(&dest, b"ORIGINAL").unwrap();
+        fs::write(&staged, b"NEW").unwrap();
+        install_db_file_atomic(&staged, &dest).unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"NEW");
+        assert!(!super::sibling_tmp_path(&dest).exists());
+    }
+
+    #[test]
+    fn rollback_db_file_restores_pre_backup() {
+        let dir = TempDir::new().unwrap();
+        let dest = dir.path().join("telar.enc.db");
+        let pre = dir.path().join("pre.db");
+        fs::write(&dest, b"NEW").unwrap();
+        fs::write(&pre, b"ORIGINAL").unwrap();
+        rollback_db_file(&pre, &dest).unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"ORIGINAL");
     }
 }
 

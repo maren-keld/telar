@@ -48,7 +48,7 @@ Pass criteria:
   wall-clock vs `n_samples` (never from synthetic `seq/256` CSV times).
   It must be 256 Hz ±2% per channel; if it is not, the UI/export must
   report the deviation (do not pretend 256).
-- TP9, FP1, FP2, TP10 all produce continuous data.
+- TP9, AF7, AF8, TP10 all produce continuous data.
 - Blinks (~200 µV frontal) **are marked** as blink artifacts.
 - Jaw clench is flagged as EMG; head movement is flagged as motion (EEG
   p2p and/or IMU).
@@ -71,7 +71,7 @@ Pass criteria:
 3. After baseline, the **on-screen %** is vs that frozen reference (a held
    calmer/more attentive state must **not** drift back to ~50%). The **orb
    and audio** may adapt (shaping); they are not the same number as the %.
-4. Live orb latency should track ~1 s windows (not 2 s Welch + heavy smoothing).
+4. Live orb should remain usable with 2 s Welch input (three 1 s segments, 50% overlap).
 5. Export CSV and PDF, then reopen the treatment and results.
 6. Compare timestamps, duration, protocol, channel names, artifact percentage,
    packets lost / effective fs, and baseline/training split across the live
@@ -93,3 +93,36 @@ Pass criteria:
 
 Two people review the completed CSV. Any failed criterion blocks release until
 the failure is reproduced, fixed, and this entire protocol passes again.
+
+## External scientific validation (required before efficacy claims)
+
+Software tests and the release checks above do not establish construct or
+clinical validity. Before making a signal-validity claim:
+
+1. Record Muse 2 and research-grade EEG simultaneously at AF7, AF8, TP9 and
+   TP10, with synchronized markers.
+2. Counterbalance eyes open, eyes closed, an attention task, guided relaxation,
+   blinks, jaw tension, head movement and deliberately poor electrode contact.
+3. Compare PSD and absolute band power with ICC, Bland–Altman limits and error
+   by channel and condition.
+4. Have two blinded raters label artifacts and report sensitivity,
+   specificity, precision, F1 and false negatives by artifact type.
+
+Pre-registered signal criteria: ICC >= 0.75 for alpha, theta and beta; median
+absolute percentage error <= 20%; artifact sensitivity >= 0.90; specificity >=
+0.80; and packet loss < 3%. Report confidence intervals and negative findings.
+
+Before making a psychological or efficacy claim:
+
+- Treat the outputs as EEG proxies, never as ground truth for calm, attention,
+  TDAH or autonomic regulation.
+- Compare beta-frontal regulation with an independently validated attention
+  task. Compare alpha/theta regulation with separate state self-report and,
+  if autonomic calm is studied, independent autonomic measures.
+- Separate change in the trained EEG signal, learning within a session and
+  transfer without feedback.
+- Use a sham/yoked control and blinding where feasible, pre-register the
+  primary outcome and follow CRED-nf reporting recommendations.
+
+References: Ros et al. (2020), *Brain*, doi:10.1093/brain/awaa009; Krigolson et
+al. (2017), *Frontiers in Neuroscience*, doi:10.3389/fnins.2017.00109.

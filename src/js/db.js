@@ -37,6 +37,17 @@ export async function execute(sql, params = []) {
   return db.execute(sql, params);
 }
 
+/** Varios INSERT/UPDATE/DELETE en una transacción nativa. */
+export async function executeBatch(statements) {
+  const db = await loadDatabase();
+  if (typeof db.executeBatch === 'function') {
+    return db.executeBatch(statements);
+  }
+  for (const stmt of statements || []) {
+    await db.execute(stmt.query, stmt.values || []);
+  }
+}
+
 async function loadClinicalAlertIdsUncached() {
   const placeholders = VITAL_RISK_LABELS.map(() => '?').join(', ');
   const spaceRows = await query(
@@ -136,6 +147,9 @@ export async function getAgendaGroups(search = '') {
 export async function getTreatment(treatmentId) {
   const [row] = await query(
     `SELECT t.*, p.name AS patient_name, p.id AS patient_id,
+            p.id_number AS patient_id_number, p.email AS patient_email,
+            p.phone AS patient_phone, p.address AS patient_address,
+            p.gender AS patient_gender, p.birth_date AS patient_birth_date,
             c.name AS convenio_name
      FROM treatments t
      JOIN patients p ON p.id = t.patient_id
@@ -280,6 +294,37 @@ export async function saveModuleData(moduleId, data, status = 'completado') {
     `UPDATE session_modules SET data = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
     [JSON.stringify(data), status, moduleId],
   );
+}
+
+/** patients + session_modules con el mismo payload, en una transacción. */
+export async function savePatientAndModule({ patient, moduleId, data, status = 'completado' }) {
+  if (!patient?.id || moduleId == null) {
+    throw new Error('Faltan paciente o módulo para guardar el registro.');
+  }
+  await executeBatch([
+    {
+      query: `UPDATE patients SET name=?, id_number=?, email=?, phone=?, address=?,
+       gender=?, birth_date=?, marital_status=?, source=?, occupations=?,
+       updated_at=datetime('now') WHERE id=?`,
+      values: [
+        patient.name,
+        patient.id_number,
+        patient.email,
+        patient.phone,
+        patient.address,
+        patient.gender,
+        patient.birth_date,
+        patient.marital_status,
+        patient.source,
+        JSON.stringify(patient.occupations || []),
+        patient.id,
+      ],
+    },
+    {
+      query: `UPDATE session_modules SET data = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
+      values: [JSON.stringify(data), status, moduleId],
+    },
+  ]);
 }
 
 export async function listPatients() {

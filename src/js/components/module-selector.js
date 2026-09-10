@@ -35,9 +35,12 @@ export function bindSelectorItemClicks(listEl, onPick) {
       const center = listEl.closest('#workspace-center-scroll');
       const centerTop = center?.scrollTop;
       onPick(btn);
-      btn.focus({ preventScroll: true });
-      listEl.scrollTop = listTop;
-      if (center && centerTop != null) center.scrollTop = centerTop;
+      const restore = () => {
+        listEl.scrollTop = listTop;
+        if (center && centerTop != null) center.scrollTop = centerTop;
+      };
+      restore();
+      requestAnimationFrame(restore);
     });
   });
 }
@@ -373,7 +376,8 @@ async function loadSelectorList(ctx) {
   };
 
   const bindSelectButton = () => {
-    previewEl.querySelector('#mod-select-btn')?.addEventListener('click', () => {
+    previewEl.querySelector('#mod-select-btn')?.addEventListener('click', (e) => {
+      e.currentTarget?.blur();
       if (selectedType) void selectModule(selectedType);
     });
   };

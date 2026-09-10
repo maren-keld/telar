@@ -227,7 +227,11 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     removeNoteId = null,
     restoreOlderScroll = null,
   } = {}) => {
-    await flushPendingAutoSaves();
+    try {
+      await flushPendingAutoSaves();
+    } catch {
+      return;
+    }
     if (activeTab !== 'notas') {
       stopNotesEmptyOrb();
       stopNotesEmptyOrb = () => {};

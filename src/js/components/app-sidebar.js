@@ -1,4 +1,7 @@
 import { t } from '../i18n.js';
+import { ICON_PRO } from '../icons.js';
+import { isProUser } from '../profile.js';
+import { openSubscribeProModal } from './subscribe-pro-modal.js';
 
 const ICONS = {
   agenda: `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
@@ -13,7 +16,6 @@ const ICONS = {
 const NAV = [
   { id: 'treatments', labelKey: 'nav.treatments' },
   { id: 'reportes', labelKey: 'nav.reportes' },
-  { id: 'goals', labelKey: 'nav.goals' },
   { id: 'modules', labelKey: 'nav.modules' },
   { id: 'settings', labelKey: 'nav.settings' },
 ];
@@ -43,8 +45,21 @@ export function renderAppSidebar(activeNav = 'treatments') {
       </button>`;
   }).join('');
 
+  const pro = isProUser();
+  const planLabel = pro ? 'Pro' : 'Free';
+  const planTitle = pro ? 'Plan Profesional' : 'Plan Free — actualizar a Profesional';
+  const planAction = pro
+    ? ''
+    : '<span class="sidebar-plan__action">Actualizar</span>';
 
-  return `<nav class="sidebar"><div class="sidebar-nav">${items}</div></nav>`;
+  return `<nav class="sidebar">
+    <div class="sidebar-nav">${items}</div>
+    <button type="button" class="nav-item sidebar-plan" id="nav-plan" data-nav="plan" title="${planTitle}">
+      <span class="nav-icon">${ICON_PRO}</span>
+      <span class="sidebar-plan__name">${planLabel}</span>
+      ${planAction}
+    </button>
+  </nav>`;
 }
 
 export function bindAppSidebar(container, { onNavigate }) {
@@ -58,11 +73,20 @@ export function bindAppSidebar(container, { onNavigate }) {
   container.querySelector('[data-nav="reportes"]')?.addEventListener('click', () => {
     onNavigate({ view: 'reportes', ...clearCtx });
   });
-  container.querySelector('[data-nav="goals"]')?.addEventListener('click', () => {
-    onNavigate({ view: 'goals', ...clearCtx });
-  });
   container.querySelector('[data-nav="modules"]')?.addEventListener('click', () => {
     onNavigate({ view: 'modules', ...clearCtx });
+  });
+  container.querySelector('[data-nav="plan"]')?.addEventListener('click', () => {
+    openSubscribeProModal({
+      onSubscribed: () => {
+        const btn = container.querySelector('[data-nav="plan"]');
+        if (!btn) return;
+        const name = btn.querySelector('.sidebar-plan__name');
+        if (name) name.textContent = 'Pro';
+        btn.querySelector('.sidebar-plan__action')?.remove();
+        btn.title = 'Plan Profesional';
+      },
+    });
   });
   container.querySelector('[data-nav="settings"]')?.addEventListener('click', () => {
     container.querySelector('[data-nav="settings"]')?.classList.add('is-loading');

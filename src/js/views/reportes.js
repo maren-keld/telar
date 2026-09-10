@@ -4,6 +4,7 @@ import { getAgendaGroups, getDashboardStats, getPatientDemographicsStats, getTre
 import { breakdownModel, isEmptyBreakdown, newPatientsModel } from '../reportes-charts.js';
 import { escapeHtml, formatDate, parseJsonSafe } from '../utils.js';
 import { enhanceReportesBoard } from '../stats-board.js';
+import { mountGoalsSection } from './goals.js';
 
 function newPatientsCardHtml(model) {
   const trendCls =
@@ -140,13 +141,13 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
           ${recordings
             .map((r) => {
               const res = parseJsonSafe(r.results_json, {});
-              const relPct = escapeHtml(String(res.relaxation_pct ?? '—'));
-              const calmPct = escapeHtml(String(res.calm_pct ?? '—'));
+              const alphaTheta = escapeHtml(String(res.spectral?.delta_alpha_theta_log_index ?? '—'));
+              const betaFrontal = escapeHtml(String(res.spectral?.delta_attention_log_index ?? '—'));
               return `<tr>
                 <td>${escapeHtml(String(r.session_number))}</td>
                 <td>${escapeHtml(r.protocol || '—')}</td>
                 <td>${formatDate(r.started_at)}</td>
-                <td>${relPct}% relaj · ${calmPct}% calma</td>
+                <td>Δ alpha/theta ${alphaTheta} · Δ beta frontal ${betaFrontal} (log-ratio)</td>
               </tr>`;
             })
             .join('')}
@@ -163,11 +164,13 @@ export async function renderReportes(container, { treatmentId, onNavigate }) {
       <div class="app-content reportes-page">
         <h1 class="reportes-page__title">Estadísticas</h1>
         ${renderGlobalDashboard(dash, groups)}
+        <div id="goals-in-reportes"></div>
         ${renderDemographicsSection(demo)}
         ${extraHtml}
       </div>
     </div>`;
 
   bindAppSidebar(container, { onNavigate });
+  await mountGoalsSection(container.querySelector('#goals-in-reportes'));
   enhanceReportesBoard(container, { dash, groups, demo });
 }

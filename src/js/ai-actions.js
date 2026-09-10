@@ -124,7 +124,7 @@ Si el contexto trae horas, lístalas. Si no: «Si necesitas coordinar un horario
 Cierre corto + «Atentamente,» + nombre de IDENTIDAD + «Psicólogo» o «Psicóloga» (si no hay género: «Psicoterapeuta»).
 Usa los enlaces literales del contexto. Cada URL una vez, sin corchetes ni paréntesis extra.`;
 
-/** True si el clínico pidió redactar un correo al paciente (texto libre o chip «Generar email»). */
+/** True si el clínico pidió redactar un correo al paciente (texto libre o chip «Generar emails»). */
 export function userAskedForPatientEmail(question) {
   const q = String(question || '').trim();
   if (!q) return false;
@@ -159,7 +159,7 @@ export function buildAiSystemPrompt(context, { practitioner, referenceDocs, emai
   const emailBlock = email
     ? `\nEMAIL AL PACIENTE\n${PATIENT_EMAIL_TEMPLATE}\n`
     : `\nEMAIL AL PACIENTE
-No redactes un email, ni un ejemplo de email, ni expliques la política de emails, salvo que te pidan explícitamente un correo al paciente (o el chip «Generar email»).
+No redactes un email, ni un ejemplo de email, ni expliques la política de emails, salvo que te pidan explícitamente un correo al paciente (o el chip «Generar emails»).
 `;
   const finalRule = email
     ? `REGLA FINAL
@@ -239,31 +239,25 @@ ${context}`;
 /** Prompts sugeridos del dock. `hint` va en el tooltip; `prompt` se pega al input. */
 export const AI_QUICK_PROMPTS = [
   {
+    id: 'analisis',
+    label: 'Análisis del caso',
+    hint: 'Revisa el tratamiento completo: orientación clínica, hipótesis, focos y cómo va el proceso.',
+    prompt:
+      'Haz un análisis del caso y una revisión del tratamiento hasta ahora: orientación clínica, hipótesis de trabajo, focos, lo que ya se hizo, qué falta y señales de alerta. Es una lectura de conjunto, no un resumen corto.',
+  },
+  {
     id: 'programa',
-    label: 'Sugerir programa',
+    label: 'Generar tratamiento',
     hint: 'Propone un plan por sesiones con módulos de Telar, sin repetir handouts.',
     prompt:
       '¿Qué programa de tratamiento sugieres para este caso? Indica número de sesiones y qué módulos de Telar usar en cada una. No repitas handouts: cada uno se entrega una sola vez como tarea entre sesiones.',
   },
   {
     id: 'email',
-    label: 'Generar email',
+    label: 'Generar emails',
     hint: 'Redacta el correo post-sesión: cuestionarios, tareas de la semana, horarios y firma.',
     prompt:
       'Redacta el email post-sesión para el paciente con la estructura de EMAIL AL PACIENTE: saludo, 1 cuestionarios con sus enlaces reales (URL cruda, una vez, sin markdown), 2 tareas (refuerzo + módulos), 3 horarios solo si están en el contexto, cierre y firma. Tono cercano y profesional, sin jerga técnica. Sin título ni notas internas.',
-  },
-  {
-    id: 'modulo',
-    label: 'Módulo a medida',
-    hint: 'Diseña un cuestionario o ejercicio nuevo para el foco de este caso.',
-    prompt:
-      'Propón un módulo nuevo (preguntas y ejercicios) para trabajar el foco principal de este caso entre sesiones. Ítems genéricos, sin ejemplos tomados del relato de este paciente.',
-  },
-  {
-    id: 'resumen',
-    label: 'Resumen del caso',
-    hint: 'Sintetiza hipótesis diagnóstica, focos de trabajo y señales de alerta.',
-    prompt: 'Resume el caso: hipótesis diagnóstica, focos de trabajo y señales de alerta a vigilar.',
   },
 ];
 

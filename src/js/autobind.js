@@ -8,38 +8,120 @@ export function debounce(fn, ms = 450) {
 }
 
 const pendingAutoSaves = new Set();
+const saveQueues = new WeakMap();
+/** Promesas de enqueueSave en vuelo (no WeakMap: flush tiene que esperarlas). */
+const inFlightSaves = new Set();
+/** saveFn que falló: el flush reintenta con los valores actuales del form. */
+const failedSaveFns = new Set();
 
-/** Guarda inmediatamente los formularios con debounce pendiente (antes de un re-render). */
+async function waitInFlightSaves() {
+  while (inFlightSaves.size) {
+    await Promise.allSettled([...inFlightSaves]);
+  }
+}
+
+/** Serializa todas las escrituras de la misma función (autobind + persist suelto). */
+export function enqueueSave(saveFn) {
+  if (typeof saveFn !== 'function') return Promise.resolve();
+  const prev = saveQueues.get(saveFn) || Promise.resolve();
+  const job = prev.then(
+    () => saveFn(),
+    () => saveFn(),
+  );
+  inFlightSaves.add(job);
+  saveQueues.set(
+    saveFn,
+    job.then(
+      () => {},
+      () => {},
+    ),
+  );
+  return job.then(
+    (value) => {
+      inFlightSaves.delete(job);
+      failedSaveFns.delete(saveFn);
+      return value;
+    },
+    (err) => {
+      inFlightSaves.delete(job);
+      failedSaveFns.add(saveFn);
+      throw err;
+    },
+  );
+}
+
+/** persist() suelto y autobind comparten la misma cola si saveFn es la misma referencia. */
+export function queuedPersist(saveFn, onError) {
+  return () =>
+    enqueueSave(saveFn).catch((err) => {
+      onError?.(err);
+      throw err;
+    });
+}
+
+/** Guarda inmediatamente los formularios con debounce o escritura en curso. */
 export async function flushPendingAutoSaves() {
-  const jobs = [...pendingAutoSaves];
-  await Promise.all(jobs.map((job) => job.flush()));
+  await waitInFlightSaves();
+
+  const toRetry = [...failedSaveFns];
+  failedSaveFns.clear();
+  const retryResults = await Promise.allSettled(toRetry.map((fn) => enqueueSave(fn)));
+  await waitInFlightSaves();
+
+  const handleResults = await Promise.allSettled([...pendingAutoSaves].map((job) => job.flush()));
+  await waitInFlightSaves();
+
+  const failed =
+    retryResults.find((r) => r.status === 'rejected') ||
+    handleResults.find((r) => r.status === 'rejected');
+  if (failed) throw failed.reason || new Error('No se pudo guardar');
+  if (failedSaveFns.size) throw new Error('No se pudo guardar');
+}
+
+/** Solo tests: evita que un handle sucio contamine el siguiente caso. */
+export function resetAutoSaveHandlesForTests() {
+  pendingAutoSaves.clear();
+  inFlightSaves.clear();
+  failedSaveFns.clear();
 }
 
 export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) {
-  if (!root) return () => {};
+  const noop = () => {};
+  noop.now = async () => {};
+  if (!root) return noop;
+
   let timer = null;
   let dirty = false;
+  let gate = Promise.resolve();
 
   const saveNow = async () => {
     if (timer) {
       clearTimeout(timer);
       timer = null;
     }
-    if (!root.isConnected) {
-      pendingAutoSaves.delete(handle);
-      return;
-    }
-    if (!dirty) return;
-    dirty = false;
-    try {
-      onStatus?.('guardando');
-      await saveFn();
-      onStatus?.('guardado');
-    } catch (e) {
-      dirty = true;
-      console.error(e);
-      onStatus?.('error');
-    }
+    const run = gate.then(async () => {
+      if (!dirty) {
+        if (!root.isConnected) pendingAutoSaves.delete(handle);
+        return;
+      }
+      dirty = false;
+      try {
+        onStatus?.('guardando');
+        await enqueueSave(saveFn);
+        onStatus?.('guardado');
+        if (!root.isConnected) pendingAutoSaves.delete(handle);
+      } catch (e) {
+        dirty = true;
+        console.error(e);
+        onStatus?.('error');
+        throw e;
+      }
+    });
+    gate = run.then(
+      () => {},
+      () => {},
+    );
+    await run;
   };
 
   const handle = { flush: saveNow };
@@ -50,8 +132,13 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      void saveNow();
+      void saveNow().catch(() => {});
     }, debounceMs);
+  };
+
+  run.now = () => {
+    dirty = true;
+    return saveNow();
   };
 
   const handler = (e) => {
@@ -62,7 +149,7 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
       e.type === 'change' && (t.type === 'radio' || t.type === 'checkbox' || t.tagName === 'SELECT');
     if (instant) {
       dirty = true;
-      void saveNow();
+      void saveNow().catch(() => {});
       return;
     }
     run();
@@ -75,7 +162,7 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
 }
 
 function flushOnLeave() {
-  void flushPendingAutoSaves();
+  void flushPendingAutoSaves().catch(() => {});
 }
 
 if (typeof document !== 'undefined') {

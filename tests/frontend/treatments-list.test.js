@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { treatmentSectionHtml } from '../../src/js/views/treatments.js';
@@ -84,4 +85,12 @@ test('alerta tag is auto-and-manual and reddish', () => {
   assert.match(manual, /patient-card__tag--alerta/);
   assert.match(manual, /En alerta/);
   assert.match(manual, /Marcado en alerta por el profesional/);
+});
+
+test('el buscador de tratamientos lleva lupa y atajo ⌘S', () => {
+  const src = readFileSync(new URL('../../src/js/views/treatments.js', import.meta.url), 'utf8');
+  assert.match(src, /ICON_SEARCH/);
+  assert.match(src, /search-bar__kbd/);
+  assert.match(src, /searchModKbd/);
+  assert.match(src, /e\.key\.toLowerCase\(\) !== 's'/);
 });

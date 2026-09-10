@@ -258,6 +258,11 @@ test('los chips de IA explican qué hacen, no pegan el prompt en el tooltip', ()
     assert.ok(p.hint, p.id);
     assert.notEqual(p.hint, p.prompt);
   }
+  assert.deepEqual(
+    AI_QUICK_PROMPTS.map((p) => p.label),
+    ['Análisis del caso', 'Generar tratamiento', 'Generar emails'],
+  );
+  assert.ok(!AI_QUICK_PROMPTS.some((p) => p.id === 'modulo'));
   const programa = AI_QUICK_PROMPTS.find((p) => p.id === 'programa');
   assert.match(programa.prompt, /No repitas handouts/);
   const email = AI_QUICK_PROMPTS.find((p) => p.id === 'email');

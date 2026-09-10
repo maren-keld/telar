@@ -30,6 +30,7 @@ export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l
 export const ICON_WAND = svg(
   '<path d="M15 4v4M13 6h4M5 20L13 12"/><path d="M16.5 3.5l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5L14.5 5.5l1.5-.5z"/>',
 );
+export const ICON_STAR = `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
 export const ICON_SPARKLE = `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.4 13.85 9.15 20.6 11 13.85 12.85 12 19.6 10.15 12.85 3.4 11 10.15 9.15 12 2.4z"/></svg>`;
 

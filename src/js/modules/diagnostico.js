@@ -1,10 +1,10 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, queuedPersist } from '../autobind.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { ICON_CLOSE, ICON_SEARCH } from '../icons.js';
 import { getHiddenDxProblemNames, hideDxProblemName } from '../profile.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
+import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 
 const BUILTIN_PROBLEMS = [
   {
@@ -234,9 +234,10 @@ export async function renderDiagnostico(host, moduleRow) {
     };
   };
 
-  const persist = async () => {
+  const persistRaw = async () => {
     await syncModuleReadableText(moduleRow, buildPayload(), 'completado');
   };
+  const persist = queuedPersist(persistRaw, notifySaveError);
 
   const updateAssignedCount = () => {
     const n = host.querySelectorAll('.dx-assign input[type="checkbox"]:checked').length;
@@ -252,8 +253,8 @@ export async function renderDiagnostico(host, moduleRow) {
     });
   };
 
-  bindAutoSave(structForm, persist, workspaceAutoSaveStatus());
-  bindAutoSave(matrixForm, persist, workspaceAutoSaveStatus());
+  bindAutoSave(structForm, persistRaw, workspaceAutoSaveStatus());
+  bindAutoSave(matrixForm, persistRaw, workspaceAutoSaveStatus());
 
   const setView = (nextView) => {
     const v = normalizeView(nextView);

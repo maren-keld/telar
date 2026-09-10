@@ -6,8 +6,9 @@ import { loadProfile } from '../profile.js';
 import { getInvoke, openExternalUrl } from '../tauri-bridge.js';
 import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
 import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
-import { scheduleAutoCloudBackup } from '../cloud-backup.js';
+import { scheduleAutoCloudBackup, restoreCloudBackupFlow } from '../cloud-backup.js';
 import { toast, escapeHtml } from '../utils.js';
+import { t } from '../i18n.js';
 import { shakeEl } from '../transitions.js';
 import { mountHeroCameras } from '../hero-camera.js';
 
@@ -149,6 +150,9 @@ export async function renderUnlock(host, { onNavigate }) {
         </div>
         <div id="hint" class="unlock-hint"></div>
       </div>
+      <button type="button" class="unlock-restore-link" id="unlockRestoreBtn">
+        ${escapeHtml(t('unlock.restoreBackup'))}
+      </button>
       <p class="unlock-page__build">${escapeHtml(appVersionLabel())} · ${BUILD_STAMP_LABEL}</p>
       <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
         <span class="unlock-update-bar__text">Actualización disponible</span>
@@ -278,6 +282,13 @@ export async function renderUnlock(host, { onNavigate }) {
   unlockBtn?.addEventListener('click', doUnlock);
   touchIdBtn?.addEventListener('click', doTouchId);
   usePinBtn?.addEventListener('click', () => setMethod('pin'));
+
+  host.querySelector('#unlockRestoreBtn')?.addEventListener('click', async () => {
+    const ok = await restoreCloudBackupFlow();
+    if (!ok) return;
+    scheduleAutoCloudBackup();
+    onNavigate({ view: 'treatments' });
+  });
 
   host.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && pinBlock && !pinBlock.classList.contains('unlock-pin-block--hidden')) {

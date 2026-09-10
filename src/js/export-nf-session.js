@@ -73,22 +73,21 @@ export async function exportNfSessionCsv({ results, meta, sessionNotes, patientN
     paciente: patientName || '',
     sesion: sessionNumber ?? '',
     protocolo: meta?.protocol || '',
+    ubicaciones: (meta?.locations || []).map((name) => ({ FP1: 'AF7', FP2: 'AF8' })[name] || name).join('|'),
     ojos: meta?.eye_condition || spec.eye_condition || 'open',
     dispositivo: meta?.device || 'Muse 2',
     inicio: meta?.started_at ? formatDate(meta.started_at) : '',
     fin: meta?.ended_at ? formatDate(meta.ended_at) : '',
     duracion_seg: meta?.duration_sec ?? '',
-    calma_pct: results.calm_pct ?? '',
-    atencion_pct: results.attentive_pct ?? '',
-    relajacion_pct: results.relaxation_pct ?? '',
-    calma_seg: results.calm_seconds ?? '',
-    atencion_seg: results.attention_seconds ?? '',
-    baseline_calma_pct: results.has_baseline ? results.baseline_calm_pct ?? '' : '',
-    baseline_atencion_pct: results.has_baseline ? results.baseline_attentive_pct ?? '' : '',
-    delta_calma_pct: results.has_baseline ? results.delta_calm_pct ?? '' : '',
-    delta_atencion_pct: results.has_baseline ? results.delta_attentive_pct ?? '' : '',
-    theta_beta_fp2: spec.theta_beta_fp2 ?? '',
-    alpha_asym_fp: spec.alpha_asym_fp ?? '',
+    escala_relativa_alpha_theta_0_100: results.alpha_theta_relative_score ?? results.calm_pct ?? '',
+    escala_relativa_beta_frontal_0_100: results.beta_frontal_relative_score ?? results.attentive_pct ?? '',
+    compuesto_alpha_mas_media_theta_pct: results.relaxation_pct ?? '',
+    delta_alpha_theta_log_index: spec.delta_alpha_theta_log_index ?? '',
+    delta_beta_frontal_log_index: spec.delta_attention_log_index ?? '',
+    ventanas_validas_entrenamiento: spec.valid_training_windows ?? '',
+    theta_beta_frontal: spec.theta_beta_frontal ?? spec.theta_beta_fp2 ?? '',
+    asimetria_alpha_log_af8_menos_af7:
+      spec.frontal_alpha_asymmetry_log_af8_minus_af7 ?? '',
     artefacto_pct: spec.artifact_pct ?? '',
     fs_hz: spec.effective_fs ?? spec.fs_hz ?? meta?.effective_fs ?? '',
     fs_desvio: spec.fs_off_nominal ? 'si' : '',
@@ -131,23 +130,20 @@ export async function exportNfSessionPdf({ results, meta, sessionNotes, patientN
   y += 4;
   line('Resultados', { size: 12, style: 'bold' });
   y += 2;
-  line(`Calma: ${results.calm_pct ?? '—'}%`);
-  line(`Atención: ${results.attentive_pct ?? '—'}%`);
-  line(`Relajación: ${results.relaxation_pct ?? '—'}%`);
-  if (results.has_baseline) {
-    line(`Δ calma vs línea base: ${results.delta_calm_pct ?? '—'}`);
-    line(`Δ atención vs línea base: ${results.delta_attentive_pct ?? '—'}`);
-  } else {
-    line('Sin línea base grabada — no hay delta.');
-  }
+  line('Estas escalas son proxies EEG relativos; no son porcentajes de calma o atención.', { size: 9 });
+  line(`Escala relativa alpha/theta (0–100): ${results.alpha_theta_relative_score ?? results.calm_pct ?? '—'}`);
+  line(`Escala relativa beta frontal (0–100): ${results.beta_frontal_relative_score ?? results.attentive_pct ?? '—'}`);
 
   const spec = results.spectral || {};
-  if (spec.theta_beta_fp2 != null) {
+  if (spec.theta_beta_frontal != null || spec.theta_beta_fp2 != null) {
     y += 4;
     line('Análisis espectral (orientativo)', { size: 11, style: 'bold' });
     y += 2;
-    line(`Theta/Beta FP2: ${spec.theta_beta_fp2}`);
-    line(`Asimetría alpha FP1−FP2: ${spec.alpha_asym_fp ?? '—'} pp`);
+    line(`Theta/Beta frontal AF7+AF8: ${spec.theta_beta_frontal ?? spec.theta_beta_fp2}`);
+    line(`Asimetría alpha log(AF8)−log(AF7): ${spec.frontal_alpha_asymmetry_log_af8_minus_af7 ?? '—'} (exploratoria)`);
+    line(`Cambio alpha/theta vs línea base: ${spec.delta_alpha_theta_log_index ?? '—'} log-ratio`);
+    line(`Cambio beta frontal vs línea base: ${spec.delta_attention_log_index ?? '—'} log-ratio`);
+    line(`Ventanas válidas de entrenamiento: ${spec.valid_training_windows ?? '—'}`);
     if (spec.artifact_pct != null) line(`Ventanas con artefacto: ${spec.artifact_pct}%`);
     const fsHz = spec.effective_fs ?? spec.fs_hz ?? meta?.effective_fs;
     if (fsHz != null) {

@@ -90,8 +90,8 @@ function buildEedSeries(sessions, kind) {
 }
 
 function buildNfSeries(sessions) {
-  const calm = [];
-  const att = [];
+  const alphaTheta = [];
+  const betaFrontal = [];
   sessions.forEach((s) => {
     const mod = s.modules.find((m) => m.module_type === 'neurofeedback');
     if (!mod) return;
@@ -99,10 +99,14 @@ function buildNfSeries(sessions) {
     const res = data.last_results;
     if (!res) return;
     const label = `S${s.number}`;
-    if (res.calm_pct != null) calm.push({ label, value: res.calm_pct });
-    if (res.attentive_pct != null) att.push({ label, value: res.attentive_pct });
+    if (res.spectral?.delta_alpha_theta_log_index != null) {
+      alphaTheta.push({ label, value: res.spectral.delta_alpha_theta_log_index });
+    }
+    if (res.spectral?.delta_attention_log_index != null) {
+      betaFrontal.push({ label, value: res.spectral.delta_attention_log_index });
+    }
   });
-  return { calm, att };
+  return { alphaTheta, betaFrontal };
 }
 
 function sudPoint(raw) {
@@ -293,13 +297,13 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
   }
 
   if (types.has('neurofeedback')) {
-    const { calm, att } = buildNfSeries(sessions);
-    if (calm.length || att.length) {
+    const { alphaTheta, betaFrontal } = buildNfSeries(sessions);
+    if (alphaTheta.length || betaFrontal.length) {
       sections.push(
         accordionHtml(
           'chart-nf',
           'Neurofeedback',
-          'Evolución por sesión (promedio de grabación)',
+          'Cambio del índice espectral vs línea base (log-ratio)',
           `<div class="score-chart-wrap"><canvas id="chart-nf-time" height="160"></canvas></div>`,
           !sections.length,
         ),
@@ -459,8 +463,8 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     }
 
     if (types.has('neurofeedback')) {
-      const { calm, att } = buildNfSeries(sessions);
-      paintNfChart(listEl, 'chart-nf-time', calm, att);
+      const { alphaTheta, betaFrontal } = buildNfSeries(sessions);
+      paintNfChart(listEl, 'chart-nf-time', alphaTheta, betaFrontal);
     }
 
     for (const psychType of psychometricChartTypes()) {
@@ -591,15 +595,15 @@ function paintSimpleLine(root, id, series, yMax, color) {
   });
 }
 
-function paintNfChart(root, id, calm, att) {
+function paintNfChart(root, id, alphaTheta, betaFrontal) {
   const canvas = canvasIn(root, id);
   if (!canvas) return;
-  const labels = [...new Set([...calm, ...att].map((p) => p.label))];
+  const labels = [...new Set([...alphaTheta, ...betaFrontal].map((p) => p.label))];
   if (!labels.length) return;
   const prev = Chart.getChart(canvas);
   if (prev) prev.destroy();
-  const calmMap = Object.fromEntries(calm.map((p) => [p.label, p.value]));
-  const attMap = Object.fromEntries(att.map((p) => [p.label, p.value]));
+  const alphaThetaMap = Object.fromEntries(alphaTheta.map((p) => [p.label, p.value]));
+  const betaFrontalMap = Object.fromEntries(betaFrontal.map((p) => [p.label, p.value]));
   // eslint-disable-next-line no-new
   new Chart(canvas.getContext('2d'), {
     type: 'line',
@@ -607,15 +611,15 @@ function paintNfChart(root, id, calm, att) {
       labels,
       datasets: [
         {
-          label: 'Calma',
-          data: labels.map((l) => calmMap[l] ?? null),
+          label: 'Δ alpha/theta',
+          data: labels.map((l) => alphaThetaMap[l] ?? null),
           borderColor: '#9b8fd9',
           backgroundColor: 'rgba(155, 143, 217, 0.15)',
           tension: 0.25,
         },
         {
-          label: 'Atención',
-          data: labels.map((l) => attMap[l] ?? null),
+          label: 'Δ beta frontal',
+          data: labels.map((l) => betaFrontalMap[l] ?? null),
           borderColor: '#e6c84a',
           backgroundColor: 'rgba(230, 200, 74, 0.15)',
           tension: 0.25,
@@ -625,7 +629,7 @@ function paintNfChart(root, id, calm, att) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { y: { min: 0, max: 100 } },
+      scales: { y: { title: { display: true, text: 'Cambio (log-ratio)' } } },
     },
   });
 }

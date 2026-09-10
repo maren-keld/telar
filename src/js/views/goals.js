@@ -1,4 +1,3 @@
-import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import {
   deleteConvenio,
@@ -218,26 +217,17 @@ function parseGoalValue(raw) {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-export async function renderGoals(container, { onNavigate }) {
+export async function mountGoalsSection(host) {
+  if (!host) return;
   const [goals, progress, convenios] = await Promise.all([
     getPracticeGoals(),
     getGoalsProgress(),
     listConvenios(),
   ]);
 
-  container.innerHTML = `
-    ${renderAppSidebar('goals')}
-    <div class="app-main" id="goals">
-      <div class="app-content goals-page">
-        <header class="goals-page__head">
-          <div>
-            <h1 class="goals-page__title">Objetivos</h1>
-            <p class="goals-page__sub">Metas de tu práctica y convenios institucionales.</p>
-          </div>
-        </header>
-
-        <section class="goals-section">
-          <h2 class="goals-section__title">Metas</h2>
+  host.innerHTML = `
+        <section class="reportes-section goals-in-stats">
+          <h2 class="reportes-section__title">Objetivos</h2>
           <div class="goals-grid" id="goals-grid">
             ${goalCard({
               key: 'convenios',
@@ -253,29 +243,13 @@ export async function renderGoals(container, { onNavigate }) {
               sub: 'Altas de pacientes en la app.',
               actual: progress.new_patients_monthly,
               target: goals,
-              fields: [
-                { label: 'Por semana', name: 'goal_np_week', field: 'new_patients_weekly' },
-                { label: 'Por mes', name: 'goal_np_month', field: 'new_patients_monthly' },
-              ],
-            })}
-            ${goalCard({
-              key: 'sessions',
-              title: 'Sesiones',
-              sub: 'Sesiones marcadas como completadas.',
-              actual: progress.sessions_monthly,
-              target: goals,
-              fields: [
-                { label: 'Por semana', name: 'goal_sess_week', field: 'sessions_weekly' },
-                { label: 'Por mes', name: 'goal_sess_month', field: 'sessions_monthly' },
-              ],
+              fields: [{ label: 'Por mes', name: 'goal_np_month', field: 'new_patients_monthly' }],
             })}
           </div>
-          <p class="goals-hint">Los objetivos se guardan automáticamente. El progreso semanal considera los últimos 7 días.</p>
-        </section>
+          <p class="goals-hint">Los objetivos se guardan automáticamente.</p>
 
-        <section class="goals-section">
           <div class="goals-section__head">
-            <h2 class="goals-section__title">Convenios</h2>
+            <h3 class="goals-section__title">Convenios</h3>
             <button type="button" class="btn btn-primary" id="btn-new-convenio">+ Nuevo convenio</button>
           </div>
           <div class="convenios-list" id="convenios-list">
@@ -285,20 +259,11 @@ export async function renderGoals(container, { onNavigate }) {
                 : '<p class="text-muted goals-empty">Aún no hay convenios. Crea uno para asociarlo a tratamientos.</p>'
             }
           </div>
-        </section>
-      </div>
-    </div>`;
-
-  bindAppSidebar(container, { onNavigate });
+        </section>`;
 
   const refreshProgress = async () => {
     const next = await getGoalsProgress();
-    const cards = container.querySelectorAll('[data-goal-card]');
-    const map = {
-      convenios: ['convenios'],
-      patients: ['new_patients_weekly', 'new_patients_monthly'],
-      sessions: ['sessions_weekly', 'sessions_monthly'],
-    };
+    const cards = host.querySelectorAll('[data-goal-card]');
     cards.forEach((card) => {
       const key = card.dataset.goalCard;
       if (key === 'convenios') {
@@ -309,55 +274,23 @@ export async function renderGoals(container, { onNavigate }) {
         );
       }
       if (key === 'patients') {
-        const week = parseGoalValue(card.querySelector('[data-goal-field="new_patients_weekly"]')?.value);
-        const month = parseGoalValue(card.querySelector('[data-goal-field="new_patients_monthly"]')?.value);
         card.querySelector('.goals-card__progress')?.replaceChildren();
         card.querySelector('.goals-card__progress')?.insertAdjacentHTML(
           'beforeend',
-          `<div class="goals-dual-progress">
-            <div><span class="goals-dual-progress__label">Semana</span> ${goalProgressHtml(next.new_patients_weekly, week)}</div>
-            <div><span class="goals-dual-progress__label">Mes</span> ${goalProgressHtml(next.new_patients_monthly, month)}</div>
-          </div>`,
-        );
-      }
-      if (key === 'sessions') {
-        const week = parseGoalValue(card.querySelector('[data-goal-field="sessions_weekly"]')?.value);
-        const month = parseGoalValue(card.querySelector('[data-goal-field="sessions_monthly"]')?.value);
-        card.querySelector('.goals-card__progress')?.replaceChildren();
-        card.querySelector('.goals-card__progress')?.insertAdjacentHTML(
-          'beforeend',
-          `<div class="goals-dual-progress">
-            <div><span class="goals-dual-progress__label">Semana</span> ${goalProgressHtml(next.sessions_weekly, week)}</div>
-            <div><span class="goals-dual-progress__label">Mes</span> ${goalProgressHtml(next.sessions_monthly, month)}</div>
-          </div>`,
+          goalProgressHtml(
+            next.new_patients_monthly,
+            parseGoalValue(card.querySelector('[data-goal-field="new_patients_monthly"]')?.value),
+          ),
         );
       }
     });
   };
 
-  // Initial dual-progress for patients/sessions cards
-  container.querySelector('[data-goal-card="patients"] .goals-card__progress')?.replaceChildren();
-  container.querySelector('[data-goal-card="patients"] .goals-card__progress')?.insertAdjacentHTML(
-    'beforeend',
-    `<div class="goals-dual-progress">
-      <div><span class="goals-dual-progress__label">Semana</span> ${goalProgressHtml(progress.new_patients_weekly, goals.new_patients_weekly)}</div>
-      <div><span class="goals-dual-progress__label">Mes</span> ${goalProgressHtml(progress.new_patients_monthly, goals.new_patients_monthly)}</div>
-    </div>`,
-  );
-  container.querySelector('[data-goal-card="sessions"] .goals-card__progress')?.replaceChildren();
-  container.querySelector('[data-goal-card="sessions"] .goals-card__progress')?.insertAdjacentHTML(
-    'beforeend',
-    `<div class="goals-dual-progress">
-      <div><span class="goals-dual-progress__label">Semana</span> ${goalProgressHtml(progress.sessions_weekly, goals.sessions_weekly)}</div>
-      <div><span class="goals-dual-progress__label">Mes</span> ${goalProgressHtml(progress.sessions_monthly, goals.sessions_monthly)}</div>
-    </div>`,
-  );
-
   let saveTimer;
   const scheduleGoalsSave = () => {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      const inputs = container.querySelectorAll('[data-goal-field]');
+      const inputs = host.querySelectorAll('[data-goal-field]');
       const next = { ...goals };
       inputs.forEach((input) => {
         next[input.dataset.goalField] = parseGoalValue(input.value);
@@ -371,7 +304,7 @@ export async function renderGoals(container, { onNavigate }) {
     }, 400);
   };
 
-  container.querySelectorAll('[data-goal-field]').forEach((input) => {
+  host.querySelectorAll('[data-goal-field]').forEach((input) => {
     input.addEventListener('input', () => {
       scheduleGoalsSave();
       void refreshProgress();
@@ -380,7 +313,7 @@ export async function renderGoals(container, { onNavigate }) {
 
   const rerenderConvenios = async () => {
     const list = await listConvenios();
-    const el = container.querySelector('#convenios-list');
+    const el = host.querySelector('#convenios-list');
     el.innerHTML = list.length
       ? list.map(convenioCardHtml).join('')
       : '<p class="text-muted goals-empty">Aún no hay convenios. Crea uno para asociarlo a tratamientos.</p>';
@@ -389,7 +322,7 @@ export async function renderGoals(container, { onNavigate }) {
   };
 
   const bindConvenioCards = () => {
-    container.querySelectorAll('[data-convenio-id]').forEach((card) => {
+    host.querySelectorAll('[data-convenio-id]').forEach((card) => {
       card.querySelector('[data-edit-convenio]')?.addEventListener('click', async () => {
         const id = Number(card.dataset.convenioId);
         const list = await listConvenios();
@@ -416,7 +349,7 @@ export async function renderGoals(container, { onNavigate }) {
     });
   };
 
-  container.querySelector('#btn-new-convenio')?.addEventListener('click', () => {
+  host.querySelector('#btn-new-convenio')?.addEventListener('click', () => {
     openConvenioModal(null, { onSaved: rerenderConvenios });
   });
 

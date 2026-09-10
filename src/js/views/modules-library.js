@@ -117,6 +117,12 @@ export async function renderModulesLibrary(container, { onNavigate }) {
 
   bindAppSidebar(container, { onNavigate });
 
+  container.querySelectorAll('.module-tile').forEach((tile) => {
+    tile.addEventListener('mousedown', (e) => {
+      if (e.button === 0 && !e.target.closest('[data-delete-custom]')) e.preventDefault();
+    });
+  });
+
   const scroller = container.querySelector('.app-content');
   if (scroller) {
     const saved = Number(sessionStorage.getItem(LIB_SCROLL_KEY) || '0');

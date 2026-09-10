@@ -4,7 +4,7 @@ import { openTagPicker } from '../components/tag-picker.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
 import { createTreatment, getAgendaGroups, upsertPatient } from '../db.js';
 import { allTagDefs } from '../custom-tags.js';
-import { ICON_MORE_VERT } from '../icons.js';
+import { ICON_MORE_VERT, ICON_SEARCH } from '../icons.js';
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { toast } from '../utils.js';
@@ -97,7 +97,18 @@ function refreshCardTags(card, row) {
   addBtn.insertAdjacentHTML('beforebegin', `${convenioChip(row)}${tagPillsHtml(row)}`);
 }
 
+function searchModKbd() {
+  if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent || '')) {
+    return '⌘S';
+  }
+  return 'Ctrl+S';
+}
+
+let treatmentsSearchAbort = null;
+
 export async function renderTreatments(container, { search = '', onNavigate, expandStatus = null }) {
+  treatmentsSearchAbort?.abort();
+  treatmentsSearchAbort = new AbortController();
   const groups = await getAgendaGroups(search);
   const order = ['en_tratamiento', 'en_pausa', 'completado', 'abandonado', 'archivado'];
   const totalPatients = order.reduce((n, k) => n + (groups[k] || []).length, 0);
@@ -117,7 +128,9 @@ export async function renderTreatments(container, { search = '', onNavigate, exp
       <div class="app-content">
         <div class="toolbar">
           <div class="search-bar">
+            <span class="search-bar__icon" aria-hidden="true">${ICON_SEARCH}</span>
             <input type="search" id="agenda-search" placeholder="Buscar por nombre, ID o teléfono" value="${escapeHtml(search)}" />
+            <kbd class="search-bar__kbd" title="Activar búsqueda (${searchModKbd()})">${searchModKbd()}</kbd>
           </div>
           <button class="btn btn-primary" id="btn-add-treatment" title="Crear paciente y nuevo tratamiento">Añadir tratamiento</button>
         </div>
@@ -192,6 +205,21 @@ export async function renderTreatments(container, { search = '', onNavigate, exp
   });
 
   bindAppSidebar(container, { onNavigate });
+
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.repeat) return;
+      if (e.key.toLowerCase() !== 's') return;
+      const input = container.querySelector('#patients #agenda-search');
+      if (!input) return;
+      if (document.getElementById('modal-root')?.querySelector('.modal-backdrop, .modal-card')) return;
+      e.preventDefault();
+      input.focus();
+      input.select();
+    },
+    { signal: treatmentsSearchAbort.signal },
+  );
 
   container.querySelector('#btn-add-treatment')?.addEventListener('click', async () => {
     const btn = container.querySelector('#btn-add-treatment');

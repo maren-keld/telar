@@ -12,6 +12,10 @@ import {
   NF_BLINK_WINDOW_MS,
   NF_EMG_BETA_PCT,
   NF_EMG_P2P_UV,
+  NF_FLATLINE_STD_UV,
+  NF_CLIPPING_ABS_UV,
+  NF_MAX_LINE_NOISE_RATIO,
+  NF_MIN_TARGET_BAND_COVERAGE,
   NF_LIVE_FFT_SIZE,
   NF_LIVE_WINDOW_SEC,
   NF_MOTION_ACCEL_G,
@@ -246,7 +250,7 @@ export class AdaptiveShaper {
 export function sumSpectrumPower(spectrum, fs, startFreq, endFreq, fftSize = NF_LIVE_FFT_SIZE) {
   const freqResolution = fs / fftSize;
   const startIndex = Math.max(0, Math.ceil(startFreq / freqResolution));
-  const endIndex = Math.min(spectrum.length - 1, Math.floor(endFreq / freqResolution));
+  const endIndex = Math.min(spectrum.length - 1, Math.ceil(endFreq / freqResolution) - 1);
   let acc = 0;
   for (let i = startIndex; i <= endIndex; i++) acc += spectrum[i] * spectrum[i];
   return acc;
@@ -268,9 +272,7 @@ export function computeBandPercentages(spectrum, fs = NF_SAMPLE_RATE, fftSize = 
     return (bp / total) * 100;
   });
 
-  const sum = raw.reduce((a, b) => a + b, 0);
-  if (sum <= 0) return [0, 0, 0, 0];
-  return raw.map((v) => (v * 100) / sum);
+  return raw;
 }
 
 export function hannWindow(buffer, fftSize = NF_LIVE_FFT_SIZE) {
@@ -291,7 +293,7 @@ function hannNormSquared(n) {
 }
 
 /** Integra PSD por banda (trapezoidal), como band_powers_subset_percent en Python. */
-function bandPowersFromPsd(psd, fs, nfft) {
+function spectralDetailsFromPsd(psd, fs, nfft) {
   const df = fs / nfft;
   const nBins = psd.length;
   const freqs = Array.from({ length: nBins }, (_, i) => i * df);
@@ -300,32 +302,28 @@ function bandPowersFromPsd(psd, fs, nfft) {
 
   const integrate = (lo, hi) => {
     let sum = 0;
-    for (let i = 0; i < nBins - 1; i++) {
-      const f0 = freqs[i];
-      const f1 = freqs[i + 1];
-      if (f1 < lo || f0 > hi) continue;
-      const y0 = f0 >= lo && f0 <= hi ? psd[i] : 0;
-      const y1 = f1 >= lo && f1 <= hi ? psd[i + 1] : 0;
-      sum += ((y0 + y1) / 2) * df;
+    for (let i = 0; i < nBins; i++) {
+      const f = freqs[i];
+      if (f >= lo && f < hi) sum += psd[i] * df;
     }
     return sum;
   };
 
-  let total = 0;
-  for (let f = rangeLo; f < hiEff; f += df) {
-    const idx = Math.min(nBins - 1, Math.floor(f / df));
-    total += psd[idx] * df;
+  const total = integrate(rangeLo, hiEff);
+  if (total <= 1e-12) {
+    return { bands: [0, 0, 0, 0], targetCoverage: 0, lineNoiseRatio: 0, totalPower: 0 };
   }
-  if (total <= 1e-12) return [0, 0, 0, 0];
 
-  const raw = NF_BAND_ORDER.map((name) => {
+  const bands = NF_BAND_ORDER.map((name) => {
     const [lo, hi] = NF_BANDS[name];
     const bp = integrate(lo, Math.min(hi, hiEff));
     return (bp / total) * 100;
   });
-  const sum = raw.reduce((a, b) => a + b, 0);
-  if (sum <= 0) return [0, 0, 0, 0];
-  return raw.map((v) => (v * 100) / sum);
+  const targetCoverage = bands.reduce((a, b) => a + b, 0) / 100;
+  const qualityTotal = integrate(rangeLo, Math.min(65, fs / 2));
+  const lineNoise = integrate(48, 52) + integrate(58, 62);
+  const lineNoiseRatio = qualityTotal > 1e-12 ? lineNoise / qualityTotal : 0;
+  return { bands, targetCoverage, lineNoiseRatio, totalPower: total };
 }
 
 /**
@@ -333,20 +331,23 @@ function bandPowersFromPsd(psd, fs, nfft) {
  * @param {Float32Array|number[]} samples
  * @param {(windowed: Float32Array) => Float32Array} forwardFft magnitudes length nfft/2
  */
-export function welchBandPowers(
+export function welchBandPowersDetailed(
   samples,
   forwardFft,
   fs = NF_SAMPLE_RATE,
   fftSize = NF_LIVE_FFT_SIZE,
 ) {
   const n = samples.length;
-  if (n < 16) return [0, 0, 0, 0];
+  if (n < 16) {
+    return { bands: [0, 0, 0, 0], targetCoverage: 0, lineNoiseRatio: 0, totalPower: 0 };
+  }
   const nperseg = Math.max(16, Math.min(n, Math.floor(fs * NF_LIVE_WINDOW_SEC), fftSize));
   const noverlap = Math.floor(nperseg / 2);
   const step = Math.max(1, nperseg - noverlap);
   const nBins = Math.floor(nperseg / 2);
   const psdAcc = new Float64Array(nBins);
-  const scale = 1 / (fs * hannNormSquared(nperseg));
+  // FFT.forward entrega 2|X|/N; esta escala recupera PSD one-sided en µV²/Hz.
+  const scale = nperseg / (2 * fs * hannNormSquared(nperseg));
   let nSeg = 0;
 
   for (let start = 0; start + nperseg <= n; start += step) {
@@ -358,9 +359,15 @@ export function welchBandPowers(
     }
     nSeg++;
   }
-  if (!nSeg) return [0, 0, 0, 0];
+  if (!nSeg) {
+    return { bands: [0, 0, 0, 0], targetCoverage: 0, lineNoiseRatio: 0, totalPower: 0 };
+  }
   for (let i = 0; i < nBins; i++) psdAcc[i] /= nSeg;
-  return bandPowersFromPsd(psdAcc, fs, nperseg);
+  return spectralDetailsFromPsd(psdAcc, fs, nperseg);
+}
+
+export function welchBandPowers(samples, forwardFft, fs = NF_SAMPLE_RATE, fftSize = NF_LIVE_FFT_SIZE) {
+  return welchBandPowersDetailed(samples, forwardFft, fs, fftSize).bands;
 }
 
 /** Pico a pico (µV) en una ventana — mismo criterio que analyze_session.py. */
@@ -407,7 +414,7 @@ function zeroCrossings(samples) {
 export function detectBlink(buffers, fs = NF_SAMPLE_RATE) {
   const nWin = Math.max(8, Math.round((fs * NF_BLINK_WINDOW_MS) / 1000));
   const nRise = Math.max(2, Math.round((fs * NF_BLINK_RISE_MS) / 1000));
-  for (const ch of ['FP1', 'FP2']) {
+  for (const ch of ['AF7', 'AF8']) {
     const buf = buffers?.[ch];
     if (!buf || buf.length < nWin) continue;
     const win = buf.slice(-nWin);
@@ -420,6 +427,30 @@ export function detectBlink(buffers, fs = NF_SAMPLE_RATE) {
     if (maxRise >= NF_BLINK_RISE_UV) return true;
   }
   return false;
+}
+
+/** Rechaza canales planos/saturados y espectros dominados por ruido no entrenado. */
+export function assessSignalQuality(buffers, channels, spectralDetails = []) {
+  const issues = [];
+  for (const ch of channels) {
+    const src = buffers?.[ch] || [];
+    const x = src.slice(-NF_LIVE_FFT_SIZE).filter(Number.isFinite);
+    if (x.length < NF_LIVE_FFT_SIZE) {
+      issues.push(`${ch}:insufficient`);
+      continue;
+    }
+    const mean = x.reduce((a, b) => a + b, 0) / x.length;
+    const variance = x.reduce((a, b) => a + (b - mean) ** 2, 0) / x.length;
+    if (Math.sqrt(variance) < NF_FLATLINE_STD_UV) issues.push(`${ch}:flatline`);
+    if (x.some((v) => Math.abs(v) >= NF_CLIPPING_ABS_UV)) issues.push(`${ch}:clipping`);
+  }
+  if (spectralDetails.length) {
+    const coverage = spectralDetails.reduce((a, d) => a + d.targetCoverage, 0) / spectralDetails.length;
+    const lineNoise = spectralDetails.reduce((a, d) => a + d.lineNoiseRatio, 0) / spectralDetails.length;
+    if (coverage < NF_MIN_TARGET_BAND_COVERAGE) issues.push('low_target_band_coverage');
+    if (lineNoise > NF_MAX_LINE_NOISE_RATIO) issues.push('line_noise');
+  }
+  return { valid: issues.length === 0, issues };
 }
 
 /**

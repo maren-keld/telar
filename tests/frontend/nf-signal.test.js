@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   AdaptiveShaper,
+  assessSignalQuality,
   computeBandPercentages,
   computeFeedbackMetrics,
   detectArtifact,
@@ -10,8 +11,10 @@ import {
   FeedbackEma,
   peakToPeakUv,
   welchBandPowers,
+  welchBandPowersDetailed,
 } from '../../src/lib/nf-signal.js';
 import { NF_LIVE_FFT_SIZE, NF_SAMPLE_RATE } from '../../src/lib/nf-bands.js';
+import { FFT } from '../../src/lib/nf-fft.js';
 
 function sineRecording(frequencyHz, seconds = 2, amplitudeUv = 100) {
   return Float32Array.from(
@@ -73,7 +76,7 @@ test('artifact detector separates motion, EMG, blink, and clean windows', () => 
   const motion = Float32Array.from({ length: 512 }, (_, i) => (i % 2 ? 200 : -200));
   const blink = blinkPulse({ p2pUv: 200 });
 
-  assert.deepEqual(detectArtifact({ TP9: clean, FP1: clean, FP2: clean }, ['TP9'], [0, 0, 80, 5]), {
+  assert.deepEqual(detectArtifact({ TP9: clean, AF7: clean, AF8: clean }, ['TP9'], [0, 0, 80, 5]), {
     artifact: false,
     kind: null,
   });
@@ -85,8 +88,8 @@ test('artifact detector separates motion, EMG, blink, and clean windows', () => 
     artifact: true,
     kind: 'motion',
   });
-  assert.equal(detectBlink({ FP1: blink, FP2: clean }), true);
-  assert.deepEqual(detectArtifact({ TP9: clean, FP1: blink, FP2: clean }, ['TP9'], [0, 0, 80, 5]), {
+  assert.equal(detectBlink({ AF7: blink, AF8: clean }), true);
+  assert.deepEqual(detectArtifact({ TP9: clean, AF7: blink, AF8: clean }, ['TP9'], [0, 0, 80, 5]), {
     artifact: true,
     kind: 'blink',
   });
@@ -95,8 +98,27 @@ test('artifact detector separates motion, EMG, blink, and clean windows', () => 
 test('a 200 µV blink is an artifact; clean eyes-closed alpha is not', () => {
   const blink = blinkPulse({ p2pUv: 200 });
   const alpha = sineRecording(10, 2, 40);
-  assert.equal(detectBlink({ FP1: blink, FP2: alpha }), true);
-  assert.equal(detectBlink({ FP1: alpha, FP2: alpha }), false);
+  assert.equal(detectBlink({ AF7: blink, AF8: alpha }), true);
+  assert.equal(detectBlink({ AF7: alpha, AF8: alpha }), false);
+});
+
+test('out-of-band 25 Hz energy is not relabeled as beta 15–20 Hz', () => {
+  const fft = new FFT(NF_LIVE_FFT_SIZE);
+  const samples = sineRecording(25, 2, 100);
+  const details = welchBandPowersDetailed(samples, (windowed) => fft.forward(windowed));
+  assert.ok(details.bands[3] < 1, `25 Hz must not appear as beta: ${details.bands}`);
+  assert.ok(details.targetCoverage < 0.05);
+  const quality = assessSignalQuality({ AF7: samples }, ['AF7'], [details]);
+  assert.equal(quality.valid, false);
+  assert.ok(quality.issues.includes('low_target_band_coverage'));
+});
+
+test('flatline and clipping fail the EEG quality gate', () => {
+  const flat = new Float32Array(NF_LIVE_FFT_SIZE);
+  const clipped = sineRecording(10, 1, 30);
+  clipped[100] = 950;
+  assert.equal(assessSignalQuality({ AF7: flat }, ['AF7']).valid, false);
+  assert.equal(assessSignalQuality({ AF7: clipped }, ['AF7']).valid, false);
 });
 
 test('after freezing EMA, a held state does not drift back to 50%', () => {

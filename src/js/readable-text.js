@@ -408,21 +408,36 @@ export function buildReadableText(moduleType, data) {
   }
 }
 
-/** Texto plano del módulo para contexto de IA (futuro). */
-export async function syncModuleReadableText(moduleRow, payload, status) {
+export function mergeModuleReadable(moduleRow, payload) {
   const prev = parseJsonSafe(moduleRow.data, {});
   const merged = { ...prev, ...payload };
   const readable = buildReadableText(moduleRow.module_type, merged);
   const label = getModuleDef(moduleRow.module_type)?.label || moduleRow.module_type;
   const header = `# ${label}\n`;
   merged.readable_text = readable ? `${header}${readable}` : header;
-  await saveModuleData(moduleRow.id, merged, status || moduleRow.status || 'pendiente');
-  if (typeof document !== 'undefined') {
-    document.dispatchEvent(
-      new CustomEvent('telar:module-data-saved', {
-        detail: { moduleId: moduleRow.id, moduleType: moduleRow.module_type },
-      }),
-    );
-  }
+  return merged;
+}
+
+export function commitModuleRow(moduleRow, merged, status) {
+  moduleRow.data = JSON.stringify(merged);
+  if (status) moduleRow.status = status;
+}
+
+export function finishModuleSave(moduleRow, merged, status) {
+  commitModuleRow(moduleRow, merged, status);
+  if (typeof document === 'undefined') return;
+  document.dispatchEvent(
+    new CustomEvent('telar:module-data-saved', {
+      detail: { moduleId: moduleRow.id, moduleType: moduleRow.module_type },
+    }),
+  );
+}
+
+/** Texto plano del módulo para contexto de IA (futuro). */
+export async function syncModuleReadableText(moduleRow, payload, status) {
+  const st = status || moduleRow.status || 'pendiente';
+  const merged = mergeModuleReadable(moduleRow, payload);
+  await saveModuleData(moduleRow.id, merged, st);
+  finishModuleSave(moduleRow, merged, st);
   return merged;
 }

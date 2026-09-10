@@ -7,7 +7,7 @@ summary: Conectar Muse 2, sesión en vivo, diferencias Demo/Pro y límites clín
 
 # Neurofeedback (Muse 2)
 
-Telar integra biofeedback EEG de **2 canales** con la banda **Interaxon Muse 2** (no Muse S ni otros modelos). Es un **complemento psicoeducativo** de la psicoterapia, no evaluación neuropsicológica ni tratamiento médico por sí solo.
+Telar registra los **4 canales** de la banda **Interaxon Muse 2**; cada índice de feedback usa 2 canales (no Muse S ni otros modelos). Es un **complemento psicoeducativo** de la psicoterapia, no evaluación neuropsicológica ni tratamiento médico por sí solo.
 
 ## Antes de la primera sesión
 
@@ -19,7 +19,7 @@ Telar integra biofeedback EEG de **2 canales** con la banda **Interaxon Muse 2**
 
 1. Abrí el módulo Neurofeedback en el workspace
 2. Conectá la banda desde la UI
-3. Elegí el protocolo (por ejemplo Atención o Calma, según la versión)
+3. Elegí el índice de entrenamiento (alpha/theta relativo o beta frontal relativo)
 4. Corré el feedback en consulta e integrálo al diálogo clínico
 
 ## Demo vs Pro

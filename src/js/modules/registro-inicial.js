@@ -8,11 +8,11 @@ import {
   idSpecFor,
 } from '../clinic-country.js';
 import { EDUCATION_OPTIONS, MARITAL_OPTIONS, PATIENT_GENDER_OPTIONS, SOURCE_OPTIONS, normalizeEducationLevel } from '../config.js';
-import { upsertPatient } from '../db.js';
+import { savePatientAndModule } from '../db.js';
 import { ICON_COPY } from '../icons.js';
-import { syncModuleReadableText } from '../readable-text.js';
-import { bindAutoSave } from '../autobind.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
+import { finishModuleSave, mergeModuleReadable } from '../readable-text.js';
+import { bindAutoSave, queuedPersist } from '../autobind.js';
+import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 import { calcAge, escapeHtml, parseJsonSafe, toast } from '../utils.js';
 
 const OCCUPATION_OPTIONS = [
@@ -43,6 +43,58 @@ function isoFromParts(year, month, day) {
 
 /** Expuesto para tests: el select debe reconocer meses/días con cero a la izquierda. */
 export { birthParts, isoFromParts };
+
+/**
+ * Lo que se pinta: módulo, y si falta, la fila del paciente (alta con RUT, etc.).
+ * Vaciar a propósito un dato nunca mostrado no aplica: ver coherentRegistroPayload.
+ */
+export function seedRegistroFields(data = {}, treatment = {}, country = clinicCountryCode()) {
+  const idRaw = data.id_number || treatment.patient_id_number || '';
+  return {
+    nombre: String(data.nombre || treatment.patient_name || ''),
+    id_number: formatNationalId(idRaw, country) || String(idRaw || ''),
+    email: String(data.email || treatment.patient_email || ''),
+    phone: String(data.phone || treatment.patient_phone || ''),
+    address: String(data.address || treatment.patient_address || ''),
+    genero: String(data.genero || treatment.patient_gender || ''),
+    birth_date: String(data.birth_date || treatment.patient_birth_date || ''),
+  };
+}
+
+function firstStored(stored, keys) {
+  for (const key of keys) {
+    const value = stored?.[key];
+    if (value != null && String(value).trim()) return value;
+  }
+  return '';
+}
+
+function pickIdentityField(formVal, seededVal, storedVal) {
+  const form = String(formVal ?? '');
+  const seeded = String(seededVal ?? '').trim();
+  if (form.trim()) return form;
+  if (seeded) return '';
+  return storedVal == null ? form : storedVal;
+}
+
+/**
+ * Un objeto para patients y session_modules.
+ * Si el input se mostró con valor y el usuario lo borra, ambas copias quedan vacías.
+ * Si nunca se mostró (seed vacío) y la DB sí tenía valor, se conserva en las dos.
+ */
+export function coherentRegistroPayload({ form = {}, seeded = {}, stored = {} } = {}) {
+  return {
+    nombre: pickIdentityField(form.nombre, seeded.nombre, firstStored(stored, ['nombre', 'name', 'patient_name'])),
+    id_number: pickIdentityField(
+      form.id_number,
+      seeded.id_number,
+      firstStored(stored, ['id_number', 'patient_id_number']),
+    ),
+    email: pickIdentityField(form.email, seeded.email, firstStored(stored, ['email', 'patient_email'])),
+    phone: pickIdentityField(form.phone, seeded.phone, firstStored(stored, ['phone', 'patient_phone'])),
+    address: pickIdentityField(form.address, seeded.address, firstStored(stored, ['address', 'patient_address'])),
+  };
+}
 
 function normalizeGenero(raw) {
   const value = String(raw || '').trim();
@@ -99,10 +151,11 @@ function dayOptions(selected) {
 
 export async function renderRegistroInicial(host, moduleRow, { treatment }) {
   const data = parseJsonSafe(moduleRow.data);
-  const age = calcAge(data.birth_date);
-  const generoInit = normalizeGenero(data.genero);
-  const birth = birthParts(data.birth_date);
   const country = clinicCountryCode();
+  const seeded = seedRegistroFields(data, treatment, country);
+  const age = calcAge(seeded.birth_date);
+  const generoInit = normalizeGenero(seeded.genero || data.genero);
+  const birth = birthParts(seeded.birth_date);
   const idSpec = idSpecFor(country);
   const coverage = coverageOptions(data.prevision, country);
   const educationLevel = normalizeEducationLevel(data.education_level);
@@ -113,7 +166,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       <form id="form-registro" class="grid-2">
         <div class="form-group">
           <label>Nombre</label>
-          <input name="nombre" required data-sensitive value="${escapeHtml(data.nombre || treatment.patient_name || '')}" />
+          <input name="nombre" required data-sensitive value="${escapeHtml(seeded.nombre)}" />
         </div>
         <div class="form-group">
           <label for="registro-genero">Género</label>
@@ -127,7 +180,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
         </div>
         <div class="form-group">
           <label>${escapeHtml(idSpec.label)}</label>
-          <input name="id_number" id="registro-rut" data-sensitive value="${escapeHtml(formatNationalId(data.id_number || '', country))}" placeholder="${escapeHtml(idSpec.placeholder)}" />
+          <input name="id_number" id="registro-rut" data-sensitive value="${escapeHtml(seeded.id_number)}" placeholder="${escapeHtml(idSpec.placeholder)}" />
         </div>
         <div class="form-group">
           <label>Fecha de nacimiento</label>
@@ -137,12 +190,12 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
             <select id="birth-day" class="birth-date-select" aria-label="Día de nacimiento">${dayOptions(birth.day)}</select>
             <span id="age-display" class="birth-age">${age != null ? `(${age} años)` : ''}</span>
           </div>
-          <input type="hidden" name="birth_date" value="${escapeHtml(data.birth_date || '')}" />
+          <input type="hidden" name="birth_date" value="${escapeHtml(seeded.birth_date)}" />
         </div>
         <div class="form-group">
           <label>Correo electrónico</label>
           <div class="email-copy-row">
-            <input name="email" type="email" value="${escapeHtml(data.email || '')}" />
+            <input name="email" type="email" value="${escapeHtml(seeded.email)}" />
             <button type="button" class="btn btn-secondary btn-icon" id="btn-copy-email" title="Copiar correo" data-no-autobind aria-label="Copiar correo">${ICON_COPY}</button>
           </div>
         </div>
@@ -157,7 +210,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
         </div>
         <div class="form-group">
           <label>Celular</label>
-          <input name="phone" data-sensitive value="${escapeHtml(data.phone || '')}" />
+          <input name="phone" data-sensitive value="${escapeHtml(seeded.phone)}" />
         </div>
         <div class="form-group">
           <label>Nivel de estudios</label>
@@ -190,7 +243,7 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
         </div>
         <div class="form-group">
           <label>Ciudad</label>
-          <input name="address" id="registro-address" placeholder="Ciudad o comuna" value="${escapeHtml(data.address || '')}" autocomplete="off" />
+          <input name="address" id="registro-address" placeholder="Ciudad o comuna" value="${escapeHtml(seeded.address)}" autocomplete="off" />
         </div>
         <div class="form-group" data-no-autobind>
           <label>Ocupaciones</label>
@@ -233,16 +286,37 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     updateOccupationSummary();
   };
 
-  const persist = async () => {
-    const form = host.querySelector('#form-registro');
-    const fd = new FormData(form);
+  const persistRaw = async () => {
+    const formEl = host.querySelector('#form-registro');
+    if (!formEl) return;
+    const fd = new FormData(formEl);
     const birth_date = syncBirthHidden();
+    const form = {
+      nombre: fd.get('nombre') ?? '',
+      id_number: fd.get('id_number') ?? '',
+      email: fd.get('email') ?? '',
+      phone: fd.get('phone') ?? '',
+      address: fd.get('address') ?? '',
+    };
+    const identity = coherentRegistroPayload({
+      form,
+      seeded,
+      stored: {
+        ...data,
+        name: treatment.patient_name,
+        patient_name: treatment.patient_name,
+        patient_id_number: treatment.patient_id_number,
+        patient_email: treatment.patient_email,
+        patient_phone: treatment.patient_phone,
+        patient_address: treatment.patient_address,
+      },
+    });
     const payload = {
-      nombre: fd.get('nombre'),
-      id_number: fd.get('id_number'),
-      email: fd.get('email'),
-      phone: fd.get('phone'),
-      address: fd.get('address'),
+      nombre: identity.nombre,
+      id_number: identity.id_number,
+      email: identity.email,
+      phone: identity.phone,
+      address: identity.address,
       genero: fd.get('genero') || '',
       birth_date,
       marital_status: fd.get('marital_status'),
@@ -251,21 +325,29 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       education_level: normalizeEducationLevel(fd.get('education_level') || ''),
       occupations,
     };
-    await upsertPatient({
-      id: treatment.patient_id,
-      name: payload.nombre,
-      id_number: payload.id_number,
-      email: payload.email,
-      phone: payload.phone,
-      address: payload.address,
-      gender: payload.genero,
-      birth_date: payload.birth_date,
-      marital_status: payload.marital_status,
-      source: payload.source,
-      occupations,
+    const merged = mergeModuleReadable(moduleRow, payload);
+    await savePatientAndModule({
+      patient: {
+        id: treatment.patient_id,
+        name: payload.nombre,
+        id_number: payload.id_number,
+        email: payload.email,
+        phone: payload.phone,
+        address: payload.address,
+        gender: payload.genero,
+        birth_date: payload.birth_date,
+        marital_status: payload.marital_status,
+        source: payload.source,
+        occupations,
+      },
+      moduleId: moduleRow.id,
+      data: merged,
+      status: 'completado',
     });
-    await syncModuleReadableText(moduleRow, payload, 'completado');
+    finishModuleSave(moduleRow, merged, 'completado');
   };
+
+  const persist = queuedPersist(persistRaw, notifySaveError);
 
   syncOccupationChecks();
 
@@ -316,5 +398,5 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
   bindNationalIdInput(host.querySelector('#registro-rut'), country);
   bindAddressAutocomplete(host.querySelector('#registro-address'), { onSelect: persist, country });
 
-  bindAutoSave(host.querySelector('#form-registro'), persist, workspaceAutoSaveStatus());
+  bindAutoSave(host.querySelector('#form-registro'), persistRaw, workspaceAutoSaveStatus());
 }

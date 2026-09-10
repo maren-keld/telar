@@ -1,6 +1,7 @@
 import { customModuleHandoutPayload, getCustomModuleByType, moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
+import { captureNotesScroll, restoreNotesScroll } from '../notes-window.js';
 import { bindWorkspaceModuleDnD } from '../components/workspace-dnd.js';
 import { mountTextHighlight } from '../components/text-highlight.js';
 import { openWorkspacePatientMenu } from '../components/workspace-patient-menu.js';
@@ -52,9 +53,24 @@ import {
   sidebarCategoryHtml,
   snapshotCategoryCollapse,
 } from '../workspace-index-mode.js';
+import {
+  centerModuleIdsMatch,
+  moduleViewportOffset,
+  restoreModuleViewportOffset,
+  snapshotModuleCardHeights,
+} from '../workspace-center-scroll.js';
 
 /** Un solo listener de índice; se reasigna en cada render para no filtrar. */
 let workspaceIndexModeListener = null;
+
+async function flushWorkspaceSaves() {
+  try {
+    await flushPendingAutoSaves();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Sesiones con más módulos que esto inician colapsadas en el sidebar. */
 const SESSION_COLLAPSE_MODULE_THRESHOLD = 5;
@@ -139,6 +155,9 @@ export async function renderWorkspace(
     }
   }
 
+  const alreadyOpen = Boolean(container.querySelector('#workspace-layout'));
+  if (alreadyOpen && !(await flushWorkspaceSaves())) return;
+
   const treatment = await getTreatment(treatmentId);
   const sessions = await getSessionsWithModules(treatmentId);
   const activeModuleId = moduleId ? String(moduleId) : null;
@@ -204,7 +223,7 @@ export async function renderWorkspace(
     return;
   }
 
-  await flushPendingAutoSaves();
+  if (!(await flushWorkspaceSaves())) return;
 
   const prevModuleId = container.dataset.workspaceModuleId;
   const prevScrollRoot = container.querySelector('#workspace-center-scroll');
@@ -216,7 +235,7 @@ export async function renderWorkspace(
   }
 
   // Guardar scroll de notas antes del re-render para no perder posición.
-  const savedNotesScroll = container.querySelector('#notes-list')?.scrollTop ?? 0;
+  const savedNotesScroll = captureNotesScroll(container);
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
   const preserveCenterScroll =
     pendingCenterScrollRestore != null || (sameTreatment && forceFullRender);
@@ -288,6 +307,7 @@ export async function renderWorkspace(
 
   if (keepNotes) {
     container.querySelector('#rightsidebar')?.replaceWith(keepNotes);
+    restoreNotesScroll(container, savedNotesScroll);
   }
 
   const layoutEl = container.querySelector('#workspace-layout');
@@ -315,11 +335,13 @@ export async function renderWorkspace(
     refreshWorkspace: async (nextModuleId, nextSessionId) => {
       const data = container._workspaceData;
       if (!data) return;
+      if (!(await flushWorkspaceSaves())) return;
       data.sessions = await getSessionsWithModules(treatmentId);
       data.treatment = (await getTreatment(treatmentId)) || data.treatment;
       await paintCenterForModule(container, {
         sessionId: nextSessionId ?? data.activeSessionId,
         moduleId: nextModuleId ?? data.activeModuleId,
+        preserveScroll: true,
       });
     },
     async onSwap(modId, sessId) {
@@ -376,6 +398,7 @@ export async function renderWorkspace(
       onDelete: (deletedId) => container._workspaceData.onDelete(deletedId),
     });
   }
+  if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
 
   if (
     activeModule &&
@@ -411,6 +434,7 @@ export async function renderWorkspace(
           if (!root.isConnected) return;
           root.scrollTop = y;
           reveal();
+          if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
         });
       } else if (firstPaint) {
         root.scrollTop = 0;
@@ -421,6 +445,7 @@ export async function renderWorkspace(
           if (!root.isConnected) return;
           syncScrollToModule(container, activeModule.id);
           reveal();
+          if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
         });
       }
     }
@@ -566,6 +591,8 @@ export async function renderWorkspace(
       const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
       if (tabBtn) tabBtn.click();
     }
+  } else {
+    restoreNotesScroll(container, savedNotesScroll);
   }
 
   container._unmountHighlight = mountTextHighlight(centerHost, {
@@ -706,13 +733,13 @@ function bindWorkspaceDelegatedClicks(container) {
   });
 }
 
-async function paintCenterForModule(container, { sessionId, moduleId, moduleType = '' } = {}) {
+async function paintCenterForModule(container, { sessionId, moduleId, moduleType = '', preserveScroll = false } = {}) {
   const data = container._workspaceData;
   if (!data?.treatment || !data.sessions) return false;
   const host = container.querySelector('#center-modules');
   if (!host) return false;
 
-  await flushPendingAutoSaves();
+  if (!(await flushWorkspaceSaves())) return false;
 
   const indexMode = getWorkspaceIndexMode();
   if (indexMode === 'category' && moduleType) setWorkspaceIndexType(moduleType);
@@ -760,6 +787,27 @@ async function paintCenterForModule(container, { sessionId, moduleId, moduleType
     onNavigate: data.onNavigate,
   };
 
+  const savedNotesScroll = captureNotesScroll(container);
+  const centerRoot = container.querySelector('#workspace-center-scroll');
+  const pinEl = host.querySelector(`#module-${activeModule.id}`);
+  const pinOffset = preserveScroll ? moduleViewportOffset(centerRoot, pinEl) : null;
+  const savedCenterScroll = preserveScroll ? centerRoot?.scrollTop ?? 0 : null;
+  const previousHeights = snapshotModuleCardHeights(host);
+
+  if (
+    await tryPaintCenterModuleInPlace(container, {
+      activeModule,
+      activeSessionId,
+      indexMode,
+      indexType,
+      preserveScroll,
+      pinOffset,
+    })
+  ) {
+    restoreNotesScroll(container, savedNotesScroll);
+    return true;
+  }
+
   container._unmountCenterScrollSpy?.();
   await renderAllCenterModules(host, data.sessions, data.treatment, activeModule, {
     treatmentId: data.treatmentId,
@@ -767,6 +815,7 @@ async function paintCenterForModule(container, { sessionId, moduleId, moduleType
     activeModule,
     indexMode,
     indexType,
+    previousHeights,
     onNavigate: data.onNavigate,
     refreshWorkspace: data.refreshWorkspace,
     onSwap: data.onSwap,
@@ -776,8 +825,156 @@ async function paintCenterForModule(container, { sessionId, moduleId, moduleType
   bindModuleScrollSpy(container);
   paintLeftSidebarIndex(container, data.sessions, activeModule);
   setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
-  syncScrollToModule(container, activeModule.id);
+  const painted = host.querySelector(`#module-${activeModule.id}`);
+  if (preserveScroll && pinOffset != null && painted && centerRoot) {
+    restoreModuleViewportOffset(centerRoot, painted, pinOffset);
+    requestAnimationFrame(() => {
+      if (painted.isConnected) restoreModuleViewportOffset(centerRoot, painted, pinOffset);
+    });
+  } else if (preserveScroll && centerRoot) {
+    const y = savedCenterScroll;
+    centerRoot.scrollTop = y;
+    requestAnimationFrame(() => {
+      if (centerRoot.isConnected) centerRoot.scrollTop = y;
+    });
+  } else {
+    syncScrollToModule(container, activeModule.id);
+  }
   scrollSidebarToModule(container, activeModule.id);
+  restoreNotesScroll(container, savedNotesScroll);
+  return true;
+}
+
+function centerBotoneraOpts(mod, session, treatment, wrap, ctx) {
+  const deletable = canDeleteModule(mod, session.modules);
+  const customMod = getCustomModuleByType(mod.module_type);
+  const interactiveMod = customMod?.kind === 'interactive';
+  const handout = interactiveMod
+    ? customMod.pdfPath
+      ? { attached: true }
+      : null
+    : tccHandoutDef(mod.module_type) ||
+      customModuleHandoutPayload(mod.module_type, parseJsonSafe(mod.data, {}))?.def;
+  const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(
+    mod.module_type,
+  );
+  const isNf = mod.module_type === 'neurofeedback';
+  const shareable = shareableContentFor(mod.module_type);
+  return {
+    swappable,
+    handout,
+    deletable,
+    isNf,
+    shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
+    shareAnswered: shareable ? shareAnsweredAt(mod.data) : null,
+    moduleLabelText: moduleLabel(mod.module_type),
+    onSwap: () => ctx.onSwap(mod.id, session.id),
+    onPrint: () => printModulePdf(mod, treatment.patient_name),
+    onShare: () =>
+      openShareModuleModal(mod, {
+        label: moduleLabel(mod.module_type),
+        ...shareable,
+        onChange: () => ctx.refreshWorkspace?.(),
+      }),
+    onDelete: async () => {
+      if (wrap.dataset.deleting === '1') return;
+      wrap.dataset.deleting = '1';
+      try {
+        await deleteSessionModule(mod.id);
+        toast('Módulo eliminado');
+        await ctx.onDelete(mod.id);
+      } catch (err) {
+        wrap.dataset.deleting = '';
+        throw err;
+      }
+    },
+  };
+}
+
+function ensureCenterAddModuleButton(wrap, session, indexMode) {
+  if (indexMode === 'category') return;
+  const lastMod = session.modules?.[session.modules.length - 1];
+  if (!lastMod || lastMod.module_type === 'selector_modulo') return;
+  if (String(wrap.dataset.moduleId) !== String(lastMod.id)) return;
+  if (wrap.nextElementSibling?.classList.contains('center-add-module')) return;
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn btn-secondary btn-block center-add-module';
+  addBtn.dataset.sessionId = session.id;
+  addBtn.title = 'Añadir módulo a esta sesión';
+  addBtn.textContent = '+ Agregar módulo';
+  wrap.insertAdjacentElement('afterend', addBtn);
+}
+
+async function tryPaintCenterModuleInPlace(
+  container,
+  { activeModule, activeSessionId, indexMode, indexType, preserveScroll, pinOffset },
+) {
+  const data = container._workspaceData;
+  const host = container.querySelector('#center-modules');
+  if (!data?.treatment || !host?._hydrateModule || !host._centerPending) return false;
+
+  const displaySessions = sessionsForCenter(data.sessions, {
+    indexMode,
+    indexType,
+    sessionId: activeSessionId,
+    moduleId: activeModule.id,
+  });
+  if (!centerModuleIdsMatch(host, displaySessions)) return false;
+
+  const item = host._centerPending.find(
+    (row) => String(row.mod.id) === String(activeModule.id),
+  );
+  if (!item?.wrap?.isConnected) return false;
+  if (item.wrap.dataset.moduleType === activeModule.module_type) return false;
+
+  const freshSession =
+    displaySessions.find((session) =>
+      (session.modules || []).some((mod) => String(mod.id) === String(activeModule.id)),
+    ) || data.sessions.find((session) => String(session.id) === String(activeSessionId));
+  if (!freshSession) return false;
+
+  const centerRoot = container.querySelector('#workspace-center-scroll');
+  item.session = freshSession;
+  item.mod = activeModule;
+  item.botoneraOpts = centerBotoneraOpts(activeModule, freshSession, data.treatment, item.wrap, {
+    onNavigate: data.onNavigate,
+    refreshWorkspace: data.refreshWorkspace,
+    onSwap: data.onSwap,
+    onDelete: data.onDelete,
+  });
+
+  item.wrap.dataset.moduleType = activeModule.module_type;
+  item.wrap.classList.toggle(
+    'center-module-card--selector',
+    activeModule.module_type === 'selector_modulo',
+  );
+  item.wrap.querySelectorAll(':scope > .module-card-actions, :scope > .botonera-modules').forEach((el) => {
+    el.remove();
+  });
+  const body = item.wrap.querySelector('.center-module-card__body');
+  if (body) body.innerHTML = '';
+  item.wrap.dataset.hydrated = '0';
+  item.wrap.style.minHeight = '';
+
+  try {
+    await host._hydrateModule(activeModule.id);
+  } catch {
+    return false;
+  }
+  ensureCenterAddModuleButton(item.wrap, freshSession, indexMode);
+  paintLeftSidebarIndex(container, data.sessions, activeModule);
+  setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
+  scrollSidebarToModule(container, activeModule.id);
+
+  if (preserveScroll && pinOffset != null && centerRoot) {
+    restoreModuleViewportOffset(centerRoot, item.wrap, pinOffset);
+    requestAnimationFrame(() => {
+      if (item.wrap.isConnected) restoreModuleViewportOffset(centerRoot, item.wrap, pinOffset);
+    });
+  } else {
+    syncScrollToModule(container, activeModule.id);
+  }
   return true;
 }
 
@@ -976,7 +1173,12 @@ function scrollSidebarToModule(container, moduleId) {
   });
 }
 
-const KEEP_HYDRATED_TYPES = new Set(['neurofeedback', 'bilateral_stimulation']);
+const KEEP_HYDRATED_TYPES = new Set([
+  'neurofeedback',
+  'bilateral_stimulation',
+  'registro_inicial',
+  'motivo_consulta',
+]);
 
 function cardContainsFocus(wrap) {
   const ae = typeof document !== 'undefined' ? document.activeElement : null;
@@ -1231,6 +1433,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
   teardownBilateralStimulation();
   host._hydrateObserver?.disconnect();
   host._hydrateObserver = null;
+  host._centerPending = null;
   host.innerHTML = '';
   host._hydrateModule = null;
 
@@ -1250,13 +1453,6 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
     host.insertAdjacentHTML('beforeend', sessionRuleHtml(session.number));
 
     for (const mod of session.modules) {
-      const deletable = canDeleteModule(mod, session.modules);
-      const customMod = getCustomModuleByType(mod.module_type);
-      const interactiveMod = customMod?.kind === 'interactive';
-      const handout = interactiveMod
-        ? (customMod.pdfPath ? { attached: true } : null)
-        : tccHandoutDef(mod.module_type) ||
-          customModuleHandoutPayload(mod.module_type, parseJsonSafe(mod.data, {}))?.def;
       const isActive = activeModule && String(mod.id) === String(activeModule.id);
       const wrap = document.createElement('article');
       wrap.className = `center-module-card${isActive ? ' center-module-card--active' : ''}`;
@@ -1265,39 +1461,10 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
       wrap.dataset.sessionId = session.id;
       wrap.dataset.moduleType = mod.module_type;
       wrap.dataset.sessionNumber = session.number;
+      const prevH = !isActive ? ctx.previousHeights?.get(String(mod.id)) : null;
+      if (prevH) wrap.style.minHeight = `${Math.round(prevH)}px`;
 
-      const swappable = !['registro_inicial', 'motivo_consulta', 'selector_modulo'].includes(mod.module_type);
-      const isNf = mod.module_type === 'neurofeedback';
-      const shareable = shareableContentFor(mod.module_type);
-      const botoneraOpts = {
-        swappable,
-        handout,
-        deletable,
-        isNf,
-        shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
-        shareAnswered: shareable ? shareAnsweredAt(mod.data) : null,
-        moduleLabelText: moduleLabel(mod.module_type),
-        onSwap: () => ctx.onSwap(mod.id, session.id),
-        onPrint: () => printModulePdf(mod, treatment.patient_name),
-        onShare: () =>
-          openShareModuleModal(mod, {
-            label: moduleLabel(mod.module_type),
-            ...shareable,
-            onChange: () => ctx.refreshWorkspace?.(),
-          }),
-        onDelete: async () => {
-          if (wrap.dataset.deleting === '1') return;
-          wrap.dataset.deleting = '1';
-          try {
-            await deleteSessionModule(mod.id);
-            toast('Módulo eliminado');
-            await ctx.onDelete(mod.id);
-          } catch (err) {
-            wrap.dataset.deleting = '';
-            throw err;
-          }
-        },
-      };
+      const botoneraOpts = centerBotoneraOpts(mod, session, treatment, wrap, ctx);
 
       const body = document.createElement('div');
       body.className = 'center-module-card__body';
@@ -1351,6 +1518,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
 
   if (!host.children.length) {
     host.innerHTML = '<p class="empty-hint">Añade un módulo desde la barra izquierda.</p>';
+    host._centerPending = [];
     return;
   }
 
@@ -1370,6 +1538,15 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
         if (!body) {
           item.wrap.dataset.hydrated = '0';
           return;
+        }
+        const fresh = await getModule(item.mod.id);
+        if (!item.wrap.isConnected) {
+          item.wrap.dataset.hydrated = '0';
+          return;
+        }
+        if (fresh) {
+          item.mod.data = fresh.data;
+          item.mod.status = fresh.status;
         }
         const actions = createBotoneraEl({
           isActive: item.wrap.classList.contains('center-module-card--active'),
@@ -1402,7 +1579,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
     if (wrap.dataset.hydrated !== '1') return;
     if (hydrating.has(String(item.mod.id))) return;
     if (shouldKeepModuleMounted(wrap, item.mod.module_type)) return;
-    await flushPendingAutoSaves();
+    if (!(await flushWorkspaceSaves())) return;
     if (!wrap.isConnected) return;
     if (wrap.dataset.hydrated !== '1') return;
     if (hydrating.has(String(item.mod.id))) return;
@@ -1415,6 +1592,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
     wrap.dataset.hydrated = '0';
   };
 
+  host._centerPending = pending;
   host._hydrateModule = (moduleId) => {
     const item = pending.find((row) => String(row.mod.id) === String(moduleId));
     return hydrateOne(item);

@@ -1,11 +1,4 @@
--- Mantener solo el paciente «Paciente sin nombre» más reciente (si existe alguno).
-DELETE FROM patients
-WHERE EXISTS (
-  SELECT 1 FROM patients WHERE lower(trim(name)) = 'paciente sin nombre'
-)
-AND id != (
-  SELECT id FROM patients
-  WHERE lower(trim(name)) = 'paciente sin nombre'
-  ORDER BY datetime(created_at) DESC, id DESC
-  LIMIT 1
-);
+-- 010 ya no borra pacientes.
+-- «Paciente sin nombre» es el nombre por defecto al crear ficha o cita, no un marcador de prueba.
+-- Las DB que ya aplicaron el DELETE anterior no reejecutan esta migración.
+SELECT 1;

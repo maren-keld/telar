@@ -91,11 +91,11 @@ else
   bad "NF-16 indicador calidad señal"
 fi
 
-# NF-08: setProtocol no resetea EMA
+# NF-08: cambiar de protocolo invalida la línea base anterior
 if sed -n '/setProtocol(p)/,/^  }/p' src/lib/nf-session.js | grep -q 'feedbackEma.reset'; then
-  bad "NF-08 setProtocol no debe resetear EMA"
+  ok "NF-08 cambio protocolo invalida línea base y EMA"
 else
-  ok "NF-08 cambio protocolo no resetea EMA"
+  bad "NF-08 cambio protocolo debe invalidar línea base y EMA"
 fi
 
 # NF-09: tarjeta entrenada + prioridad en resultados

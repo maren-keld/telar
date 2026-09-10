@@ -40,6 +40,10 @@
   margin-bottom: 0;
 }
 
+.goals-in-stats .goals-section__head {
+  margin-top: 28px;
+}
+
 .goals-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

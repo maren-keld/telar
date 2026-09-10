@@ -14,6 +14,7 @@ import {
   handleCloudBackupToggleChange,
   handleForgotBackupKey,
   isCloudBackupEnabled,
+  restoreCloudBackupFlow,
 } from '../cloud-backup.js';
 import { FREE_ACTIVE_PATIENT_LIMIT, getActivePatientUsage } from '../plan-limits.js';
 import { applyPresentationMode, isProUser, loadProfile, saveProfile, wipeProfileData } from '../profile.js';
@@ -440,6 +441,11 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
               <span class="settings-cloud-backup-meta">
                 <button type="button" class="settings-inline-link" data-cloud-backup-info>${escapeHtml(t('settings.cloudBackupHowItWorks'))}</button>
                 ${
+                  isTauriApp()
+                    ? `<button type="button" class="settings-inline-link" data-cloud-backup-restore>${escapeHtml(t('settings.cloudBackupRestoreEntry'))}</button>`
+                    : ''
+                }
+                ${
                   isProUser() && isTauriApp()
                     ? `<button type="button" class="settings-inline-link" data-cloud-backup-forgot>${escapeHtml(t('settings.cloudBackupForgotKey'))}</button>`
                     : ''
@@ -753,6 +759,17 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
   });
 
   bindCloudBackupInfoLink(container);
+
+  container.querySelector('[data-cloud-backup-restore]')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isTauriApp()) {
+      toast(t('settings.cloudBackupDesktopOnly'));
+      return;
+    }
+    const ok = await restoreCloudBackupFlow({ destDir: cloudBackupState.destDir });
+    if (ok) renderSettings(container, { onNavigate });
+  });
 
   container.querySelector('[data-cloud-backup-forgot]')?.addEventListener('click', async (e) => {
     e.preventDefault();

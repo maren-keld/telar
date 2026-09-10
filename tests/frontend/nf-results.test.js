@@ -7,8 +7,8 @@ test('parseAnalyzeOutput maps analyzer values and structured extras', () => {
   const extra = {
     post: [{ t: 1, calm: 62, att: 38 }],
     spectral: {
-      theta_beta_fp2: 1.4,
-      alpha_asym_fp: -2,
+      theta_beta_frontal: 1.4,
+      frontal_alpha_asymmetry_log_af8_minus_af7: -0.2,
       artifact_pct: 8,
       has_baseline: true,
       packets_lost: 3,
@@ -69,6 +69,9 @@ test('renderResults shows live chart, disclaimer, packets/fs, and no 0/1/2 level
         fs_hz: 251.4,
         effective_fs: 251.4,
         fs_off_nominal: true,
+        delta_alpha_theta_log_index: 0.21,
+        delta_attention_log_index: -0.08,
+        valid_training_windows: 62,
       },
     },
     {
@@ -87,14 +90,15 @@ test('renderResults shows live chart, disclaimer, packets/fs, and no 0/1/2 level
   );
 
   assert.match(html, /nf-live-chart/);
-  assert.match(html, /Protocolo: Calma/);
+  assert.match(html, /Protocolo: Alpha\/theta relativa/);
   assert.match(html, /no es dispositivo médico/);
   assert.match(html, /Paquetes perdidos/);
   assert.match(html, /Frecuencia de muestreo efectiva/);
   assert.match(html, /251\.4/);
   assert.doesNotMatch(html, /nivel\s*[012]/i);
   assert.doesNotMatch(html, /calm_level|att_level|Nivel 0|Nivel 1|Nivel 2/);
-  assert.match(html, /¿Qué significan calma y atención\?/);
+  assert.match(html, /¿Qué significan estos índices\?/);
+  assert.match(html, /no es un porcentaje de un estado mental/);
   assert.match(html, /Ojos abiertos/);
   assert.match(html, /beta estrecha/);
   assert.match(html, /Métrica entrenada hoy/);

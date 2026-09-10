@@ -65,6 +65,8 @@ const STRINGS = {
     'settings.cloudBackupHowItWorks': '¿Cómo funciona?',
     'settings.cloudBackupNow': 'Respaldar ahora',
     'settings.cloudBackupRestoreFromFile': 'Restaurar desde archivo…',
+    'settings.cloudBackupRestoreEntry': 'Tengo un respaldo, recuperar mis datos',
+    'unlock.restoreBackup': 'Tengo un respaldo, recuperar mis datos',
     'settings.cloudBackupChangeFolder': 'Cambiar carpeta',
     'settings.cloudBackupPickFolder': 'Elige la carpeta de respaldo (Drive, Dropbox, iCloud…)',
     'settings.cloudBackupNotSyncedTitle': 'Esta carpeta no sale de tu computador',
@@ -77,8 +79,8 @@ const STRINGS = {
     'settings.cloudBackupFolderRequired': 'Debes elegir una carpeta de respaldo.',
     'settings.cloudBackupFolderUpdated': 'Carpeta de respaldo actualizada.',
     'settings.cloudBackupNeedKeyConfirm': 'Debes confirmar que guardaste la clave de recuperación.',
-    'settings.cloudBackupFirstOk': 'Respaldo activado y primera copia guardada.',
-    'settings.cloudBackupOk': 'Respaldo guardado en tu carpeta.',
+    'settings.cloudBackupFirstOk': 'Respaldo activado y primera copia guardada en la carpeta elegida.',
+    'settings.cloudBackupOk': 'Respaldo guardado en la carpeta elegida.',
     'settings.cloudBackupNoChanges': 'Sin cambios desde el último respaldo.',
     'settings.cloudBackupGotIt': 'Entendido',
     'settings.cloudBackupInfoTitle': 'Respaldo automático',
@@ -124,10 +126,19 @@ const STRINGS = {
     'settings.cloudBackupCopyFailed': 'No se pudo copiar — selecciona y copia manualmente',
     'settings.cloudBackupRestoreTitle': '¿Restaurar respaldo?',
     'settings.cloudBackupRestoreConfirm':
-      'Tienes {localPatients} paciente(s) en este Telar. El respaldo del {backupDate} contiene {backupPatients} paciente(s). Se creará un respaldo local automático antes de sobrescribir.',
+      'Tienes {localPatients} paciente(s) en este Telar. El respaldo del {backupDate} contiene {backupPatients} paciente(s). Se creará un respaldo local automático antes de sobrescribir. El archivo .age se abre con la clave de recuperación, no con el PIN.',
+    'settings.cloudBackupRestoreConfirmEmpty':
+      'Este Telar aún no tiene ficha. Se instalará el respaldo del {backupDate} con {backupPatients} paciente(s). El archivo .age se abre con la clave de recuperación, no con el PIN.',
     'settings.cloudBackupRestoreAction': 'Restaurar',
-    'settings.cloudBackupRestorePin': 'Ingresa tu PIN para instalar el respaldo',
+    'settings.cloudBackupRestorePin':
+      'Ingresa el PIN de este Telar (o el que vas a usar). El .age no se abre con el PIN: hace falta la clave de recuperación.',
     'settings.cloudBackupRestoreOk': 'Respaldo restaurado. Tus datos están listos.',
+    'settings.cloudBackupRestorePartial':
+      'La ficha se restauró, pero no se pudieron recuperar perfil o documentos de referencia. Se conservó lo que ya había en este computador. Revisa el espacio en disco e inténtalo de nuevo.',
+    'settings.cloudBackupRestoreDocsDetached':
+      'Este respaldo no incluye documentos de referencia; los de este computador no se asociaron a las fichas restauradas.',
+    'settings.cloudBackupRestoreNeedsSetup':
+      'El respaldo automático no está activo en este computador: en Ajustes elige de nuevo la carpeta (si pegaste la clave, ya quedó instalada).',
     'settings.cloudBackupRecoveryPromptTitle': 'Clave de recuperación',
     'settings.cloudBackupRecoveryPrompt':
       'Pega la clave AGE-SECRET-KEY-… que guardaste al activar el respaldo (o la que descargaste en .txt/PDF).',
@@ -267,6 +278,8 @@ const STRINGS = {
     'settings.cloudBackupHowItWorks': 'How does it work?',
     'settings.cloudBackupNow': 'Back up now',
     'settings.cloudBackupRestoreFromFile': 'Restore from file…',
+    'settings.cloudBackupRestoreEntry': 'I have a backup — restore my data',
+    'unlock.restoreBackup': 'I have a backup — restore my data',
     'settings.cloudBackupChangeFolder': 'Change folder',
     'settings.cloudBackupPickFolder': 'Choose backup folder (Drive, Dropbox, iCloud…)',
     'settings.cloudBackupNotSyncedTitle': 'This folder never leaves your computer',
@@ -279,8 +292,8 @@ const STRINGS = {
     'settings.cloudBackupFolderRequired': 'You must choose a backup folder.',
     'settings.cloudBackupFolderUpdated': 'Backup folder updated.',
     'settings.cloudBackupNeedKeyConfirm': 'You must confirm you saved the recovery key.',
-    'settings.cloudBackupFirstOk': 'Backup enabled and first copy saved.',
-    'settings.cloudBackupOk': 'Backup saved to your folder.',
+    'settings.cloudBackupFirstOk': 'Backup enabled and first copy saved in the chosen folder.',
+    'settings.cloudBackupOk': 'Backup saved in the chosen folder.',
     'settings.cloudBackupNoChanges': 'No changes since the last backup.',
     'settings.cloudBackupGotIt': 'Got it',
     'settings.cloudBackupInfoTitle': 'Automatic backup',
@@ -326,10 +339,19 @@ const STRINGS = {
     'settings.cloudBackupCopyFailed': 'Could not copy — select and copy manually',
     'settings.cloudBackupRestoreTitle': 'Restore backup?',
     'settings.cloudBackupRestoreConfirm':
-      'You have {localPatients} patient(s) in this Telar. The backup from {backupDate} contains {backupPatients} patient(s). A local backup will be created automatically before overwriting.',
+      'You have {localPatients} patient(s) in this Telar. The backup from {backupDate} contains {backupPatients} patient(s). A local backup will be created automatically before overwriting. The .age file opens with the recovery key, not the PIN.',
+    'settings.cloudBackupRestoreConfirmEmpty':
+      'This Telar has no clinical file yet. The backup from {backupDate} with {backupPatients} patient(s) will be installed. The .age file opens with the recovery key, not the PIN.',
     'settings.cloudBackupRestoreAction': 'Restore',
-    'settings.cloudBackupRestorePin': 'Enter your PIN to install the backup',
+    'settings.cloudBackupRestorePin':
+      'Enter this Telar PIN (or the one you will use). The .age file does not open with the PIN: you need the recovery key.',
     'settings.cloudBackupRestoreOk': 'Backup restored. Your data is ready.',
+    'settings.cloudBackupRestorePartial':
+      'The clinical file was restored, but profile or reference documents could not be recovered. What was already on this computer was kept. Check disk space and try again.',
+    'settings.cloudBackupRestoreDocsDetached':
+      'This backup does not include reference documents; those on this computer were not attached to the restored cases.',
+    'settings.cloudBackupRestoreNeedsSetup':
+      'Automatic backup is not active on this computer: in Settings pick the folder again (if you pasted the recovery key, it is already installed).',
     'settings.cloudBackupRecoveryPromptTitle': 'Recovery key',
     'settings.cloudBackupRecoveryPrompt':
       'Paste the AGE-SECRET-KEY-… you saved when enabling backup (or from your .txt/PDF download).',

@@ -22,6 +22,9 @@ import {
   NF_FS_DEV_WARN,
   NF_LIVE_FFT_SIZE,
   NF_LIVE_FEEDBACK_CHANNELS,
+  NF_LIVE_WELCH_SAMPLES,
+  NF_MIN_BASELINE_VALID_RATIO,
+  NF_MIN_BASELINE_VALID_UPDATES,
   NF_NOMINAL_FS,
   NF_SAMPLE_RATE,
   NF_SIGNAL_WATCHDOG_MS,
@@ -30,14 +33,16 @@ import { getNfBaselineSec } from './nf-config.js';
 import { FFT } from './nf-fft.js';
 import {
   AdaptiveShaper,
+  assessSignalQuality,
   computeFeedbackMetrics,
   detectArtifact,
   FeedbackEma,
   LiveEegFilters,
-  welchBandPowers,
+  welchBandPowersDetailed,
 } from './nf-signal.js';
 
-const ELECTRODES = { TP9: 0, FP1: 1, FP2: 2, TP10: 3, AUX: 4 };
+const ELECTRODES = { TP9: 0, AF7: 1, AF8: 2, TP10: 3, AUX: 4 };
+const EEG_CHANNELS = ['TP9', 'AF7', 'AF8', 'TP10'];
 /** Intervalo del loop readEEGTick (ms). */
 const EEG_TICK_MS = 4;
 const FFT_SIZE = NF_LIVE_FFT_SIZE;
@@ -47,7 +52,7 @@ export class NeurofeedbackSession {
     this.muse = null;
     this.useNativeBle = false;
     this.connectionStatus = 'disconnected';
-    this.activeElectrodes = { TP9: true, FP1: true, FP2: true, TP10: true };
+    this.activeElectrodes = { TP9: true, AF7: true, AF8: true, TP10: true };
     this.protocol = 'relajacion';
     this.recording = false;
     this.recordedData = [];
@@ -58,6 +63,8 @@ export class NeurofeedbackSession {
     this.baselineComplete = false;
     this._baselineStartedAt = null;
     this._baselineSkipped = false;
+    this._baselineTotalUpdates = 0;
+    this._baselineValidUpdates = 0;
     this._sessionStartedAt = null;
     this._trainingStartedAt = null;
     this._liveTrace = [];
@@ -67,7 +74,7 @@ export class NeurofeedbackSession {
     this._lastEegAt = 0;
     this._watchdogFired = false;
     this._pendingByIndex = new Map();
-    this._lastPacketIndex = { TP9: null, FP1: null, FP2: null, TP10: null };
+    this._lastPacketIndex = { TP9: null, AF7: null, AF8: null, TP10: null };
     this._packetsReceived = 0;
     this._packetsLost = 0;
     this._samplesWritten = 0;
@@ -78,17 +85,17 @@ export class NeurofeedbackSession {
     this.onSignalLost = null;
     this.onSessionInterrupted = null;
     this._handlingDisconnect = false;
-    this.eegFrequencyBuffer = { TP9: [], FP1: [], FP2: [], TP10: [] };
+    this.eegFrequencyBuffer = { TP9: [], AF7: [], AF8: [], TP10: [] };
     this.liveFilters = {
       TP9: new LiveEegFilters(),
-      FP1: new LiveEegFilters(),
-      FP2: new LiveEegFilters(),
+      AF7: new LiveEegFilters(),
+      AF8: new LiveEegFilters(),
       TP10: new LiveEegFilters(),
     };
     this.fft = new FFT(FFT_SIZE);
     this.frequencyChart = null;
     this.voltageChart = null;
-    this.voltageHistory = { TP9: [], FP1: [], FP2: [], TP10: [] };
+    this.voltageHistory = { TP9: [], AF7: [], AF8: [], TP10: [] };
     this.smoothedBars = [0, 0, 0, 0];
     this.feedbackEma = new FeedbackEma();
     this.shaper = new AdaptiveShaper();
@@ -130,10 +137,10 @@ export class NeurofeedbackSession {
 
   updateVoltageGraph() {
     if (!this.voltageChart) return;
-    const colors = { TP9: '#4B7FD1', FP1: '#2ecc71', FP2: '#e67e22', TP10: '#9b59b6' };
+    const colors = { TP9: '#4B7FD1', AF7: '#2ecc71', AF8: '#e67e22', TP10: '#9b59b6' };
     const datasets = [];
     let maxLen = 0;
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of EEG_CHANNELS) {
       if (!this.activeElectrodes[e]) continue;
       const hist = this.voltageHistory[e];
       if (!hist.length) continue;
@@ -155,8 +162,18 @@ export class NeurofeedbackSession {
   }
 
   setProtocol(p) {
-    this.protocol = p === 'atencion' ? 'atencion' : 'relajacion';
+    const next = p === 'atencion' ? 'atencion' : 'relajacion';
+    if (next === this.protocol) return true;
+    if (this.recording || this.sessionPhase === 'baseline') return false;
+    if (this.baselineComplete) {
+      this.resetBaselineState();
+      this.feedbackEma.reset();
+      this.shaper.reset();
+    }
+    this.protocol = next;
+    this.smoothedBars = [0, 0, 0, 0];
     setNfAudioProtocol(this.protocol);
+    return true;
   }
 
   isInBaseline() {
@@ -180,8 +197,7 @@ export class NeurofeedbackSession {
   checkBaselineComplete() {
     if (this.sessionPhase !== 'baseline' || !this._baselineStartedAt) return false;
     if (this.getBaselineElapsedSec() < getNfBaselineSec()) return false;
-    this.completeBaseline();
-    return true;
+    return this.completeBaseline();
   }
 
   startBaseline() {
@@ -199,10 +215,12 @@ export class NeurofeedbackSession {
     this._samplesWritten = 0;
     this._packetsReceived = 0;
     this._packetsLost = 0;
-    this._lastPacketIndex = { TP9: null, FP1: null, FP2: null, TP10: null };
+    this._lastPacketIndex = { TP9: null, AF7: null, AF8: null, TP10: null };
     this._pendingByIndex = new Map();
     this._captureElapsedMs = 0;
     this.feedbackEma.reset();
+    this._baselineTotalUpdates = 0;
+    this._baselineValidUpdates = 0;
     this.shaper.reset();
     this._setCapturing(true);
     this._pushMarker('session_start');
@@ -213,6 +231,14 @@ export class NeurofeedbackSession {
 
   completeBaseline({ skipped = false } = {}) {
     if (this.sessionPhase !== 'baseline') return false;
+    const validRatio = this._baselineValidUpdates / Math.max(1, this._baselineTotalUpdates);
+    if (
+      !this.feedbackEma.isReady() ||
+      this._baselineValidUpdates < NF_MIN_BASELINE_VALID_UPDATES ||
+      validRatio < NF_MIN_BASELINE_VALID_RATIO
+    ) {
+      return false;
+    }
     this._flushPendingPackets(true);
     this._pushMarker('baseline_end');
     this.feedbackEma.freeze();
@@ -359,7 +385,7 @@ export class NeurofeedbackSession {
     this._setStatus('disconnected');
   }
 
-  updateNeurofeedback(bars) {
+  updateNeurofeedback(bars, spectralDetails = []) {
     const feedbackChannels =
       NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
     const { artifact, kind } = detectArtifact(
@@ -370,6 +396,12 @@ export class NeurofeedbackSession {
       FFT_SIZE,
       { accelSamples: this._latestAccel, gyroSamples: this._latestGyro },
     );
+    const signalAssessment = assessSignalQuality(
+      this.eegFrequencyBuffer,
+      feedbackChannels,
+      spectralDetails,
+    );
+    const blocked = artifact || !signalAssessment.valid;
     this._artifactActive = artifact;
     this._artifactKind = kind;
 
@@ -392,8 +424,12 @@ export class NeurofeedbackSession {
       this.protocol,
       this.smoothedBars,
       this.feedbackEma,
-      { updateEma: inBaseline && !artifact },
+      { updateEma: inBaseline && !blocked },
     );
+    if (inBaseline) {
+      this._baselineTotalUpdates += 1;
+      if (!blocked) this._baselineValidUpdates += 1;
+    }
     const { percent, attIdx, calmIdx } = metrics;
     const idx = this.protocol === 'atencion' ? attIdx : calmIdx;
 
@@ -402,7 +438,7 @@ export class NeurofeedbackSession {
       outLevel = 0.38;
     } else if (inBaseline) {
       outLevel = 0.38;
-    } else if (artifact && (inTrainingRecording || livePreview)) {
+    } else if (blocked && (inTrainingRecording || livePreview)) {
       outLevel = this._lastGoodLevel;
     } else if (inTrainingRecording && frozen) {
       this.shaper.update(idx);
@@ -411,16 +447,16 @@ export class NeurofeedbackSession {
       outLevel = metrics.level;
     }
 
-    if ((inTrainingRecording || livePreview) && !artifact) {
+    if ((inTrainingRecording || livePreview) && !blocked) {
       this._lastGoodLevel = outLevel;
     }
 
-    const signalQuality = this._updateSignalQuality(artifact);
+    const signalQuality = this._updateSignalQuality(blocked);
     const showPct =
-      frozen && (livePreview || inTrainingRecording) && !artifact && !this._signalLost
+      frozen && (livePreview || inTrainingRecording) && !blocked && !this._signalLost
         ? percent
         : null;
-    this._logLiveSample(showPct, artifact);
+    this._logLiveSample(showPct, blocked);
 
     this.onBandsUpdate?.({
       bars: [...this.smoothedBars],
@@ -434,13 +470,16 @@ export class NeurofeedbackSession {
       baselineElapsedSec: this.getBaselineElapsedSec(),
       baselineRemainingSec: this.getBaselineRemainingSec(),
       baselineComplete: this.baselineComplete,
-      signalQuality: this._signalLost ? 'poor' : signalQuality.level,
+      baselineValidRatio:
+        this._baselineValidUpdates / Math.max(1, this._baselineTotalUpdates),
+      signalQuality: this._signalLost || !signalAssessment.valid ? 'poor' : signalQuality.level,
+      signalIssues: signalAssessment.issues,
       signalArtifactPct: signalQuality.artifactPct,
       signalLost: this._signalLost,
     });
 
     if (inTrainingRecording && frozen) {
-      applyAudioFeedback(artifact ? this._lastGoodLevel : outLevel);
+      applyAudioFeedback(blocked ? this._lastGoodLevel : outLevel);
     }
   }
 
@@ -452,13 +491,19 @@ export class NeurofeedbackSession {
     const feedbackChannels =
       NF_LIVE_FEEDBACK_CHANNELS[this.protocol] || NF_LIVE_FEEDBACK_CHANNELS.relajacion;
     const bandSets = [];
+    const spectralDetails = [];
     for (const e of feedbackChannels) {
       if (!this.activeElectrodes[e]) continue;
       const buf = this.eegFrequencyBuffer[e];
-      if (buf.length >= FFT_SIZE) {
-        bandSets.push(
-          welchBandPowers(buf.slice(-FFT_SIZE), (w) => this._welchForward(w), NF_SAMPLE_RATE, FFT_SIZE),
+      if (buf.length >= NF_LIVE_WELCH_SAMPLES) {
+        const details = welchBandPowersDetailed(
+          buf.slice(-NF_LIVE_WELCH_SAMPLES),
+          (w) => this._welchForward(w),
+          NF_SAMPLE_RATE,
+          FFT_SIZE,
         );
+        bandSets.push(details.bands);
+        spectralDetails.push(details);
       }
     }
     if (!bandSets.length) return;
@@ -467,7 +512,7 @@ export class NeurofeedbackSession {
       for (let i = 0; i < 4; i++) avg[i] += b[i];
     }
     for (let i = 0; i < 4; i++) avg[i] /= bandSets.length;
-    this.updateNeurofeedback(avg);
+    this.updateNeurofeedback(avg, spectralDetails);
   }
 
   _drainMotion() {
@@ -510,15 +555,15 @@ export class NeurofeedbackSession {
 
   _commitSample(raw, timestampMs) {
     const vals = {};
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of EEG_CHANNELS) {
       if (raw[e] === undefined || raw[e] === null) continue;
       vals[e] = this.liveFilters[e].process(raw[e]);
     }
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of EEG_CHANNELS) {
       if (!this.activeElectrodes[e] || vals[e] === undefined) continue;
       this._pushVoltageSample(e, vals[e]);
       this.eegFrequencyBuffer[e].push(vals[e]);
-      const maxBuf = FFT_SIZE * 2;
+      const maxBuf = NF_LIVE_WELCH_SAMPLES;
       if (this.eegFrequencyBuffer[e].length > maxBuf) {
         this.eegFrequencyBuffer[e] = this.eegFrequencyBuffer[e].slice(-maxBuf);
       }
@@ -530,15 +575,15 @@ export class NeurofeedbackSession {
         const v = vals[e];
         return v !== undefined ? String(v) : '';
       };
-      if (vals.TP9 !== undefined || vals.FP1 !== undefined || vals.FP2 !== undefined || vals.TP10 !== undefined) {
-        this.recordedData.push(`${ts},${cell('TP9')},${cell('FP1')},${cell('FP2')},${cell('TP10')}`);
+      if (vals.TP9 !== undefined || vals.AF7 !== undefined || vals.AF8 !== undefined || vals.TP10 !== undefined) {
+        this.recordedData.push(`${ts},${cell('TP9')},${cell('AF7')},${cell('AF8')},${cell('TP10')}`);
         this._samplesWritten += 1;
       }
     }
   }
 
   _flushPendingPackets(force = false) {
-    const active = ['TP9', 'FP1', 'FP2', 'TP10'].filter((e) => this.activeElectrodes[e]);
+    const active = EEG_CHANNELS.filter((e) => this.activeElectrodes[e]);
     const ready = [];
     for (const [key, g] of this._pendingByIndex) {
       const haveAll = active.every((e) => g.channels[e]);
@@ -555,7 +600,7 @@ export class NeurofeedbackSession {
       for (const samples of Object.values(g.channels)) n = Math.max(n, samples.length);
       for (let i = 0; i < n; i++) {
         const raw = {};
-        for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+        for (const e of EEG_CHANNELS) {
           const samples = g.channels[e];
           if (samples && samples[i] !== undefined) raw[e] = samples[i];
         }
@@ -570,7 +615,7 @@ export class NeurofeedbackSession {
 
   _ingestPackets() {
     let any = false;
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of EEG_CHANNELS) {
       const pkts = this.muse.drainPackets?.(ELECTRODES[e]) ?? [];
       for (const pkt of pkts) {
         any = true;
@@ -599,18 +644,18 @@ export class NeurofeedbackSession {
     }
     const channels = {
       TP9: this.muse.eeg[ELECTRODES.TP9].drain?.() ?? [],
-      FP1: this.muse.eeg[ELECTRODES.FP1].drain?.() ?? [],
-      FP2: this.muse.eeg[ELECTRODES.FP2].drain?.() ?? [],
+      AF7: this.muse.eeg[ELECTRODES.AF7].drain?.() ?? [],
+      AF8: this.muse.eeg[ELECTRODES.AF8].drain?.() ?? [],
       TP10: this.muse.eeg[ELECTRODES.TP10].drain?.() ?? [],
     };
-    if (!channels.TP9.length && !channels.FP1.length && !channels.FP2.length && !channels.TP10.length) {
+    if (!channels.TP9.length && !channels.AF7.length && !channels.AF8.length && !channels.TP10.length) {
       return;
     }
     this._lastEegAt = Date.now();
     const maxLen = Math.max(
       channels.TP9.length,
-      channels.FP1.length,
-      channels.FP2.length,
+      channels.AF7.length,
+      channels.AF8.length,
       channels.TP10.length,
     );
     const tickTs = Date.now();
@@ -619,8 +664,8 @@ export class NeurofeedbackSession {
       this._commitSample(
         {
           TP9: channels.TP9[i],
-          FP1: channels.FP1[i],
-          FP2: channels.FP2[i],
+          AF7: channels.AF7[i],
+          AF8: channels.AF8[i],
           TP10: channels.TP10[i],
         },
         tickTs + i * dt,
@@ -827,7 +872,7 @@ export class NeurofeedbackSession {
     this.stopRecording();
     this.stopLoops();
     this._stopBatteryMonitor();
-    for (const e of ['TP9', 'FP1', 'FP2', 'TP10']) {
+    for (const e of EEG_CHANNELS) {
       this.voltageHistory[e] = [];
       this.eegFrequencyBuffer[e] = [];
       this.liveFilters[e].reset();
@@ -952,7 +997,8 @@ export class NeurofeedbackSession {
     return {
       device: this.useNativeBle ? 'Muse (BLE nativo)' : 'Muse 2',
       locations: activeLocs,
-      protocol: this.protocol === 'atencion' ? 'Atención' : 'Calma',
+      protocol: this.protocol === 'atencion' ? 'Beta frontal relativa' : 'Alpha/theta relativa',
+      protocol_id: this.protocol,
       started_at: this._startedAt?.toISOString(),
       ended_at: this._endedAt?.toISOString(),
       duration_sec: dur,

@@ -1,5 +1,5 @@
 /**
- * Presets NF alineados con foco TDAH / trauma.
+ * Presets de biofeedback espectral. No representan diagnósticos ni estados mentales directos.
  * Mantener coherente con python/analyze_session.py y nf-signal.js.
  */
 export const NF_SAMPLE_RATE = 256;
@@ -8,6 +8,9 @@ export const NF_FFT_SIZE = 256;
 /** Ventana espectral en vivo: 1 s @ 256 Hz (menor latencia del orbe). */
 export const NF_LIVE_WINDOW_SEC = 1;
 export const NF_LIVE_FFT_SIZE = 256;
+/** Dos segundos permiten 3 segmentos Hann de 1 s con 50 % de solape. */
+export const NF_LIVE_WELCH_SEC = 2;
+export const NF_LIVE_WELCH_SAMPLES = NF_SAMPLE_RATE * NF_LIVE_WELCH_SEC;
 
 /**
  * Umbrales de artefacto — mismos números que python/analyze_session.py.
@@ -18,7 +21,7 @@ export const NF_ARTIFACT_P2P_UV = 250;
 /** EMG mandibular: beta alta + p2p alcanzable (no 1100). */
 export const NF_EMG_BETA_PCT = 32;
 export const NF_EMG_P2P_UV = 220;
-/** Parpadeo frontal (FP1/FP2): deflexión en <400 ms. */
+/** Parpadeo frontal (AF7/AF8): deflexión en <400 ms. */
 export const NF_BLINK_P2P_UV = 150;
 export const NF_BLINK_WINDOW_MS = 400;
 export const NF_BLINK_RISE_MS = 40;
@@ -30,6 +33,13 @@ export const NF_MOTION_GYRO_DPS = 40;
 export const NF_SIGNAL_WATCHDOG_MS = 2000;
 export const NF_NOMINAL_FS = 256;
 export const NF_FS_DEV_WARN = 0.02;
+/** Controles mínimos de calidad sobre la señal filtrada. */
+export const NF_FLATLINE_STD_UV = 0.5;
+export const NF_CLIPPING_ABS_UV = 900;
+export const NF_MIN_TARGET_BAND_COVERAGE = 0.5;
+export const NF_MAX_LINE_NOISE_RATIO = 0.2;
+export const NF_MIN_BASELINE_VALID_UPDATES = 120;
+export const NF_MIN_BASELINE_VALID_RATIO = 0.7;
 /** «En estado» vs línea base congelada: z > 0 (sobre la media). */
 export const NF_STATE_Z = 0;
 
@@ -81,32 +91,32 @@ export const NF_EYE_CONDITION_LABEL = 'Ojos abiertos (mirá el orbe)';
 export const NF_PROTOCOL_PRESETS = {
   atencion: {
     id: 'atencion',
-    label: 'Atención (TDAH)',
-    shortLabel: 'Atención',
-    description: 'Entrenamiento de foco: más beta frontal 15–20 Hz (FP1+FP2) frente a theta/delta',
-    pctLabel: 'atención',
-    pctHint: 'beta 15–20 Hz · FP1+FP2',
+    label: 'Beta frontal relativa',
+    shortLabel: 'Beta frontal',
+    description: 'Índice EEG relativo: beta 15–20 Hz frente a theta/delta en AF7+AF8',
+    pctLabel: 'índice beta relativo',
+    pctHint: 'beta/(theta + 0,7·delta) · AF7+AF8',
   },
   relajacion: {
     id: 'relajacion',
-    label: 'Calma',
-    shortLabel: 'Calma',
-    description: 'Más alpha + theta frente a beta en sienes (misma condición que el reposo)',
-    pctLabel: 'calma',
-    pctHint: 'alpha + theta · TP9/TP10',
+    label: 'Alpha–theta relativo',
+    shortLabel: 'Alpha–theta',
+    description: 'Índice EEG relativo: alpha + theta frente a beta en TP9+TP10',
+    pctLabel: 'índice alpha–theta relativo',
+    pctHint: '(alpha + theta)/beta · TP9/TP10',
   },
 };
 
 /** Electrodos activos por defecto al elegir protocolo (alineado con análisis Python). */
 export const NF_PROTOCOL_ELECTRODES = {
-  relajacion: { FP1: true, FP2: true, TP9: true, TP10: true },
-  atencion: { FP1: true, FP2: true, TP9: false, TP10: false },
+  relajacion: { AF7: true, AF8: true, TP9: true, TP10: true },
+  atencion: { AF7: true, AF8: true, TP9: true, TP10: true },
 };
 
 /** Canales para feedback en vivo (mismo criterio que analyze_session.py). */
 export const NF_LIVE_FEEDBACK_CHANNELS = {
   relajacion: ['TP9', 'TP10'],
-  atencion: ['FP1', 'FP2'],
+  atencion: ['AF7', 'AF8'],
 };
 
 export function nfPreset(id) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Análisis post-sesión de neurofeedback (portado desde flask_app.py).
-Lee datos por stdin: timestamp,TP9,FP1,FP2,TP10 separados por @
+Lee datos por stdin: timestamp,TP9,AF7,AF8,TP10 separados por @
 Marcadores: __NF_MARKER__,baseline_end,<ISO8601> divide reposo vs entrenamiento.
 Se espera señal filtrada (1–50 Hz) — misma cadena que nf-session.js en vivo.
 Línea 1 CSV: calm_s,att_s,0,0,relax,calm,att,baseline_calm,baseline_att,delta_calm,delta_att
@@ -16,7 +16,6 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.integrate import simpson
 from scipy.signal import butter, filtfilt, iirnotch, welch
 
 BANDS = {
@@ -42,9 +41,10 @@ STATE_Z = 0.0
 NOMINAL_FS = 256.0
 FS_DEV_WARN = 0.02
 CHANNELS_FOR_CALM = ["TP9", "TP10"]
-CHANNELS_FOR_ATT = ["FP1", "FP2"]
+CHANNELS_FOR_ATT = ["AF7", "AF8"]
 USE_ALL_CHANNELS = False
 PRE_FILTERED_MIN_FS = 180
+MAX_MISSING_FRACTION = 0.03
 MARKER_PREFIX = "__NF_MARKER__"
 EYE_CONDITION_DEFAULT = "open"
 
@@ -90,24 +90,20 @@ def band_powers_subset_percent(x, fs) -> Dict[str, float]:
         return {k: 0.0 for k in BANDS}
 
     dx = freqs[1] - freqs[0]
-    total = simpson(psd[idx_subset], dx=dx)
+    total = float(np.sum(psd[idx_subset]) * dx)
     if total <= 0:
         return {k: 0.0 for k in BANDS}
 
     out: Dict[str, float] = {}
     for name, (lo, hi) in BANDS.items():
         hi_eff = min(hi, fs / 2.0)
-        idx = (freqs >= lo) & (freqs <= hi_eff) & idx_subset
+        idx = (freqs >= lo) & (freqs < hi_eff) & idx_subset
         if not np.any(idx):
             out[name] = 0.0
         else:
-            bp = simpson(psd[idx], dx=dx)
+            bp = float(np.sum(psd[idx]) * dx)
             out[name] = (bp / total) * 100.0
 
-    s = sum(out.values())
-    if s > 0:
-        for k in out:
-            out[k] = out[k] * 100.0 / s
     return out
 
 
@@ -120,11 +116,11 @@ def band_powers_absolute(x, fs) -> Dict[str, float]:
     out: Dict[str, float] = {}
     for name, (lo, hi) in BANDS.items():
         hi_eff = min(hi, fs / 2.0)
-        idx = (freqs >= lo) & (freqs <= hi_eff)
+        idx = (freqs >= lo) & (freqs < hi_eff)
         if not np.any(idx):
             out[name] = 0.0
         else:
-            out[name] = float(simpson(psd[idx], dx=dx))
+            out[name] = float(np.sum(psd[idx]) * dx)
     return out
 
 
@@ -221,11 +217,14 @@ def avg_band_powers_for_channels(seg, channels, fs) -> Optional[Dict[str, float]
     per: List[Dict[str, float]] = []
     for e in channels:
         if e not in seg.columns:
-            continue
-        x = seg[e].dropna().to_numpy(dtype=float)
+            return None
+        series = seg[e]
+        if series.isna().mean() > MAX_MISSING_FRACTION:
+            return None
+        x = series.interpolate(limit=2, limit_direction="both").dropna().to_numpy(dtype=float)
         xf = _prepare_channel_signal(x, fs)
         if xf is None:
-            continue
+            return None
         per.append(band_powers_subset_percent(xf, fs))
     if not per:
         return None
@@ -237,7 +236,10 @@ def avg_abs_powers_for_channels(df, channels, fs) -> Dict[str, Dict[str, float]]
     for e in channels:
         if e not in df.columns:
             continue
-        x = df[e].dropna().to_numpy(dtype=float)
+        series = df[e]
+        if series.isna().mean() > MAX_MISSING_FRACTION:
+            continue
+        x = series.interpolate(limit=2, limit_direction="both").dropna().to_numpy(dtype=float)
         xf = _prepare_channel_signal(x, fs)
         if xf is None:
             continue
@@ -263,7 +265,7 @@ def _zero_crossings(x: np.ndarray) -> int:
 def segment_has_blink(seg, fs) -> bool:
     n_win = max(8, int(round(fs * BLINK_WINDOW_SEC)))
     n_rise = max(2, int(round(fs * BLINK_RISE_SEC)))
-    for e in ("FP1", "FP2"):
+    for e in ("AF7", "AF8"):
         if e not in seg.columns:
             continue
         x = seg[e].dropna().to_numpy(dtype=float)
@@ -301,6 +303,8 @@ def segment_is_artifact(seg, channels, fs) -> bool:
         x = seg[e].dropna().to_numpy(dtype=float)
         if len(x) < 8:
             continue
+        if float(np.nanstd(x)) < 0.5 or float(np.nanmax(np.abs(x))) >= 900.0:
+            return True
         p2p = _p2p(x)
         max_p2p = max(max_p2p, p2p)
         if p2p > ARTIFACT_P2P_UV:
@@ -309,35 +313,44 @@ def segment_is_artifact(seg, channels, fs) -> bool:
     beta = (p_att or {}).get("Beta", 0.0)
     if beta > EMG_BETA_PCT and max_p2p > EMG_P2P_UV:
         return True
+    p_quality = avg_band_powers_for_channels(seg, channels, fs)
+    if p_quality is None or sum(p_quality.values()) < 50.0:
+        return True
     return False
 
 
 def spectral_summary(df, fs: float) -> dict:
     channels_powers: Dict[str, Dict[str, float]] = {}
     channels_abs: Dict[str, Dict[str, float]] = {}
-    for ch in ["TP9", "FP1", "FP2", "TP10"]:
+    for ch in ["TP9", "AF7", "AF8", "TP10"]:
         if ch not in df.columns:
             continue
-        x = df[ch].dropna().to_numpy(dtype=float)
+        series = df[ch]
+        if series.isna().mean() > MAX_MISSING_FRACTION:
+            continue
+        x = series.interpolate(limit=2, limit_direction="both").dropna().to_numpy(dtype=float)
         xf = _prepare_channel_signal(x, fs)
         if xf is None:
             continue
         channels_powers[ch] = band_powers_subset_percent(xf, fs)
         channels_abs[ch] = {k: round(v, 4) for k, v in band_powers_absolute(xf, fs).items()}
 
-    fp2 = channels_powers.get("FP2", {})
-    fp1 = channels_powers.get("FP1", {})
-    theta = fp2.get("Theta", 0.0)
-    beta = max(fp2.get("Beta", 0.0), EPS)
-    a1 = fp1.get("Alpha", 0.0)
-    a2 = fp2.get("Alpha", 0.0)
+    frontal = [channels_powers[ch] for ch in ("AF7", "AF8") if ch in channels_powers]
+    theta = float(np.mean([p.get("Theta", 0.0) for p in frontal])) if frontal else 0.0
+    beta = max(float(np.mean([p.get("Beta", 0.0) for p in frontal])) if frontal else 0.0, EPS)
+    alpha_abs_af7 = channels_abs.get("AF7", {}).get("Alpha", 0.0)
+    alpha_abs_af8 = channels_abs.get("AF8", {}).get("Alpha", 0.0)
     psd_out = {
         ch: {band: round(float(val), 1) for band, val in powers.items()}
         for ch, powers in channels_powers.items()
     }
     return {
-        "theta_beta_fp2": round(theta / beta, 2),
-        "alpha_asym_fp": round(a1 - a2, 1),
+        "theta_beta_frontal": round(theta / beta, 3),
+        "frontal_alpha_asymmetry_log_af8_minus_af7": (
+            round(float(np.log(max(alpha_abs_af8, EPS)) - np.log(max(alpha_abs_af7, EPS))), 4)
+            if alpha_abs_af7 > 0 and alpha_abs_af8 > 0
+            else None
+        ),
         "psd_channels": psd_out,
         "psd_abs_uv2": channels_abs,
     }
@@ -404,8 +417,8 @@ def analyze_segments(
     artifact_windows = 0
     total_windows = 0
 
-    calm_ch = ["TP9", "FP1", "FP2", "TP10"] if USE_ALL_CHANNELS else CHANNELS_FOR_CALM
-    att_ch = ["TP9", "FP1", "FP2", "TP10"] if USE_ALL_CHANNELS else CHANNELS_FOR_ATT
+    calm_ch = ["TP9", "AF7", "AF8", "TP10"] if USE_ALL_CHANNELS else CHANNELS_FOR_CALM
+    att_ch = ["TP9", "AF7", "AF8", "TP10"] if USE_ALL_CHANNELS else CHANNELS_FOR_ATT
     check_ch = list(dict.fromkeys(calm_ch + att_ch))
 
     for i in range(num_steps):
@@ -422,14 +435,13 @@ def analyze_segments(
 
         p_calm = avg_band_powers_for_channels(seg, calm_ch, fs)
         p_att = avg_band_powers_for_channels(seg, att_ch, fs)
-        if p_calm is None and p_att is None:
+        # Do not silently substitute one montage for the other. The temporal
+        # alpha/theta and frontal beta indices are distinct measurements.
+        if p_calm is None or p_att is None:
             continue
 
-        p_use_for_calm = p_calm if p_calm is not None else p_att
-        p_use_for_att = p_att if p_att is not None else p_calm
-
-        att_idx, _ = compute_indices_from_pct(p_use_for_att)
-        _, calm_idx = compute_indices_from_pct(p_use_for_calm)
+        att_idx, _ = compute_indices_from_pct(p_att)
+        _, calm_idx = compute_indices_from_pct(p_calm)
 
         if update_ema:
             ema_att.update(att_idx)
@@ -440,7 +452,7 @@ def analyze_segments(
         attention_pct = 100.0 * sigmoid(z_att)
         calm_pct = 100.0 * sigmoid(z_calm)
 
-        p_avg = p_use_for_calm or p_use_for_att or {}
+        p_avg = p_calm
         alpha = p_avg.get("Alpha", 0.0)
         theta = p_avg.get("Theta", 0.0)
         relax_pct = alpha + theta * 0.5
@@ -482,6 +494,36 @@ def analyze_segments(
         series,
         artifact_pct,
     )
+
+
+def mean_spectral_indices(df) -> dict:
+    """Índices log-ratio medios, sin convertirlos en estados psicológicos ni porcentajes."""
+    if len(df) < 2:
+        return {"attention": None, "alpha_theta": None, "valid_windows": 0}
+    fs = estimate_fs(df)
+    if fs <= 0:
+        return {"attention": None, "alpha_theta": None, "valid_windows": 0}
+    start, end = df.index[0], df.index[-1]
+    duration = (end - start).total_seconds()
+    n_steps = int(np.floor((duration - WINDOW_SEC) / STEP_SEC)) + 1
+    att_values, calm_values = [], []
+    check_ch = list(dict.fromkeys(CHANNELS_FOR_CALM + CHANNELS_FOR_ATT))
+    for i in range(max(0, n_steps)):
+        seg_start = start + pd.Timedelta(seconds=i * STEP_SEC)
+        seg = df[(df.index >= seg_start) & (df.index < seg_start + pd.Timedelta(seconds=WINDOW_SEC))]
+        if seg.empty or segment_is_artifact(seg, check_ch, fs):
+            continue
+        p_att = avg_band_powers_for_channels(seg, CHANNELS_FOR_ATT, fs)
+        p_calm = avg_band_powers_for_channels(seg, CHANNELS_FOR_CALM, fs)
+        if p_att is None or p_calm is None:
+            continue
+        att_values.append(compute_indices_from_pct(p_att)[0])
+        calm_values.append(compute_indices_from_pct(p_calm)[1])
+    return {
+        "attention": float(np.mean(att_values)) if att_values else None,
+        "alpha_theta": float(np.mean(calm_values)) if calm_values else None,
+        "valid_windows": len(att_values),
+    }
 
 
 def parse_input(
@@ -530,11 +572,9 @@ def parse_input(
     if not parsed:
         raise ValueError("Sin datos válidos")
 
-    df = pd.DataFrame(parsed, columns=["timestamp", "TP9", "FP1", "FP2", "TP10"])
-    for e in ["TP9", "FP1", "FP2", "TP10"]:
+    df = pd.DataFrame(parsed, columns=["timestamp", "TP9", "AF7", "AF8", "TP10"])
+    for e in ["TP9", "AF7", "AF8", "TP10"]:
         df[e] = pd.to_numeric(df[e], errors="coerce")
-        if df[e].notna().any():
-            df[e] = df[e].ffill().bfill()
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
     df.dropna(subset=["timestamp"], inplace=True)
     df.sort_values("timestamp", inplace=True)
@@ -638,13 +678,30 @@ def main():
         spectral["has_baseline"] = has_baseline
         spectral["eye_condition"] = eye_condition or EYE_CONDITION_DEFAULT
         spectral.update(_fs_meta(fs_all if fs_all > 0 else fs_use))
+        base_indices = mean_spectral_indices(df_base)
+        train_indices = mean_spectral_indices(df_train)
+        spectral["baseline_attention_log_index"] = base_indices["attention"]
+        spectral["training_attention_log_index"] = train_indices["attention"]
+        spectral["baseline_alpha_theta_log_index"] = base_indices["alpha_theta"]
+        spectral["training_alpha_theta_log_index"] = train_indices["alpha_theta"]
+        spectral["valid_training_windows"] = train_indices["valid_windows"]
+        spectral["delta_attention_log_index"] = (
+            round(train_indices["attention"] - base_indices["attention"], 4)
+            if train_indices["attention"] is not None and base_indices["attention"] is not None
+            else None
+        )
+        spectral["delta_alpha_theta_log_index"] = (
+            round(train_indices["alpha_theta"] - base_indices["alpha_theta"], 4)
+            if train_indices["alpha_theta"] is not None and base_indices["alpha_theta"] is not None
+            else None
+        )
         if has_baseline and len(df_base) >= 2 and fs_use > 0:
             spectral["psd_abs_baseline_uv2"] = avg_abs_powers_for_channels(
-                df_base, ["TP9", "FP1", "FP2", "TP10"], estimate_fs(df_base) or fs_use
+                df_base, ["TP9", "AF7", "AF8", "TP10"], estimate_fs(df_base) or fs_use
             )
         if len(df_train) >= 2 and fs_use > 0:
             spectral["psd_abs_training_uv2"] = avg_abs_powers_for_channels(
-                df_train, ["TP9", "FP1", "FP2", "TP10"], fs_use
+                df_train, ["TP9", "AF7", "AF8", "TP10"], fs_use
             )
         if stream_stats:
             spectral["packets_lost"] = stream_stats.get("packets_lost")

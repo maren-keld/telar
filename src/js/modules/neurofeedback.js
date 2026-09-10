@@ -37,9 +37,11 @@ let feedbackStatus = {
   baselineElapsedSec: 0,
   baselineRemainingSec: 0,
   baselineComplete: false,
+  baselineValidRatio: 0,
   signalQuality: 'unknown',
   signalArtifactPct: 0,
   signalLost: false,
+  signalIssues: [],
   calibrated: false,
 };
 let orbAnimId = null;
@@ -123,9 +125,11 @@ function resetOrbFeedback() {
     baselineElapsedSec: 0,
     baselineRemainingSec: 0,
     baselineComplete: false,
+    baselineValidRatio: 0,
     signalQuality: 'unknown',
     signalArtifactPct: 0,
     signalLost: false,
+    signalIssues: [],
     calibrated: false,
   };
 }
@@ -219,13 +223,17 @@ function stopOrbAnimation() {
   orbHostRef = null;
 }
 
-function updateBaselineOrbTimer(host, { sessionPhase, baselineRemainingSec }) {
+function updateBaselineOrbTimer(host, { sessionPhase, baselineRemainingSec, baselineValidRatio }) {
   const timer = host.querySelector('#nf-baseline-orb-timer');
   if (!timer) return;
   const show = sessionPhase === 'baseline';
   timer.hidden = !show;
   if (show) {
-    timer.textContent = `Línea base · ojos abiertos · mirá el orbe · ${formatDuration(baselineRemainingSec)} restantes`;
+    timer.textContent = baselineRemainingSec > 0
+      ? `Línea base · ojos abiertos · mirá el orbe · ${formatDuration(baselineRemainingSec)} restantes`
+      : baselineValidRatio >= 0.7
+        ? 'Finalizando línea base…'
+        : 'Faltan datos limpios — ajusta el Muse y mantente quieto';
   }
 }
 
@@ -255,7 +263,7 @@ function syncSessionControls(host) {
   }
 }
 
-function updateFeedbackStatus(host, { artifact, artifactKind, recording, signalLost }) {
+function updateFeedbackStatus(host, { artifact, artifactKind, recording, signalLost, signalIssues }) {
   const el = host.querySelector('#nf-feedback-status');
   if (!el) return;
   if (signalLost) {
@@ -267,6 +275,12 @@ function updateFeedbackStatus(host, { artifact, artifactKind, recording, signalL
   if (!recording) {
     el.hidden = true;
     el.textContent = '';
+    return;
+  }
+  if (signalIssues?.length) {
+    el.hidden = false;
+    el.className = 'nf-feedback-status nf-feedback-status--artifact';
+    el.textContent = 'Señal no válida — ajusta el contacto del Muse y mantente quieto';
     return;
   }
   if (artifact) {
@@ -439,7 +453,8 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
   const saved = parseJsonSafe(moduleRow.data);
   const lastResults = saved.last_results || null;
   const lastMeta = saved.last_meta || null;
-  const initialProtocol = lastMeta?.protocol || 'relajacion';
+  const legacyProtocol = /atenci|beta frontal/i.test(lastMeta?.protocol || '') ? 'atencion' : 'relajacion';
+  const initialProtocol = lastMeta?.protocol_id || legacyProtocol;
   const protocolChips = Object.values(NF_PROTOCOL_PRESETS)
     .map(
       (p) =>
@@ -492,7 +507,7 @@ export async function renderNeurofeedback(host, moduleRow, ctx = {}) {
             </select>
             <p class="nf-field-label">Ubicación</p>
             <div class="nf-chips" id="nf-electrodes">
-              ${['FP1', 'FP2', 'TP9', 'TP10']
+              ${['AF7', 'AF8', 'TP9', 'TP10']
                 .map((e) => `<button type="button" class="chip active" data-e="${e}" title="Electrodo ${e}">${e}</button>`)
                 .join('')}
             </div>
@@ -711,13 +726,17 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
 
   host.querySelectorAll('#nf-protocols .chip').forEach((chip) => {
     chip.addEventListener('click', () => {
+      const protocol = chip.dataset.p;
+      if (!nfSession.setProtocol(protocol)) {
+        toast('Termina la línea base o grabación antes de cambiar el protocolo');
+        return;
+      }
       host.querySelectorAll('#nf-protocols .chip').forEach((c) => c.classList.remove('active'));
       chip.classList.add('active');
-      const protocol = chip.dataset.p;
-      nfSession.setProtocol(protocol);
       setNfAudioProtocol(protocol);
       applyProtocolElectrodes(host, protocol, nfSession);
       updateFeedbackPct(host, Math.round(pctDisplay * 100), protocol);
+      syncSessionControls(host);
     });
   });
 
@@ -795,9 +814,11 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
     baselineElapsedSec,
     baselineRemainingSec,
     baselineComplete,
+    baselineValidRatio,
     signalQuality,
     signalArtifactPct,
     signalLost,
+    signalIssues,
     calibrated,
   }) => {
     if (nfSession.connectionStatus !== 'connected') return;
@@ -809,9 +830,11 @@ function bindEvents(host, moduleRow, onSaved, initialProtocol = 'relajacion', ex
       baselineElapsedSec: baselineElapsedSec ?? 0,
       baselineRemainingSec: baselineRemainingSec ?? 0,
       baselineComplete: Boolean(baselineComplete),
+      baselineValidRatio: Number(baselineValidRatio) || 0,
       signalQuality: signalQuality ?? 'unknown',
       signalArtifactPct: signalArtifactPct ?? 0,
       signalLost: Boolean(signalLost),
+      signalIssues: Array.isArray(signalIssues) ? signalIssues : [],
       calibrated: Boolean(calibrated),
     };
     if (baselineComplete && !prevBaselineComplete) {

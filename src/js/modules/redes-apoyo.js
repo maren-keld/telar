@@ -1,9 +1,9 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, queuedPersist } from '../autobind.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { PATIENT_GENDER_OPTIONS, patientGenderLabel } from '../config.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
+import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 
 const AFFILIATIONS = [
   'Madre',
@@ -80,13 +80,14 @@ export async function renderRedesApoyo(host, moduleRow) {
     if (genogramPanel) genogramPanel.innerHTML = genogramHtml(collectPeople());
   };
 
-  const persist = async () => {
+  const persistRaw = async () => {
     const fd = collectFormData(form);
     const next = collectPeople();
     await syncModuleReadableText(moduleRow, { people: next, view: fd.view || 'lista' }, 'completado');
     syncEmptyState();
     refreshGenogram();
   };
+  const persist = queuedPersist(persistRaw, notifySaveError);
 
   const syncEmptyState = () => {
     const count = list?.querySelectorAll('.support-person').length || 0;
@@ -108,7 +109,7 @@ export async function renderRedesApoyo(host, moduleRow) {
     });
   };
 
-  bindAutoSave(form, persist, workspaceAutoSaveStatus());
+  bindAutoSave(form, persistRaw, workspaceAutoSaveStatus());
 
   host.querySelectorAll('.support-view-tab').forEach((btn) => {
     btn.addEventListener('click', () => {

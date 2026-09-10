@@ -131,5 +131,8 @@ export async function loadSqlDatabase(dbName = 'sqlite:telar.db') {
       const [rowsAffected, lastInsertId] = Array.isArray(result) ? result : [0, 0];
       return { rowsAffected, lastInsertId };
     },
+    executeBatch(statements) {
+      return invoke('db_execute_batch', { args: { statements } });
+    },
   };
 }

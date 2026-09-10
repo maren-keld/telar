@@ -24,13 +24,14 @@ use zeroize::{Zeroize, Zeroizing};
 
 use crate::secure_db::{
     app_cache_dir, app_config_dir, backup_encrypted_db, count_patients_in_conn, db_lock,
-    derive_key_from_pin_for_backup, install_encrypted_db_file, open_encrypted_at, reopen_encrypted_db,
-    schema_version, with_open_conn,
+    derive_key_from_pin_for_backup, encrypted_db_path_for_backup, install_encrypted_db_file,
+    open_encrypted_at, reopen_encrypted_db, rollback_db_file, schema_version, with_open_conn,
 };
 
 const BACKUP_RETENTION: usize = 7;
 const DB_ARCHIVE_NAME: &str = "db.sqlcipher";
 const MANIFEST_NAME: &str = "manifest.json";
+const APP_STATE_NAME: &str = "app-state.json";
 const BACKUP_PREFIX: &str = "telar-respaldo-";
 const BACKUP_SUFFIX: &str = ".age";
 /// Identidad age en AppConfig (0600). No usamos Keychain: los builds ad-hoc
@@ -67,6 +68,11 @@ pub struct BackupRestorePreview {
     pub schema_version: u32,
     pub patient_count: u64,
     pub bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BackupRestoreResult {
+    pub app_state_json: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -219,7 +225,11 @@ pub fn age_decrypt(identity: &Identity, ciphertext: &[u8]) -> Result<Vec<u8>, St
     Ok(plaintext)
 }
 
-fn build_tar_gz(db_bytes: &[u8], manifest: &BackupManifest) -> Result<Vec<u8>, String> {
+fn build_tar_gz(
+    db_bytes: &[u8],
+    manifest: &BackupManifest,
+    app_state: Option<&[u8]>,
+) -> Result<Vec<u8>, String> {
     let manifest_json =
         serde_json::to_vec_pretty(manifest).map_err(|e| format!("Manifiesto inválido: {e}"))?;
     let gz = GzEncoder::new(Vec::new(), Compression::default());
@@ -236,16 +246,25 @@ fn build_tar_gz(db_bytes: &[u8], manifest: &BackupManifest) -> Result<Vec<u8>, S
     man_header.set_cksum();
     tar.append_data(&mut man_header, MANIFEST_NAME, &mut &manifest_json[..])
         .map_err(|e| format!("No se pudo empaquetar respaldo: {e}"))?;
+    if let Some(state) = app_state.filter(|s| !s.is_empty()) {
+        let mut state_header = tar::Header::new_gnu();
+        state_header.set_size(state.len() as u64);
+        state_header.set_mode(0o600);
+        state_header.set_cksum();
+        tar.append_data(&mut state_header, APP_STATE_NAME, &mut &state[..])
+            .map_err(|e| format!("No se pudo empaquetar estado de la app: {e}"))?;
+    }
     tar.finish().map_err(|e| format!("No se pudo empaquetar respaldo: {e}"))?;
     let gz = tar.into_inner().map_err(|e| format!("No se pudo comprimir respaldo: {e}"))?;
     gz.finish().map_err(|e| format!("No se pudo comprimir respaldo: {e}"))
 }
 
-pub fn parse_tar_gz(payload: &[u8]) -> Result<(Vec<u8>, BackupManifest), String> {
+pub fn parse_tar_gz(payload: &[u8]) -> Result<(Vec<u8>, BackupManifest, Option<Vec<u8>>), String> {
     let gz = GzDecoder::new(payload);
     let mut archive = Archive::new(gz);
     let mut db_bytes: Option<Vec<u8>> = None;
     let mut manifest: Option<BackupManifest> = None;
+    let mut app_state: Option<Vec<u8>> = None;
     for entry in archive
         .entries()
         .map_err(|_| "Contenedor de respaldo corrupto.".to_string())?
@@ -266,11 +285,13 @@ pub fn parse_tar_gz(payload: &[u8]) -> Result<(Vec<u8>, BackupManifest), String>
             manifest = Some(
                 serde_json::from_slice(&buf).map_err(|_| "Manifiesto de respaldo inválido.".to_string())?,
             );
+        } else if path == APP_STATE_NAME {
+            app_state = Some(buf);
         }
     }
     let db_bytes = db_bytes.ok_or_else(|| "Respaldo incompleto: falta la base de datos.".to_string())?;
     let manifest = manifest.ok_or_else(|| "Respaldo incompleto: falta el manifiesto.".to_string())?;
-    Ok((db_bytes, manifest))
+    Ok((db_bytes, manifest, app_state))
 }
 
 pub fn validate_manifest(manifest: &BackupManifest, db_bytes: &[u8]) -> Result<(), String> {
@@ -309,15 +330,22 @@ fn list_backup_files(dest_dir: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(files)
 }
 
-fn last_backup_sha256(dest_dir: &Path, identity: &Identity) -> Result<Option<String>, String> {
+fn content_fingerprint(db_bytes: &[u8], app_state: Option<&[u8]>) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(db_bytes);
+    hasher.update(app_state.unwrap_or(&[]));
+    format!("{:x}", hasher.finalize())
+}
+
+fn last_backup_fingerprint(dest_dir: &Path, identity: &Identity) -> Result<Option<String>, String> {
     let files = list_backup_files(dest_dir)?;
     let Some(last) = files.last() else {
         return Ok(None);
     };
     let bytes = fs::read(last).map_err(|e| format!("No se pudo leer último respaldo: {e}"))?;
     let payload = age_decrypt(identity, &bytes)?;
-    let (_, manifest) = parse_tar_gz(&payload)?;
-    Ok(Some(manifest.sha256_db))
+    let (db_bytes, _, app_state) = parse_tar_gz(&payload)?;
+    Ok(Some(content_fingerprint(&db_bytes, app_state.as_deref())))
 }
 
 fn prune_old_backups(dest_dir: &Path) -> Result<(), String> {
@@ -368,7 +396,7 @@ fn open_payload_from_backup(
     app: Option<&AppHandle>,
     path: &Path,
     recovery_key: Option<&str>,
-) -> Result<(Vec<u8>, BackupManifest), String> {
+) -> Result<(Vec<u8>, BackupManifest, Option<Vec<u8>>), String> {
     let identity = match recovery_key {
         Some(key) => load_identity_from_str(key)?,
         None => {
@@ -383,9 +411,20 @@ fn open_payload_from_backup(
         return Err("Archivo de respaldo vacío o truncado.".to_string());
     }
     let payload = age_decrypt(&identity, &ciphertext)?;
-    let (db_bytes, manifest) = parse_tar_gz(&payload)?;
+    let (db_bytes, manifest, app_state) = parse_tar_gz(&payload)?;
     validate_manifest(&manifest, &db_bytes)?;
-    Ok((db_bytes, manifest))
+    Ok((db_bytes, manifest, app_state))
+}
+
+/// Si hay DB local, el pre-backup es obligatorio (un error aborta el restore).
+pub(crate) fn require_local_pre_backup(
+    dest: &Path,
+    backup: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<Option<PathBuf>, String> {
+    if !dest.exists() {
+        return Ok(None);
+    }
+    Ok(Some(backup()?))
 }
 
 /// Estado de la carpeta destino (accesibilidad y último respaldo `.age`).
@@ -422,7 +461,11 @@ pub fn cloud_backup_folder_status(dest_dir: &Path) -> CloudBackupFolderStatus {
 }
 
 /// Crea un respaldo `.age` en `dest_dir`. Requiere DB desbloqueada e identidad configurada.
-pub fn create_cloud_backup(app: &AppHandle, dest_dir: &Path) -> Result<BackupCreateResult, String> {
+pub fn create_cloud_backup(
+    app: &AppHandle,
+    dest_dir: &Path,
+    app_state: Option<&str>,
+) -> Result<BackupCreateResult, String> {
     if !dest_dir.is_dir() {
         return Err("La carpeta de respaldo no existe o no es accesible.".to_string());
     }
@@ -444,9 +487,13 @@ pub fn create_cloud_backup(app: &AppHandle, dest_dir: &Path) -> Result<BackupCre
         let rekeyed_path = export_rekeyed_copy(&work_dir, &backup_key)?;
         let db_bytes = fs::read(&rekeyed_path).map_err(|e| format!("No se pudo leer copia de respaldo: {e}"))?;
         let hash = sha256_hex(&db_bytes);
+        let app_state_bytes = app_state
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::as_bytes);
 
-        if let Ok(Some(prev_hash)) = last_backup_sha256(dest_dir, &identity) {
-            if prev_hash == hash {
+        if let Ok(Some(prev_hash)) = last_backup_fingerprint(dest_dir, &identity) {
+            if prev_hash == content_fingerprint(&db_bytes, app_state_bytes) {
                 return Ok(BackupCreateResult {
                     path: String::new(),
                     skipped_duplicate: true,
@@ -466,7 +513,7 @@ pub fn create_cloud_backup(app: &AppHandle, dest_dir: &Path) -> Result<BackupCre
             bytes: db_bytes.len() as u64,
         };
 
-        let tar_gz = build_tar_gz(&db_bytes, &manifest)?;
+        let tar_gz = build_tar_gz(&db_bytes, &manifest, app_state_bytes)?;
         let encrypted = age_encrypt(&recipient, &tar_gz)?;
 
         let filename = backup_filename(&now);
@@ -502,7 +549,7 @@ pub fn preview_cloud_restore(
     backup_path: &Path,
     recovery_key: Option<&str>,
 ) -> Result<BackupRestorePreview, String> {
-    let (db_bytes, manifest) = open_payload_from_backup(app, backup_path, recovery_key)?;
+    let (db_bytes, manifest, _) = open_payload_from_backup(app, backup_path, recovery_key)?;
     let backup_key = decode_backup_db_key(&manifest)?;
 
     let work_dir = tempfile::tempdir().map_err(|e| format!("No se pudo crear temporal: {e}"))?;
@@ -521,17 +568,21 @@ pub fn preview_cloud_restore(
     })
 }
 
-/// Restaura un respaldo sobre la instalación local. Crea respaldo local previo automáticamente.
+/// Restaura un respaldo sobre la instalación local.
+/// Si hay DB local, el pre-backup es obligatorio. Si reopen falla, se revierte.
 pub fn restore_cloud_backup(
     app: &AppHandle,
     backup_path: &Path,
     recovery_key: Option<&str>,
     pin: &str,
-) -> Result<(), String> {
-    let (db_bytes, manifest) = open_payload_from_backup(Some(app), backup_path, recovery_key)?;
+) -> Result<BackupRestoreResult, String> {
+    let (db_bytes, manifest, app_state) = open_payload_from_backup(Some(app), backup_path, recovery_key)?;
     let backup_key = decode_backup_db_key(&manifest)?;
+    let dest = encrypted_db_path_for_backup(app)?;
 
-    let _local_backup = backup_encrypted_db(app);
+    let pre_backup = require_local_pre_backup(&dest, || {
+        backup_encrypted_db(app).map(PathBuf::from)
+    })?;
 
     db_lock()?;
 
@@ -552,11 +603,25 @@ pub fn restore_cloud_backup(
         crate::secure_db::rekey_encrypted_file(&staged, &backup_key, &pin_key)?;
 
         install_encrypted_db_file(app, &staged)?;
-        reopen_encrypted_db(app, pin)
+        reopen_encrypted_db(app, pin)?;
+        let app_state_json = app_state
+            .as_ref()
+            .and_then(|b| String::from_utf8(b.clone()).ok());
+        Ok(BackupRestoreResult { app_state_json })
     })();
 
     let _ = fs::remove_dir_all(&work_dir);
-    result
+
+    match result {
+        Ok(out) => Ok(out),
+        Err(e) => {
+            if let Some(ref pre) = pre_backup {
+                let _ = rollback_db_file(pre, &dest);
+                let _ = reopen_encrypted_db(app, pin);
+            }
+            Err(e)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -674,10 +739,62 @@ mod tests {
             sha256_db: sha256_hex(db),
             bytes: db.len() as u64,
         };
-        let tar = build_tar_gz(db, &manifest).unwrap();
-        let (db2, man2) = parse_tar_gz(&tar).unwrap();
+        let tar = build_tar_gz(db, &manifest, None).unwrap();
+        let (db2, man2, state2) = parse_tar_gz(&tar).unwrap();
         assert_eq!(db2, db);
         assert_eq!(man2, manifest);
+        assert!(state2.is_none());
+    }
+
+    #[test]
+    fn tar_optional_app_state_roundtrip() {
+        let db = b"fake-db-bytes";
+        let manifest = BackupManifest {
+            schema_version: 1,
+            app_version: "0.1.0".into(),
+            created_at: Utc::now().to_rfc3339(),
+            db_key_b64: base64::engine::general_purpose::STANDARD.encode(b"key"),
+            sha256_db: sha256_hex(db),
+            bytes: db.len() as u64,
+        };
+        let state = br#"{"version":1,"practitioner":{"name":"Ana"},"refDocs":{}}"#;
+        let tar = build_tar_gz(db, &manifest, Some(state)).unwrap();
+        let (db2, _, state2) = parse_tar_gz(&tar).unwrap();
+        assert_eq!(db2, db);
+        assert_eq!(state2.as_deref(), Some(state.as_slice()));
+    }
+
+    #[test]
+    fn restore_aborts_when_pre_backup_fails_and_dest_exists() {
+        let dir = TempDir::new().unwrap();
+        let dest = dir.path().join("telar.enc.db");
+        fs::write(&dest, b"ORIGINAL").unwrap();
+        let err = require_local_pre_backup(&dest, || Err("fail".into())).unwrap_err();
+        assert_eq!(err, "fail");
+        assert_eq!(fs::read(&dest).unwrap(), b"ORIGINAL");
+    }
+
+    #[test]
+    fn restore_skips_pre_backup_when_no_local_db() {
+        let dir = TempDir::new().unwrap();
+        let dest = dir.path().join("telar.enc.db");
+        let pre = require_local_pre_backup(&dest, || panic!("no debe copiar")).unwrap();
+        assert!(pre.is_none());
+    }
+
+    #[test]
+    fn restore_rollback_if_reopen_would_fail() {
+        let dir = TempDir::new().unwrap();
+        let dest = dir.path().join("telar.enc.db");
+        let pre = dir.path().join("pre.db");
+        let staged = dir.path().join("staged.db");
+        fs::write(&dest, b"ORIGINAL").unwrap();
+        fs::write(&pre, b"ORIGINAL").unwrap();
+        fs::write(&staged, b"NEW").unwrap();
+        crate::secure_db::install_db_file_atomic(&staged, &dest).unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"NEW");
+        crate::secure_db::rollback_db_file(&pre, &dest).unwrap();
+        assert_eq!(fs::read(&dest).unwrap(), b"ORIGINAL");
     }
 
     #[test]
@@ -729,7 +846,7 @@ mod tests {
             sha256_db: sha256_hex(&db_bytes),
             bytes: db_bytes.len() as u64,
         };
-        let tar_gz = build_tar_gz(&db_bytes, &manifest).unwrap();
+        let tar_gz = build_tar_gz(&db_bytes, &manifest, None).unwrap();
         let encrypted = age_encrypt(&id.to_public(), &tar_gz).unwrap();
         let backup_file = dest.join("telar-respaldo-test.age");
         fs::write(&backup_file, &encrypted).unwrap();

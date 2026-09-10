@@ -362,7 +362,7 @@ fn run_python_script(text_data: &str) -> Result<String, String> {
 use backup::{
     cloud_backup_folder_status, create_cloud_backup, has_backup_identity, import_backup_identity,
     preview_cloud_restore, purge_legacy_keychain_identity, restore_cloud_backup, setup_backup_identity,
-    BackupCreateResult, BackupRestorePreview, CloudBackupFolderStatus,
+    BackupCreateResult, BackupRestorePreview, BackupRestoreResult, CloudBackupFolderStatus,
 };
 
 #[tauri::command]
@@ -381,8 +381,16 @@ fn cloud_backup_has_identity(app: tauri::AppHandle) -> bool {
 }
 
 #[tauri::command]
-fn cloud_backup_create(app: tauri::AppHandle, dest_dir: String) -> Result<BackupCreateResult, String> {
-    create_cloud_backup(&app, PathBuf::from(dest_dir).as_path())
+fn cloud_backup_create(
+    app: tauri::AppHandle,
+    dest_dir: String,
+    app_state: Option<String>,
+) -> Result<BackupCreateResult, String> {
+    create_cloud_backup(
+        &app,
+        PathBuf::from(dest_dir).as_path(),
+        app_state.as_deref(),
+    )
 }
 
 #[tauri::command]
@@ -404,7 +412,7 @@ fn cloud_backup_restore(
     backup_path: String,
     pin: String,
     recovery_key: Option<String>,
-) -> Result<(), String> {
+) -> Result<BackupRestoreResult, String> {
     restore_cloud_backup(
         &app,
         PathBuf::from(backup_path).as_path(),
@@ -420,7 +428,8 @@ fn cloud_backup_folder_status_cmd(dest_dir: String) -> CloudBackupFolderStatus {
 
 // --- DB cifrada (PIN) ---
 use secure_db::{
-    db_execute, db_lock, db_select, db_status, db_unlock, db_unlock_touch_id, db_wipe_all_data,
+    db_execute, db_execute_batch, db_lock, db_select, db_status, db_unlock, db_unlock_touch_id,
+    db_wipe_all_data,
     touch_id_available, touch_id_clear_stored_key, touch_id_has_stored_key, touch_id_prompt,
     touch_id_register_pin,
 };
@@ -490,6 +499,7 @@ pub fn run() {
             db_lock,
             db_select,
             db_execute,
+            db_execute_batch,
             open_external_url,
             open_local_pdf,
             open_pdf_export,

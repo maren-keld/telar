@@ -1,9 +1,9 @@
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { chatCompletion } from '../ai-client.js';
 import { syncModuleReadableText } from '../readable-text.js';
-import { bindAutoSave } from '../autobind.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
-import { ICON_WAND } from '../icons.js';
+import { bindAutoSave, queuedPersist } from '../autobind.js';
+import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
+import { ICON_STAR } from '../icons.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 
 export const IA_ANAMNESIS_PROMPTS = [
@@ -43,7 +43,7 @@ function reorderButtonHtml() {
   return `
     <button type="button" class="btn btn-secondary btn-sm btn-ai-reorder" data-reorder-anamnesis data-botonera-extra>
       <span class="btn-ai-reorder__label">
-        ${ICON_WAND}
+        ${ICON_STAR}
         <span class="btn-ai-reorder__text">Reorganizar con IA</span>
       </span>
       <span class="btn-ai-reorder__orb" hidden></span>
@@ -65,6 +65,8 @@ export function parseAnamnesisJson(raw) {
   if (start < 0 || end <= start) return null;
   try {
     const obj = JSON.parse(cleaned.slice(start, end + 1));
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+    if (!('motivo' in obj) || !('expectativas' in obj) || !('antecedentes' in obj)) return null;
     const motivo = String(obj.motivo || '').trim();
     const expectativas = String(obj.expectativas || '').trim();
     const antecedentes = String(obj.antecedentes || '').trim();
@@ -73,6 +75,31 @@ export function parseAnamnesisJson(raw) {
   } catch {
     return null;
   }
+}
+
+export function anamnesisFieldSnapshot(form) {
+  return {
+    motivo: String(form?.querySelector('[name="motivo"]')?.value || ''),
+    expectativas: String(form?.querySelector('[name="expectativas"]')?.value || ''),
+    antecedentes: String(form?.querySelector('[name="antecedentes"]')?.value || ''),
+  };
+}
+
+/** No aplicar la IA si el form se desmontó, se reemplazó o el terapeuta siguió escribiendo. */
+export function shouldApplyAnamnesisAi({ form, snapshot, generation } = {}) {
+  if (!form?.isConnected) return { ok: false, reason: 'unmounted' };
+  if (generation != null && form.dataset.anamnesisGeneration !== String(generation)) {
+    return { ok: false, reason: 'replaced' };
+  }
+  const current = anamnesisFieldSnapshot(form);
+  if (
+    current.motivo !== snapshot.motivo ||
+    current.expectativas !== snapshot.expectativas ||
+    current.antecedentes !== snapshot.antecedentes
+  ) {
+    return { ok: false, reason: 'diverged' };
+  }
+  return { ok: true };
 }
 
 export async function reorganizeAnamnesis({ motivo, expectativas, antecedentes }) {
@@ -178,25 +205,34 @@ export async function renderMotivoConsulta(host, moduleRow) {
     if (urgenciaHint) urgenciaHint.textContent = URGENCIA_HINT[v] || URGENCIA_HINT.media;
   });
 
-  const persist = async () => {
+  const persistRaw = async () => {
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
     for (const p of IA_ANAMNESIS_PROMPTS) payload[p.key] = '';
     await syncModuleReadableText(moduleRow, payload, 'completado');
   };
+  const persist = queuedPersist(persistRaw, notifySaveError);
 
-  bindAutoSave(form, persist, workspaceAutoSaveStatus());
+  bindAutoSave(form, persistRaw, workspaceAutoSaveStatus());
 
-  form.closest('.card')?.addEventListener('click', async (e) => {
+  const generation = String(Date.now());
+  form.dataset.anamnesisGeneration = generation;
+  const lockReorderFields = (locked) => {
+    for (const name of ['motivo', 'expectativas', 'antecedentes']) {
+      const el = form.querySelector(`[name="${name}"]`);
+      if (el) el.readOnly = locked;
+    }
+  };
+
+  host.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-reorder-anamnesis]');
-    if (!btn || btn.disabled) return;
+    if (!btn || !host.contains(btn) || btn.disabled) return;
     e.preventDefault();
     e.stopPropagation();
 
-    const motivo = String(form.querySelector('[name="motivo"]')?.value || '').trim();
-    const expectativas = String(form.querySelector('[name="expectativas"]')?.value || '').trim();
-    const antecedentes = String(form.querySelector('[name="antecedentes"]')?.value || '').trim();
-    if (!motivo && !expectativas && !antecedentes) {
+    const snapshot = anamnesisFieldSnapshot(form);
+    const { motivo, expectativas, antecedentes } = snapshot;
+    if (!motivo.trim() && !expectativas.trim() && !antecedentes.trim()) {
       toast('Escribe algo en motivo, expectativas o antecedentes antes de reorganizar.');
       form.querySelector('[name="motivo"]')?.focus();
       return;
@@ -208,12 +244,13 @@ export async function renderMotivoConsulta(host, moduleRow) {
 
     try {
       await confirmClinicalAiSend({
-        contextText: [motivo, expectativas, antecedentes].filter(Boolean).join('\n\n'),
+        contextText: [motivo, expectativas, antecedentes].filter((v) => String(v).trim()).join('\n\n'),
         purpose: 'Reorganizar motivo, expectativas y antecedentes',
       });
 
       btn.disabled = true;
       btn.dataset.busy = '1';
+      lockReorderFields(true);
       if (textEl) textEl.textContent = 'Reorganizando…';
       if (orbHost) orbHost.hidden = false;
       try {
@@ -225,6 +262,15 @@ export async function renderMotivoConsulta(host, moduleRow) {
 
       toast('Reorganizando con IA…');
       const next = await reorganizeAnamnesis({ motivo, expectativas, antecedentes });
+      const apply = shouldApplyAnamnesisAi({ form, snapshot, generation });
+      if (!apply.ok) {
+        if (apply.reason === 'diverged') {
+          toast('El texto cambió mientras reorganizabas; no se aplicó para no borrar lo nuevo.');
+        } else {
+          toast('Ya no estás en anamnesis; no se aplicó la reorganización.');
+        }
+        return;
+      }
       const setVal = (name, value) => {
         const el = form.querySelector(`[name="${name}"]`);
         if (el) el.value = value;
@@ -238,6 +284,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
       const msg = err?.message || 'No se pudo reorganizar el texto.';
       if (!/cancelado/i.test(msg)) toast(msg);
     } finally {
+      lockReorderFields(false);
       stopOrb();
       btn.dataset.busy = '';
       btn.disabled = false;

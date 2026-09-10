@@ -94,7 +94,7 @@ class AnalyzeSessionGoldenRecordingTests(unittest.TestCase):
         frame, *_ = analyze_session.parse_input(deterministic_recording(10))
         powers = analyze_session.avg_band_powers_for_channels(
             frame,
-            ["TP9", "FP1", "FP2", "TP10"],
+            ["TP9", "AF7", "AF8", "TP10"],
             256,
         )
 
@@ -103,16 +103,36 @@ class AnalyzeSessionGoldenRecordingTests(unittest.TestCase):
         self.assertGreater(powers["Alpha"], powers["Beta"])
 
     def test_deterministic_beta_recording_has_beta_dominance(self):
-        frame, *_ = analyze_session.parse_input(deterministic_recording(20))
+        frame, *_ = analyze_session.parse_input(deterministic_recording(17))
         powers = analyze_session.avg_band_powers_for_channels(
             frame,
-            ["TP9", "FP1", "FP2", "TP10"],
+            ["TP9", "AF7", "AF8", "TP10"],
             256,
         )
 
         self.assertIsNotNone(powers)
         self.assertGreater(powers["Beta"], 90)
         self.assertGreater(powers["Beta"], powers["Alpha"])
+
+    def test_25_hz_energy_is_not_relabelled_as_beta(self):
+        frame, *_ = analyze_session.parse_input(deterministic_recording(25))
+        powers = analyze_session.avg_band_powers_for_channels(frame, ["AF7", "AF8"], 256)
+        self.assertIsNotNone(powers)
+        self.assertLess(powers["Beta"], 1)
+        self.assertLess(sum(powers.values()), 5)
+
+    def test_missing_channel_samples_are_not_silently_forward_filled(self):
+        text = deterministic_recording(10)
+        rows = text.split("@")
+        damaged = []
+        for i, row in enumerate(rows):
+            fields = row.split(",")
+            if i % 5 == 0:
+                fields[2] = ""
+            damaged.append(",".join(fields))
+        frame, *_ = analyze_session.parse_input("@".join(damaged))
+        self.assertGreater(frame["AF7"].isna().mean(), 0.1)
+        self.assertIsNone(analyze_session.avg_band_powers_for_channels(frame, ["AF7", "AF8"], 256))
 
     def test_realistic_motion_is_rejected_as_artifact(self):
         frame, *_ = analyze_session.parse_input(deterministic_recording(10, amplitude=40))
@@ -122,7 +142,7 @@ class AnalyzeSessionGoldenRecordingTests(unittest.TestCase):
         self.assertTrue(
             analyze_session.segment_is_artifact(
                 frame.iloc[50:200],
-                ["TP9", "FP1", "FP2", "TP10"],
+                ["TP9", "AF7", "AF8", "TP10"],
                 256,
             )
         )
@@ -133,7 +153,7 @@ class AnalyzeSessionGoldenRecordingTests(unittest.TestCase):
         self.assertTrue(analyze_session.segment_has_blink(blink, 256))
         self.assertFalse(analyze_session.segment_has_blink(alpha, 256))
         self.assertFalse(
-            analyze_session.segment_is_artifact(alpha, ["TP9", "FP1", "FP2", "TP10"], 256)
+            analyze_session.segment_is_artifact(alpha, ["TP9", "AF7", "AF8", "TP10"], 256)
         )
 
     def test_baseline_end_marker_produces_real_deltas(self):
@@ -147,6 +167,9 @@ class AnalyzeSessionGoldenRecordingTests(unittest.TestCase):
         csv, payload = run_analyzer(text)
         spec = payload["spectral"]
         self.assertTrue(spec["has_baseline"])
+        self.assertIn("delta_alpha_theta_log_index", spec)
+        self.assertIn("delta_attention_log_index", spec)
+        self.assertIn("frontal_alpha_asymmetry_log_af8_minus_af7", spec)
         delta_calm = float(csv.split(",")[9])
         self.assertNotAlmostEqual(delta_calm, 0.0, delta=0.5)
         self.assertLess(delta_calm, 0)

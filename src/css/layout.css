@@ -482,6 +482,11 @@
   justify-content: center;
 }
 
+.botonera-modules .btn.btn-ai-reorder,
+.module-card-actions .btn.btn-ai-reorder {
+  height: 40px;
+}
+
 .botonera-modules-row {
   display: flex;
   align-items: center;

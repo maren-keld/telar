@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-import { NOTES_WINDOW_TAIL, visibleNotesWindow } from '../../src/js/notes-window.js';
+import { NOTES_WINDOW_TAIL, captureNotesScroll, restoreNotesScroll, visibleNotesWindow } from '../../src/js/notes-window.js';
 
 test('visibleNotesWindow muestra todo si hay pocas notas', () => {
   const notes = [{ id: 1 }, { id: 2 }, { id: 3 }];
@@ -44,4 +44,43 @@ test('el empty de la bitácora capitaliza, pone atajos y deja la anotación al f
   const selectIdx = src.indexOf('También puedes seleccionar texto');
   const pulsaIdx = src.indexOf('Pulsa + Nota');
   assert.ok(emptyIdx > 0 && pulsaIdx > emptyIdx && selectIdx > pulsaIdx);
+});
+
+test('captureNotesScroll lee #notes-list', () => {
+  const list = { scrollTop: 312 };
+  const root = { querySelector: (sel) => (sel === '#notes-list' ? list : null) };
+  assert.equal(captureNotesScroll(root), 312);
+  assert.equal(captureNotesScroll({ querySelector: () => null }), 0);
+});
+
+test('restoreNotesScroll no pisa el scroll si el nodo ya no está', () => {
+  const list = { scrollTop: 10, isConnected: false };
+  restoreNotesScroll({ querySelector: () => list }, 400);
+  assert.equal(list.scrollTop, 10);
+});
+
+test('restoreNotesScroll vuelve a poner el scrollTop de la bitácora', () => {
+  const list = { scrollTop: 0, isConnected: true };
+  restoreNotesScroll({ querySelector: () => list }, 420);
+  assert.equal(list.scrollTop, 420);
+});
+
+test('el workspace restaura el scroll de la bitácora al reusar el panel', () => {
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../../src/js/views/workspace.js'),
+    'utf8',
+  );
+  assert.match(src, /captureNotesScroll\(container\)/);
+  assert.match(src, /restoreNotesScroll\(container, savedNotesScroll\)/);
+  assert.match(src, /if \(keepNotes\) restoreNotesScroll/);
+});
+
+test('al elegir un módulo desde la librería se conserva el scroll del centro', () => {
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../../src/js/views/workspace.js'),
+    'utf8',
+  );
+  assert.match(src, /preserveScroll: true/);
+  assert.match(src, /tryPaintCenterModuleInPlace/);
+  assert.match(src, /restoreModuleViewportOffset/);
 });

@@ -4,18 +4,39 @@ import { openConfirmModal } from './components/confirm-modal.js';
 import { openPinModal } from './components/pin-modal.js';
 import { openSubscribeProModal } from './components/subscribe-pro-modal.js';
 import { query } from './db.js';
-import { isProUser, loadProfile, saveProfile } from './profile.js';
+import { applyPresentationMode, applyTheme, isProUser, loadProfile, saveProfile } from './profile.js';
 import { getInvoke, isTauriApp, pickBackupFile, pickBackupFolder } from './tauri-bridge.js';
 import { t, tf } from './i18n.js';
 import { toast } from './utils.js';
 
 /** @typedef {'idle'|'not_configured'|'active'|'backing_up'|'error'|'folder_missing'} CloudBackupStatus */
 
-/** Intervalo mínimo entre respaldos automáticos (24 h). */
+/** Intervalo mínimo entre respaldos automáticos **exitosos** (24 h). */
 export const AUTO_BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/** Mientras la app sigue abierta, reintenta carpeta ausente ~cada 15 min. */
+export const AUTO_BACKUP_POLL_MS = 15 * 60 * 1000;
+
+const PRACTITIONER_KEY = 'telar.practitioner';
+const REF_DOCS_PREFIX = 'telar.refDocs.';
+/** Documentos locales apartados al restaurar un .age viejo (sin app-state). */
+export const REF_DOCS_DETACHED_PREFIX = 'telar.refDocsDetached.';
+const APP_STATE_OMIT = new Set([
+  'subscriptionAccessToken',
+  'deviceId',
+  'mpAccessToken',
+  'access_token',
+]);
+/** Rutas, huella y timestamps de este computador: no se aplican desde un .age ajeno. */
+const MACHINE_LOCAL_PROFILE_KEYS = [
+  'cloudBackupDestDir',
+  'useTouchId',
+  'cloudBackupLastSuccessAt',
+  'cloudBackupLastError',
+];
 
 let backingUp = false;
 let autoBackupInFlight = false;
+let autoBackupPollTimer = null;
 
 /** @param {string|null|undefined} lastBackupAt ISO timestamp */
 export function shouldRunAutoCloudBackup(lastBackupAt, nowMs = Date.now()) {
@@ -50,6 +71,176 @@ export function getCloudBackupConfig() {
 
 export function saveCloudBackupConfig(patch) {
   saveProfile(patch);
+}
+
+function sanitizePractitioner(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const next = { ...raw };
+  for (const key of APP_STATE_OMIT) delete next[key];
+  return next;
+}
+
+function readStorageKeys(prefix) {
+  const out = {};
+  try {
+    const storage = globalThis.localStorage;
+    if (!storage) return out;
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i);
+      if (key && key.startsWith(prefix)) {
+        out[key] = storage.getItem(key);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return out;
+}
+
+function restoreStorageSnapshot(prefix, snapshot) {
+  const storage = globalThis.localStorage;
+  if (!storage) return;
+  const current = readStorageKeys(prefix);
+  for (const key of Object.keys(current)) {
+    if (!(key in snapshot)) storage.removeItem(key);
+  }
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (value == null) storage.removeItem(key);
+    else storage.setItem(key, value);
+  }
+}
+
+function readAllRefDocs() {
+  return readStorageKeys(REF_DOCS_PREFIX);
+}
+
+function normalizeRefDocsMap(raw) {
+  const next = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return next;
+  for (const [key, value] of Object.entries(raw)) {
+    if (key.startsWith(REF_DOCS_PREFIX) && typeof value === 'string') {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+/** Escribe los recuperados y recién entonces quita los que sobran. Si falla, restaura el snapshot. */
+function replaceRefDocs(nextRefDocs) {
+  const storage = globalThis.localStorage;
+  if (!storage) throw new Error('No hay almacenamiento local');
+  const previous = readAllRefDocs();
+  const next = normalizeRefDocsMap(nextRefDocs);
+  try {
+    for (const [key, value] of Object.entries(next)) {
+      storage.setItem(key, value);
+    }
+    for (const key of Object.keys(previous)) {
+      if (!(key in next)) storage.removeItem(key);
+    }
+  } catch (err) {
+    restoreStorageSnapshot(REF_DOCS_PREFIX, previous);
+    throw err;
+  }
+}
+
+function detachLocalRefDocs() {
+  const storage = globalThis.localStorage;
+  if (!storage) return 0;
+  const docs = readAllRefDocs();
+  const keys = Object.keys(docs);
+  if (!keys.length) return 0;
+  const previous = { ...docs };
+  try {
+    for (const [key, value] of Object.entries(docs)) {
+      const suffix = key.slice(REF_DOCS_PREFIX.length);
+      storage.setItem(`${REF_DOCS_DETACHED_PREFIX}${suffix}`, value ?? '');
+      storage.removeItem(key);
+    }
+    return keys.length;
+  } catch (err) {
+    restoreStorageSnapshot(REF_DOCS_PREFIX, previous);
+    throw err;
+  }
+}
+
+function applyPractitionerFromBackup(incoming) {
+  const storage = globalThis.localStorage;
+  if (!storage) throw new Error('No hay almacenamiento local');
+  const previous = storage.getItem(PRACTITIONER_KEY);
+  const patched = { ...incoming };
+  for (const key of MACHINE_LOCAL_PROFILE_KEYS) delete patched[key];
+  const next = sanitizePractitioner({ ...loadProfile(), ...patched });
+  try {
+    storage.setItem(PRACTITIONER_KEY, JSON.stringify(next));
+    try {
+      applyTheme(Boolean(next.darkMode));
+      applyPresentationMode(Boolean(next.presentationMode));
+    } catch {
+      /* sin DOM (tests) */
+    }
+  } catch (err) {
+    if (previous == null) storage.removeItem(PRACTITIONER_KEY);
+    else storage.setItem(PRACTITIONER_KEY, previous);
+    throw err;
+  }
+}
+
+/**
+ * Aplica perfil + documentos del .age.
+ * Sin app-state (respaldo viejo): aparta refDocs locales para no colgarlos de otras fichas.
+ * Si el almacenamiento falla, restaura el estado anterior y lanza.
+ */
+export function applyBackupAppState(raw) {
+  if (raw == null || raw === '') {
+    return { hadAppState: false, detachedRefDocs: detachLocalRefDocs() };
+  }
+  let parsed = raw;
+  try {
+    if (typeof raw === 'string') parsed = JSON.parse(raw);
+  } catch {
+    return { hadAppState: false, detachedRefDocs: detachLocalRefDocs() };
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    return { hadAppState: false, detachedRefDocs: detachLocalRefDocs() };
+  }
+
+  const practitionerSnapshot = globalThis.localStorage?.getItem(PRACTITIONER_KEY) ?? null;
+  const refDocsSnapshot = readAllRefDocs();
+  try {
+    if (parsed.practitioner && typeof parsed.practitioner === 'object') {
+      applyPractitionerFromBackup(parsed.practitioner);
+    }
+    let detachedRefDocs = 0;
+    if ('refDocs' in parsed && parsed.refDocs && typeof parsed.refDocs === 'object') {
+      replaceRefDocs(parsed.refDocs);
+    } else {
+      detachedRefDocs = detachLocalRefDocs();
+    }
+    return { hadAppState: true, detachedRefDocs };
+  } catch (err) {
+    if (practitionerSnapshot == null) localStorage.removeItem(PRACTITIONER_KEY);
+    else localStorage.setItem(PRACTITIONER_KEY, practitionerSnapshot);
+    restoreStorageSnapshot(REF_DOCS_PREFIX, refDocsSnapshot);
+    throw err;
+  }
+}
+
+/** Perfil (sin tokens MP / device id) + documentos de referencia para el `.age`. */
+export function collectBackupAppState() {
+  return JSON.stringify({
+    version: 1,
+    practitioner: sanitizePractitioner(loadProfile()),
+    refDocs: readAllRefDocs(),
+  });
+}
+
+function backupAppStateArg() {
+  try {
+    return collectBackupAppState();
+  } catch {
+    return null;
+  }
 }
 
 /** Respaldos activos si el toggle está ON (migra perfiles con carpeta ya configurada). */
@@ -314,7 +505,7 @@ export async function activateCloudBackup() {
 
   try {
     backingUp = true;
-    const result = await invoke('cloud_backup_create', { destDir });
+    const result = await invoke('cloud_backup_create', { destDir, appState: backupAppStateArg() });
     noteBackupSuccess(result?.created_at);
     if (result?.skipped_duplicate) {
       toast(t('settings.cloudBackupNoChanges'));
@@ -335,7 +526,7 @@ export async function runManualCloudBackup(destDir) {
   const invoke = getInvoke();
   backingUp = true;
   try {
-    const result = await invoke('cloud_backup_create', { destDir });
+    const result = await invoke('cloud_backup_create', { destDir, appState: backupAppStateArg() });
     noteBackupSuccess(result?.created_at);
     if (result?.skipped_duplicate) {
       toast(t('settings.cloudBackupNoChanges'));
@@ -354,7 +545,8 @@ export async function runManualCloudBackup(destDir) {
 }
 
 /**
- * Respaldo automático al desbloquear (24 h). Omite en silencio si la carpeta no está disponible.
+ * Respaldo automático: 24 h entre éxitos. Si la carpeta no está, el siguiente
+ * tick (~15 min) reintenta. No afirma que iCloud/Drive ya subieron el archivo.
  */
 export async function maybeAutoCloudBackup() {
   if (!isTauriApp() || !isProUser() || !isCloudBackupEnabled() || backingUp || autoBackupInFlight) return;
@@ -385,7 +577,7 @@ export async function maybeAutoCloudBackup() {
   autoBackupInFlight = true;
   backingUp = true;
   try {
-    const result = await getInvoke()('cloud_backup_create', { destDir });
+    const result = await getInvoke()('cloud_backup_create', { destDir, appState: backupAppStateArg() });
     noteBackupSuccess(result?.created_at);
   } catch (err) {
     const msg = err?.message || String(err);
@@ -397,11 +589,28 @@ export async function maybeAutoCloudBackup() {
   }
 }
 
-export function scheduleAutoCloudBackup() {
-  if (!isTauriApp()) return;
+export function scheduleAutoCloudBackup({
+  isTauri = isTauriApp(),
+  intervalMs = AUTO_BACKUP_POLL_MS,
+  setIntervalFn = globalThis.setInterval?.bind(globalThis),
+} = {}) {
+  if (!isTauri) return null;
   queueMicrotask(() => {
     maybeAutoCloudBackup().catch(() => {});
   });
+  if (autoBackupPollTimer != null) return autoBackupPollTimer;
+  if (typeof setIntervalFn !== 'function') return null;
+  autoBackupPollTimer = setIntervalFn(() => {
+    maybeAutoCloudBackup().catch(() => {});
+  }, intervalMs);
+  return autoBackupPollTimer;
+}
+
+export function stopAutoCloudBackupForTests() {
+  if (autoBackupPollTimer != null && typeof clearInterval === 'function') {
+    clearInterval(autoBackupPollTimer);
+  }
+  autoBackupPollTimer = null;
 }
 
 async function getLocalPatientCount() {
@@ -419,6 +628,7 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
   if (!backupPath) return false;
 
   let preview;
+  let recoveryKeyUsed = null;
   try {
     preview = await invoke('cloud_backup_preview', { backupPath, recoveryKey: null });
   } catch (err) {
@@ -428,30 +638,104 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
       toast(msg);
       return false;
     }
-    const recoveryKey = await promptRecoveryKey();
-    if (!recoveryKey?.key) return false;
+    const prompted = await promptRecoveryKey();
+    if (!prompted?.key) return false;
+    recoveryKeyUsed = prompted.key;
     try {
-      preview = await invoke('cloud_backup_preview', { backupPath, recoveryKey: recoveryKey.key });
+      preview = await invoke('cloud_backup_preview', { backupPath, recoveryKey: recoveryKeyUsed });
     } catch (err2) {
       toast(err2?.message || String(err2));
       return false;
     }
   }
 
+  let hasLocalDb = false;
+  try {
+    const status = await invoke('db_status');
+    hasLocalDb = Boolean(status?.encrypted_db_exists);
+  } catch {
+    hasLocalDb = false;
+  }
   const localPatients = await getLocalPatientCount();
   const backupDate = formatBackupDate(preview.created_at);
+  const confirmMessage = hasLocalDb
+    ? tf('settings.cloudBackupRestoreConfirm', {
+        localPatients,
+        backupPatients: preview.patient_count,
+        backupDate,
+      })
+    : tf('settings.cloudBackupRestoreConfirmEmpty', {
+        backupPatients: preview.patient_count,
+        backupDate,
+      });
   const ok = await openConfirmModal({
     title: t('settings.cloudBackupRestoreTitle'),
-    message: tf('settings.cloudBackupRestoreConfirm', {
-      localPatients,
-      backupPatients: preview.patient_count,
-      backupDate,
-    }),
+    message: confirmMessage,
     confirmLabel: t('settings.cloudBackupRestoreAction'),
     cancelLabel: t('settings.cancel'),
     danger: true,
   });
   if (!ok) return false;
+
+  const finishRestore = async (result, recoveryKey = recoveryKeyUsed) => {
+    let appStateOk = true;
+    let hadAppState = Boolean(result?.app_state_json);
+    let detachedRefDocs = 0;
+    try {
+      const outcome = applyBackupAppState(result?.app_state_json);
+      hadAppState = Boolean(outcome?.hadAppState);
+      detachedRefDocs = Number(outcome?.detachedRefDocs) || 0;
+    } catch (e) {
+      appStateOk = false;
+      console.error(e);
+    }
+
+    if (recoveryKey) {
+      try {
+        await invoke('cloud_backup_import_identity', { recoveryKey });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    saveCloudBackupConfig({
+      cloudBackupLastError: '',
+      ...(destDir ? { cloudBackupDestDir: destDir } : {}),
+    });
+
+    if (!appStateOk) {
+      toast(t('settings.cloudBackupRestorePartial'));
+      return;
+    }
+
+    let hasIdentity = false;
+    try {
+      hasIdentity = await invoke('cloud_backup_has_identity');
+    } catch {
+      hasIdentity = false;
+    }
+    const folder = String(destDir || getCloudBackupConfig().destDir || '').trim();
+    let folderOk = false;
+    if (folder) {
+      try {
+        const st = await invoke('cloud_backup_folder_status_cmd', { destDir: folder });
+        folderOk = Boolean(st?.accessible);
+      } catch {
+        folderOk = false;
+      }
+    }
+    const wantsBackup = isCloudBackupEnabled();
+    const needsBackupSetup = wantsBackup && (!hasIdentity || !folderOk);
+
+    const parts = [t('settings.cloudBackupRestoreOk')];
+    if (!hadAppState && detachedRefDocs > 0) {
+      parts.push(t('settings.cloudBackupRestoreDocsDetached'));
+    }
+    if (needsBackupSetup) {
+      parts.push(t('settings.cloudBackupRestoreNeedsSetup'));
+    }
+    toast(parts.join(' '));
+  };
 
   return new Promise((resolve) => {
     openPinModal({
@@ -459,24 +743,33 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
       submitLabel: t('settings.cloudBackupRestoreAction'),
       onSubmit: async (pin) => {
         try {
-          await invoke('cloud_backup_restore', { backupPath, pin, recoveryKey: null });
-          saveCloudBackupConfig({ cloudBackupLastError: '' });
-          if (destDir) {
-            /* carpeta destino conservada */
-          }
-          toast(t('settings.cloudBackupRestoreOk'));
+          const result = await invoke('cloud_backup_restore', {
+            backupPath,
+            pin,
+            recoveryKey: recoveryKeyUsed,
+          });
+          await finishRestore(result, recoveryKeyUsed);
           resolve(true);
         } catch (err) {
           const msg = err?.message || String(err);
-          if (/recuperación|recovery|incorrecta/i.test(msg)) {
-            const recoveryKey = await promptRecoveryKey();
-            if (!recoveryKey?.key) {
+          if (/recuperación|recovery|incorrecta/i.test(msg) && !recoveryKeyUsed) {
+            const prompted = await promptRecoveryKey();
+            if (!prompted?.key) {
               resolve(false);
               return;
             }
-            await invoke('cloud_backup_restore', { backupPath, pin, recoveryKey: recoveryKey.key });
-            toast(t('settings.cloudBackupRestoreOk'));
-            resolve(true);
+            try {
+              const result = await invoke('cloud_backup_restore', {
+                backupPath,
+                pin,
+                recoveryKey: prompted.key,
+              });
+              await finishRestore(result, prompted.key);
+              resolve(true);
+            } catch (err2) {
+              toast(err2?.message || String(err2));
+              resolve(false);
+            }
             return;
           }
           toast(msg);

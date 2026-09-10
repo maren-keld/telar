@@ -138,6 +138,14 @@
   color: rgba(244, 244, 242, 0.68);
 }
 
+.initial-screen--hero .unlock-restore-link {
+  color: rgba(244, 244, 242, 0.88);
+}
+
+.initial-screen--hero .unlock-restore-link:hover {
+  color: #fff;
+}
+
 .initial-screen__help {
   flex-shrink: 0;
   margin: 6px 0 8px;

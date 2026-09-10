@@ -6,7 +6,6 @@ import { renderReportes } from './views/reportes.js';
 import { renderSettings } from './views/settings.js';
 import { renderModulesLibrary } from './views/modules-library.js';
 import { renderModuleEditor } from './views/module-editor.js';
-import { renderGoals } from './views/goals.js';
 import { renderUnlock } from './views/unlock.js';
 import { renderWorkspace } from './views/workspace.js';
 import { openTreatmentWorkspace } from './navigate.js';
@@ -21,12 +20,15 @@ import { maybeSendUsagePing } from './usage-ping.js';
 import { maybeSyncProFromServer, initSubscriptionCheckoutWatcher, clearStaleLocalSubscriptionApiCache } from './subscription.js';
 import { openPractitionerOnboardingModal, needsPractitionerOnboarding } from './components/practitioner-onboarding.js';
 import { scheduleAutoCloudBackup } from './cloud-backup.js';
+import { flushPendingAutoSaves } from './autobind.js';
 import { toast } from './utils.js';
+import { notifySaveError } from './save-status.js';
 import { initMotion } from './transitions.js';
 import { ensureGlobalShareSync } from './share-sync.js';
 
 const app = document.getElementById('app');
 let lastRenderedView = '';
+let lastWorkspaceHash = '';
 
 function parseRoute() {
   const hash = location.hash.slice(1) || '/treatments';
@@ -72,8 +74,19 @@ async function render() {
   }
 
   const onNavigate = navigate;
+  const previousView = lastRenderedView;
+  const leavingWorkspace = previousView === 'workspace' && view !== 'workspace';
 
-  if (lastRenderedView === 'workspace' && view !== 'workspace') {
+  if (leavingWorkspace) {
+    try {
+      await flushPendingAutoSaves();
+    } catch {
+      notifySaveError();
+      if (lastWorkspaceHash && location.hash !== lastWorkspaceHash) {
+        location.hash = lastWorkspaceHash;
+      }
+      return;
+    }
     teardownNeurofeedback();
     teardownBilateralStimulation();
     teardownInteractiveHtml('all');
@@ -84,6 +97,7 @@ async function render() {
     app._unmountCenterScrollSpy?.();
     app._workspaceData = null;
   }
+
   lastRenderedView = view;
 
   app.className =
@@ -164,8 +178,8 @@ async function render() {
         });
         break;
       case 'goals':
-        await renderGoals(app, { onNavigate });
-        break;
+        location.hash = '/reportes';
+        return;
       case 'settings':
         app.querySelector('[data-nav="settings"]')?.classList.add('is-loading');
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -191,8 +205,14 @@ async function render() {
     } else {
       window.__telarBackupScheduled = false;
     }
+    if (view === 'workspace') lastWorkspaceHash = location.hash;
   } catch (err) {
     console.error(err);
+    if (app.querySelector('#workspace-layout')) {
+      notifySaveError();
+      lastRenderedView = 'workspace';
+      return;
+    }
     app.innerHTML = `
       <div class="app-content">
         <h1>Telar</h1>

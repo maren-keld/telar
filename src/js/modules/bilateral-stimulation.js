@@ -1,8 +1,8 @@
-import { bindAutoSave, collectFormData } from '../autobind.js';
+import { bindAutoSave, collectFormData, queuedPersist } from '../autobind.js';
 import { ICON_EXPAND } from '../icons.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
-import { workspaceAutoSaveStatus } from '../save-status.js';
+import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 import { t } from '../i18n.js';
 
 const BLS_CHANNEL = 'telar-bls-stage';
@@ -244,7 +244,7 @@ export async function renderBilateralStimulation(host, moduleRow) {
   let phase = 0;
   let lastTs = 0;
 
-  const persist = async () => {
+  const persistRaw = async () => {
     const fd = collectFormData(form);
     const payload = {
       speed_hz: Number(fd.speed_hz) || 1,
@@ -264,8 +264,9 @@ export async function renderBilateralStimulation(host, moduleRow) {
         : 'pendiente';
     await syncModuleReadableText(moduleRow, payload, status);
   };
+  const persist = queuedPersist(persistRaw, notifySaveError);
 
-  bindAutoSave(form, persist, workspaceAutoSaveStatus());
+  bindAutoSave(form, persistRaw, workspaceAutoSaveStatus());
 
   speedInput?.addEventListener('input', () => {
     if (speedVal) speedVal.textContent = Number(speedInput.value).toFixed(1);
