@@ -1,4 +1,4 @@
-"""El buzón de escalas compartidas: solo ciphertext, una respuesta, y se borra."""
+"""El buzón de escalas compartidas: solo ciphertext, una respuesta, ack y se borra."""
 import base64
 
 PAYLOAD = base64.b64encode(b"sobre-del-cuestionario").decode()
@@ -34,7 +34,15 @@ def test_ciclo_completo_del_enlace(api):
     assert collected.status_code == 200
     assert collected.get_json()["response_ct"] == RESPONSE
 
-    # Recogida la respuesta, la fila desaparece.
+    # Un reintento sigue viendo el sobre: Telar aún no confirmó el guardado.
+    again = api.get(f"/api/share/{token}/response?secret={secret}")
+    assert again.status_code == 200
+    assert again.get_json()["response_ct"] == RESPONSE
+
+    ack = api.post(f"/api/share/{token}/response/ack?secret={secret}")
+    assert ack.status_code == 200
+    assert ack.get_json()["ok"] is True
+
     assert api.get(f"/api/share/{token}/response?secret={secret}").status_code == 410
     assert api.get(f"/api/share/{token}").status_code == 410
 
@@ -53,6 +61,17 @@ def test_la_respuesta_exige_el_secreto_del_profesional(api):
     api.post(f"/api/share/{token}/response", json={"response_ct": RESPONSE})
     assert api.get(f"/api/share/{token}/response?secret=otro-secreto").status_code == 403
     assert api.get(f"/api/share/{token}/response").status_code == 400
+
+
+def test_el_ack_exige_el_secreto_y_una_respuesta(api):
+    created = create(api).get_json()
+    token, secret = created["token"], created["owner_secret"]
+    assert api.post(f"/api/share/{token}/response/ack?secret={secret}").status_code == 409
+    api.post(f"/api/share/{token}/response", json={"response_ct": RESPONSE})
+    assert api.post(f"/api/share/{token}/response/ack?secret=otro-secreto").status_code == 403
+    assert api.post(f"/api/share/{token}/response/ack").status_code == 400
+    assert api.post(f"/api/share/{token}/response/ack?secret={secret}").status_code == 200
+    assert api.get(f"/api/share/{token}/response?secret={secret}").status_code == 410
 
 
 def test_rechaza_correo_y_contenido_invalidos(api):

@@ -1,3 +1,5 @@
+import { STALE_SHARED_RESPONSE } from './module-save-coordinator.js';
+
 /** Autoguardado estilo Bubble — debounce en inputs de un contenedor */
 export function debounce(fn, ms = 450) {
   let t;
@@ -44,7 +46,8 @@ export function enqueueSave(saveFn) {
     },
     (err) => {
       inFlightSaves.delete(job);
-      failedSaveFns.add(saveFn);
+      if (err?.code !== STALE_SHARED_RESPONSE) failedSaveFns.add(saveFn);
+      else failedSaveFns.delete(saveFn);
       throw err;
     },
   );
@@ -72,7 +75,7 @@ export async function flushPendingAutoSaves() {
   await waitInFlightSaves();
 
   const failed =
-    retryResults.find((r) => r.status === 'rejected') ||
+    retryResults.find((r) => r.status === 'rejected' && r.reason?.code !== STALE_SHARED_RESPONSE) ||
     handleResults.find((r) => r.status === 'rejected');
   if (failed) throw failed.reason || new Error('No se pudo guardar');
   if (failedSaveFns.size) throw new Error('No se pudo guardar');
@@ -111,6 +114,14 @@ export function bindAutoSave(root, saveFn, { debounceMs = 450, onStatus } = {}) 
         onStatus?.('guardado');
         if (!root.isConnected) pendingAutoSaves.delete(handle);
       } catch (e) {
+        if (e?.code === STALE_SHARED_RESPONSE) {
+          // This form belongs to the old response. Do not retry it when the
+          // workspace flushes before repainting the received response.
+          dirty = false;
+          pendingAutoSaves.delete(handle);
+          onStatus?.('error');
+          return;
+        }
         dirty = true;
         console.error(e);
         onStatus?.('error');

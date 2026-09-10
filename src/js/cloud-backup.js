@@ -3,7 +3,9 @@ import { openBackupRecoveryKeyModal } from './components/backup-recovery-key-mod
 import { openConfirmModal } from './components/confirm-modal.js';
 import { openPinModal } from './components/pin-modal.js';
 import { openSubscribeProModal } from './components/subscribe-pro-modal.js';
-import { query } from './db.js';
+import { query, invalidateClinicalAlertCache } from './db.js';
+import { ensureCustomModulesLoaded, resetCustomModulesCache } from './custom-modules.js';
+import { ensureGlobalShareSync, resumeShareSyncAfterDbChange, suspendShareSyncForDbChange } from './share-sync.js';
 import { applyPresentationMode, applyTheme, isProUser, loadProfile, saveProfile } from './profile.js';
 import { getInvoke, isTauriApp, pickBackupFile, pickBackupFolder } from './tauri-bridge.js';
 import { t, tf } from './i18n.js';
@@ -110,6 +112,109 @@ function restoreStorageSnapshot(prefix, snapshot) {
   }
 }
 
+let detachedRestoreSeq = 0;
+
+function newDetachedRestoreId(nowMs = Date.now(), rand = Math.random()) {
+  detachedRestoreSeq += 1;
+  return `${Number(nowMs).toString(36)}-${detachedRestoreSeq.toString(36)}-${Math.floor(Number(rand) * 1e9).toString(36)}`;
+}
+
+function detachedKeyFor(restoreId, suffix) {
+  return `${REF_DOCS_DETACHED_PREFIX}${restoreId}.${suffix}`;
+}
+
+function normalizeDetachedMap(raw) {
+  const next = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return next;
+  for (const [key, value] of Object.entries(raw)) {
+    if (key.startsWith(REF_DOCS_DETACHED_PREFIX) && typeof value === 'string') {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+function readAllDetachedRefDocs() {
+  return readStorageKeys(REF_DOCS_DETACHED_PREFIX);
+}
+
+function mergeDetachedRefDocs(incoming) {
+  const storage = globalThis.localStorage;
+  if (!storage) throw new Error('No hay almacenamiento local');
+  const previous = readAllDetachedRefDocs();
+  const next = normalizeDetachedMap(incoming);
+  const written = [];
+  try {
+    for (const [key, value] of Object.entries(next)) {
+      storage.setItem(key, value);
+      written.push(key);
+    }
+  } catch (err) {
+    for (const key of written) {
+      if (!(key in previous)) {
+        try {
+          storage.removeItem(key);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    restoreStorageSnapshot(REF_DOCS_DETACHED_PREFIX, previous);
+    throw err;
+  }
+}
+
+/**
+ * Copia durable de los documentos vivos. No borra los originales.
+ * Si no hay espacio, lanza y deja todo como estaba.
+ */
+export function copyLiveRefDocsToDetached({ restoreId } = {}) {
+  const storage = globalThis.localStorage;
+  const live = readAllRefDocs();
+  const liveKeys = Object.keys(live);
+  if (!liveKeys.length) return { restoreId: restoreId || '', count: 0, liveKeys: [] };
+  if (!storage) throw new Error('No hay almacenamiento local');
+  const id = restoreId || newDetachedRestoreId();
+  const written = [];
+  try {
+    for (const key of liveKeys) {
+      const dest = detachedKeyFor(id, key.slice(REF_DOCS_PREFIX.length));
+      const value = live[key] ?? '';
+      storage.setItem(dest, value);
+      if (storage.getItem(dest) !== value) {
+        throw new Error('No se pudo conservar una copia de los documentos locales.');
+      }
+      written.push(dest);
+    }
+  } catch (err) {
+    for (const dest of written) {
+      try {
+        storage.removeItem(dest);
+      } catch {
+        /* ignore */
+      }
+    }
+    throw err;
+  }
+  return { restoreId: id, count: liveKeys.length, liveKeys };
+}
+
+/** Quita las claves vivas recién copiadas. Solo después de una copia verificada. */
+export function dropCopiedLiveRefDocs(liveKeys) {
+  const storage = globalThis.localStorage;
+  if (!storage || !liveKeys?.length) return;
+  for (const key of liveKeys) {
+    storage.removeItem(key);
+  }
+}
+
+/** Aparta refDocs vivos (copia verificada y recién entonces borra). */
+export function detachLocalRefDocs({ restoreId } = {}) {
+  const copied = copyLiveRefDocsToDetached({ restoreId });
+  dropCopiedLiveRefDocs(copied.liveKeys);
+  return copied.count;
+}
+
 function readAllRefDocs() {
   return readStorageKeys(REF_DOCS_PREFIX);
 }
@@ -138,26 +243,6 @@ function replaceRefDocs(nextRefDocs) {
     for (const key of Object.keys(previous)) {
       if (!(key in next)) storage.removeItem(key);
     }
-  } catch (err) {
-    restoreStorageSnapshot(REF_DOCS_PREFIX, previous);
-    throw err;
-  }
-}
-
-function detachLocalRefDocs() {
-  const storage = globalThis.localStorage;
-  if (!storage) return 0;
-  const docs = readAllRefDocs();
-  const keys = Object.keys(docs);
-  if (!keys.length) return 0;
-  const previous = { ...docs };
-  try {
-    for (const [key, value] of Object.entries(docs)) {
-      const suffix = key.slice(REF_DOCS_PREFIX.length);
-      storage.setItem(`${REF_DOCS_DETACHED_PREFIX}${suffix}`, value ?? '');
-      storage.removeItem(key);
-    }
-    return keys.length;
   } catch (err) {
     restoreStorageSnapshot(REF_DOCS_PREFIX, previous);
     throw err;
@@ -207,6 +292,7 @@ export function applyBackupAppState(raw) {
 
   const practitionerSnapshot = globalThis.localStorage?.getItem(PRACTITIONER_KEY) ?? null;
   const refDocsSnapshot = readAllRefDocs();
+  const detachedSnapshot = readAllDetachedRefDocs();
   try {
     if (parsed.practitioner && typeof parsed.practitioner === 'object') {
       applyPractitionerFromBackup(parsed.practitioner);
@@ -217,12 +303,33 @@ export function applyBackupAppState(raw) {
     } else {
       detachedRefDocs = detachLocalRefDocs();
     }
+    if ('detachedRefDocs' in parsed && parsed.detachedRefDocs && typeof parsed.detachedRefDocs === 'object') {
+      mergeDetachedRefDocs(parsed.detachedRefDocs);
+    }
     return { hadAppState: true, detachedRefDocs };
   } catch (err) {
     if (practitionerSnapshot == null) localStorage.removeItem(PRACTITIONER_KEY);
     else localStorage.setItem(PRACTITIONER_KEY, practitionerSnapshot);
     restoreStorageSnapshot(REF_DOCS_PREFIX, refDocsSnapshot);
+    restoreStorageSnapshot(REF_DOCS_DETACHED_PREFIX, detachedSnapshot);
     throw err;
+  }
+}
+
+/**
+ * Tras instalar la DB restaurada: aplica perfil/documentos del .age.
+ * Si falla, no borra lo que no pudo copiar. `ok: false` = no continuar.
+ */
+export function applyBackupAppStateAfterDbRestore(raw) {
+  try {
+    const outcome = applyBackupAppState(raw);
+    return {
+      ok: true,
+      hadAppState: Boolean(outcome?.hadAppState),
+      detachedRefDocs: Number(outcome?.detachedRefDocs) || 0,
+    };
+  } catch {
+    return { ok: false, hadAppState: false, detachedRefDocs: 0 };
   }
 }
 
@@ -232,6 +339,7 @@ export function collectBackupAppState() {
     version: 1,
     practitioner: sanitizePractitioner(loadProfile()),
     refDocs: readAllRefDocs(),
+    detachedRefDocs: readAllDetachedRefDocs(),
   });
 }
 
@@ -677,18 +785,19 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
   });
   if (!ok) return false;
 
-  const finishRestore = async (result, recoveryKey = recoveryKeyUsed) => {
-    let appStateOk = true;
-    let hadAppState = Boolean(result?.app_state_json);
-    let detachedRefDocs = 0;
+  const finishRestore = async (result, recoveryKey = recoveryKeyUsed, liveKeys = []) => {
+    dropCopiedLiveRefDocs(liveKeys);
+    resetCustomModulesCache();
+    invalidateClinicalAlertCache();
     try {
-      const outcome = applyBackupAppState(result?.app_state_json);
-      hadAppState = Boolean(outcome?.hadAppState);
-      detachedRefDocs = Number(outcome?.detachedRefDocs) || 0;
+      await ensureCustomModulesLoaded();
     } catch (e) {
-      appStateOk = false;
       console.error(e);
     }
+    const outcome = applyBackupAppStateAfterDbRestore(result?.app_state_json);
+    const appStateOk = Boolean(outcome.ok);
+    const hadAppState = Boolean(outcome.hadAppState);
+    const detachedRefDocs = Number(outcome.detachedRefDocs) || 0;
 
     if (recoveryKey) {
       try {
@@ -705,7 +814,7 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
 
     if (!appStateOk) {
       toast(t('settings.cloudBackupRestorePartial'));
-      return;
+      return false;
     }
 
     let hasIdentity = false;
@@ -735,6 +844,7 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
       parts.push(t('settings.cloudBackupRestoreNeedsSetup'));
     }
     toast(parts.join(' '));
+    return true;
   };
 
   return new Promise((resolve) => {
@@ -742,14 +852,31 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
       title: t('settings.cloudBackupRestorePin'),
       submitLabel: t('settings.cloudBackupRestoreAction'),
       onSubmit: async (pin) => {
+        const restoreWithKey = async (recoveryKey) => {
+          let liveKeys = [];
+          try {
+            const copied = copyLiveRefDocsToDetached();
+            liveKeys = copied.liveKeys;
+          } catch {
+            toast(t('settings.cloudBackupRestorePreserveFailed'));
+            return false;
+          }
+          await suspendShareSyncForDbChange();
+          try {
+            const result = await invoke('cloud_backup_restore', {
+              backupPath,
+              pin,
+              recoveryKey,
+            });
+            return Boolean(await finishRestore(result, recoveryKey, liveKeys));
+          } finally {
+            resumeShareSyncAfterDbChange();
+            ensureGlobalShareSync();
+          }
+        };
+
         try {
-          const result = await invoke('cloud_backup_restore', {
-            backupPath,
-            pin,
-            recoveryKey: recoveryKeyUsed,
-          });
-          await finishRestore(result, recoveryKeyUsed);
-          resolve(true);
+          resolve(await restoreWithKey(recoveryKeyUsed));
         } catch (err) {
           const msg = err?.message || String(err);
           if (/recuperación|recovery|incorrecta/i.test(msg) && !recoveryKeyUsed) {
@@ -759,13 +886,7 @@ export async function restoreCloudBackupFlow({ destDir } = {}) {
               return;
             }
             try {
-              const result = await invoke('cloud_backup_restore', {
-                backupPath,
-                pin,
-                recoveryKey: prompted.key,
-              });
-              await finishRestore(result, prompted.key);
-              resolve(true);
+              resolve(await restoreWithKey(prompted.key));
             } catch (err2) {
               toast(err2?.message || String(err2));
               resolve(false);

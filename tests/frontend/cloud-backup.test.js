@@ -117,6 +117,7 @@ test('collectBackupAppState mete perfil y refDocs, sin tokens ni device id', asy
   assert.equal(parsed.practitioner.deviceId, undefined);
   assert.equal(parsed.practitioner.subscriptionAccessToken, undefined);
   assert.equal(parsed.refDocs['telar.refDocs.12'], '[{"name":"nota.md"}]');
+  assert.deepEqual(parsed.detachedRefDocs, {});
   assert.equal(JSON.stringify(parsed).includes('mp-token'), false);
   assert.equal(JSON.stringify(parsed).includes('machine-id'), false);
 });
@@ -207,7 +208,165 @@ test('respaldo viejo sin app-state aparta refDocs locales para no mezclar fichas
   assert.equal(outcome.hadAppState, false);
   assert.equal(outcome.detachedRefDocs, 1);
   assert.equal(localStorage.getItem('telar.refDocs.12'), null);
-  assert.equal(localStorage.getItem(`${REF_DOCS_DETACHED_PREFIX}12`), '[{"name":"nota.md"}]');
+  const detached = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(REF_DOCS_DETACHED_PREFIX)) detached.push(key);
+  }
+  assert.equal(detached.length, 1);
+  assert.match(detached[0], /^telar\.refDocsDetached\.[^.]+\.12$/);
+  assert.equal(localStorage.getItem(detached[0]), '[{"name":"nota.md"}]');
+});
+
+test('dos restauraciones apartan documentos del mismo tratamiento sin pisarse', async () => {
+  globalThis.localStorage = memoryStorage();
+  const {
+    applyBackupAppState,
+    collectBackupAppState,
+    REF_DOCS_DETACHED_PREFIX,
+  } = await import('../../src/js/cloud-backup.js');
+  localStorage.setItem('telar.refDocs.1', 'primero');
+  applyBackupAppState(null);
+  localStorage.setItem('telar.refDocs.1', 'segundo');
+  applyBackupAppState(null);
+  const detached = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(REF_DOCS_DETACHED_PREFIX)) detached.push(key);
+  }
+  assert.equal(detached.length, 2);
+  const values = detached.map((k) => localStorage.getItem(k)).sort();
+  assert.deepEqual(values, ['primero', 'segundo']);
+  const parsed = JSON.parse(collectBackupAppState());
+  assert.equal(Object.keys(parsed.detachedRefDocs).length, 2);
+  assert.equal(parsed.detachedRefDocs[detached[0]], localStorage.getItem(detached[0]));
+});
+
+test('si falla el app-state tras restaurar la DB, no borra documentos que no pudo copiar', async () => {
+  const storage = memoryStorage();
+  globalThis.localStorage = storage;
+  storage.setItem('telar.practitioner', JSON.stringify({ name: 'Vieja' }));
+  storage.setItem('telar.refDocs.1', 'local-doc');
+  const origSet = storage.setItem.bind(storage);
+  storage.setItem = (k, v) => {
+    if (k === 'telar.refDocs.9') throw new Error('quota');
+    origSet(k, v);
+  };
+  const { applyBackupAppStateAfterDbRestore } = await import('../../src/js/cloud-backup.js');
+  const outcome = applyBackupAppStateAfterDbRestore(
+    JSON.stringify({
+      version: 1,
+      practitioner: { name: 'Nueva' },
+      refDocs: { 'telar.refDocs.9': 'nuevo' },
+    }),
+  );
+  assert.equal(outcome.ok, false);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'local-doc');
+  assert.equal(localStorage.getItem('telar.refDocs.9'), null);
+});
+
+test('cuota llena: no borra originales si también falla apartarlos', async () => {
+  const storage = memoryStorage();
+  globalThis.localStorage = storage;
+  storage.setItem('telar.refDocs.1', 'local-doc');
+  storage.setItem = () => {
+    throw new Error('quota');
+  };
+  const {
+    applyBackupAppStateAfterDbRestore,
+    copyLiveRefDocsToDetached,
+    REF_DOCS_DETACHED_PREFIX,
+  } = await import('../../src/js/cloud-backup.js');
+  assert.throws(() => copyLiveRefDocsToDetached(), /quota/);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'local-doc');
+  const outcome = applyBackupAppStateAfterDbRestore(
+    JSON.stringify({
+      version: 1,
+      practitioner: { name: 'Nueva' },
+      refDocs: { 'telar.refDocs.9': 'nuevo' },
+    }),
+  );
+  assert.equal(outcome.ok, false);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'local-doc');
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    assert.equal(key && key.startsWith(REF_DOCS_DETACHED_PREFIX), false);
+  }
+});
+
+test('apartar no borra vivos si la copia no entra', async () => {
+  const storage = memoryStorage();
+  globalThis.localStorage = storage;
+  storage.setItem('telar.refDocs.1', 'local-doc');
+  storage.setItem = () => {
+    throw new Error('quota');
+  };
+  const { detachLocalRefDocs } = await import('../../src/js/cloud-backup.js');
+  assert.throws(() => detachLocalRefDocs(), /quota/);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'local-doc');
+});
+
+test('si la copia se llena a mitad de camino, deshace lo escrito y deja los vivos', async () => {
+  const storage = memoryStorage();
+  globalThis.localStorage = storage;
+  storage.setItem('telar.refDocs.1', 'uno');
+  storage.setItem('telar.refDocs.2', 'dos');
+  const origSet = storage.setItem.bind(storage);
+  let detachedWrites = 0;
+  storage.setItem = (k, v) => {
+    if (String(k).startsWith('telar.refDocsDetached.')) {
+      detachedWrites += 1;
+      if (detachedWrites >= 2) throw new Error('quota');
+    }
+    origSet(k, v);
+  };
+  const { copyLiveRefDocsToDetached, REF_DOCS_DETACHED_PREFIX } = await import(
+    '../../src/js/cloud-backup.js'
+  );
+  assert.throws(() => copyLiveRefDocsToDetached(), /quota/);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'uno');
+  assert.equal(localStorage.getItem('telar.refDocs.2'), 'dos');
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    assert.equal(key && key.startsWith(REF_DOCS_DETACHED_PREFIX), false);
+  }
+});
+
+test('copia los documentos vivos antes de quitarlos', async () => {
+  globalThis.localStorage = memoryStorage();
+  localStorage.setItem('telar.refDocs.1', 'local-doc');
+  const {
+    copyLiveRefDocsToDetached,
+    dropCopiedLiveRefDocs,
+    REF_DOCS_DETACHED_PREFIX,
+  } = await import('../../src/js/cloud-backup.js');
+  const copied = copyLiveRefDocsToDetached();
+  assert.equal(copied.count, 1);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), 'local-doc');
+  const dest = `${REF_DOCS_DETACHED_PREFIX}${copied.restoreId}.1`;
+  assert.equal(localStorage.getItem(dest), 'local-doc');
+  dropCopiedLiveRefDocs(copied.liveKeys);
+  assert.equal(localStorage.getItem('telar.refDocs.1'), null);
+  assert.equal(localStorage.getItem(dest), 'local-doc');
+});
+
+test('applyBackupAppState recupera documentos apartados del .age', async () => {
+  globalThis.localStorage = memoryStorage();
+  const { applyBackupAppState, REF_DOCS_DETACHED_PREFIX } = await import(
+    '../../src/js/cloud-backup.js'
+  );
+  applyBackupAppState(
+    JSON.stringify({
+      version: 1,
+      practitioner: { name: 'Ana' },
+      refDocs: { 'telar.refDocs.3': 'vivo' },
+      detachedRefDocs: {
+        [`${REF_DOCS_DETACHED_PREFIX}abc.1`]: 'apartado-a',
+      },
+    }),
+  );
+  assert.equal(localStorage.getItem('telar.refDocs.3'), 'vivo');
+  assert.equal(localStorage.getItem(`${REF_DOCS_DETACHED_PREFIX}abc.1`), 'apartado-a');
 });
 
 test('restore importa la clave y avisa si el automático queda pendiente', () => {
@@ -215,7 +374,28 @@ test('restore importa la clave y avisa si el automático queda pendiente', () =>
   assert.match(src, /cloud_backup_import_identity/);
   assert.match(src, /cloudBackupRestoreNeedsSetup/);
   assert.match(src, /cloudBackupRestorePartial/);
-  assert.match(src, /REF_DOCS_DETACHED_PREFIX/);
+  assert.match(src, /copyLiveRefDocsToDetached/);
+  assert.match(src, /cloudBackupRestorePreserveFailed/);
+  assert.match(src, /dropCopiedLiveRefDocs\(liveKeys\)/);
+  assert.doesNotMatch(src, /preservedLiveKeys/);
+  assert.doesNotMatch(src, /clearLiveRefDocsBestEffort/);
+  const restoreWithKeyAt = src.indexOf('const restoreWithKey');
+  const copyAt = src.indexOf('copyLiveRefDocsToDetached()', restoreWithKeyAt);
+  const nativeAt = src.indexOf("invoke('cloud_backup_restore'", restoreWithKeyAt);
+  assert.ok(copyAt > -1 && nativeAt > copyAt);
+  assert.match(src.slice(restoreWithKeyAt), /let liveKeys = \[\]/);
+  const finishAt = src.indexOf('const finishRestore');
+  const dropAt = src.indexOf('dropCopiedLiveRefDocs(liveKeys)', finishAt);
+  assert.ok(dropAt > -1 && dropAt < restoreWithKeyAt);
+  assert.match(src.slice(finishAt, restoreWithKeyAt), /finishRestore = async \(result, recoveryKey = recoveryKeyUsed, liveKeys = \[\]\)/);
+  assert.match(src.slice(restoreWithKeyAt), /finishRestore\(result, recoveryKey, liveKeys\)/);
+  const resetAt = src.indexOf('resetCustomModulesCache()', finishAt);
+  const reloadAt = src.indexOf('ensureCustomModulesLoaded()', finishAt);
+  assert.ok(resetAt > -1 && reloadAt > resetAt);
+  assert.match(src, /invalidateClinicalAlertCache/);
+  const suspendAt = src.indexOf('await suspendShareSyncForDbChange()', restoreWithKeyAt);
+  assert.ok(suspendAt > -1 && suspendAt < nativeAt);
+  assert.match(src, /finally \{\s*resumeShareSyncAfterDbChange\(\);\s*ensureGlobalShareSync\(\);/s);
 });
 
 test('unlock y ajustes ofrecen restaurar sin Pro', () => {

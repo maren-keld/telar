@@ -165,6 +165,26 @@ pub async fn share_collect(api_base: String, token: String, secret: String) -> R
 }
 
 #[tauri::command]
+pub async fn share_ack(api_base: String, token: String, secret: String) -> Result<Value, String> {
+    share_blocking(move || {
+        let base = validated_api_base(&api_base)?;
+        let result = share_write_agent()
+            .post(&format!("{base}/api/share/{token}/response/ack"))
+            .query("secret", &secret)
+            .call();
+        let (status, body) = share_status_and_body(result, &base)?;
+        if status == 410 || status == 404 {
+            return Ok(serde_json::json!({ "ok": true, "gone": true }));
+        }
+        if status >= 400 {
+            return Err(share_error(status, &body, "No se pudo confirmar la respuesta"));
+        }
+        Ok(body)
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn share_notify_owner(
     api_base: String,
     email: String,

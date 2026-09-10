@@ -7,7 +7,8 @@ acá no hay forma de leer ítems ni respuestas — ni para nosotros ni para quie
 consiga acceso a la base.
 
 Ciclo de vida: el terapeuta crea el formulario, el paciente lo responde una vez,
-la app se lleva la respuesta y la fila se borra. Lo que nadie recoge caduca.
+la app se lleva la respuesta y confirma que ya la guardó; entonces la fila se
+borra. Lo que nadie recoge caduca.
 """
 from __future__ import annotations
 
@@ -190,7 +191,7 @@ def register_routes(app) -> None:
 
     @app.get("/api/share/<token>/response")
     def share_collect(token: str):
-        """La app recoge la respuesta con el secreto del terapeuta y la fila se borra."""
+        """La app lee la respuesta. No se borra hasta el ack de guardado."""
         api = _api()
         if not TOKEN_RE.match(token or ""):
             return _gone()
@@ -213,13 +214,40 @@ def register_routes(app) -> None:
             if not row["answered_at"]:
                 return jsonify({"answered": False})
             response_ct = row["response_ct"]
-            conn.execute("DELETE FROM shared_forms WHERE token = ?", (token,))
 
         return jsonify({
             "answered": True,
             "answered_at": row["answered_at"],
             "response_ct": response_ct,
         })
+
+    @app.post("/api/share/<token>/response/ack")
+    def share_ack(token: str):
+        """Telar confirma que ya guardó la respuesta; recién entonces se borra."""
+        api = _api()
+        if not TOKEN_RE.match(token or ""):
+            return _gone()
+        secret = (request.args.get("secret") or "").strip()
+        if not secret:
+            return jsonify({"error": "Falta el secreto del formulario"}), 400
+
+        with api.db() as conn:
+            _purge_expired(conn)
+            row = conn.execute(
+                "SELECT owner_secret, answered_at FROM shared_forms WHERE token = ?",
+                (token,),
+            ).fetchone()
+            if not row:
+                return _gone()
+            import hmac
+
+            if not hmac.compare_digest(str(row["owner_secret"]), secret):
+                return jsonify({"error": "Secreto inválido"}), 403
+            if not row["answered_at"]:
+                return jsonify({"error": "Aún no hay respuesta"}), 409
+            conn.execute("DELETE FROM shared_forms WHERE token = ?", (token,))
+
+        return jsonify({"ok": True})
 
     @app.delete("/api/share/<token>")
     def share_revoke(token: str):

@@ -10,7 +10,10 @@ let clinicalAlertInflight = null;
 
 function invalidateClinicalAlertCache() {
   clinicalAlertCache = null;
+  clinicalAlertInflight = null;
 }
+
+export { invalidateClinicalAlertCache };
 
 if (typeof document !== 'undefined') {
   document.addEventListener('telar:module-data-saved', invalidateClinicalAlertCache);

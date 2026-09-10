@@ -134,7 +134,9 @@ const STRINGS = {
       'Ingresa el PIN de este Telar (o el que vas a usar). El .age no se abre con el PIN: hace falta la clave de recuperación.',
     'settings.cloudBackupRestoreOk': 'Respaldo restaurado. Tus datos están listos.',
     'settings.cloudBackupRestorePartial':
-      'La ficha se restauró, pero no se pudieron recuperar perfil o documentos de referencia. Se conservó lo que ya había en este computador. Revisa el espacio en disco e inténtalo de nuevo.',
+      'La ficha se restauró, pero no se pudieron cargar perfil o documentos de referencia. Los documentos de este computador quedaron apartados para no mezclarse con las fichas restauradas. Revisa el espacio en disco e inténtalo de nuevo.',
+    'settings.cloudBackupRestorePreserveFailed':
+      'No hay espacio para guardar una copia de los documentos de este computador. No se restauró la ficha. Libera espacio e inténtalo de nuevo.',
     'settings.cloudBackupRestoreDocsDetached':
       'Este respaldo no incluye documentos de referencia; los de este computador no se asociaron a las fichas restauradas.',
     'settings.cloudBackupRestoreNeedsSetup':
@@ -347,7 +349,9 @@ const STRINGS = {
       'Enter this Telar PIN (or the one you will use). The .age file does not open with the PIN: you need the recovery key.',
     'settings.cloudBackupRestoreOk': 'Backup restored. Your data is ready.',
     'settings.cloudBackupRestorePartial':
-      'The clinical file was restored, but profile or reference documents could not be recovered. What was already on this computer was kept. Check disk space and try again.',
+      'The clinical file was restored, but profile or reference documents could not be loaded. Documents already on this computer were set aside so they are not attached to the restored cases. Check disk space and try again.',
+    'settings.cloudBackupRestorePreserveFailed':
+      'There is not enough space to keep a copy of the documents on this computer. The clinical file was not restored. Free some space and try again.',
     'settings.cloudBackupRestoreDocsDetached':
       'This backup does not include reference documents; those on this computer were not attached to the restored cases.',
     'settings.cloudBackupRestoreNeedsSetup':

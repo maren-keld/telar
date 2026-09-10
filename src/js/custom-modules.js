@@ -101,6 +101,12 @@ export function ensureCustomModulesLoaded() {
   return loading;
 }
 
+/** Tras restaurar la DB (u otro cambio de ficha): volver a leer de SQLite. */
+export function resetCustomModulesCache() {
+  cache = null;
+  loading = null;
+}
+
 export function listCustomModules() {
   return cache || [];
 }

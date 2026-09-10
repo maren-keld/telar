@@ -7,6 +7,7 @@
  * y vuelca lo que llegó en la ficha.
  */
 import { getModule, query } from './db.js';
+import { flushPendingAutoSaves } from './autobind.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { syncModuleReadableText } from './readable-text.js';
 import { getSubscriptionApiBase, isLocalDevFrontend } from './subscription.js';
@@ -29,6 +30,63 @@ export const PENDING_SHARE_SQL = `json_extract(sm.data, '$.share.token') IS NOT 
 
 export function sharePollShouldRun(pendingCount) {
   return Number(pendingCount) > 0;
+}
+
+let shareSyncGeneration = 0;
+let shareSyncSuspendLeases = 0;
+const shareCollectJobs = new Set();
+let countPendingSharesOverride = null;
+
+function isShareSyncSuspended() {
+  return shareSyncSuspendLeases > 0;
+}
+
+function isShareSyncCurrent(startedAt) {
+  return !isShareSyncSuspended() && startedAt === shareSyncGeneration;
+}
+
+async function waitShareCollectIdle() {
+  while (shareCollectJobs.size) {
+    await Promise.allSettled([...shareCollectJobs]);
+  }
+}
+
+/** Para el poll y cualquier collect: no encolar más y esperar las escrituras ya en cola. */
+export async function suspendShareSyncForDbChange() {
+  shareSyncGeneration += 1;
+  shareSyncSuspendLeases += 1;
+  stopSharePoll();
+  sharePollStartupChecked = false;
+  await waitShareCollectIdle();
+  if (typeof syncModuleReadableText.waitUntilIdle === 'function') {
+    await syncModuleReadableText.waitUntilIdle();
+  }
+}
+
+export function resumeShareSyncAfterDbChange() {
+  if (shareSyncSuspendLeases > 0) shareSyncSuspendLeases -= 1;
+}
+
+export function resetShareSyncForTests() {
+  stopSharePoll();
+  sharePollStartupChecked = false;
+  sharePollOnApplied = null;
+  shareSyncGeneration = 0;
+  shareSyncSuspendLeases = 0;
+  shareCollectJobs.clear();
+  countPendingSharesOverride = null;
+}
+
+export function setCountPendingSharesForTests(fn) {
+  countPendingSharesOverride = fn;
+}
+
+export function isSharePollRunningForTests() {
+  return Boolean(globalShareSyncStop);
+}
+
+export function isShareSyncSuspendedForTests() {
+  return isShareSyncSuspended();
 }
 
 function apiUrl(path) {
@@ -89,6 +147,21 @@ async function shareRevokeRequest(token, secret) {
     await getInvoke()('share_revoke', { apiBase: base, token, secret });
   } catch {
     /* si el servidor no responde, el enlace caduca solo */
+  }
+}
+
+async function shareAckRequest(token, secret) {
+  const base = getSubscriptionApiBase();
+  if (useShareFetch()) {
+    await fetch(apiUrl(`/api/share/${token}/response/ack?secret=${encodeURIComponent(secret)}`), {
+      method: 'POST',
+    });
+    return;
+  }
+  try {
+    await getInvoke()('share_ack', { apiBase: base, token, secret });
+  } catch {
+    /* Telar ya tiene la respuesta; la fila caduca sola */
   }
 }
 
@@ -228,55 +301,81 @@ function patchFromResponse(share, response) {
  * @returns {Promise<object|null>} contexto de lo aplicado, o null.
  */
 export async function collectShareResponse(moduleRow) {
-  const data = parseJsonSafe(moduleRow.data, {});
-  const share = data.share;
-  if (!share?.token || !share?.secret) return null;
+  if (isShareSyncSuspended()) return null;
+  const startedAt = shareSyncGeneration;
+  const job = (async () => {
+    const data = parseJsonSafe(moduleRow.data, {});
+    const share = data.share;
+    if (!share?.token || !share?.secret) return null;
 
-  let status;
-  let body;
-  try {
-    ({ status, body } = await shareCollectRequest(share.token, share.secret));
-  } catch {
-    return null;
-  }
+    let status;
+    let body;
+    try {
+      ({ status, body } = await shareCollectRequest(share.token, share.secret));
+    } catch {
+      return null;
+    }
 
-  // 410: caducó o ya se recogió antes. Se limpia para no seguir consultando.
-  if (status === 410 || body?.gone) {
+    // 410: caducó o ya se recogió antes. Se limpia para no seguir consultando.
+    if (status === 410 || body?.gone) {
+      if (!isShareSyncCurrent(startedAt)) return null;
+      const goneRow = await getModule(moduleRow.id);
+      if (!isShareSyncCurrent(startedAt)) return null;
+      const still = parseJsonSafe(goneRow?.data, {}).share;
+      if (!still?.token || still.token !== share.token) return null;
+      await syncModuleReadableText(goneRow || moduleRow, { share: null }, goneRow?.status);
+      return null;
+    }
+    if (status < 200 || status >= 300) return null;
+
+    if (!body.answered || !body.response_ct) return null;
+
+    let response;
+    try {
+      response = await decryptShare(share.key, body.response_ct);
+    } catch (e) {
+      console.error('No se pudo descifrar la respuesta del paciente', e);
+      return null;
+    }
+
+    const ctx = await shareContextFor(moduleRow);
+    if (!isShareSyncCurrent(startedAt)) return null;
+    // Persist pending local edits before applying the patient's response. A
+    // failed save aborts collection, leaving the response on the server.
+    await flushPendingAutoSaves();
+    if (!isShareSyncCurrent(startedAt)) return null;
     const fresh = await getModule(moduleRow.id);
-    await syncModuleReadableText(fresh || moduleRow, { share: null }, fresh?.status);
-    return null;
-  }
-  if (status < 200 || status >= 300) return null;
-
-  if (!body.answered || !body.response_ct) return null;
-
-  let response;
+    if (!fresh || parseJsonSafe(fresh.data, {}).share?.token !== share.token) return null;
+    if (!isShareSyncCurrent(startedAt)) return null;
+    const patch = patchFromResponse(share, response);
+    /* No borres un payload previo si el paciente solo mandó el resumen (Telar.done). */
+    if (share.kind === 'interactive' && patch.payload == null) delete patch.payload;
+    await syncModuleReadableText(
+      fresh || moduleRow,
+      { ...patch, share: null, share_answered_at: body.answered_at },
+      'completado',
+    );
+    try {
+      await shareAckRequest(share.token, share.secret);
+    } catch {
+      /* ya está en la ficha */
+    }
+    return {
+      moduleId: moduleRow.id,
+      moduleType: moduleRow.module_type,
+      moduleLabel: moduleLabelFor(moduleRow.module_type),
+      sessionNumber: ctx.sessionNumber,
+      patientName: ctx.patientName,
+      treatmentId: ctx.treatmentId,
+      answeredAt: body.answered_at,
+    };
+  })();
+  shareCollectJobs.add(job);
   try {
-    response = await decryptShare(share.key, body.response_ct);
-  } catch (e) {
-    console.error('No se pudo descifrar la respuesta del paciente', e);
-    return null;
+    return await job;
+  } finally {
+    shareCollectJobs.delete(job);
   }
-
-  const ctx = await shareContextFor(moduleRow);
-  const fresh = await getModule(moduleRow.id);
-  const patch = patchFromResponse(share, response);
-  /* No borres un payload previo si el paciente solo mandó el resumen (Telar.done). */
-  if (share.kind === 'interactive' && patch.payload == null) delete patch.payload;
-  await syncModuleReadableText(
-    fresh || moduleRow,
-    { ...patch, share: null, share_answered_at: body.answered_at },
-    'completado',
-  );
-  return {
-    moduleId: moduleRow.id,
-    moduleType: moduleRow.module_type,
-    moduleLabel: moduleLabelFor(moduleRow.module_type),
-    sessionNumber: ctx.sessionNumber,
-    patientName: ctx.patientName,
-    treatmentId: ctx.treatmentId,
-    answeredAt: body.answered_at,
-  };
 }
 
 const PENDING_SHARE_SELECT = `SELECT sm.id, sm.module_type, sm.status, sm.data,
@@ -297,6 +396,7 @@ export async function pendingShareModules(treatmentId) {
 }
 
 export async function countPendingShares() {
+  if (countPendingSharesOverride) return countPendingSharesOverride();
   const [row] = await query(
     `SELECT COUNT(*) AS n FROM session_modules sm WHERE ${PENDING_SHARE_SQL}`,
   );
@@ -308,10 +408,14 @@ export async function countPendingShares() {
  * @returns {Promise<object[]>} ítems aplicados.
  */
 export async function syncPendingShares(treatmentId) {
+  if (isShareSyncSuspended()) return [];
+  const startedAt = shareSyncGeneration;
   const pending = await pendingShareModules(treatmentId);
   const applied = [];
   for (const row of pending) {
+    if (!isShareSyncCurrent(startedAt)) return applied;
     await new Promise((resolve) => setTimeout(resolve, 0));
+    if (!isShareSyncCurrent(startedAt)) return applied;
     const item = await collectShareResponse(row);
     if (item) applied.push(item);
   }
@@ -341,6 +445,7 @@ async function stopSharePollIfIdle() {
  * @returns {() => void} para detenerla.
  */
 export function startShareAutoSync(onApplied) {
+  if (isShareSyncSuspended()) return globalShareSyncStop;
   if (onApplied) sharePollOnApplied = onApplied;
   sharePollStartupChecked = true;
   if (globalShareSyncStop) return globalShareSyncStop;
@@ -348,7 +453,7 @@ export function startShareAutoSync(onApplied) {
   let running = false;
 
   const tick = async () => {
-    if (stopped || running) return;
+    if (stopped || running || isShareSyncSuspended()) return;
     running = true;
     try {
       const applied = await syncPendingShares();
@@ -384,10 +489,12 @@ export function startShareAutoSync(onApplied) {
 
 /** Arranca el poll solo si hay enlaces pendientes (una vez por sesión desbloqueada). */
 export function ensureGlobalShareSync() {
-  if (globalShareSyncStop || sharePollStartupChecked) return;
+  if (isShareSyncSuspended() || globalShareSyncStop || sharePollStartupChecked) return;
   sharePollStartupChecked = true;
+  const startedAt = shareSyncGeneration;
   void countPendingShares()
     .then((n) => {
+      if (isShareSyncSuspended() || startedAt !== shareSyncGeneration) return;
       if (sharePollShouldRun(n)) startShareAutoSync();
     })
     .catch((e) => console.error('[share-sync] conteo inicial falló:', e?.message || e));

@@ -2,6 +2,26 @@ import { escapeHtml } from '../utils.js';
 import { bindPinBoxes, focusFirstEmpty, isValidPin, pinBoxesHtml, readPin } from './pin-input.js';
 import { shakeEl } from '../transitions.js';
 
+/** Un solo envío a la vez: Enter repetido no relanza onSubmit. */
+export function createExclusiveSubmit() {
+  let busy = false;
+  return {
+    get busy() {
+      return busy;
+    },
+    async run(fn) {
+      if (busy) return { started: false };
+      busy = true;
+      try {
+        return { started: true, value: await fn() };
+      } catch (err) {
+        busy = false;
+        throw err;
+      }
+    },
+  };
+}
+
 /**
  * Modal para pedir PIN de 6 dígitos.
  * @returns {void}
@@ -9,6 +29,7 @@ import { shakeEl } from '../transitions.js';
 export function openPinModal({ title, submitLabel = 'Confirmar', onSubmit, onCancel }) {
   const root = document.getElementById('modal-root');
   const pinId = 'modal-pin';
+  const exclusive = createExclusiveSubmit();
 
   root.innerHTML = `
     <div class="modal-backdrop" data-close>
@@ -46,18 +67,23 @@ export function openPinModal({ title, submitLabel = 'Confirmar', onSubmit, onCan
       focusFirstEmpty(card, pinId);
       return;
     }
-    submit.disabled = true;
     try {
-      await onSubmit(pin);
-      close();
+      const { started } = await exclusive.run(async () => {
+        if (submit) submit.disabled = true;
+        await onSubmit(pin);
+        close();
+      });
+      if (!started) return;
     } catch {
-      submit.disabled = false;
+      if (submit) submit.disabled = false;
     }
   };
 
   submit?.addEventListener('click', doSubmit);
   card.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') doSubmit();
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    void doSubmit();
   });
 
   focusFirstEmpty(card, pinId);

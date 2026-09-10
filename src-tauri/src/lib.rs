@@ -529,6 +529,7 @@ pub fn run() {
             subscription_api::subscription_status,
             subscription_api::share_create,
             subscription_api::share_collect,
+            subscription_api::share_ack,
             subscription_api::share_revoke,
             subscription_api::share_notify_owner,
             desktop_notify::show_desktop_notification,

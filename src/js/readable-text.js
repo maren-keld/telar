@@ -2,7 +2,8 @@ import { coverageLabel } from './clinic-country.js';
 import { getModuleDef, patientGenderLabel } from './config.js';
 import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
 import { formatTccHandoutReadable, tccHandoutDef } from './tcc-handout-defs.js';
-import { saveModuleData } from './db.js';
+import { getModule, saveModuleData } from './db.js';
+import { createModuleSaveCoordinator } from './module-save-coordinator.js';
 import { asrsSummary } from './asrs-scoring.js';
 import { pcl5Summary } from './pcl5-scoring.js';
 import { sprintSummary } from './sprint-scoring.js';
@@ -434,10 +435,9 @@ export function finishModuleSave(moduleRow, merged, status) {
 }
 
 /** Texto plano del módulo para contexto de IA (futuro). */
-export async function syncModuleReadableText(moduleRow, payload, status) {
-  const st = status || moduleRow.status || 'pendiente';
-  const merged = mergeModuleReadable(moduleRow, payload);
-  await saveModuleData(moduleRow.id, merged, st);
-  finishModuleSave(moduleRow, merged, st);
-  return merged;
-}
+export const syncModuleReadableText = createModuleSaveCoordinator({
+  read: getModule,
+  merge: mergeModuleReadable,
+  write: saveModuleData,
+  finish: finishModuleSave,
+});

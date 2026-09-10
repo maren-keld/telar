@@ -761,17 +761,26 @@ pub fn db_execute_batch(args: DbBatchArgs) -> Result<(), String> {
             }
             Ok(())
         })();
-        match result {
-            Ok(()) => conn
-                .execute("COMMIT", [])
-                .map_err(|e| format!("COMMIT: {e}"))
-                .map(|_| ()),
+        conclude_write_tx(conn, result)
+    })
+}
+
+/// Cierra la transacción. Si COMMIT falla, hace ROLLBACK para no dejar la
+/// conexión a medias: una escritura posterior parecería ok y se perdería.
+fn conclude_write_tx(conn: &Connection, result: Result<(), String>) -> Result<(), String> {
+    match result {
+        Ok(()) => match conn.execute("COMMIT", []) {
+            Ok(_) => Ok(()),
             Err(e) => {
                 let _ = conn.execute("ROLLBACK", []);
-                Err(e)
+                Err(format!("COMMIT: {e}"))
             }
+        },
+        Err(e) => {
+            let _ = conn.execute("ROLLBACK", []);
+            Err(e)
         }
-    })
+    }
 }
 
 #[tauri::command]
@@ -809,11 +818,12 @@ pub fn db_select(args: DbQueryArgs) -> Result<Vec<HashMap<String, JsonValue>>, S
 #[cfg(test)]
 mod tests {
     use super::{
-        install_db_file_atomic, lockout_delay_secs, rollback_db_file, validate_execute_sql,
-        validate_select_sql,
+        conclude_write_tx, install_db_file_atomic, lockout_delay_secs, rollback_db_file,
+        validate_execute_sql, validate_select_sql,
     };
     use rusqlite::Connection;
     use std::fs;
+    use std::time::Duration;
     use tempfile::TempDir;
 
     #[test]
@@ -922,6 +932,72 @@ AND id != (
             .query_row("SELECT COUNT(*) FROM treatments", [], |r| r.get(0))
             .unwrap();
         assert_eq!(treatments, 1);
+    }
+
+    #[test]
+    fn failed_commit_rolls_back_so_later_writes_persist() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("tx.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.busy_timeout(Duration::from_millis(0)).unwrap();
+        conn.pragma_update(None, "journal_mode", "DELETE").unwrap();
+        conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT NOT NULL)", [])
+            .unwrap();
+        conn.execute("BEGIN IMMEDIATE", []).unwrap();
+        conn.execute("INSERT INTO t (v) VALUES ('pending')", [])
+            .unwrap();
+
+        let reader = Connection::open(&path).unwrap();
+        reader.busy_timeout(Duration::from_millis(0)).unwrap();
+        reader.execute("BEGIN DEFERRED", []).unwrap();
+        let _: i64 = reader
+            .query_row("SELECT COUNT(*) FROM sqlite_schema", [], |r| r.get(0))
+            .unwrap();
+
+        let err = conclude_write_tx(&conn, Ok(())).unwrap_err();
+        assert!(err.contains("COMMIT"), "{err}");
+        assert!(
+            conn.is_autocommit(),
+            "ROLLBACK debe dejar la conexión fuera de transacción"
+        );
+
+        drop(reader);
+        conn.execute("INSERT INTO t (v) VALUES ('kept')", [])
+            .unwrap();
+        drop(conn);
+
+        let check = Connection::open(&path).unwrap();
+        let pending: i64 = check
+            .query_row("SELECT COUNT(*) FROM t WHERE v = 'pending'", [], |r| r.get(0))
+            .unwrap();
+        let kept: i64 = check
+            .query_row("SELECT COUNT(*) FROM t WHERE v = 'kept'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(pending, 0);
+        assert_eq!(kept, 1);
+    }
+
+    #[test]
+    fn inner_error_rolls_back_and_later_writes_persist() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT NOT NULL)", [])
+            .unwrap();
+        conn.execute("BEGIN IMMEDIATE", []).unwrap();
+        conn.execute("INSERT INTO t (v) VALUES ('pending')", [])
+            .unwrap();
+        let err = conclude_write_tx(&conn, Err("boom".into())).unwrap_err();
+        assert_eq!(err, "boom");
+        assert!(conn.is_autocommit());
+        conn.execute("INSERT INTO t (v) VALUES ('kept')", [])
+            .unwrap();
+        let pending: i64 = conn
+            .query_row("SELECT COUNT(*) FROM t WHERE v = 'pending'", [], |r| r.get(0))
+            .unwrap();
+        let kept: i64 = conn
+            .query_row("SELECT COUNT(*) FROM t WHERE v = 'kept'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(pending, 0);
+        assert_eq!(kept, 1);
     }
 
     #[test]
