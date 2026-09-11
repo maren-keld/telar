@@ -50,7 +50,7 @@ export function openShareModuleModal(moduleRow, { label, def, interactive, hando
               ? `<label class="share-modal__link-label" for="share-url">Enlace para el paciente</label>
                 <div class="share-modal__link">
                   <input type="text" class="input" id="share-url" readonly value="${escapeHtml(url)}" />
-                  <button type="button" class="btn btn-icon btn-secondary" data-copy title="Copiar enlace" aria-label="Copiar enlace">${ICON_COPY}</button>
+                  <button type="button" class="btn btn-secondary" data-copy title="Copiar enlace" aria-label="Copiar enlace">${ICON_COPY} Copiar</button>
                 </div>
                 <p class="share-modal__hint">
                   Mándaselo por WhatsApp o correo. Se puede responder una sola vez y caduca
