@@ -12,24 +12,25 @@ import { previewHtml } from '../../src/js/components/module-selector.js';
 import { getTreatmentTemplate } from '../../src/js/treatment-templates.js';
 import { listAddableModuleOptions } from '../../src/js/workspace-index-mode.js';
 
-test('IES-R y SPRINT quedan pendientes de permiso', () => {
+test('IES-R queda pendiente de permiso; SPRINT-E-CL está autorizado', () => {
   assert.equal(isLicensePendingModule('iesr'), true);
-  assert.equal(isLicensePendingModule('sprint_ecl'), true);
+  assert.equal(isLicensePendingModule('sprint_ecl'), false);
   assert.equal(isLicensePendingModule('pcl5'), false);
+  assert.equal(psychometricsFor('sprint_ecl').license, 'Autorizado por el autor');
 });
 
 test('el catálogo, la IA y el compartir no ofrecen escalas pendientes', () => {
   const proposable = new Set(listProposableModules().map((m) => m.id));
   assert.equal(proposable.has('iesr'), false);
-  assert.equal(proposable.has('sprint_ecl'), false);
+  assert.equal(proposable.has('sprint_ecl'), true);
   assert.equal(proposable.has('pcl5'), true);
 
   const addable = new Set(listAddableModuleOptions().map((m) => m.type));
   assert.equal(addable.has('iesr'), false);
-  assert.equal(addable.has('sprint_ecl'), false);
+  assert.equal(addable.has('sprint_ecl'), true);
 
   assert.equal(toShareDef('iesr'), null);
-  assert.equal(toShareDef('sprint_ecl'), null);
+  assert.ok(toShareDef('sprint_ecl'));
   assert.ok(toShareDef('pcl5'));
   assert.equal(toShareDef('asrs').items.length, 6);
 });

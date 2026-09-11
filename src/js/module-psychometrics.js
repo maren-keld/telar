@@ -96,7 +96,7 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity:
       'Tamizaje breve de estrés postraumático. Ítems 1–11 suman 0–44; ítem 12 (ideación suicida) no suma.',
     learnMore: 'Validado en Chile tras terremoto/tsunami 2010. No sustituye evaluación clínica integral.',
-    license: 'Pendiente de permiso / oculto en el catálogo',
+    license: 'Autorizado por el autor',
   },
   iesr: {
     authors: 'Weiss & Marmar (1997)',
