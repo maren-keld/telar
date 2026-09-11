@@ -79,7 +79,7 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
       hasContent = true;
       const shown =
         section.type === 'radio'
-          ? section.options?.find((o) => o.v === text)?.label || text
+          ? section.options?.find((o) => String(o.v) === String(text))?.label || text
           : text;
       y = pdfText(doc, shown, MARGIN, y, { size: 10, maxWidth: maxW });
     } else if (section.type === 'radio' && section.options?.length) {

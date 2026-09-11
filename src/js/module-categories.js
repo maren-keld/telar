@@ -40,6 +40,7 @@ export const CATEGORIES = [
       'gad7',
       'asrs',
       'pcl5',
+      'sprint_ecl',
       'ades',
       'eed',
       'qols',

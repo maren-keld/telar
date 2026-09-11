@@ -191,7 +191,7 @@ function sprintDef() {
       subscales: [subscale('likert', 'Ítems 1–11', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
     },
     riskItems: [{ index: 11, gte: 1, message: 'Posible ideación suicida — abordar en sesión.' }],
-    attribution: { authors: 'Connor & Davidson · adaptación chilena 27-F', license: 'Pendiente de permiso / oculto en el catálogo' },
+    attribution: { authors: 'Connor & Davidson · adaptación chilena 27-F', license: 'Autorizado por el autor' },
     storage: ANSWERS_STORAGE,
   };
 }
