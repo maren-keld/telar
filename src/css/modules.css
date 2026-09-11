@@ -3303,13 +3303,17 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 }
 
 .share-modal__link [data-copy] {
-  flex: 0 0 44px;
-  padding: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .share-modal__link [data-copy] .nav-icon-svg {
   width: 18px;
   height: 18px;
+  flex-shrink: 0;
 }
 
 .share-modal__hint {
