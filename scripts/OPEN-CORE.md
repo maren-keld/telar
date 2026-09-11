@@ -2,6 +2,8 @@
 
 Un solo repo y rama **`main`**: app completa, landing, server de suscripciones y CI.
 
+Notas de operador / CRM / radar de CEO (`GROKBOT.md`, `docs/` local) **no van a git**. El Mac conserva packs clínicos y esos archivos; GitHub es el motor AGPL + demo.
+
 ## Contenido propietario (no en git)
 
 Los packs clínicos viven en `packs/` o `packs-src/` (gitignored). Antes de un release:
