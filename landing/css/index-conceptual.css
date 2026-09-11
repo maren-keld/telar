@@ -242,8 +242,10 @@
 }
 
 .encrypt-demo__card {
-  flex: 0 1 auto;
-  align-self: stretch;
+  flex: 0 0 auto;
+  width: 17.25rem;
+  max-width: 100%;
+  align-self: center;
   overflow: hidden;
   padding: 0.42rem 0.48rem 1.35rem;
   border-radius: 0.85rem;
