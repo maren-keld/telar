@@ -126,9 +126,6 @@
     ]
   }
   </script>
-  <link rel="preload" as="image" type="image/webp" fetchpriority="high"
-    imagesrcset="assets/gallery-puntajes-800.webp 800w, assets/gallery-puntajes-1600.webp 1600w, assets/gallery-puntajes-2400.webp 2400w"
-    imagesizes="(max-width: 800px) 100vw, min(1600px, 100vw)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- La hoja de Inter no debe bloquear el primer pintado: se pide como
@@ -143,12 +140,10 @@
     img{max-width:100%;height:auto}picture{display:contents}
     .nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--border)}
     .nav-inner{display:flex;align-items:stretch;min-height:56px}
-    .hero-product-shot{background:#0c0d10;padding:1.25rem 1rem .5rem}
-    .hero-product-shot__inner{max-width:1600px;margin:0 auto}
-    .hero-product-shot img{display:block;width:100%;height:auto}
   </style>
   <link rel="stylesheet" href="css/style.min.css?v=20260903c" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="css/style.min.css?v=20260903c"></noscript>
+  <link rel="stylesheet" href="css/index-conceptual.css?v=20260910i">
   <script src="js/nav.js?v=20260830p" defer></script>
   <script src="js/download.js?v=20260902u" defer></script>
   <script src="js/demo-video.js?v=20260830p" defer></script>
@@ -156,7 +151,7 @@
   <script src="js/hero-camera.min.js?v=20260830p" defer></script>
   <script src="js/geo-pricing.js?v=20260902a" defer></script>
 </head>
-<body>
+<body class="telar-conceptual">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
   <header class="nav">
     <div class="nav-inner">
@@ -206,51 +201,21 @@
             <span><b>+30</b> psicólogos usando la app</span>
           </p>
         </div>
-      </div>
-    </section>
-
-    <section class="hero-product-shot" aria-label="Puntajes e interpretación en Telar">
-      <div class="hero-product-shot__inner">
-        <figure class="hero-product-shot__figure">
-          <div class="shot-map" data-shot-map>
-            <div class="shot-map__frame">
-              <picture>
-                <source
-                  type="image/webp"
-                  srcset="assets/gallery-puntajes-800.webp 800w, assets/gallery-puntajes-1600.webp 1600w, assets/gallery-puntajes-2400.webp 2400w"
-                  sizes="(max-width: 800px) 100vw, min(1600px, 100vw)"
-                >
-                <img
-                  src="assets/gallery-puntajes-1600.webp"
-                  alt="PCL-5 puntuada en Telar, con interpretación automática y curva de evolución por sesión"
-                  width="2400"
-                  height="1452"
-                  decoding="async"
-                  fetchpriority="high"
-                >
-              </picture>
-              <ul class="shot-map__pins">
-                <li class="shot-pin shot-pin--center" style="--x: 42.3%; --y: 31.6%;">
-                  <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-interpretacion">
-                    <span class="shot-pin__dot" aria-hidden="true"></span>
-                    <span class="shot-pin__title">Puntaje e interpretación sin calcular</span>
-                  </button>
-                  <div class="shot-pin__card" id="shot-pin-interpretacion" hidden>
-                    <p>Telar corrige la escala y muestra el puntaje con su interpretación al instante.</p>
-                  </div>
-                </li>
-                <li class="shot-pin shot-pin--right" style="--x: 81%; --y: 50%;">
-                  <button type="button" class="shot-pin__btn" data-shot-pin aria-expanded="false" aria-controls="shot-pin-graficos">
-                    <span class="shot-pin__dot" aria-hidden="true"></span>
-                    <span class="shot-pin__title">Evolución sin armar un Excel</span>
-                  </button>
-                  <div class="shot-pin__card" id="shot-pin-graficos" hidden>
-                    <p>La curva se actualiza sesión a sesión para que puedas revisar progreso y estancamientos.</p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
+        <figure class="hero-landing-shot" aria-label="Vista de Telar con una ficha clínica, escalas y evolución por sesión">
+          <picture>
+            <source
+              type="image/webp"
+              srcset="assets/telar-app-screenshot-920.webp 920w, assets/telar-app-screenshot-1840.webp 1840w"
+              sizes="(max-width: 900px) calc(100vw - 2rem), 48vw"
+            >
+            <img
+              src="assets/telar-app-screenshot-1840.webp"
+              alt="Telar mostrando una ficha clínica con escalas puntuadas y evolución por sesión"
+              width="1840"
+              height="1042"
+              fetchpriority="high"
+            >
+          </picture>
         </figure>
       </div>
     </section>
@@ -296,6 +261,19 @@
             </a>
           </article>
           <article class="article-card" data-cat="tutorial">
+            <a class="article-card__main" href="blog/como-anadir-packs.html">
+              <div class="article-card__media">
+                <img src="assets/article-packs-thumb.webp" alt="Librería de módulos de Telar con el cursor sobre Importar pack" width="800" height="480" loading="lazy" decoding="async">
+              </div>
+              <p class="article-card__meta">
+                <span class="article-card__cat">Tutorial</span>
+                <time class="article-card__date" datetime="2026-09-11">11 sep 2026</time>
+              </p>
+              <h3>Cómo añadir packs Telar</h3>
+              <p class="article-card__excerpt">Importa un archivo .telarpack desde Módulos. Queda disponible en cualquier tratamiento.</p>
+            </a>
+          </article>
+          <article class="article-card" data-cat="tutorial">
             <a class="article-card__main" href="blog/privacidad-local.html">
               <div class="article-card__media">
                 <img src="assets/gallery-significado-800.webp" alt="Ficha clínica de Telar con pregunta milagro y bitácora, guardada en el computador" width="800" height="484" loading="lazy" decoding="async">
@@ -306,19 +284,6 @@
               </p>
               <h3>Qué significa que Telar sea local</h3>
               <p class="article-card__excerpt">Con Telar los datos de tus pacientes son siempre tuyos. Qué implica eso para tu práctica frente a herramientas con IA como ChatGPT o Google NotebookLM.</p>
-            </a>
-          </article>
-          <article class="article-card" data-cat="practica">
-            <a class="article-card__main" href="blog/tdah-adulto.html">
-              <div class="article-card__media">
-                <img src="assets/hero-cloud-asrs-chart.png" alt="Curva de evolución ASRS en Telar para seguimiento de TDAH adulto" width="800" height="500" loading="lazy" decoding="async">
-              </div>
-              <p class="article-card__meta">
-                <span class="article-card__cat">Práctica clínica</span>
-                <time class="article-card__date" datetime="2026-07-31">31 jul 2026</time>
-              </p>
-              <h3>TDAH en adultos: cómo Telar puede apoyar el tratamiento</h3>
-              <p class="article-card__excerpt">La plantilla de 8 sesiones, ASRS y GAD-7 puntuadas al instante, y la variante con neurofeedback.</p>
             </a>
           </article>
         </div>
@@ -333,8 +298,8 @@
 
         <div class="value-grid value-grid--stack">
           <article class="value-card value-card--iso">
-            <div class="value-card__visual" aria-hidden="true">
-              <canvas data-visual="lego" data-post="ascii" width="480" height="280"></canvas>
+            <div class="value-card__visual value-card__visual--app" aria-hidden="true">
+              <img src="assets/shot-libreria.webp?v=2" alt="" width="992" height="915" loading="lazy" decoding="async">
             </div>
             <div class="value-card__copy">
               <p class="value-kicker">Ahorra tiempo</p>
@@ -345,8 +310,8 @@
           </article>
 
           <article class="value-card value-card--iso">
-            <div class="value-card__visual" aria-hidden="true">
-              <canvas data-visual="score" data-post="cad" width="480" height="280"></canvas>
+            <div class="value-card__visual value-card__visual--app value-card__visual--waves" aria-hidden="true">
+              <img src="assets/shot-puntajes.webp?v=2" alt="" width="962" height="488" loading="lazy" decoding="async">
             </div>
             <div class="value-card__copy">
               <p class="value-kicker">Ahorra tiempo</p>
@@ -357,8 +322,8 @@
           </article>
 
           <article class="value-card value-card--iso">
-            <div class="value-card__visual" aria-hidden="true">
-              <canvas data-visual="bolt" data-post="cad" width="480" height="280"></canvas>
+            <div class="value-card__visual value-card__visual--app value-card__visual--video" aria-hidden="true">
+              <video src="assets/shot-chat.mp4" poster="assets/shot-chat.jpg" width="1200" height="900" autoplay muted loop playsinline preload="metadata"></video>
             </div>
             <div class="value-card__copy">
               <p class="value-kicker">Ahorra tiempo</p>

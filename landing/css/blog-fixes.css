@@ -1,0 +1,51 @@
+/* Blog adjustments requested during visual review. */
+.guide-video {
+  margin: 1.5rem 0 0;
+}
+
+.guide-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #e8f1fb;
+}
+
+.guide-photo--conceptual {
+  background: #edf0e6;
+}
+
+.guide-photo--conceptual img {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+@media (max-width: 800px) {
+  .guide-body .install-carousel {
+    width: 100vw;
+    margin: 1.5rem 0 2.5rem calc(50% - 50vw);
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .guide-body .install-carousel__viewport {
+    aspect-ratio: auto;
+    max-height: none;
+  }
+
+  .guide-body .install-carousel__slide {
+    display: block;
+  }
+
+  .guide-body .install-carousel__slide img {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    object-fit: contain;
+    object-position: center;
+  }
+}

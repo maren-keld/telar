@@ -32,7 +32,7 @@ Telar agrupa el trabajo clínico en **módulos**. Cada uno es una ficha o interv
 
 ## Packs
 
-La app comercial incluye packs clínicos (por ejemplo base compartida, TDAH adulto, trauma). El repositorio público open core incluye el pack **demo**. Importar/exportar `.telarpack` permite compartir módulos personalizados entre instalaciones.
+La app comercial incluye packs clínicos (por ejemplo base compartida, TDAH adulto, trauma). El repositorio público open core incluye el pack **demo**. Importar/exportar `.telarpack` permite compartir módulos personalizados entre instalaciones. Tutorial: [Cómo añadir packs Telar](https://telarapp.cl/blog/como-anadir-packs).
 
 ## Límites
 

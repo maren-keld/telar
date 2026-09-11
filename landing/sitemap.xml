@@ -115,6 +115,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://telarapp.cl/blog/como-anadir-packs</loc>
+    <lastmod>2026-09-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
     <loc>https://telarapp.cl/blog/como-instalar-telar</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>monthly</changefreq>
