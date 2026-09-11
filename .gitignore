@@ -30,6 +30,7 @@ playwright-report/
 .cursor/
 CLAUDE.md
 docs/
+GROKBOT.md
 
 # Contenido clínico propietario (open-core)
 /packs/
