@@ -131,13 +131,9 @@
 }
 
 .telar-conceptual .article-card__media {
-  padding: 0.7rem;
-  background: rgba(232, 241, 242, 0.8) url('../assets/index2-sky.png') center / cover;
+  padding: 0;
+  background: #e8f1fb;
   border-radius: 0.75rem;
-}
-
-.telar-conceptual .article-card:nth-child(2) .article-card__media {
-  background-image: url('../assets/index2-botanical.png');
 }
 
 .telar-conceptual .article-card__media img {
@@ -145,11 +141,7 @@
 }
 
 .telar-conceptual .value-section {
-  background-color: #f6f5ee;
-  background-image: url('../assets/index2-sky.png');
-  background-position: right -25rem top 15rem;
-  background-size: 56rem auto;
-  background-repeat: no-repeat;
+  background: #f6f5ee;
 }
 
 .telar-conceptual .value-card__visual {
@@ -172,6 +164,168 @@
 
 .telar-conceptual .value-card__visual--waves {
   background-image: url('../assets/gradient-waves.jpg') !important;
+}
+
+.telar-conceptual .value-card__visual--neuro {
+  background-image: url('../assets/gradient-arcs.jpg') !important;
+}
+
+.telar-conceptual .value-card__visual--encrypt {
+  background-color: #1d5bd8;
+  background-image: url('../assets/gradient-encrypt.jpg') !important;
+  background-blend-mode: normal;
+  padding: 0.45rem 0.5rem 0.4rem;
+}
+
+.encrypt-demo {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.encrypt-demo__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin: 0 0 0.28rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-shadow: 0 1px 8px rgba(20, 30, 50, 0.35);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.encrypt-demo__toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.encrypt-demo__switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(20, 30, 50, 0.18);
+}
+
+.encrypt-demo__knob {
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 0.74rem;
+  height: 0.74rem;
+  border-radius: 50%;
+  background: #e8edf4;
+  box-shadow: 0 1px 3px rgba(20, 30, 50, 0.2);
+  transition: transform 0.28s ease;
+}
+
+.value-card__visual--encrypt.is-encrypted .encrypt-demo__knob {
+  transform: translateX(0.76rem);
+  background: #4f7dff;
+}
+
+.value-card__visual--encrypt.is-encrypted .encrypt-demo__opt--on {
+  color: #fff;
+}
+
+.encrypt-demo__card {
+  flex: 0 1 auto;
+  align-self: stretch;
+  overflow: hidden;
+  padding: 0.42rem 0.48rem 1.35rem;
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.encrypt-demo__title {
+  margin: 0.35rem 0 0.28rem;
+  color: #0f2347;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.encrypt-demo__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.18rem 0.42rem;
+}
+
+.encrypt-demo__field {
+  min-width: 0;
+}
+
+.encrypt-demo__label {
+  display: block;
+  margin-bottom: 0.06rem;
+  color: #6b7385;
+  font-size: 0.42rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.encrypt-demo__input,
+.encrypt-demo__seg {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0.92rem;
+  padding: 0 0.28rem;
+  border: 1px solid #d8dee8;
+  border-radius: 0.3rem;
+  color: #0f2347;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.45rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  font-variant-numeric: tabular-nums;
+}
+
+.encrypt-demo__seg {
+  padding: 0;
+  overflow: hidden;
+}
+
+.encrypt-demo__seg span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0.2rem;
+}
+
+.encrypt-demo__seg span.is-on {
+  background: #d7e7ff;
+  color: #1d4ed8;
+}
+
+.encrypt-demo__input--chip {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 0.28rem;
+  border-radius: 0.3rem;
 }
 
 .telar-conceptual .value-card__visual--app img,
@@ -257,10 +411,6 @@
     right: 0.75rem;
     top: auto;
     bottom: -1rem;
-  }
-
-  .telar-conceptual .value-section {
-    background-size: 31rem auto;
   }
 
   .telar-conceptual .article-grid {

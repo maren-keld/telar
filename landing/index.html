@@ -143,13 +143,14 @@
   </style>
   <link rel="stylesheet" href="css/style.min.css?v=20260903c" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="css/style.min.css?v=20260903c"></noscript>
-  <link rel="stylesheet" href="css/index-conceptual.css?v=20260910i">
+  <link rel="stylesheet" href="css/index-conceptual.css?v=20260911p">
   <script src="js/nav.js?v=20260830p" defer></script>
   <script src="js/download.js?v=20260902u" defer></script>
   <script src="js/demo-video.js?v=20260830p" defer></script>
   <script src="js/track.min.js?v=20260830p" defer></script>
   <script src="js/hero-camera.min.js?v=20260830p" defer></script>
   <script src="js/geo-pricing.js?v=20260902a" defer></script>
+  <script src="js/encrypt-demo.js?v=20260911c" defer></script>
 </head>
 <body class="telar-conceptual">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -334,8 +335,8 @@
           </article>
 
           <article class="value-card value-card--iso">
-            <div class="value-card__visual" aria-hidden="true">
-              <canvas data-visual="neurons" data-post="cad" width="480" height="280"></canvas>
+            <div class="value-card__visual value-card__visual--app value-card__visual--neuro" aria-hidden="true">
+              <img src="assets/shot-neurofeedback.webp?v=1" alt="" width="1295" height="1216" loading="lazy" decoding="async">
             </div>
             <div class="value-card__copy">
               <p class="value-kicker">Prestación opcional</p>
@@ -346,8 +347,62 @@
           </article>
 
           <article class="value-card value-card--iso">
-            <div class="value-card__visual" aria-hidden="true">
-              <canvas data-visual="lock" data-post="cad" width="480" height="280"></canvas>
+            <div class="value-card__visual value-card__visual--app value-card__visual--encrypt" data-encrypt-demo>
+              <div class="encrypt-demo">
+                <button type="button" class="encrypt-demo__toggle" role="switch" aria-checked="false" aria-label="Encriptar datos con Telar">
+                  <span class="encrypt-demo__opt encrypt-demo__opt--off">Sin encriptar</span>
+                  <span class="encrypt-demo__switch" aria-hidden="true"><span class="encrypt-demo__knob"></span></span>
+                  <span class="encrypt-demo__opt encrypt-demo__opt--on">Encriptado con Telar</span>
+                </button>
+                <div class="encrypt-demo__card">
+                  <p class="encrypt-demo__title">Registro inicial</p>
+                  <div class="encrypt-demo__grid">
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Nombre</span>
+                      <span class="encrypt-demo__input" data-plain="Paciente de prueba"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Género</span>
+                      <span class="encrypt-demo__seg">
+                        <span class="is-on" data-plain="Femenino"></span>
+                        <span data-plain="Masculino"></span>
+                      </span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Número de ID (o RUT)</span>
+                      <span class="encrypt-demo__input" data-plain="181234561"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Fecha de nacimiento</span>
+                      <span class="encrypt-demo__input" data-plain="01/01/1990"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Correo electrónico</span>
+                      <span class="encrypt-demo__input" data-plain="correopaciente@email.com"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Estado marital</span>
+                      <span class="encrypt-demo__input" data-plain="En una relación"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Celular</span>
+                      <span class="encrypt-demo__input" data-plain="123456612"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Fuente</span>
+                      <span class="encrypt-demo__input" data-plain="Recomendación de otro cliente"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Dirección</span>
+                      <span class="encrypt-demo__input" data-plain="Avenida Marina 37, Viña del Mar"></span>
+                    </div>
+                    <div class="encrypt-demo__field">
+                      <span class="encrypt-demo__label">Ocupaciones</span>
+                      <span class="encrypt-demo__input encrypt-demo__input--chip" data-plain="Estudiante"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="value-card__copy">
               <p class="value-kicker">Seguridad y respaldo</p>
