@@ -3,14 +3,16 @@
  * núcleo o de un pack, un cuestionario importado, una experiencia interactiva
  * o un handout (TCC, narrativa, tareas).
  */
-import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
+import { getCustomModuleByType, isCustomModuleType, resolveQuestionnaireDef } from './custom-modules.js';
 import { ensureInteractiveCloseable } from './interactive-experience.js';
 import { toShareDef } from './questionnaire-defs.js';
 import { toShareHandout } from './share-handout.js';
 import { tccHandoutDef } from './tcc-handout-defs.js';
 
 export function simpleCustomToHandout(mod) {
-  if (!mod || mod.kind === 'interactive' || (mod.kind === 'questionnaire' && mod.def)) return null;
+  if (!mod || mod.kind === 'interactive' || (mod.kind === 'questionnaire' && resolveQuestionnaireDef(mod))) {
+    return null;
+  }
   const sections = (mod.questions || [])
     .filter((q) => q?.text && q.type !== 'info')
     .map((q) => {
@@ -46,7 +48,8 @@ export function simpleCustomToHandout(mod) {
 export function shareableContentFor(moduleType) {
   if (isCustomModuleType(moduleType)) {
     const mod = getCustomModuleByType(moduleType);
-    if (mod?.kind === 'questionnaire' && mod.def) return { def: mod.def };
+    const qDef = resolveQuestionnaireDef(mod);
+    if (mod?.kind === 'questionnaire' && qDef) return { def: qDef };
     if (mod?.kind === 'interactive' && mod.html) {
       return {
         interactive: {

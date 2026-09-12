@@ -5,7 +5,7 @@
  * `data.done_override`: true | false | ausente. El override gana.
  * Sin override: hecho si llegó respuesta por enlace o el contenido está completo.
  */
-import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
+import { getCustomModuleByType, isCustomModuleType, resolveQuestionnaireDef } from './custom-modules.js';
 import { questionnaireDefFor } from './questionnaire-defs.js';
 import { questionnaireItems } from '../lib/questionnaire-schema.js';
 import { toShareHandout } from './share-handout.js';
@@ -54,8 +54,9 @@ function customComplete(moduleType, data) {
   if (mod.kind === 'interactive') {
     return Boolean(data.completed_at || filled(data.summary) || data.payload != null);
   }
-  if (mod.kind === 'questionnaire' && mod.def) {
-    return answersComplete(data.answers, questionnaireItems(mod.def).length);
+  const qDef = resolveQuestionnaireDef(mod);
+  if (mod.kind === 'questionnaire' && qDef) {
+    return answersComplete(data.answers, questionnaireItems(qDef).length);
   }
   const questions = Array.isArray(mod.questions)
     ? mod.questions.filter((q) => q.type && q.type !== 'info')

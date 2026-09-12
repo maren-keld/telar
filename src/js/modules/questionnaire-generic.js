@@ -6,7 +6,7 @@
  * propio; comparten el schema solo para exportarse y compartirse por enlace.
  */
 import { bindAutoSave } from '../autobind.js';
-import { getCustomModuleByType } from '../custom-modules.js';
+import { getCustomModuleByType, resolveQuestionnaireDef } from '../custom-modules.js';
 import { getModule } from '../db.js';
 import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe } from '../utils.js';
@@ -36,6 +36,7 @@ function itemHtml(def, item, selected) {
                 : '';
             return `<label class="psych-item__opt">
               <input type="radio" name="q${item.index}" value="${escapeHtml(String(o.v))}" ${checked} />
+              <span class="likert-dot" aria-hidden="true"></span>
               <span class="psych-item__opt-v">${escapeHtml(String(o.v))}</span>
               <span>${escapeHtml(o.label)}</span>
             </label>`;
@@ -162,8 +163,8 @@ export async function renderQuestionnaireDef(host, moduleRow, def) {
 /** Entrada usada por el registry: resuelve la definición del módulo guardado. */
 export async function renderDeclarativeQuestionnaire(host, moduleRow) {
   const mod = getCustomModuleByType(moduleRow.module_type);
-  const def = mod?.def;
-  if (!def) {
+  const def = resolveQuestionnaireDef(mod);
+  if (!def || !questionnaireItems(def).length) {
     host.innerHTML = `<div class="card"><p class="text-muted">Este cuestionario ya no está en tu librería. Si venía de un pack, vuelve a importarlo.</p></div>`;
     return;
   }

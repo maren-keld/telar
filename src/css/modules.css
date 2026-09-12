@@ -2632,6 +2632,16 @@ body.is-dragging-module .session-block__title {
   pointer-events: none;
 }
 
+.psych-item__opt .likert-dot {
+  flex-shrink: 0;
+}
+
+.psych-item__opt input:checked + .likert-dot {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 60%, transparent);
+}
+
 .psych-item__opt:hover {
   border-color: var(--accent);
 }
