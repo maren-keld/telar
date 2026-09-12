@@ -2,6 +2,7 @@
 (function encryptDemo() {
   const GLYPHS = "@Q1M3#9C&F9B0D1J1A%";
   const SPEED = 20;
+  const AUTO_MS = 3000;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const randGlyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
@@ -53,29 +54,57 @@
     const toggle = root.querySelector(".encrypt-demo__toggle");
     if (!toggle) return;
     let on = false;
+    let autoTimer = 0;
+    let visible = false;
 
-    const activate = () => {
-      if (on) return;
-      on = true;
-      setEncrypted(root, toggle, true);
+    const apply = (next) => {
+      on = next;
+      setEncrypted(root, toggle, on);
+    };
+
+    const stopAuto = () => {
+      if (autoTimer) {
+        window.clearInterval(autoTimer);
+        autoTimer = 0;
+      }
+    };
+
+    const startAuto = () => {
+      stopAuto();
+      if (reduced) return;
+      autoTimer = window.setInterval(() => apply(!on), AUTO_MS);
     };
 
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      on = !on;
-      setEncrypted(root, toggle, on);
+      apply(!on);
     });
 
     const card = root.closest(".value-card") || root;
+
+    const onVisible = () => {
+      if (visible) return;
+      visible = true;
+      apply(true);
+      startAuto();
+    };
+
+    const onHidden = () => {
+      visible = false;
+      stopAuto();
+    };
+
     if (!("IntersectionObserver" in window)) {
-      activate();
+      onVisible();
       return;
     }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) activate();
+          if (entry.isIntersecting) onVisible();
+          else onHidden();
         });
       },
       { threshold: 0.45 }

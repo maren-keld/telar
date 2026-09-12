@@ -175,21 +175,27 @@
   background-image: url('../assets/gradient-encrypt.jpg') !important;
   background-blend-mode: normal;
   padding: 0.45rem 0.5rem 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .encrypt-demo {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  align-items: center;
+  width: 100%;
   min-height: 0;
 }
 
 .encrypt-demo__toggle {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
+  column-gap: 0.35rem;
   flex-shrink: 0;
+  width: 17.25rem;
+  max-width: 100%;
   margin: 0 0 0.28rem;
   padding: 0;
   border: 0;
@@ -202,6 +208,16 @@
   text-shadow: 0 1px 8px rgba(20, 30, 50, 0.35);
   white-space: nowrap;
   cursor: pointer;
+}
+
+.encrypt-demo__opt--off {
+  justify-self: end;
+  text-align: right;
+}
+
+.encrypt-demo__opt--on {
+  justify-self: start;
+  text-align: left;
 }
 
 .encrypt-demo__toggle:focus-visible {
