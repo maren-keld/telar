@@ -201,6 +201,41 @@ function plainHandoutText(value = '') {
     .trim();
 }
 
+function defHasItems(def) {
+  return Boolean(def && questionnaireItems(def).length);
+}
+
+/**
+ * Resuelve la definición schema 1 de un módulo custom/pack.
+ * Algunos `.telarpack` dejan el wrapper `{ defs: { es: … } }` en `def`, o solo
+ * publican el idioma bajo una clave distinta de `es`/`en`. Hay que preferir
+ * cualquier objeto con `items`, no el primer candidato truthy vacío.
+ */
+export function resolveQuestionnaireDef(custom) {
+  if (!custom) return null;
+  const seen = new Set();
+  const candidates = [];
+  const push = (value) => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+    candidates.push(value);
+    if (value.defs && typeof value.defs === 'object') {
+      for (const nested of Object.values(value.defs)) push(nested);
+    }
+  };
+
+  push(custom.def);
+  if (custom.defs && typeof custom.defs === 'object') {
+    push(custom.defs.es);
+    push(custom.defs.en);
+    for (const nested of Object.values(custom.defs)) push(nested);
+  }
+
+  const withItems = candidates.find(defHasItems);
+  if (withItems) return withItems;
+  return candidates.find((d) => d?.schema === 1) || candidates[0] || null;
+}
+
 /** PDF de un cuestionario schema 1 (packs como AQ-10, o creados en la app). */
 export function questionnaireToHandoutPayload(def, data = {}) {
   if (!def) return null;
@@ -210,8 +245,8 @@ export function questionnaireToHandoutPayload(def, data = {}) {
   const values = {};
   const sections = items.map((item) => {
     const opts = optionsForItem(def, item.index).map((o) => ({
-      v: String(o.v),
-      label: String(o.label || o.v),
+      v: String(o.v ?? o.value ?? ''),
+      label: String(o.label || o.v || o.value || ''),
     }));
     const key = `q${item.index}`;
     const raw = answers[item.index];
@@ -230,7 +265,12 @@ export function questionnaireToHandoutPayload(def, data = {}) {
   const intro = [def.subtitle, def.instructions].filter(Boolean).join('\n\n');
   const attr = def.attribution;
   const attrLine = attr
-    ? [attr.authors, attr.year ? `(${attr.year})` : '', attr.license]
+    ? [
+        attr.authors ? `${attr.authors}${attr.year ? ` (${attr.year})` : ''}` : attr.year ? `(${attr.year})` : '',
+        attr.source || '',
+        attr.license || '',
+        attr.note || '',
+      ]
         .filter(Boolean)
         .join(' ')
         .replace(/\s+/g, ' ')
@@ -255,8 +295,8 @@ export function customModuleHandoutPayload(moduleType, data = {}) {
   const custom = getCustomModuleByType(moduleType);
   if (!custom || custom.kind === 'interactive') return null;
 
-  const qDef = custom.def || custom.defs?.es || custom.defs?.en || null;
-  if (qDef && (custom.kind === 'questionnaire' || !custom.questions?.length)) {
+  const qDef = resolveQuestionnaireDef(custom);
+  if (qDef && (custom.kind === 'questionnaire' || defHasItems(qDef) || !custom.questions?.length)) {
     const fromDef = questionnaireToHandoutPayload(qDef, data);
     if (fromDef) return fromDef;
   }

@@ -1,6 +1,6 @@
 import { coverageLabel } from './clinic-country.js';
 import { getModuleDef, patientGenderLabel } from './config.js';
-import { getCustomModuleByType, isCustomModuleType } from './custom-modules.js';
+import { getCustomModuleByType, isCustomModuleType, resolveQuestionnaireDef } from './custom-modules.js';
 import { formatTccHandoutReadable, tccHandoutDef } from './tcc-handout-defs.js';
 import { getModule, saveModuleData } from './db.js';
 import { createModuleSaveCoordinator } from './module-save-coordinator.js';
@@ -285,7 +285,7 @@ function formatInteractive(d) {
 function formatCustomModule(moduleType, d) {
   const def = getCustomModuleByType(moduleType);
   if (!def) return '';
-  if (def.kind === 'questionnaire') return questionnaireReadable(def.def, d);
+  if (def.kind === 'questionnaire') return questionnaireReadable(resolveQuestionnaireDef(def), d);
   if (def.kind === 'interactive') return formatInteractive(d);
   const answers = d.answers || {};
   const lines = (def.questions || [])

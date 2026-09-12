@@ -83,6 +83,7 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
           : text;
       y = pdfText(doc, shown, MARGIN, y, { size: 10, maxWidth: maxW });
     } else if (section.type === 'radio' && section.options?.length) {
+      hasContent = true;
       for (const opt of section.options) {
         y = ensurePdfSpace(doc, y, 8);
         y = pdfText(doc, `${pdfOptionMark(false)}  ${opt.label}`, MARGIN, y, { size: 9, maxWidth: maxW });
