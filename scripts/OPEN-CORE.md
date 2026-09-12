@@ -18,10 +18,20 @@ Respalda `packs/` y `secrets/mistral-api.key` fuera del Mac (copia externa o Tim
 ## Publicar release (Mac + Windows)
 
 ```bash
-# bump versión en package.json, tauri.conf.json, Cargo.toml, app-version.js
+# bump versión en package.json, tauri.conf.json, Cargo.toml Y app-version.js
+# (omitir app-version.js rompe release-ready en CI)
+./scripts/check-release-ready.sh
 git commit && git push origin main
-./scripts/release-beta.sh
+./scripts/release-beta.sh   # regenera telar-packs-bundle.tar.gz con TODOS los packs de clinical-packs.txt
 # tras CI: gh release edit vX.Y.Z --draft=false --latest
+```
+
+Si el Release falla con «Faltan packs en el bundle», regenerá el asset y re-subilo al tag:
+
+```bash
+./scripts/pack-packs-for-ci.sh
+gh release upload "vX.Y.Z" dist/telar-packs-bundle.tar.gz --clobber
+# luego re-run del workflow Release sobre el tag
 ```
 
 Assets: `Telar-macos.zip`, `Telar-windows.exe`, `telar-packs-bundle.tar.gz`.

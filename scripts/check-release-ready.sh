@@ -40,6 +40,25 @@ if [[ -f scripts/clinical-packs.txt ]]; then
   [[ "$N" -gt 0 ]] \
     && ok "scripts/clinical-packs.txt ($N packs)" \
     || err "scripts/clinical-packs.txt no lista ningun pack"
+  # Si hay packs locales (Mac de release), avisar si falta alguno de la lista.
+  LOCAL_MISSING=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if [[ ! -d "packs/$line" && ! -d "packs-src/$line" && ! -d "src/packs/$line" ]]; then
+      LOCAL_MISSING+=("$line")
+    fi
+  done < scripts/clinical-packs.txt
+  if (( ${#LOCAL_MISSING[@]} )); then
+    # En CI público no hay packs — no es error. En Mac de release sí lo es si vas a tagear.
+    if [[ -n "${TELAR_REQUIRE_LOCAL_PACKS:-}" ]]; then
+      err "faltan packs locales: ${LOCAL_MISSING[*]} (TELAR_REQUIRE_LOCAL_PACKS=1)"
+    else
+      echo "  · packs locales ausentes (normal en CI): ${LOCAL_MISSING[*]}"
+    fi
+  else
+    ok "packs locales presentes para clinical-packs.txt"
+  fi
 else
   err "falta scripts/clinical-packs.txt — las tres etapas del release lo leen"
 fi

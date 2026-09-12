@@ -26,6 +26,9 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 1
 fi
 
+echo "→ check-release-ready (versiones + scripts)…"
+TELAR_REQUIRE_LOCAL_PACKS=1 "$ROOT/scripts/check-release-ready.sh"
+
 echo "→ Empaquetando packs clínicos para CI…"
 "$ROOT/scripts/pack-packs-for-ci.sh"
 
