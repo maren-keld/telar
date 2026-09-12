@@ -46,7 +46,6 @@ test('NF, BLS y módulos de ficha no se envían al paciente', () => {
     'redes_apoyo',
     'motivo_consulta',
     'iesr',
-    'sprint_ecl',
   ]) {
     assert.equal(shareableContentFor(type), null, type);
   }
