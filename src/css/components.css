@@ -663,6 +663,7 @@ input[type='search']::-webkit-search-results-decoration {
   font-size: 0.75rem;
   color: var(--text-secondary);
   opacity: 0.6;
+  text-align: center;
 }
 
 .unlock-restore-link {

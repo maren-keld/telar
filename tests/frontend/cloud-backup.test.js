@@ -406,3 +406,11 @@ test('unlock y ajustes ofrecen restaurar sin Pro', () => {
   assert.match(settings, /data-cloud-backup-restore/);
   assert.match(settings, /restoreCloudBackupFlow/);
 });
+
+test('QA-004: versión del unlock centrada en hero (no hereda text-align:left)', () => {
+  const hero = readFileSync(new URL('../../src/css/unlock-hero.css', import.meta.url), 'utf8');
+  const base = readFileSync(new URL('../../src/css/components.css', import.meta.url), 'utf8');
+  assert.match(hero, /\.initial-screen--hero\s+#unlockInner\s*\{[^}]*text-align:\s*left/s);
+  assert.match(hero, /\.initial-screen--hero\s+\.unlock-page__build\s*\{[^}]*text-align:\s*center/s);
+  assert.match(base, /\.unlock-page__build\s*\{[^}]*text-align:\s*center/s);
+});
