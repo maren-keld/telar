@@ -56,7 +56,8 @@ import {
 import {
   centerModuleIdsMatch,
   moduleViewportOffset,
-  restoreModuleViewportOffset,
+  nextScrollTopForModule,
+  scheduleRestoreModuleViewportOffset,
   snapshotModuleCardHeights,
 } from '../workspace-center-scroll.js';
 
@@ -440,10 +441,11 @@ export async function renderWorkspace(
         root.scrollTop = 0;
         reveal();
       } else {
-        syncScrollToModule(container, activeModule.id);
+        // Módulo distinto (p. ej. +Agregar → selector nuevo): forzar tope del card.
+        scrollToModule(container, activeModule.id, { force: true });
         requestAnimationFrame(() => {
           if (!root.isConnected) return;
-          syncScrollToModule(container, activeModule.id);
+          scrollToModule(container, activeModule.id, { force: true });
           reveal();
           if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
         });
@@ -827,18 +829,18 @@ async function paintCenterForModule(container, { sessionId, moduleId, moduleType
   setActiveModuleHighlight(container, activeModule.id, activeModule.module_type);
   const painted = host.querySelector(`#module-${activeModule.id}`);
   if (preserveScroll && pinOffset != null && painted && centerRoot) {
-    restoreModuleViewportOffset(centerRoot, painted, pinOffset);
-    requestAnimationFrame(() => {
-      if (painted.isConnected) restoreModuleViewportOffset(centerRoot, painted, pinOffset);
-    });
+    scheduleRestoreModuleViewportOffset(centerRoot, painted, pinOffset);
   } else if (preserveScroll && centerRoot) {
     const y = savedCenterScroll;
     centerRoot.scrollTop = y;
     requestAnimationFrame(() => {
       if (centerRoot.isConnected) centerRoot.scrollTop = y;
+      requestAnimationFrame(() => {
+        if (centerRoot.isConnected) centerRoot.scrollTop = y;
+      });
     });
   } else {
-    syncScrollToModule(container, activeModule.id);
+    scrollToModule(container, activeModule.id, { force: true });
   }
   scrollSidebarToModule(container, activeModule.id);
   restoreNotesScroll(container, savedNotesScroll);
@@ -968,12 +970,9 @@ async function tryPaintCenterModuleInPlace(
   scrollSidebarToModule(container, activeModule.id);
 
   if (preserveScroll && pinOffset != null && centerRoot) {
-    restoreModuleViewportOffset(centerRoot, item.wrap, pinOffset);
-    requestAnimationFrame(() => {
-      if (item.wrap.isConnected) restoreModuleViewportOffset(centerRoot, item.wrap, pinOffset);
-    });
+    scheduleRestoreModuleViewportOffset(centerRoot, item.wrap, pinOffset);
   } else {
-    syncScrollToModule(container, activeModule.id);
+    scrollToModule(container, activeModule.id, { force: true });
   }
   return true;
 }
@@ -1059,6 +1058,7 @@ async function tryFastModuleNavigation(container, {
     return false;
   }
 
+  const switchedModule = container.dataset.workspaceModuleId !== String(moduleId);
   container.dataset.workspaceModuleId = String(moduleId);
   if (sessionId != null) container.dataset.workspaceSessionId = String(sessionId);
   container._workspaceRenderState = {
@@ -1075,25 +1075,10 @@ async function tryFastModuleNavigation(container, {
 
   bindSessionCollapse(container, activeModule, treatmentId);
   setActiveModuleHighlight(container, moduleId, activeModule.module_type);
-  scrollToModule(container, moduleId, { force: false });
+  // QA-006: al saltar a otro módulo (p. ej. selector recién abierto), forzar tope del card.
+  scrollToModule(container, moduleId, { force: switchedModule });
   scrollSidebarToModule(container, moduleId);
   return true;
-}
-
-function syncScrollToModule(container, moduleId, pad = 20) {
-  if (!moduleId) return;
-  const root = container.querySelector('#workspace-center-scroll');
-  const el = container.querySelector(`#module-${moduleId}`);
-  if (!root || !el) return;
-  const rootRect = root.getBoundingClientRect();
-  const elRect = el.getBoundingClientRect();
-  const isAbove = elRect.top < rootRect.top + pad;
-  const isBelow = elRect.bottom > rootRect.bottom - pad;
-  if (!isAbove && !isBelow) return;
-  const delta = isAbove
-    ? elRect.top - rootRect.top - pad
-    : elRect.bottom - rootRect.bottom + pad;
-  root.scrollTop = Math.max(0, root.scrollTop + delta);
 }
 
 function setActiveModuleHighlight(container, moduleId, moduleType = '') {
@@ -1123,37 +1108,32 @@ function scrollToModule(container, moduleId, { force = false, smooth = false } =
   if (!root || !el) return;
 
   const run = () => {
-    const rootRect = root.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    const pad = 20;
-    const isAbove = elRect.top < rootRect.top + pad;
-    const isBelow = elRect.bottom > rootRect.bottom - pad;
-
-    if (!force && !isAbove && !isBelow) {
-      setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
-      return;
+    if (!root.isConnected || !el.isConnected) return;
+    const next = nextScrollTopForModule(
+      root.getBoundingClientRect(),
+      el.getBoundingClientRect(),
+      root.scrollTop,
+      { force, pad: 20 },
+    );
+    if (next != null) {
+      if (typeof root.scrollTo === 'function') {
+        root.scrollTo({
+          top: next,
+          behavior: force || !smooth ? 'auto' : 'smooth',
+        });
+      } else {
+        root.scrollTop = next;
+      }
     }
-
-    let next = root.scrollTop;
-    if (force || isAbove) {
-      next = root.scrollTop + (elRect.top - rootRect.top) - pad;
-    } else if (isBelow) {
-      next = root.scrollTop + (elRect.bottom - rootRect.bottom) + pad;
-    }
-
-    root.scrollTo({
-      top: Math.max(0, next),
-      behavior: force || !smooth ? 'auto' : 'smooth',
-    });
     setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
   };
 
-  if (force) {
-    syncScrollToModule(container, moduleId);
-    setActiveModuleHighlight(container, moduleId, el.dataset.moduleType);
-  } else {
-    requestAnimationFrame(run);
-  }
+  run();
+  if (typeof requestAnimationFrame !== 'function') return;
+  requestAnimationFrame(() => {
+    run();
+    if (force) requestAnimationFrame(run);
+  });
 }
 
 function scrollSidebarToModule(container, moduleId) {
