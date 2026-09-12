@@ -45,6 +45,9 @@ def test_health_reports_mp_configuration(api, mp):
     assert body["ok"] is True
     assert body["mp_configured"] is True
     assert body["mp_test_mode"] is False
+    assert body["mp_sandbox_ready"] is True
+    assert "mp_seller_email" not in body
+    assert "mp_collector_id" not in body
 
 
 def test_health_without_token_says_mp_is_not_configured(api, monkeypatch):
@@ -54,6 +57,29 @@ def test_health_without_token_says_mp_is_not_configured(api, monkeypatch):
 
     assert body["ok"] is True
     assert body["mp_configured"] is False
+    assert "mp_seller_email" not in body
+    assert "mp_collector_id" not in body
+
+
+def test_health_sandbox_flags_omit_seller_pii(api, monkeypatch):
+    """QA-001: keepalive público no debe filtrar email/collector del vendedor MP."""
+    monkeypatch.setattr(api_module, "MP_TOKEN", "TEST-token-sandbox")
+    monkeypatch.setattr(
+        api_module,
+        "fetch_mp_me",
+        lambda: {"email": "vendedor-real@telarapp.cl", "id": 998877},
+    )
+
+    body = api.get("/api/health").json
+
+    assert body["mp_configured"] is True
+    assert body["mp_test_mode"] is True
+    assert body["mp_sandbox_ready"] is False
+    assert body.get("mp_sandbox_hint")
+    assert "998877" not in (body.get("mp_sandbox_hint") or "")
+    assert "vendedor-real@telarapp.cl" not in (body.get("mp_sandbox_hint") or "")
+    assert "mp_seller_email" not in body
+    assert "mp_collector_id" not in body
 
 
 # --- checkout ---------------------------------------------------------------

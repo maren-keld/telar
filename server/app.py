@@ -479,7 +479,10 @@ def is_test_mp_account(email: str) -> bool:
 
 
 def subscription_sandbox_status() -> dict:
-    """Suscripciones TEST exigen vendedor test + comprador test (misma «burbuja»)."""
+    """Suscripciones TEST exigen vendedor test + comprador test (misma «burbuja»).
+
+    Solo flags/hints operativos — sin email ni collector id (PII / cuentas).
+    """
     me = fetch_mp_me()
     email = me.get("email") or ""
     test_mode = MP_TOKEN.startswith("TEST-")
@@ -487,23 +490,19 @@ def subscription_sandbox_status() -> dict:
     if not test_mode:
         return {
             "mp_sandbox_ready": True,
-            "mp_seller_email": email,
-            "mp_collector_id": me.get("id"),
             "mp_sandbox_hint": None,
         }
     ready = seller_is_test
     hint = None
     if not ready:
         hint = (
-            "Suscripciones: el token TEST de la app usa tu cuenta real como vendedor (ID "
-            f"{me.get('id')}). Con comprador test, MP puede rechazar el pago. "
+            "Suscripciones: el token TEST de la app usa tu cuenta real como vendedor. "
+            "Con comprador test, MP puede rechazar el pago. "
             "Opciones: (1) credenciales de producción + pago real $19.990, o "
             "(2) comprador test + ventana privada e intentar igual."
         )
     return {
         "mp_sandbox_ready": ready,
-        "mp_seller_email": email,
-        "mp_collector_id": me.get("id"),
         "mp_sandbox_hint": hint,
     }
 
@@ -696,6 +695,7 @@ def health():
         row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
         if row:
             usage_total = row["total"]
+    # Campos explícitos: no **sandbox (evita filtrar PII si el helper crece).
     return jsonify({
         "ok": True,
         "mp_configured": bool(MP_TOKEN),
@@ -710,7 +710,8 @@ def health():
         "usage_opens_total": usage_total,
         "mistral_provision": _mistral_provision_ready(),
         "xai_provision": _xai_provision_ready(),
-        **sandbox,
+        "mp_sandbox_ready": sandbox.get("mp_sandbox_ready"),
+        "mp_sandbox_hint": sandbox.get("mp_sandbox_hint"),
     })
 
 
