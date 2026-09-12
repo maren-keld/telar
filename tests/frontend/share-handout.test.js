@@ -34,6 +34,7 @@ test('las escalas siguen siendo cuestionario, no handout', () => {
   assert.ok(gad.def);
   assert.equal(gad.handout, undefined);
   assert.equal(shareableContentFor('pcl5')?.def.id, 'pcl5');
+  assert.equal(shareableContentFor('sprint_ecl')?.def.id, 'sprint_ecl');
 });
 
 test('NF, BLS y módulos de ficha no se envían al paciente', () => {
@@ -46,7 +47,6 @@ test('NF, BLS y módulos de ficha no se envían al paciente', () => {
     'redes_apoyo',
     'motivo_consulta',
     'iesr',
-    'sprint_ecl',
   ]) {
     assert.equal(shareableContentFor(type), null, type);
   }
