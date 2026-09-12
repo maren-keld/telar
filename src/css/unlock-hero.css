@@ -90,6 +90,8 @@
 
 .initial-screen--hero .unlock-page__build {
   color: rgba(244, 244, 242, 0.42);
+  /* Hero column is text-align:left for PIN fields; keep version centered like the restore link. */
+  text-align: center;
 }
 
 .initial-screen--hero .unlock-card.card {
