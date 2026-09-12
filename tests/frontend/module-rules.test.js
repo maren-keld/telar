@@ -120,12 +120,26 @@ test('F-004: planSwap rechaza estructurales y el propio selector', () => {
   assert.throws(() => planSwapModuleToSelector(null, []));
 });
 
-test('F-004: sidebar oculta + Añadir módulo si la sesión ya tiene librería', () => {
+test('F-004: sidebar y centro ocultan + Añadir si la sesión ya tiene librería', () => {
   const src = readFileSync(join(rootDir, 'src/js/views/workspace.js'), 'utf8');
   assert.match(src, /sessionHasModuleLibrary\(session\.modules\)/);
+  assert.match(src, /ensureCenterAddModuleButton[\s\S]*?sessionHasModuleLibrary\(session\.modules\)/);
   assert.match(src, /onSwap[\s\S]*?refreshWorkspace/);
   assert.doesNotMatch(
     src,
     /async onSwap\(modId, sessId\) \{\s*const next = await swapModuleToSelector\(modId\);\s*onNavigate\(/,
+  );
+});
+
+test('F-004: centro también oculta +Agregar si ya hay librería (no solo si es el último)', () => {
+  const src = readFileSync(join(rootDir, 'src/js/views/workspace.js'), 'utf8');
+  assert.match(src, /ensureCenterAddModuleButton[\s\S]*?sessionHasModuleLibrary\(session\.modules\)/);
+  assert.match(
+    src,
+    /renderAllCenterModules[\s\S]*?!sessionHasModuleLibrary\(session\.modules\)/,
+  );
+  assert.doesNotMatch(
+    src,
+    /ensureCenterAddModuleButton[\s\S]*?lastMod\.module_type === 'selector_modulo'/,
   );
 });

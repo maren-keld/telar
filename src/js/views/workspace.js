@@ -898,7 +898,8 @@ function ensureCenterAddModuleButton(wrap, session, indexMode) {
   const lastMod = session.modules?.[session.modules.length - 1];
   const next = wrap.nextElementSibling;
   const existingAdd = next?.classList.contains('center-add-module') ? next : null;
-  if (!lastMod || lastMod.module_type === 'selector_modulo') {
+  // F-004 A: si ya hay Librería en la sesión, no ofrecer otro +Agregar.
+  if (!lastMod || sessionHasModuleLibrary(session.modules)) {
     existingAdd?.remove();
     return;
   }
@@ -1463,7 +1464,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
     if (
       indexMode !== 'category' &&
       lastMod &&
-      lastMod.module_type !== 'selector_modulo'
+      !sessionHasModuleLibrary(session.modules)
     ) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
