@@ -19,6 +19,7 @@ import {
   getSessionsWithModules,
   getTreatment,
   isSessionDone,
+  sessionHasModuleLibrary,
   setSessionDone,
   swapModuleToSelector,
 } from '../db.js';
@@ -347,12 +348,11 @@ export async function renderWorkspace(
     },
     async onSwap(modId, sessId) {
       const next = await swapModuleToSelector(modId);
-      onNavigate({
-        view: 'workspace',
-        treatmentId,
-        sessionId: next.sessionId || sessId,
-        moduleId: next.moduleId,
-      });
+      // In situ: mismo moduleId → refresh con preserveScroll (no navegar al final).
+      await container._workspaceData?.refreshWorkspace?.(
+        next.moduleId,
+        next.sessionId || sessId,
+      );
     },
     async onAddSession() {
       const id = await addSession(treatmentId);
@@ -896,9 +896,14 @@ function centerBotoneraOpts(mod, session, treatment, wrap, ctx) {
 function ensureCenterAddModuleButton(wrap, session, indexMode) {
   if (indexMode === 'category') return;
   const lastMod = session.modules?.[session.modules.length - 1];
-  if (!lastMod || lastMod.module_type === 'selector_modulo') return;
+  const next = wrap.nextElementSibling;
+  const existingAdd = next?.classList.contains('center-add-module') ? next : null;
+  if (!lastMod || lastMod.module_type === 'selector_modulo') {
+    existingAdd?.remove();
+    return;
+  }
   if (String(wrap.dataset.moduleId) !== String(lastMod.id)) return;
-  if (wrap.nextElementSibling?.classList.contains('center-add-module')) return;
+  if (existingAdd) return;
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.className = 'btn btn-secondary btn-block center-add-module';
@@ -1743,7 +1748,15 @@ function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionI
       </div>
       <div class="session-block__body">
         <nav class="session-block__modules">${mods || `<span class="text-muted">${escapeHtml(t('workspace.noModules'))}</span>`}</nav>
-        ${sidebarAddRowHtml({ sessionId: session.id, extraClass: 'btn-add-module', label: t('workspace.addModule') })}
+        ${
+          sessionHasModuleLibrary(session.modules)
+            ? ''
+            : sidebarAddRowHtml({
+                sessionId: session.id,
+                extraClass: 'btn-add-module',
+                label: t('workspace.addModule'),
+              })
+        }
       </div>
     </section>`;
 }
