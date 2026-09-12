@@ -1,8 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachModulesToSessions, canDeleteModule, canMoveModule, isSessionDone } from '../../src/js/db.js';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  attachModulesToSessions,
+  canDeleteModule,
+  canMoveModule,
+  isSessionDone,
+  planSwapModuleToSelector,
+  sessionHasModuleLibrary,
+} from '../../src/js/db.js';
 
-const mod = (id, type) => ({ id, module_type: type, session_id: 1, sort_order: id });
+const mod = (id, type, sessionId = 1) => ({
+  id,
+  module_type: type,
+  session_id: sessionId,
+  sort_order: id,
+});
+
+const rootDir = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 test('los módulos estructurales no se pueden mover', () => {
   for (const type of ['registro_inicial', 'motivo_consulta', 'selector_modulo']) {
@@ -57,4 +74,72 @@ test('el check de sesión es un flag manual 0/1', () => {
   assert.equal(isSessionDone({ done: 0 }), false);
   assert.equal(isSessionDone({}), false);
   assert.equal(isSessionDone({ done: '1' }), true);
+});
+
+test('F-004: sessionHasModuleLibrary detecta selector_modulo', () => {
+  assert.equal(sessionHasModuleLibrary([mod(1, 'gad7')]), false);
+  assert.equal(sessionHasModuleLibrary([mod(1, 'gad7'), mod(2, 'selector_modulo')]), true);
+  assert.equal(sessionHasModuleLibrary([]), false);
+  assert.equal(sessionHasModuleLibrary(null), false);
+});
+
+test('F-004: planSwap convierte in situ y no pide add al final', () => {
+  const solo = mod(9, 'gad7');
+  assert.deepEqual(planSwapModuleToSelector(solo, [solo]), {
+    sessionId: 1,
+    moduleId: 9,
+    deleteOtherSelectorIds: [],
+  });
+
+  const mid = mod(2, 'dass21');
+  const session = [mod(1, 'gad7'), mid, mod(3, 'phq9')];
+  assert.deepEqual(planSwapModuleToSelector(mid, session), {
+    sessionId: 1,
+    moduleId: 2,
+    deleteOtherSelectorIds: [],
+  });
+});
+
+test('F-004: planSwap con librería existente convierte el slot y borra el otro selector', () => {
+  const clinical = mod(1, 'gad7');
+  const session = [clinical, mod(2, 'dass21'), mod(3, 'selector_modulo')];
+  assert.deepEqual(planSwapModuleToSelector(clinical, session), {
+    sessionId: 1,
+    moduleId: 1,
+    deleteOtherSelectorIds: [3],
+  });
+});
+
+test('F-004: planSwap rechaza estructurales y el propio selector', () => {
+  assert.throws(() =>
+    planSwapModuleToSelector(mod(1, 'registro_inicial'), [mod(1, 'registro_inicial')]),
+  );
+  assert.throws(() =>
+    planSwapModuleToSelector(mod(1, 'selector_modulo'), [mod(1, 'selector_modulo')]),
+  );
+  assert.throws(() => planSwapModuleToSelector(null, []));
+});
+
+test('F-004: sidebar y centro ocultan + Añadir si la sesión ya tiene librería', () => {
+  const src = readFileSync(join(rootDir, 'src/js/views/workspace.js'), 'utf8');
+  assert.match(src, /sessionHasModuleLibrary\(session\.modules\)/);
+  assert.match(src, /ensureCenterAddModuleButton[\s\S]*?sessionHasModuleLibrary\(session\.modules\)/);
+  assert.match(src, /onSwap[\s\S]*?refreshWorkspace/);
+  assert.doesNotMatch(
+    src,
+    /async onSwap\(modId, sessId\) \{\s*const next = await swapModuleToSelector\(modId\);\s*onNavigate\(/,
+  );
+});
+
+test('F-004: centro también oculta +Agregar si ya hay librería (no solo si es el último)', () => {
+  const src = readFileSync(join(rootDir, 'src/js/views/workspace.js'), 'utf8');
+  assert.match(src, /ensureCenterAddModuleButton[\s\S]*?sessionHasModuleLibrary\(session\.modules\)/);
+  assert.match(
+    src,
+    /renderAllCenterModules[\s\S]*?!sessionHasModuleLibrary\(session\.modules\)/,
+  );
+  assert.doesNotMatch(
+    src,
+    /ensureCenterAddModuleButton[\s\S]*?lastMod\.module_type === 'selector_modulo'/,
+  );
 });

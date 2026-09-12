@@ -18,6 +18,10 @@ import { escapeHtml, toast } from '../utils.js';
 import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { whereFor, whereLabel } from '../module-where.js';
 import { clinicCountryCode, localizeValidityText, validityHeading } from '../clinic-country.js';
+import {
+  moduleViewportOffset,
+  scheduleRestoreModuleViewportOffset,
+} from '../workspace-center-scroll.js';
 
 export { CATEGORIES };
 
@@ -33,14 +37,23 @@ export function bindSelectorItemClicks(listEl, onPick) {
       if (btn.disabled) return;
       const listTop = listEl.scrollTop;
       const center = listEl.closest('#workspace-center-scroll');
-      const centerTop = center?.scrollTop;
+      // Anclar el card de librería (no scrollTop absoluto): el preview cambia de altura.
+      const pinEl = btn.closest('.center-module-card') || btn;
+      const pinOffset = center ? moduleViewportOffset(center, pinEl) : null;
       onPick(btn);
-      const restore = () => {
+      const restoreList = () => {
         listEl.scrollTop = listTop;
-        if (center && centerTop != null) center.scrollTop = centerTop;
       };
-      restore();
-      requestAnimationFrame(restore);
+      restoreList();
+      if (center && pinOffset != null) {
+        scheduleRestoreModuleViewportOffset(center, pinEl, pinOffset);
+      }
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+          restoreList();
+          requestAnimationFrame(restoreList);
+        });
+      }
     });
   });
 }

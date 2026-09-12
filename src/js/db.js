@@ -265,31 +265,44 @@ export async function setSessionDone(sessionId, done) {
   await execute(`UPDATE sessions SET done = ? WHERE id = ?`, [done ? 1 : 0, sessionId]);
 }
 
-/** Reemplaza un módulo clínico por el selector. Si es el único de la sesión, lo convierte in situ. */
-export async function swapModuleToSelector(moduleId) {
-  const mod = await getModule(moduleId);
+/** True si la sesión ya tiene Librería (selector_modulo). */
+export function sessionHasModuleLibrary(modules) {
+  return (modules || []).some((m) => m?.module_type === 'selector_modulo');
+}
+
+/**
+ * Plan de «Cambiar módulo»: convertir este slot in situ (mismo id/sort_order)
+ * y quitar otros selectores de la sesión para no saltar al final.
+ */
+export function planSwapModuleToSelector(mod, sessionMods) {
   if (!mod) throw new Error('Módulo no encontrado');
   if (MODULE_TYPES_NO_DELETE.has(mod.module_type) || mod.module_type === 'selector_modulo') {
     throw new Error('Este módulo no se puede cambiar.');
   }
+  const deleteOtherSelectorIds = (sessionMods || [])
+    .filter((m) => String(m.id) !== String(mod.id) && m.module_type === 'selector_modulo')
+    .map((m) => Number(m.id));
+  return {
+    sessionId: mod.session_id,
+    moduleId: Number(mod.id),
+    deleteOtherSelectorIds,
+  };
+}
+
+/** Reemplaza un módulo clínico por el selector en el mismo índice (in situ). */
+export async function swapModuleToSelector(moduleId) {
+  const mod = await getModule(moduleId);
+  if (!mod) throw new Error('Módulo no encontrado');
   const sessionMods = await getSessionModules(mod.session_id);
-  const others = sessionMods.filter((m) => String(m.id) !== String(moduleId));
-  const existingSel = others.find((m) => m.module_type === 'selector_modulo');
-
-  if (!others.length) {
-    await execute(
-      `UPDATE session_modules SET module_type = 'selector_modulo', data = '{}', status = 'pendiente', updated_at = datetime('now') WHERE id = ?`,
-      [moduleId],
-    );
-    return { sessionId: mod.session_id, moduleId: Number(moduleId) };
+  const plan = planSwapModuleToSelector(mod, sessionMods);
+  await execute(
+    `UPDATE session_modules SET module_type = 'selector_modulo', data = '{}', status = 'pendiente', updated_at = datetime('now') WHERE id = ?`,
+    [plan.moduleId],
+  );
+  for (const otherId of plan.deleteOtherSelectorIds) {
+    await execute(`DELETE FROM session_modules WHERE id = ?`, [otherId]);
   }
-
-  await deleteSessionModule(moduleId);
-  if (existingSel) {
-    return { sessionId: mod.session_id, moduleId: existingSel.id };
-  }
-  const id = await addModuleToSession(mod.session_id, 'selector_modulo');
-  return { sessionId: mod.session_id, moduleId: id };
+  return { sessionId: plan.sessionId, moduleId: plan.moduleId };
 }
 
 export async function saveModuleData(moduleId, data, status = 'completado') {

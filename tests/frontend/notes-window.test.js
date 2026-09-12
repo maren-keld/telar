@@ -82,5 +82,5 @@ test('al elegir un módulo desde la librería se conserva el scroll del centro',
   );
   assert.match(src, /preserveScroll: true/);
   assert.match(src, /tryPaintCenterModuleInPlace/);
-  assert.match(src, /restoreModuleViewportOffset/);
+  assert.match(src, /scheduleRestoreModuleViewportOffset/);
 });
