@@ -36,6 +36,7 @@ function itemHtml(def, item, selected) {
                 : '';
             return `<label class="psych-item__opt">
               <input type="radio" name="q${item.index}" value="${escapeHtml(String(o.v))}" ${checked} />
+              <span class="likert-dot" aria-hidden="true"></span>
               <span class="psych-item__opt-v">${escapeHtml(String(o.v))}</span>
               <span>${escapeHtml(o.label)}</span>
             </label>`;

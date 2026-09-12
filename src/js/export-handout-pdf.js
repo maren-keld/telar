@@ -1,7 +1,7 @@
 /** PDF de handouts / módulos TCC individuales. */
 
 import { tccHandoutDef } from './tcc-handout-defs.js';
-import { ensurePdfSpace, PDF_MARGIN as MARGIN, pdfText } from './pdf-utils.js';
+import { ensurePdfSpace, PDF_MARGIN as MARGIN, pdfOptionMark, pdfText } from './pdf-utils.js';
 
 const PLACEHOLDER_NAMES = new Set(['', 'paciente sin nombre', 'sin nombre', 'paciente']);
 
@@ -85,7 +85,7 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
     } else if (section.type === 'radio' && section.options?.length) {
       for (const opt of section.options) {
         y = ensurePdfSpace(doc, y, 8);
-        y = pdfText(doc, `☐  ${opt.label}`, MARGIN, y, { size: 9, maxWidth: maxW });
+        y = pdfText(doc, `${pdfOptionMark(false)}  ${opt.label}`, MARGIN, y, { size: 9, maxWidth: maxW });
         y += 1;
       }
     } else {

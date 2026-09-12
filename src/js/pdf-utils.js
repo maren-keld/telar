@@ -6,7 +6,9 @@ export const PDF_MAX_W = PDF_PAGE_W - PDF_MARGIN * 2;
 
 export function pdfSafeText(text) {
   return String(text || '')
-    .replace(/✓/g, '[x]')
+    .replace(/[✓☑]/g, '[x]')
+    .replace(/[☐□]/g, '[ ]')
+    .replace(/[○●◉]/g, '( )')
     .replace(/≥/g, '>=')
     .replace(/≤/g, '<=')
     .replace(/[—–]/g, '-')
@@ -15,6 +17,11 @@ export function pdfSafeText(text) {
     .replace(/[‘’]/g, "'")
     .replace(/…/g, '...')
     .replace(/[^\t\n\r\x20-\x7E\xA0-\xFF]/g, ' ');
+}
+
+/** Casilla ASCII para opciones radio/checkbox en PDF (Helvetica no tiene ☐). */
+export function pdfOptionMark(checked = false) {
+  return checked ? '[x]' : '[ ]';
 }
 
 export function dxItemTexts(items) {

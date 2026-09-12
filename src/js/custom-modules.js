@@ -1,3 +1,4 @@
+import { optionsForItem, questionnaireItems } from '../lib/questionnaire-schema.js';
 import { getModuleDef, getModuleDefs } from './config.js';
 import { moduleLabelI18n } from './i18n.js';
 import { loadProfile, saveProfile } from './profile.js';
@@ -200,6 +201,51 @@ function plainHandoutText(value = '') {
     .trim();
 }
 
+/** PDF de un cuestionario schema 1 (packs como AQ-10, o creados en la app). */
+export function questionnaireToHandoutPayload(def, data = {}) {
+  if (!def) return null;
+  const items = questionnaireItems(def);
+  if (!items.length) return null;
+  const answers = Array.isArray(data.answers) ? data.answers : [];
+  const values = {};
+  const sections = items.map((item) => {
+    const opts = optionsForItem(def, item.index).map((o) => ({
+      v: String(o.v),
+      label: String(o.label || o.v),
+    }));
+    const key = `q${item.index}`;
+    const raw = answers[item.index];
+    if (raw != null && raw !== '') {
+      const match = opts.find((o) => o.v === String(raw));
+      values[key] = match?.label || String(raw);
+    }
+    return {
+      key,
+      title: `${item.index + 1}. ${plainHandoutText(item.text)}`,
+      type: opts.length ? 'radio' : item.kind === 'slider' ? 'number' : 'text',
+      options: opts,
+      rows: 2,
+    };
+  });
+  const intro = [def.subtitle, def.instructions].filter(Boolean).join('\n\n');
+  const attr = def.attribution;
+  const attrLine = attr
+    ? [attr.authors, attr.year ? `(${attr.year})` : '', attr.license]
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    : '';
+  return {
+    def: {
+      title: plainHandoutText(def.title),
+      intro: plainHandoutText([intro, attrLine].filter(Boolean).join('\n\n')),
+      sections,
+    },
+    data: values,
+  };
+}
+
 /**
  * Adapta un módulo personalizado al renderer común de handouts PDF.
  * Las indicaciones quedan como material y los demás ítems como campos
@@ -208,6 +254,12 @@ function plainHandoutText(value = '') {
 export function customModuleHandoutPayload(moduleType, data = {}) {
   const custom = getCustomModuleByType(moduleType);
   if (!custom || custom.kind === 'interactive') return null;
+
+  const qDef = custom.def || custom.defs?.es || custom.defs?.en || null;
+  if (qDef && (custom.kind === 'questionnaire' || !custom.questions?.length)) {
+    const fromDef = questionnaireToHandoutPayload(qDef, data);
+    if (fromDef) return fromDef;
+  }
 
   const answers = data?.answers || {};
   const sections = [];
