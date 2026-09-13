@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { tokenMs, setToggle, clampTooltipBox } from '../../src/js/transitions.js';
+import { tokenMs, setToggle, clampTooltipBox, shouldScheduleTooltipHide } from '../../src/js/transitions.js';
 
 test('tokenMs cae al fallback si la variable no está', () => {
   assert.equal(tokenMs('--no-existe-esta-var', 150), 150);
@@ -37,4 +37,54 @@ test('clampTooltipBox mantiene el tooltip bajo un botón del header', () => {
   assert.ok(box.left >= 8);
   assert.ok(box.left + 180 <= 400 - 8);
   assert.equal(box.top, 48);
+});
+
+test('shouldScheduleTooltipHide ignora pointerout hacia hijo SVG durante el delay', () => {
+  const path = { parent: null };
+  const button = {
+    contains(node) {
+      return node === this || node === path;
+    },
+  };
+  path.parent = button;
+
+  assert.equal(
+    shouldScheduleTooltipHide({
+      active: null,
+      pending: button,
+      relatedTarget: path,
+      tipElement: { id: 'telar-tooltip' },
+    }),
+    false,
+  );
+});
+
+test('shouldScheduleTooltipHide programa hide al salir del host en delay', () => {
+  const button = { contains: () => false };
+  const outside = {};
+
+  assert.equal(
+    shouldScheduleTooltipHide({
+      active: null,
+      pending: button,
+      relatedTarget: outside,
+      tipElement: { id: 'telar-tooltip' },
+    }),
+    true,
+  );
+});
+
+test('shouldScheduleTooltipHide ignora pointerout hacia el tooltip abierto', () => {
+  const button = { contains: () => false };
+  const tip = { id: 'telar-tooltip' };
+
+  assert.equal(
+    shouldScheduleTooltipHide({
+      active: button,
+      pending: null,
+      relatedTarget: tip,
+      tipElement: tip,
+    }),
+    false,
+  );
 });
