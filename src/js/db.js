@@ -1028,10 +1028,36 @@ export async function setSpaceCheck(treatmentId, category, label, checked) {
   await execute(
     `INSERT INTO treatment_space_checks (treatment_id, category, label, checked, updated_at)
      VALUES (?, ?, ?, ?, datetime('now'))
-     ON CONFLICT(treatment_id, category, label) DO UPDATE SET checked = excluded.checked, updated_at = datetime('now')`,
+     ON CONFLICT(treatment_id, category, label) DO UPDATE SET
+       checked = excluded.checked,
+       reinforce = CASE WHEN excluded.checked = 0 THEN 0 ELSE treatment_space_checks.reinforce END,
+       updated_at = datetime('now')`,
     [treatmentId, category, label, checked ? 1 : 0],
   );
   invalidateClinicalAlertCache();
+}
+
+export async function setSpaceCheckNote(treatmentId, category, label, note) {
+  const text = String(note || '').trim();
+  await execute(
+    `INSERT INTO treatment_space_checks (treatment_id, category, label, checked, note, updated_at)
+     VALUES (?, ?, ?, COALESCE((SELECT checked FROM treatment_space_checks WHERE treatment_id = ? AND category = ? AND label = ?), 0), ?, datetime('now'))
+     ON CONFLICT(treatment_id, category, label) DO UPDATE SET
+       note = excluded.note,
+       updated_at = datetime('now')`,
+    [treatmentId, category, label, treatmentId, category, label, text],
+  );
+}
+
+export async function setSpaceCheckReinforce(treatmentId, category, label, reinforce) {
+  await execute(
+    `INSERT INTO treatment_space_checks (treatment_id, category, label, checked, reinforce, updated_at)
+     VALUES (?, ?, ?, COALESCE((SELECT checked FROM treatment_space_checks WHERE treatment_id = ? AND category = ? AND label = ?), 0), ?, datetime('now'))
+     ON CONFLICT(treatment_id, category, label) DO UPDATE SET
+       reinforce = excluded.reinforce,
+       updated_at = datetime('now')`,
+    [treatmentId, category, label, treatmentId, category, label, reinforce ? 1 : 0],
+  );
 }
 
 const SESSION_SCHEDULE_JOIN = `

@@ -25,6 +25,9 @@ export const ICON_UPLOAD = svg('<path d="M12 16V3M7 8l5-5 5 5"/><path d="M4 14v5
 export const ICON_MORE_VERT = svg('<circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/>');
 export const ICON_SEARCH = svg('<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/>');
 export const ICON_CLOSE = svg('<path d="M18 6L6 18M6 6l12 12"/>');
+export const ICON_EDIT = svg(
+  '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+);
 export const ICON_BACK = svg('<path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>');
 export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
 export const ICON_WAND = svg(
