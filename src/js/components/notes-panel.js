@@ -156,7 +156,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         ${[
           ['notas', 'Bitácora'],
           ['puntajes', 'Puntajes'],
-          ['perfil', 'Perfil'],
+          ['perfil', 'Ejes'],
           ['herramientas', 'Herramientas'],
         ]
           .map(
