@@ -35,6 +35,8 @@
   --note-lavender: #e8dff5;
   --note-pink: #fce4ec;
   --note-blue: #d6e6ff;
+  --note-mint: #dcefd4;
+  --note-coral: #ffe8d6;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -76,6 +78,8 @@ html[data-theme="dark"] {
   --note-lavender: #7a6aa8;
   --note-pink: #a86a82;
   --note-blue: #4a7ab8;
+  --note-mint: #5a8a52;
+  --note-coral: #b87058;
 }
 
 * {

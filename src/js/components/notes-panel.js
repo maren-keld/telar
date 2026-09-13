@@ -1096,8 +1096,10 @@ function kindleNoteHtml(note, fallbackInitials) {
         <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? 'Respuesta IA' : 'Autor/a de la nota'}">${escapeHtml(initials)}</span>
         ${isAi ? `<button type="button" class="kindle-note__rail-btn kindle-note__copy" title="Copiar respuesta" aria-label="Copiar respuesta">${ICON_COPY}</button>` : ''}
         <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
-        <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota" aria-haspopup="true">${ICON_PALETTE}</button>
-        <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="Color de la nota">${paletteDots}</div>
+        <div class="kindle-note__palette-wrap">
+          <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota" aria-haspopup="true">${ICON_PALETTE}</button>
+          <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="Color de la nota">${paletteDots}</div>
+        </div>
         <button type="button" class="kindle-note__rail-btn note-delete" title="Eliminar nota">×</button>
       </div>
     </article>`;

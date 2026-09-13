@@ -1228,6 +1228,8 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
 .note--lavender { background: var(--note-lavender); }
 .note--pink { background: var(--note-pink); }
 .note--blue { background: var(--note-blue); }
+.note--mint { background: var(--note-mint); }
+.note--coral { background: var(--note-coral); }
 
 .btn-icon {
   border: none;

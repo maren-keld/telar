@@ -617,6 +617,8 @@
 .kindle-note--lavender .kindle-note__body { background: color-mix(in srgb, var(--note-lavender) 40%, var(--bg-card)); }
 .kindle-note--pink .kindle-note__body { background: color-mix(in srgb, var(--note-pink) 40%, var(--bg-card)); }
 .kindle-note--blue .kindle-note__body { background: color-mix(in srgb, var(--note-blue) 40%, var(--bg-card)); }
+.kindle-note--mint .kindle-note__body { background: color-mix(in srgb, var(--note-mint) 40%, var(--bg-card)); }
+.kindle-note--coral .kindle-note__body { background: color-mix(in srgb, var(--note-coral) 40%, var(--bg-card)); }
 
 .kindle-note__rail-btn {
   width: 32px;
@@ -696,6 +698,13 @@
 .kindle-note__rail-btn .nav-icon-svg {
   width: 18px;
   height: 18px;
+}
+
+.kindle-note__palette-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .kindle-note__palette-pop {
