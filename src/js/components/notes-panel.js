@@ -6,6 +6,8 @@ import {
   getSessionsWithModules,
   getSpaceChecks,
   setSpaceCheck,
+  setSpaceCheckNote,
+  setSpaceCheckReinforce,
   updateClinicalNote,
 } from '../db.js';
 import { bindAutoSave, flushPendingAutoSaves } from '../autobind.js';
@@ -35,6 +37,8 @@ import {
 } from '../ai-actions.js';
 import { listReferenceDocuments } from './reference-documents-modal.js';
 import { mountWorkspaceToolsTab } from './workspace-tools-menu.js';
+import { openEditFieldModal } from './edit-field-modal.js';
+import { buildSpaceCheckRowHtml } from '../perfil-checklist.js';
 import { DEMO_FOCUS_SCORES_KEY } from '../demo-case-seed.js';
 import { renderWorkspaceScores } from './workspace-scores.js';
 import { ICON_COPY, ICON_PALETTE } from '../icons.js';
@@ -808,29 +812,39 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
     PERFIL_SECTIONS.map(async (sec) => {
       let labels = sortLabels(defaultsFor(sec.id));
       const existing = await getSpaceChecks(treatmentId, sec.id);
-      const map = new Map(existing.map((r) => [r.label, Number(r.checked) === 1]));
+      const map = new Map(
+        existing.map((r) => [
+          r.label,
+          {
+            checked: Number(r.checked) === 1,
+            note: r.note || '',
+            reinforce: Number(r.reinforce) === 1,
+          },
+        ]),
+      );
       if (onlySelected) {
-        labels = labels.filter((l) => map.get(l));
+        labels = labels.filter((l) => map.get(l)?.checked);
       }
       if (query) {
         labels = labels.filter((l) => l.toLowerCase().includes(query));
       }
       if (!labels.length) return '';
-      const checkedCount = labels.filter((l) => map.get(l)).length;
+      const checkedCount = labels.filter((l) => map.get(l)?.checked).length;
       const items = labels
         .map((label) => {
-          const checked = map.get(label) || false;
+          const row = map.get(label) || { checked: false, note: '', reinforce: false };
           const desc = spaceCheckDescription(sec.id, label);
           const xref = PERFIL_CROSS_REFS[sec.id]?.[label] || '';
-          return `
-          <label class="space-check">
-            <input type="checkbox" data-space-check data-category="${sec.id}" value="${escapeHtml(label)}" ${checked ? 'checked' : ''}/>
-            <span class="space-check__body">
-              <span class="space-check__title">${escapeHtml(label)}</span>
-              ${desc ? `<span class="space-check__desc">${escapeHtml(desc)}</span>` : ''}
-              ${xref ? `<span class="space-check__xref">${escapeHtml(xref)}</span>` : ''}
-            </span>
-          </label>`;
+          return buildSpaceCheckRowHtml({
+            label,
+            category: sec.id,
+            checked: row.checked,
+            note: row.note,
+            reinforce: row.reinforce,
+            desc,
+            xref,
+            escapeHtml,
+          });
         })
         .join('');
 
@@ -857,13 +871,39 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
   host.querySelectorAll('[data-space-check]').forEach((cb) => {
     cb.addEventListener('change', async () => {
       await setSpaceCheck(treatmentId, cb.dataset.category, cb.value, cb.checked);
-      const section = cb.closest('.perfil-section');
-      const boxes = section?.querySelectorAll('[data-space-check]');
-      const count = section?.querySelector('.perfil-section__count');
-      if (boxes && count) {
-        const n = [...boxes].filter((x) => x.checked).length;
-        count.textContent = `${n}/${boxes.length}`;
-      }
+      await renderPerfilSections(host, treatmentId, { query, onlySelected });
+    });
+  });
+
+  host.querySelectorAll('[data-perfil-edit]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const category = btn.dataset.category;
+      const label = btn.dataset.label;
+      const row = btn.closest('.space-check');
+      const note = row?.querySelector('.space-check__note')?.textContent?.trim() || '';
+      openEditFieldModal({
+        title: `Nota clínica · ${label}`,
+        value: note,
+        multiline: true,
+        onSave: async (next) => {
+          await setSpaceCheckNote(treatmentId, category, label, next);
+          await renderPerfilSections(host, treatmentId, { query, onlySelected });
+        },
+      });
+    });
+  });
+
+  host.querySelectorAll('[data-perfil-reinforce]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const category = btn.dataset.category;
+      const label = btn.dataset.label;
+      const next = !btn.classList.contains('is-active');
+      await setSpaceCheckReinforce(treatmentId, category, label, next);
+      await renderPerfilSections(host, treatmentId, { query, onlySelected });
     });
   });
 }

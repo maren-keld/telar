@@ -244,6 +244,7 @@ fn read_migrations() -> Vec<(&'static str, &'static str)> {
         ("011_agenda_cobros.sql", include_str!("../migrations/011_agenda_cobros.sql")),
         ("012_custom_modules.sql", include_str!("../migrations/012_custom_modules.sql")),
         ("013_session_done.sql", include_str!("../migrations/013_session_done.sql")),
+        ("014_space_check_notes.sql", include_str!("../migrations/014_space_check_notes.sql")),
     ]
 }
 
