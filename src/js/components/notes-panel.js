@@ -41,6 +41,7 @@ import { ICON_COPY, ICON_PALETTE } from '../icons.js';
 import { mountThinkingOrb } from '../thinking-orb.js';
 import { ditherOrbMarkup, mountDitherOrb } from '../dither-orb.js';
 import { visibleNotesWindow } from '../notes-window.js';
+import { bitacoraMaxTokens } from '../bitacora-ai-tokens.js';
 
 const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
   <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
@@ -586,7 +587,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
             },
             { role: 'user', content: q },
           ],
-          maxTokens: local ? 1200 : 1600,
+          maxTokens: bitacoraMaxTokens(q, { local }),
           request,
         });
         if (request.aborted) throw new Error('cancelado');
