@@ -433,13 +433,23 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     const AI_INPUT_MAX_H = 120;
     const autoGrow = () => {
       aiInput.style.height = 'auto';
-      aiInput.style.overflowY = 'hidden';
-      const chrome = aiInput.offsetHeight - aiInput.clientHeight;
-      const needed = aiInput.scrollHeight + chrome;
-      aiInput.style.height = `${Math.min(needed, AI_INPUT_MAX_H)}px`;
+      const needed = aiInput.scrollHeight;
+      const capped = Math.min(needed, AI_INPUT_MAX_H);
+      aiInput.style.height = `${capped}px`;
       aiInput.style.overflowY = needed > AI_INPUT_MAX_H ? 'auto' : 'hidden';
     };
     aiInput.addEventListener('input', autoGrow);
+    aiInput.addEventListener('paste', () => requestAnimationFrame(autoGrow));
+    aiInput.addEventListener('focus', autoGrow);
+    aiInput.addEventListener(
+      'wheel',
+      (e) => {
+        if (aiInput.scrollHeight <= AI_INPUT_MAX_H) return;
+        if (aiInput.clientHeight < AI_INPUT_MAX_H) return;
+        e.stopPropagation();
+      },
+      { passive: true },
+    );
 
     const syncSendState = () => {
       if (aiSend.dataset.busy === '1') return;
