@@ -210,6 +210,24 @@
   border-color: var(--success);
 }
 
+.space-check__present {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-secondary);
+}
+
+.space-check__present .nav-icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.space-check__present.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
 .space-check__note {
   display: block;
   margin-top: 4px;
@@ -222,6 +240,10 @@
 
 .space-check--reinforce {
   border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+}
+
+.space-check--present {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
 .notes-empty {

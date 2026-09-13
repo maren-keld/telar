@@ -1031,6 +1031,7 @@ export async function setSpaceCheck(treatmentId, category, label, checked) {
      ON CONFLICT(treatment_id, category, label) DO UPDATE SET
        checked = excluded.checked,
        reinforce = CASE WHEN excluded.checked = 0 THEN 0 ELSE treatment_space_checks.reinforce END,
+       present = CASE WHEN excluded.checked = 0 THEN 0 ELSE treatment_space_checks.present END,
        updated_at = datetime('now')`,
     [treatmentId, category, label, checked ? 1 : 0],
   );
@@ -1057,6 +1058,17 @@ export async function setSpaceCheckReinforce(treatmentId, category, label, reinf
        reinforce = excluded.reinforce,
        updated_at = datetime('now')`,
     [treatmentId, category, label, treatmentId, category, label, reinforce ? 1 : 0],
+  );
+}
+
+export async function setSpaceCheckPresent(treatmentId, category, label, present) {
+  await execute(
+    `INSERT INTO treatment_space_checks (treatment_id, category, label, checked, present, updated_at)
+     VALUES (?, ?, ?, COALESCE((SELECT checked FROM treatment_space_checks WHERE treatment_id = ? AND category = ? AND label = ?), 0), ?, datetime('now'))
+     ON CONFLICT(treatment_id, category, label) DO UPDATE SET
+       present = excluded.present,
+       updated_at = datetime('now')`,
+    [treatmentId, category, label, treatmentId, category, label, present ? 1 : 0],
   );
 }
 

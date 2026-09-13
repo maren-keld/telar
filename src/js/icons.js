@@ -31,6 +31,9 @@ export const ICON_EDIT = svg(
 export const ICON_REINFORCE = svg(
   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 );
+export const ICON_PRESENT = svg(
+  '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+);
 export const ICON_BACK = svg('<path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>');
 export const ICON_PRO = svg('<path d="M12 2l2.4 4.8 5.4.8-3.9 3.8.9 5.3L12 14.9l-4.8 2.5.9-5.3L4.2 7.6l5.4-.8L12 2z"/>');
 export const ICON_WAND = svg(
