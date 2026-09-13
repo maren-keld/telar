@@ -21,6 +21,14 @@ import {
 import { addModuleToSession, execute, getSessions, getTreatmentModules } from './db.js';
 import { moduleLabelI18n } from './i18n.js';
 import { escapeHtml } from './utils.js';
+import {
+  buildClinicalGuardrailsPrompt,
+  detectRecentRiskSignals,
+  filterModuleIdsForCatalog,
+  filterModulesByGuardrails,
+  normalizeModuleId,
+  patientAgeFromBirth,
+} from './ai-clinical-guardrails.js';
 
 /**
  * La IA a veces envuelve URLs en markdown [url](url) o mete un aside en *cursiva*.
@@ -51,27 +59,39 @@ const DISMISSED_MARKER_RE = /<!--\s*telar-action-dismissed:(\d+)\s*-->/gi;
 /** Módulos que la IA no debe proponer (placeholders, uso interno o licencia pendiente). */
 const NON_PROPOSABLE = new Set(['selector_modulo']);
 
-export function listProposableModules() {
+export function listProposableModules({ patientAge } = {}) {
   const defs = getModuleDefs();
-  return Object.entries(defs)
-    .filter(([id]) => !NON_PROPOSABLE.has(id) && !isLicensePendingModule(id))
-    .map(([id, def]) => ({
-      id,
-      label: moduleLabelI18n(id, def.label) || def.label || id,
-      category: def.category || 'otros',
-    }));
+  let entries = Object.entries(defs).filter(
+    ([id]) => !NON_PROPOSABLE.has(id) && !isLicensePendingModule(id),
+  );
+  if (patientAge != null && patientAge < 18) {
+    const allowed = new Set(filterModuleIdsForCatalog(entries.map(([id]) => id), patientAge));
+    entries = entries.filter(([id]) => allowed.has(id));
+  }
+  return entries.map(([id, def]) => ({
+    id,
+    label: moduleLabelI18n(id, def.label) || def.label || id,
+    category: def.category || 'otros',
+  }));
 }
 
 /** Catálogo compacto para el prompt: la IA solo puede citar estos ids. */
-export function buildModuleCatalogText() {
+export function buildModuleCatalogText({ patientAge } = {}) {
   const byCategory = new Map();
-  for (const mod of listProposableModules()) {
+  for (const mod of listProposableModules({ patientAge })) {
     if (!byCategory.has(mod.category)) byCategory.set(mod.category, []);
     byCategory.get(mod.category).push(`${mod.label} [${mod.id}]`);
   }
   return [...byCategory.entries()]
     .map(([cat, items]) => `- ${categoryLabel(cat)}: ${items.join(', ')}`)
     .join('\n');
+}
+
+/** Contexto de guardrails para prompt + sanitizePlan (F-011). */
+export function buildAiGuardrailsContext({ patientBirthDate, contextText } = {}) {
+  const patientAge = patientAgeFromBirth(patientBirthDate);
+  const recentRisk = detectRecentRiskSignals(contextText);
+  return { patientAge, recentRisk };
 }
 
 const REF_DOC_EXCERPT = 3500;
@@ -143,7 +163,10 @@ export function userAskedForPatientEmail(question) {
   );
 }
 
-export function buildAiSystemPrompt(context, { practitioner, referenceDocs, email } = {}) {
+export function buildAiSystemPrompt(
+  context,
+  { practitioner, referenceDocs, email, patientAge, recentRisk } = {},
+) {
   const name = String(practitioner?.name || '').trim();
   const gender = practitioner?.grammaticalGender;
   const genderLine =
@@ -201,8 +224,10 @@ BIBLIOGRAFÍA
 - No inventes DOI, URLs ni artículos inexistentes. Prefiere APA, NICE, OMS, Beck, Linehan, Barlow, DSM-5-TR, CIE-11.
 - Nunca en emails al paciente ni en bloques telar-plan / telar-module.
 
+${buildClinicalGuardrailsPrompt({ patientAge, recentRisk })}
+
 MÓDULOS DISPONIBLES EN TELAR
-${buildModuleCatalogText()}
+${buildModuleCatalogText({ patientAge })}
 
 CÓMO ARMAR UN PROGRAMA
 - Las escalas subjetivas de ánimo y ansiedad van de 1 a 100. Nunca las interpretes como 0–10 ni inventes un ejemplo si el contexto trae el número.
@@ -448,10 +473,10 @@ function recoverPlanFromPartial(body) {
   };
 }
 
-function ingestParsed(kind, parsed, actions) {
+function ingestParsed(kind, parsed, actions, guardrails = {}) {
   if (!parsed || typeof parsed !== 'object') return;
   if (kind === 'plan' || Array.isArray(parsed.sessions)) {
-    const plan = sanitizePlan(parsed);
+    const plan = sanitizePlan(parsed, guardrails);
     if (plan) {
       if (parsed.truncated) plan.truncated = true;
       actions.push({ type: 'plan', plan });
@@ -483,17 +508,24 @@ export function cleanSessionLabel(raw, i) {
   return label || fallback;
 }
 
-function sanitizePlan(raw) {
-  const known = new Set(listProposableModules().map((m) => m.id));
+export function sanitizePlan(raw, guardrails = {}) {
+  const { patientAge, recentRisk } = guardrails;
+  const known = new Set(listProposableModules({ patientAge }).map((m) => m.id));
   const sessions = [];
   const unknown = new Set();
+  const blockedModules = [];
   const seenHomework = new Set();
   const seenIntake = new Set();
   (Array.isArray(raw?.sessions) ? raw.sessions : []).forEach((s, i) => {
     const modules = [];
     (Array.isArray(s?.modules) ? s.modules : []).forEach((id) => {
-      const modId = String(id || '').trim();
+      const modId = normalizeModuleId(id);
       if (!modId) return;
+      const gate = filterModulesByGuardrails([modId], { patientAge, recentRisk }, i);
+      if (gate.blocked.length) {
+        blockedModules.push(...gate.blocked);
+        return;
+      }
       if (!known.has(modId)) {
         unknown.add(modId);
         return;
@@ -512,10 +544,12 @@ function sanitizePlan(raw) {
     });
   });
   if (!sessions.length) return null;
+  const uniqueBlocked = [...new Map(blockedModules.map((b) => [b.id, b])).values()];
   return {
     label: String(raw?.label || 'Programa sugerido por IA').trim(),
     sessions,
     unknownModules: [...unknown],
+    blockedModules: uniqueBlocked,
   };
 }
 
@@ -533,7 +567,7 @@ export function isHomeworkHandout(type) {
  * Separa el texto legible de las acciones aplicables.
  * @returns {{ text: string, actions: Array<object> }}
  */
-export function parseAiActions(rawContent = '') {
+export function parseAiActions(rawContent = '', guardrails = {}) {
   const actions = [];
   const applied = new Set();
   const dismissed = new Set();
@@ -547,14 +581,14 @@ export function parseAiActions(rawContent = '') {
       return '';
     });
   let text = source.replace(ACTION_BLOCK_RE, (_match, kind, body) => {
-    ingestParsed(String(kind).toLowerCase(), tryParseJson(body), actions);
+    ingestParsed(String(kind).toLowerCase(), tryParseJson(body), actions, guardrails);
     return '';
   });
 
   if (!actions.length) {
     const naked = text.match(/\{[\s\S]*"sessions"\s*:\s*\[[\s\S]*/);
     if (naked) {
-      ingestParsed('plan', tryParseJson(naked[0]), actions);
+      ingestParsed('plan', tryParseJson(naked[0]), actions, guardrails);
       if (actions.length) {
         text = text.replace(naked[0], '');
       }
@@ -608,9 +642,19 @@ export function aiActionsHtml(actions, noteId) {
             </li>`,
           )
           .join('');
-        const warn = plan.unknownModules.length
-          ? `<p class="ai-action__warn">Se ignoraron módulos que no existen en tu Telar: ${escapeHtml(plan.unknownModules.join(', '))}.</p>`
-          : '';
+        const warnParts = [];
+        if (plan.unknownModules?.length) {
+          warnParts.push(
+            `Se ignoraron módulos que no existen en tu Telar: ${escapeHtml(plan.unknownModules.join(', '))}.`,
+          );
+        }
+        if (plan.blockedModules?.length) {
+          const labels = plan.blockedModules
+            .map((b) => `${escapeHtml(moduleLabelFor(b.id) || b.id)} (${escapeHtml(b.reason)})`)
+            .join(', ');
+          warnParts.push(`Guardrails clínicos (F-011) retiraron: ${labels}.`);
+        }
+        const warn = warnParts.length ? `<p class="ai-action__warn">${warnParts.join(' ')}</p>` : '';
         return `
           <section class="ai-dialog${dialogStateClass(action)}" data-ai-action="plan" data-note-id="${noteId}" data-action-index="${idx}">
             <p class="ai-dialog__ask">¿Aplico este programa al tratamiento actual?</p>

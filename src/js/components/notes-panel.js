@@ -5,6 +5,7 @@ import {
   getClinicalNotes,
   getSessionsWithModules,
   getSpaceChecks,
+  getTreatment,
   setSpaceCheck,
   updateClinicalNote,
 } from '../db.js';
@@ -25,6 +26,7 @@ import {
   userAskedForPatientEmail,
   applyAiModule,
   applyAiPlan,
+  buildAiGuardrailsContext,
   buildAiSystemPrompt,
   formatReferenceDocsForPrompt,
   markAiActionApplied,
@@ -148,6 +150,17 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   }
   const profile = loadProfile();
   const defaultInitials = practitionerInitials(profile.name);
+  const treatmentRow = await getTreatment(treatmentId);
+  let contextPeek = '';
+  try {
+    contextPeek = await buildCaseContextText(treatmentId);
+  } catch {
+    /* sin contexto aún */
+  }
+  let aiGuardrails = buildAiGuardrailsContext({
+    patientBirthDate: treatmentRow?.patient_birth_date,
+    contextText: contextPeek,
+  });
   let showAllNotes = false;
 
   container.innerHTML = `
@@ -239,6 +252,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     if (activeTab === 'notas') {
       const bindOpts = {
         treatmentId,
+        aiGuardrails,
         onApplied: toolsOpts.onTemplateApplied || null,
         onJumpToModuleType: toolsOpts.onJumpToModuleType || null,
         onRemoved: (id) => refreshList({ removeNoteId: id }),
@@ -278,7 +292,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           listEl.querySelector('.notes-empty-state')?.remove();
           stopNotesEmptyOrb();
           stopNotesEmptyOrb = () => {};
-          listEl.insertAdjacentHTML('beforeend', kindleNoteHtml(note, defaultInitials));
+          listEl.insertAdjacentHTML('beforeend', kindleNoteHtml(note, defaultInitials, aiGuardrails));
           bindNoteCards(listEl, refreshList, bindOpts);
           scheduleAiAnswerClamps(listEl.querySelector(`[data-id="${note.id}"]`));
           if (streamNoteId) {
@@ -299,7 +313,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         hiddenCount > 0
           ? `<button type="button" class="btn btn-ghost btn-block notes-older" id="notes-older">Ver ${hiddenCount} anteriores</button>`
           : '';
-      listEl.innerHTML = `${older}${notes.map((n) => kindleNoteHtml(n, defaultInitials)).join('')}`;
+      listEl.innerHTML = `${older}${notes.map((n) => kindleNoteHtml(n, defaultInitials, aiGuardrails)).join('')}`;
       bindNoteCards(listEl, refreshList, bindOpts);
       listEl.querySelector('#notes-older')?.addEventListener('click', () => {
         showAllNotes = true;
@@ -566,6 +580,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       try {
         const context = await buildCaseContextText(treatmentId);
         if (request.aborted) throw new Error('cancelado');
+        aiGuardrails = buildAiGuardrailsContext({
+          patientBirthDate: treatmentRow?.patient_birth_date,
+          contextText: context,
+        });
         const referenceDocs = listReferenceDocuments(treatmentId);
         const docsPrompt = formatReferenceDocsForPrompt(referenceDocs);
         await confirmClinicalAiSend({
@@ -582,6 +600,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
                 practitioner: loadProfile(),
                 referenceDocs,
                 email: userAskedForPatientEmail(q),
+                patientAge: aiGuardrails.patientAge,
+                recentRisk: aiGuardrails.recentRisk,
               }),
             },
             { role: 'user', content: q },
@@ -1058,7 +1078,7 @@ function scheduleAiAnswerClamps(root) {
   requestAnimationFrame(() => requestAnimationFrame(run));
 }
 
-function kindleNoteHtml(note, fallbackInitials) {
+function kindleNoteHtml(note, fallbackInitials, aiGuardrails = {}) {
   const color = note.color || note.note_type || 'teal';
   const starred = Boolean(note.starred);
   const initials = note.author_initials || fallbackInitials || '—';
@@ -1073,7 +1093,7 @@ function kindleNoteHtml(note, fallbackInitials) {
       `<button type="button" class="kindle-note__palette-dot${c.id === color ? ' active' : ''}" data-color="${c.id}" title="${escapeHtml(c.label)}" style="background:var(--note-${c.id})"></button>`,
   ).join('');
 
-  const ai = isAi ? parseAiActions(note.content || '') : null;
+  const ai = isAi ? parseAiActions(note.content || '', aiGuardrails) : null;
 
   const bodyContent = isAi
     ? `
@@ -1103,7 +1123,11 @@ function kindleNoteHtml(note, fallbackInitials) {
     </article>`;
 }
 
-function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null, onJumpToModuleType = null, onRemoved = null } = {}) {
+function bindNoteCards(
+  listEl,
+  rerender,
+  { treatmentId = null, aiGuardrails = {}, onApplied = null, onJumpToModuleType = null, onRemoved = null } = {},
+) {
   ensurePaletteClose();
   listEl.querySelectorAll('.kindle-note').forEach((card) => {
     if (card.dataset.notesBound === '1') return;
@@ -1207,7 +1231,7 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
       applyBtn?.addEventListener('click', async () => {
         if (!treatmentId) return;
         const idx = Number(actionEl.dataset.actionIndex || 0);
-        const { actions } = parseAiActions(rawContent());
+        const { actions } = parseAiActions(rawContent(), aiGuardrails);
         const action = actions[idx];
         if (!action) return;
 
