@@ -996,7 +996,7 @@ function defaultsFor(tab) {
   }
   if (tab === 'riesgos') {
     // 'Defensas desadaptativas predominantes' se quitó — el detalle queda
-    // en la sección Mecanismos de defensa con las defensas específicas marcadas.
+    // en la sección Defensas psíquicas con las defensas específicas marcadas.
     return [
       'Ideación suicida',
       'Plan suicida',

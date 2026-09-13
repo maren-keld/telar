@@ -91,6 +91,17 @@ export function isContentComplete(moduleType, data) {
   if (type === 'registro_inicial') return filled(d.nombre);
   if (type === 'motivo_consulta') return filled(d.motivo);
   if (type === 'diagnostico') {
+    if (Array.isArray(d.formulation?.elements)) {
+      return d.formulation.elements.some(
+        (element) =>
+          filled(element?.title) ||
+          filled(element?.notes) ||
+          (Array.isArray(element?.manifestations) && element.manifestations.length > 0) ||
+          (Array.isArray(element?.indicators) && element.indicators.length > 0) ||
+          (Array.isArray(element?.objectives) && element.objectives.length > 0) ||
+          (Array.isArray(element?.evidence) && element.evidence.length > 0),
+      );
+    }
     return (Array.isArray(d.problems) ? d.problems : []).some((p) => p?.assigned);
   }
   if (type === 'redes_apoyo') {
