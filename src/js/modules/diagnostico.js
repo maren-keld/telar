@@ -94,9 +94,12 @@ const BUILTIN_PROBLEMS = [
 
 const BUILTIN_NAMES = new Set(BUILTIN_PROBLEMS.map((p) => p.name));
 
+export const DX_HELP_MESSAGE =
+  'Matriz de problemas: asigna problemas con indicadores y objetivos verificables. Formulación: hipótesis, factores mantenedores y recursos del caso. Telar no diagnostica ni prescribe; las decisiones clínicas son responsabilidad del profesional.';
+
 function normalizeView(view) {
-  if (view === 'personalizado' || view === 'matriz') return view;
-  if (view === 'conceptualizacion') return 'personalizado';
+  if (view === 'personalizado' || view === 'matriz' || view === 'formulacion') return view === 'matriz' ? 'matriz' : 'formulacion';
+  if (view === 'conceptualizacion') return 'formulacion';
   return 'matriz';
 }
 
@@ -150,7 +153,6 @@ export async function renderDiagnostico(host, moduleRow) {
     <div class="card dx-card-wrap">
       <div class="dx-head">
         <h2 class="module-title">Diagnósticos</h2>
-        <button type="button" class="btn btn-ghost dx-help" title="Ayuda" disabled>?</button>
       </div>
 
       <div class="dx-tabs" data-no-autobind>
@@ -158,13 +160,13 @@ export async function renderDiagnostico(host, moduleRow) {
           Matriz de Problemas
           <span class="dx-tab__badge" id="dx-assigned-count">${assignedCount}</span>
         </button>
-        <button type="button" class="dx-tab ${view === 'personalizado' ? 'active' : ''}" data-view="personalizado">Personalizado</button>
+        <button type="button" class="dx-tab ${view === 'formulacion' ? 'active' : ''}" data-view="formulacion">Formulación</button>
       </div>
 
       <form id="dx-form">
         <input type="hidden" name="view" value="${escapeHtml(view)}" />
 
-        <section class="dx-panel" id="dx-panel-personalizado" ${view === 'personalizado' ? '' : 'hidden'}>
+        <section class="dx-panel" id="dx-panel-formulacion" ${view === 'formulacion' ? '' : 'hidden'}>
           <div class="dx-structured__grid">
             <label class="dx-structured__field dx-structured__field--wide">
               <span>Hipótesis</span>
@@ -261,7 +263,7 @@ export async function renderDiagnostico(host, moduleRow) {
     host.querySelectorAll('.dx-tab').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
     structForm.querySelector('[name="view"]').value = v;
     matrixForm?.querySelector('[name="view"]')?.setAttribute('value', v);
-    host.querySelector('#dx-panel-personalizado').hidden = v !== 'personalizado';
+    host.querySelector('#dx-panel-formulacion').hidden = v !== 'formulacion';
     if (matrixForm) matrixForm.hidden = v !== 'matriz';
   };
 
