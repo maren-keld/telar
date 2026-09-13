@@ -6,6 +6,7 @@ import { questionnaireDefFor } from './questionnaire-defs.js';
 import { shareableContentFor } from './share-content.js';
 import { shareAnsweredAt, shareInfo, shareUrl } from './share-sync.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
+import { patientAgeFromBirth } from './ai-clinical-guardrails.js';
 import { formatDate, parseJsonSafe } from './utils.js';
 
 function homeworkKind(moduleType, shareable) {
@@ -59,9 +60,18 @@ export async function buildCaseContextText(treatmentId) {
   const sessions = await getSessionsWithModules(treatmentId);
   const notes = await getClinicalNotes(treatmentId);
 
+  const age = patientAgeFromBirth(treatment.patient_birth_date);
+  const ageLine =
+    age != null
+      ? `Edad: ${age} años`
+      : treatment.patient_birth_date
+        ? `Nacimiento: ${treatment.patient_birth_date}`
+        : 'Edad: sin dato';
+
   const parts = [
     `# Contexto clínico — ${treatment.patient_name}`,
     `Tratamiento n.º ${treatment.number} · Generado ${formatDate(new Date().toISOString())}`,
+    ageLine,
     '',
     '## Resumen psicométrico (última aplicación por escala)',
     buildPsychometricSummaryBlock(sessions) || '_Sin puntajes psicométricos registrados._',
