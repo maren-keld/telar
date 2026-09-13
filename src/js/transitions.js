@@ -214,6 +214,14 @@ export function clampTooltipBox(left, top, width, height, vw, vh, pad = 8) {
   };
 }
 
+/** Evita cancelar el show delay al cruzar hijos (p. ej. `<path>` SVG) del mismo host. */
+export function shouldScheduleTooltipHide({ active, pending, relatedTarget, tipElement }) {
+  const host = active || pending;
+  if (!host) return false;
+  if (relatedTarget && (host.contains(relatedTarget) || relatedTarget === tipElement)) return false;
+  return true;
+}
+
 function initTooltips() {
   if (document.getElementById('telar-tooltip')) return;
   const tip = document.createElement('span');
@@ -225,11 +233,13 @@ function initTooltips() {
   let hideTimer = 0;
   let showTimer = 0;
   let active = null;
+  let pending = null;
 
   const hide = () => {
     clearTimeout(showTimer);
     tip.classList.remove('is-open');
     active = null;
+    pending = null;
   };
 
   const show = (el, text) => {
@@ -313,8 +323,13 @@ function initTooltips() {
         const truncated = labelEl.scrollWidth > labelEl.clientWidth + 1;
         if (!truncated) return;
       }
+      pending = el;
       clearTimeout(showTimer);
-      showTimer = window.setTimeout(() => show(el, text), 160);
+      clearTimeout(hideTimer);
+      showTimer = window.setTimeout(() => {
+        pending = null;
+        show(el, text);
+      }, 160);
     },
     true,
   );
@@ -322,9 +337,18 @@ function initTooltips() {
   document.addEventListener(
     'pointerout',
     (e) => {
-      if (!active && !showTimer) return;
-      const to = e.relatedTarget;
-      if (to && active && (active.contains(to) || to === tip)) return;
+      if (!active && !pending && !showTimer) return;
+      if (
+        !shouldScheduleTooltipHide({
+          active,
+          pending,
+          relatedTarget: e.relatedTarget,
+          tipElement: tip,
+        })
+      ) {
+        return;
+      }
+      clearTimeout(hideTimer);
       hideTimer = window.setTimeout(hide, 40);
     },
     true,
