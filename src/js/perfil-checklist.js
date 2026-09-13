@@ -1,4 +1,4 @@
-import { ICON_EDIT } from './icons.js';
+import { ICON_EDIT, ICON_REINFORCE } from './icons.js';
 
 /** Ítems marcados del Perfil muestran lápiz (nota clínica) y acción Reforzar. */
 export function notePresent(note) {
@@ -24,7 +24,7 @@ export function buildSpaceCheckRowHtml({
     checked ?
       `<div class="space-check__actions">
         <button type="button" class="btn btn-ghost btn-icon space-check__edit" data-perfil-edit data-category="${escapeHtml(category)}" data-label="${escapeHtml(label)}" title="Editar nota clínica" aria-label="Editar nota clínica">${ICON_EDIT}</button>
-        <button type="button" class="btn btn-ghost btn-sm space-check__reinforce${reinforce ? ' is-active' : ''}" data-perfil-reinforce data-category="${escapeHtml(category)}" data-label="${escapeHtml(label)}" aria-pressed="${reinforce ? 'true' : 'false'}">Reforzar</button>
+        <button type="button" class="btn btn-ghost btn-icon space-check__reinforce${reinforce ? ' is-active' : ''}" data-perfil-reinforce data-category="${escapeHtml(category)}" data-label="${escapeHtml(label)}" title="Reforzar" data-tooltip="Reforzar" aria-label="Reforzar" aria-pressed="${reinforce ? 'true' : 'false'}">${ICON_REINFORCE}</button>
       </div>`
     : '';
 

@@ -26,7 +26,10 @@ test('checklist marcado muestra lápiz y Reforzar', () => {
   });
   assert.match(html, /data-perfil-edit/);
   assert.match(html, /data-perfil-reinforce/);
-  assert.match(html, />Reforzar</);
+  assert.match(html, /title="Reforzar"/);
+  assert.match(html, /aria-label="Reforzar"/);
+  assert.match(html, /space-check__reinforce/);
+  assert.doesNotMatch(html, />Reforzar</);
   assert.match(html, /space-check--checked/);
 });
 

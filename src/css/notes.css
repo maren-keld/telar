@@ -193,17 +193,21 @@
 }
 
 .space-check__reinforce {
-  font-size: 0.68rem;
-  line-height: 1;
-  padding: 5px 8px;
-  white-space: nowrap;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   color: var(--text-secondary);
 }
 
+.space-check__reinforce .nav-icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
 .space-check__reinforce.is-active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: var(--success);
 }
 
 .space-check__note {
@@ -217,7 +221,7 @@
 }
 
 .space-check--reinforce {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
 
 .notes-empty {
