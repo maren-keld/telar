@@ -28,6 +28,7 @@ TABLES = (
     "shared_forms",
     "ai_mistral_grants",
     "ai_mistral_ip_hits",
+    "ai_email_challenges",
 )
 
 
