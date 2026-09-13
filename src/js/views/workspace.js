@@ -1261,13 +1261,29 @@ function createBotoneraEl({ isActive }) {
   return actions;
 }
 
+/** Tooltips de la botonera (WKWebView no muestra `title` nativo). */
+export const BOTONERA_TOOLTIPS = {
+  share: 'Compartir con tus pacientes',
+  sharePending: 'Enlace enviado — esperando respuesta',
+  print: 'Imprimir en PDF',
+  swap: 'Cambiar módulo',
+  remove: 'Remover módulo',
+  nfHelp: 'Ayuda neurofeedback',
+};
+
+export function setBotoneraTooltip(el, text) {
+  el.dataset.tooltip = text;
+  el.setAttribute('aria-label', text);
+}
+
 function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, shareAnswered, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
   // Derecha → izquierda: cerrar, cambiar, imprimir, enviar, ayuda.
   if (shareAnswered) {
     const when = formatShareAnsweredAt(shareAnswered);
     const tag = document.createElement('span');
     tag.className = 'share-answered-tag';
-    tag.title = when ? `${shareCompletedByLinkLabel()} · ${when}` : shareCompletedByLinkLabel();
+    const answeredTip = when ? `${shareCompletedByLinkLabel()} · ${when}` : shareCompletedByLinkLabel();
+    tag.dataset.tooltip = answeredTip;
     tag.innerHTML = `<span class="share-answered-tag__label">${shareCompletedByLinkLabel()}</span>${
       when ? `<span class="share-answered-tag__when">${escapeHtml(when)}</span>` : ''
     }`;
@@ -1278,8 +1294,7 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     const helpBtn = document.createElement('button');
     helpBtn.type = 'button';
     helpBtn.className = 'module-help-btn';
-    helpBtn.title = 'Ayuda neurofeedback';
-    helpBtn.setAttribute('aria-label', 'Ayuda neurofeedback');
+    setBotoneraTooltip(helpBtn, BOTONERA_TOOLTIPS.nfHelp);
     helpBtn.textContent = '?';
     helpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1293,11 +1308,8 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     shareBtn.type = 'button';
     shareBtn.className = `module-print-btn${shareState === 'pending' ? ' module-print-btn--active' : ''}`;
     const label =
-      shareState === 'pending'
-        ? 'Enlace enviado — esperando respuesta'
-        : 'Enviar al paciente por enlace';
-    shareBtn.title = label;
-    shareBtn.setAttribute('aria-label', label);
+      shareState === 'pending' ? BOTONERA_TOOLTIPS.sharePending : BOTONERA_TOOLTIPS.share;
+    setBotoneraTooltip(shareBtn, label);
     shareBtn.innerHTML = ICON_LINK;
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1310,8 +1322,7 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     const printBtn = document.createElement('button');
     printBtn.type = 'button';
     printBtn.className = 'module-print-btn';
-    printBtn.title = 'Descargar PDF del módulo';
-    printBtn.setAttribute('aria-label', 'Descargar PDF del módulo');
+    setBotoneraTooltip(printBtn, BOTONERA_TOOLTIPS.print);
     printBtn.innerHTML = ICON_DOWNLOAD;
     printBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -1328,8 +1339,7 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     const swapBtn = document.createElement('button');
     swapBtn.type = 'button';
     swapBtn.className = 'module-print-btn';
-    swapBtn.title = 'Cambiar módulo';
-    swapBtn.setAttribute('aria-label', 'Cambiar módulo');
+    setBotoneraTooltip(swapBtn, BOTONERA_TOOLTIPS.swap);
     swapBtn.innerHTML = ICON_SWAP;
     swapBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -1352,8 +1362,7 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'module-delete-btn';
-    del.title = 'Eliminar módulo';
-    del.setAttribute('aria-label', 'Eliminar módulo');
+    setBotoneraTooltip(del, BOTONERA_TOOLTIPS.remove);
     del.textContent = '×';
     del.addEventListener('click', async (e) => {
       e.stopPropagation();

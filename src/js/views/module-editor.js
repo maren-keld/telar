@@ -143,10 +143,10 @@ export async function renderModuleEditor(container, {
                 <p class="module-card-head__sub" id="cm-instructions-live"${existing?.instructions ? '' : ' hidden'}>${escapeHtml(existing?.instructions || '')}</p>
               </div>
               <div class="module-card-actions botonera-modules module-editor__sim" aria-hidden="true">
-                <button type="button" class="module-print-btn" disabled tabindex="-1" title="Enviar al paciente por enlace">${ICON_LINK}</button>
-                <button type="button" class="module-print-btn" disabled tabindex="-1" title="Descargar PDF del módulo">${ICON_DOWNLOAD}</button>
-                <button type="button" class="module-print-btn" disabled tabindex="-1" title="Cambiar módulo">${ICON_SWAP}</button>
-                <button type="button" class="module-delete-btn" disabled tabindex="-1" title="Eliminar módulo">×</button>
+                <button type="button" class="module-print-btn" disabled tabindex="-1" data-tooltip="Compartir con tus pacientes" aria-label="Compartir con tus pacientes">${ICON_LINK}</button>
+                <button type="button" class="module-print-btn" disabled tabindex="-1" data-tooltip="Imprimir en PDF" aria-label="Imprimir en PDF">${ICON_DOWNLOAD}</button>
+                <button type="button" class="module-print-btn" disabled tabindex="-1" data-tooltip="Cambiar módulo" aria-label="Cambiar módulo">${ICON_SWAP}</button>
+                <button type="button" class="module-delete-btn" disabled tabindex="-1" data-tooltip="Remover módulo" aria-label="Remover módulo">×</button>
               </div>
             </div>
             <div class="module-editor__body" data-kind="${isEdit ? initialKind : ''}">

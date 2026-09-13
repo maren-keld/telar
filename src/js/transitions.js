@@ -248,6 +248,9 @@ function initTooltips() {
     const sidebarLink = el.classList.contains('module-link') && el.closest('#leftsidebar');
     const headerBtn = el.closest('.workspace-sidebar__header');
     const footerBtn = el.closest('.workspace-sidebar__footer');
+    const botoneraBtn = el.closest(
+      '.botonera-modules .module-print-btn, .botonera-modules .module-delete-btn, .botonera-modules .module-help-btn',
+    );
 
     let left;
     let top;
@@ -263,6 +266,10 @@ function initTooltips() {
       left = r.left + r.width / 2 - tw / 2;
       top = r.top - gap - th;
       tip.style.transformOrigin = '50% 100%';
+    } else if (botoneraBtn) {
+      left = r.left + r.width / 2 - tw / 2;
+      top = r.bottom + gap;
+      tip.style.transformOrigin = '50% 0';
     } else if (headerBtn || r.top < 72) {
       left = r.left + r.width / 2 - tw / 2;
       top = r.bottom + gap;
