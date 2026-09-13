@@ -1,5 +1,10 @@
 /**
- * Modo de índice del workspace: cronológico (sesiones) vs por categoría (instrumentos).
+ * Modo de índice del workspace: cronológico (sesiones) vs por categoría (instrumentos)
+ * vs estudio de caso (ejes clínicos).
+ *
+ * Espacio de trabajo (producto):
+ * - Cronológico (informe) → chrono | category
+ * - Estudio de caso → estudio
  */
 import { CATEGORIES as MODULE_CATEGORIES } from './components/module-selector.js';
 import { isLicensePendingModule } from './license-pending-modules.js';
@@ -17,16 +22,36 @@ import { t } from './i18n.js';
 export const WORKSPACE_INDEX_MODE_KEY = 'telar.workspace.indexMode';
 export const WORKSPACE_INDEX_TYPE_KEY = 'telar.workspace.indexType';
 
+/** Módulos que siguen en librería pero no se ofrecen al agregar al programa. */
+export const PROGRAM_ADD_BLOCKLIST = new Set(['redes_apoyo']);
+
+let memoryIndexMode = 'chrono';
+let memoryIndexType = '';
+
+export function isEstudioWorkspaceMode(mode = getWorkspaceIndexMode()) {
+  return mode === 'estudio';
+}
+
+export function isInformeWorkspaceMode(mode = getWorkspaceIndexMode()) {
+  return mode === 'chrono' || mode === 'category';
+}
+
 export function getWorkspaceIndexMode() {
   try {
-    return localStorage.getItem(WORKSPACE_INDEX_MODE_KEY) === 'category' ? 'category' : 'chrono';
+    const raw = localStorage.getItem(WORKSPACE_INDEX_MODE_KEY);
+    if (raw === 'category' || raw === 'estudio' || raw === 'chrono') {
+      memoryIndexMode = raw;
+      return raw;
+    }
   } catch {
-    return 'chrono';
+    /* ignore */
   }
+  return memoryIndexMode === 'category' || memoryIndexMode === 'estudio' ? memoryIndexMode : 'chrono';
 }
 
 export function setWorkspaceIndexMode(mode) {
-  const next = mode === 'category' ? 'category' : 'chrono';
+  const next = mode === 'category' || mode === 'estudio' ? mode : 'chrono';
+  memoryIndexMode = next;
   try {
     localStorage.setItem(WORKSPACE_INDEX_MODE_KEY, next);
   } catch {
@@ -42,13 +67,16 @@ export function dispatchWorkspaceIndexMode(mode) {
 
 export function getWorkspaceIndexType() {
   try {
-    return localStorage.getItem(WORKSPACE_INDEX_TYPE_KEY) || '';
+    const raw = localStorage.getItem(WORKSPACE_INDEX_TYPE_KEY) || '';
+    memoryIndexType = raw;
+    return raw;
   } catch {
-    return '';
+    return memoryIndexType || '';
   }
 }
 
 export function setWorkspaceIndexType(type) {
+  memoryIndexType = type || '';
   try {
     if (type) localStorage.setItem(WORKSPACE_INDEX_TYPE_KEY, type);
     else localStorage.removeItem(WORKSPACE_INDEX_TYPE_KEY);
@@ -148,6 +176,7 @@ export function listAddableModuleOptions(categoryId = null) {
   const out = [];
   const push = (type, label, catId, categoryLabel) => {
     if (!type || type === 'selector_modulo' || seen.has(type)) return;
+    if (PROGRAM_ADD_BLOCKLIST.has(type)) return;
     if (isLicensePendingModule(type)) return;
     seen.add(type);
     out.push({ type, label, categoryId: catId, categoryLabel });

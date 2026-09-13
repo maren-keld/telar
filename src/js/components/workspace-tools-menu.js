@@ -7,6 +7,7 @@ import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
+  isInformeWorkspaceMode,
 } from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
@@ -104,17 +105,24 @@ export function mountWorkspaceToolsTab(host, opts) {
       ${toolsItemsHtml()}
 
       <div class="tools-section-divider"></div>
-      <p class="tools-section-label">Espacio de trabajo</p>
+      <p class="tools-section-label">Vista</p>
       <div class="tools-mode-row">
         <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">Foco</button>
         <button type="button" class="tools-mode-btn${currentMode === 'full' ? ' tools-mode-btn--active' : ''}" data-mode="full">Completo</button>
       </div>
 
       <div class="tools-section-divider"></div>
-      <p class="tools-section-label">Índice</p>
+      <p class="tools-section-label">Espacio de trabajo</p>
       <div class="tools-mode-row">
-        <button type="button" class="tools-mode-btn${indexMode === 'chrono' ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono">Cronológica</button>
-        <button type="button" class="tools-mode-btn${indexMode === 'category' ? ' tools-mode-btn--active' : ''}" data-index-mode="category">Por categoría</button>
+        <button type="button" class="tools-mode-btn${isInformeWorkspaceMode(indexMode) ? ' tools-mode-btn--active' : ''}" data-space-mode="chrono">Cronológico (informe)</button>
+        <button type="button" class="tools-mode-btn${indexMode === 'estudio' ? ' tools-mode-btn--active' : ''}" data-space-mode="estudio">Estudio de caso</button>
+      </div>
+
+      <div class="tools-section-divider"></div>
+      <p class="tools-section-label">Índice</p>
+      <div class="tools-mode-row${indexMode === 'estudio' ? ' tools-mode-row--disabled' : ''}">
+        <button type="button" class="tools-mode-btn${indexMode === 'chrono' ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono" ${indexMode === 'estudio' ? 'disabled' : ''}>Cronológica</button>
+        <button type="button" class="tools-mode-btn${indexMode === 'category' ? ' tools-mode-btn--active' : ''}" data-index-mode="category" ${indexMode === 'estudio' ? 'disabled' : ''}>Por categoría</button>
       </div>
 
       <div class="tools-section-divider"></div>
@@ -146,8 +154,16 @@ export function mountWorkspaceToolsTab(host, opts) {
     });
   });
 
+  host.querySelectorAll('[data-space-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.spaceMode;
+      dispatchWorkspaceIndexMode(mode);
+    });
+  });
+
   host.querySelectorAll('[data-index-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (btn.disabled) return;
       const mode = btn.dataset.indexMode;
       host.querySelectorAll('[data-index-mode]').forEach((b) => {
         b.classList.toggle('tools-mode-btn--active', b.dataset.indexMode === mode);

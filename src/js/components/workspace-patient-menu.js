@@ -14,6 +14,7 @@ import { setToggle } from '../transitions.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
+  isInformeWorkspaceMode,
 } from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
@@ -94,7 +95,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         </button>
 
         <div class="patient-menu-divider"></div>
-        <label class="dropdown-label">Espacio de trabajo</label>
+        <label class="dropdown-label">Vista</label>
         <div class="patient-menu-mode-row">
           <button type="button" class="patient-menu-mode-btn${currentMode === 'focus' ? ' patient-menu-mode-btn--active' : ''}" data-mode="focus">
             Foco
@@ -105,12 +106,23 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         </div>
 
         <div class="patient-menu-divider"></div>
+        <label class="dropdown-label">Espacio de trabajo</label>
+        <div class="patient-menu-mode-row">
+          <button type="button" class="patient-menu-mode-btn${isInformeWorkspaceMode(indexMode) ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="chrono">
+            Cronológico (informe)
+          </button>
+          <button type="button" class="patient-menu-mode-btn${indexMode === 'estudio' ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="estudio">
+            Estudio de caso
+          </button>
+        </div>
+
+        <div class="patient-menu-divider"></div>
         <label class="dropdown-label">Índice</label>
         <div class="patient-menu-mode-row">
-          <button type="button" class="patient-menu-mode-btn${indexMode === 'chrono' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="chrono">
+          <button type="button" class="patient-menu-mode-btn${indexMode === 'chrono' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="chrono" ${indexMode === 'estudio' ? 'disabled' : ''}>
             Cronológica
           </button>
-          <button type="button" class="patient-menu-mode-btn${indexMode === 'category' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="category">
+          <button type="button" class="patient-menu-mode-btn${indexMode === 'category' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="category" ${indexMode === 'estudio' ? 'disabled' : ''}>
             Por categoría
           </button>
         </div>
@@ -194,8 +206,16 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     });
   });
 
+  root.querySelectorAll('[data-space-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      dispatchWorkspaceIndexMode(btn.dataset.spaceMode);
+      close();
+    });
+  });
+
   root.querySelectorAll('[data-index-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (btn.disabled) return;
       const mode = btn.dataset.indexMode;
       root.querySelectorAll('[data-index-mode]').forEach((b) => {
         b.classList.toggle('patient-menu-mode-btn--active', b.dataset.indexMode === mode);

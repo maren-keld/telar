@@ -46,6 +46,7 @@ import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
   getWorkspaceIndexType,
+  isEstudioWorkspaceMode,
   resolveIndexType,
   sessionRuleHtml,
   sessionsForCenter,
@@ -54,6 +55,7 @@ import {
   sidebarCategoryHtml,
   snapshotCategoryCollapse,
 } from '../workspace-index-mode.js';
+import { mountEstudioDeCaso } from './estudio-de-caso.js';
 import {
   centerModuleIdsMatch,
   moduleViewportOffset,
@@ -67,6 +69,11 @@ let workspaceIndexModeListener = null;
 
 async function flushWorkspaceSaves() {
   try {
+    const host = document.querySelector('#app') || document.body;
+    // Prefer the live workspace container flush if mounted.
+    const ws = document.querySelector('[data-workspace-treatment-id]');
+    if (ws?._flushEstudio) await ws._flushEstudio();
+    void host;
     await flushPendingAutoSaves();
     return true;
   } catch {
@@ -194,6 +201,7 @@ export async function renderWorkspace(
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
   const indexMode = getWorkspaceIndexMode();
+  const estudioMode = isEstudioWorkspaceMode(indexMode);
   const indexType = indexMode === 'category' ? resolveIndexType(sessions, activeModule) : '';
   if (indexType) setWorkspaceIndexType(indexType);
   if (
@@ -212,6 +220,7 @@ export async function renderWorkspace(
   }
 
   if (
+    !estudioMode &&
     !forceFullRender &&
     await tryFastModuleNavigation(container, {
       treatmentId,
@@ -246,6 +255,18 @@ export async function renderWorkspace(
 
   container._unmountHighlight?.();
   container._unmountHighlight = null;
+  container._unmountEstudio?.();
+  container._unmountEstudio = null;
+
+  const sidebarScrollHtml = estudioMode
+    ? `<div class="estudio-axis-nav-host" id="estudio-axis-nav"></div>`
+    : indexMode === 'category'
+      ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, {
+          treatmentId,
+          linkHtmlFn: indexModuleLinkHtml,
+        })
+      : `${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
+          ${sidebarAddRowHtml({ id: 'btn-add-session', extraClass: 'workspace-add-session', label: t('workspace.addSession') })}`;
 
   container.innerHTML = `
     <div class="workspace-layout" id="workspace-layout">
@@ -257,15 +278,7 @@ export async function renderWorkspace(
           <button type="button" class="workspace-patient-menu" id="btn-patient-menu" title="Opciones del paciente" aria-label="Opciones del paciente">${ICON_MORE_VERT}</button>
         </header>
         <div class="workspace-sidebar__scroll">
-          ${
-            indexMode === 'category'
-              ? sidebarCategoryHtml(sessions, activeModule, moduleLabel, {
-                  treatmentId,
-                  linkHtmlFn: indexModuleLinkHtml,
-                })
-              : `${sessions.map((s) => sidebarSessionHtml(s, activeModule, { treatmentId, expandSessionId })).join('')}
-          ${sidebarAddRowHtml({ id: 'btn-add-session', extraClass: 'workspace-add-session', label: t('workspace.addSession') })}`
-          }
+          ${sidebarScrollHtml}
         </div>
         <footer class="workspace-sidebar__footer">
           <div class="workspace-index-switch" role="group" aria-label="Orden del índice">
@@ -279,6 +292,12 @@ export async function renderWorkspace(
               title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
               <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+              </svg>
+            </button>
+            <button type="button" class="workspace-sidebar-toggle${indexMode === 'estudio' ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
+              title="Estudio de caso" aria-label="Estudio de caso" aria-pressed="${indexMode === 'estudio' ? 'true' : 'false'}">
+              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
               </svg>
             </button>
           </div>
@@ -297,7 +316,7 @@ export async function renderWorkspace(
       <main class="workspace-center" id="espaciocentral">
         <div class="workspace-center__scroll" id="workspace-center-scroll">
           <div class="workspace-center__inner" id="center-modules">
-            ${sessions.length ? '' : '<p class="empty-hint">Añade una sesión para comenzar.</p>'}
+            ${estudioMode ? '' : sessions.length ? '' : '<p class="empty-hint">Añade una sesión para comenzar.</p>'}
           </div>
         </div>
       </main>
@@ -385,7 +404,16 @@ export async function renderWorkspace(
       });
     },
   };
-  if (sessions.length) {
+  if (estudioMode) {
+    const leftScroll = container.querySelector('.workspace-sidebar__scroll');
+    const estudioApi = await mountEstudioDeCaso({
+      leftHost: leftScroll,
+      centerHost,
+      treatmentId,
+    });
+    container._unmountEstudio = () => estudioApi?.unmount?.();
+    container._flushEstudio = () => estudioApi?.flush?.();
+  } else if (sessions.length) {
     await renderAllCenterModules(centerHost, sessions, treatment, activeModule, {
       treatmentId,
       activeSessionId,
@@ -402,6 +430,7 @@ export async function renderWorkspace(
   if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
 
   if (
+    !estudioMode &&
     activeModule &&
     (!moduleId || (indexMode === 'category' && String(activeModule.id) !== String(moduleId)))
   ) {
@@ -412,7 +441,7 @@ export async function renderWorkspace(
     });
   }
 
-  if (activeModule) {
+  if (!estudioMode && activeModule) {
     const scrollToRestore = pendingCenterScrollRestore;
     pendingCenterScrollRestore = null;
     const root = container.querySelector('#workspace-center-scroll');
@@ -458,7 +487,7 @@ export async function renderWorkspace(
     const root = container.querySelector('#workspace-center-scroll');
     if (root) root.style.visibility = '';
   }
-  bindModuleScrollSpy(container);
+  if (!estudioMode) bindModuleScrollSpy(container);
 
   container.querySelector('[data-back]')?.addEventListener('click', () => {
     teardownNeurofeedback();
@@ -597,12 +626,16 @@ export async function renderWorkspace(
     restoreNotesScroll(container, savedNotesScroll);
   }
 
-  container._unmountHighlight = mountTextHighlight(centerHost, {
-    treatmentId,
-    onNoteCreated: async () => {
-      await notesApi?.focusNotasTab();
-    },
-  });
+  if (!estudioMode) {
+    container._unmountHighlight = mountTextHighlight(centerHost, {
+      treatmentId,
+      onNoteCreated: async () => {
+        await notesApi?.focusNotasTab();
+      },
+    });
+  } else {
+    container._unmountHighlight = null;
+  }
 
   container.dataset.workspaceTreatmentId = String(treatmentId);
   container.dataset.workspaceModuleId = activeModule ? String(activeModule.id) : '';
@@ -738,6 +771,7 @@ function bindWorkspaceDelegatedClicks(container) {
 async function paintCenterForModule(container, { sessionId, moduleId, moduleType = '', preserveScroll = false } = {}) {
   const data = container._workspaceData;
   if (!data?.treatment || !data.sessions) return false;
+  if (isEstudioWorkspaceMode()) return false;
   const host = container.querySelector('#center-modules');
   if (!host) return false;
 
@@ -1040,6 +1074,7 @@ async function tryFastModuleNavigation(container, {
   indexMode,
   indexType,
 }) {
+  if (isEstudioWorkspaceMode(indexMode)) return false;
   if (!moduleId || !activeModule) return false;
   if (container.dataset.workspaceTreatmentId !== String(treatmentId)) return false;
   if (!container.querySelector('#workspace-layout')) return false;

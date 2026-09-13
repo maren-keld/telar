@@ -29,7 +29,7 @@ export const CATEGORIES = [
     id: 'conceptualizacion',
     label: CATEGORY_LABELS.conceptualizacion,
     blurb: CATEGORY_BLURBS.conceptualizacion,
-    types: ['registro_inicial', 'motivo_consulta', 'redes_apoyo', 'diagnostico', 'nota_sesion', 'tcc_plan_seguridad'],
+    types: ['registro_inicial', 'motivo_consulta', 'diagnostico', 'nota_sesion', 'tcc_plan_seguridad'],
   },
   {
     id: 'pruebas',

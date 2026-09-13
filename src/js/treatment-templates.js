@@ -11,7 +11,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
     featured: true,
     sessions: [
       { label: 'Evaluación inicial', modules: ['asrs', 'gad7', 'diagnostico'] },
-      { label: 'Perfil y redes', modules: ['dass21', 'redes_apoyo', 'escala_fer'] },
+      { label: 'Perfil clínico', modules: ['dass21', 'escala_fer'] },
       { label: 'Organización cognitiva', modules: ['tcc_flexibilidad', 'tcc_abc', 'escala_ansiedad'] },
       { label: 'Activación y rutinas', modules: ['tcc_activacion', 'tcc_estres', 'escala_animo'] },
       { label: 'Pensamientos y sesgos', modules: ['tcc_socratico', 'tcc_sesgos', 'tcc_preocupaciones'] },
@@ -29,7 +29,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
     sessions: [
       { label: 'Evaluación inicial', modules: ['asrs', 'gad7', 'diagnostico'] },
       { label: 'Baseline NF + perfil', modules: ['neurofeedback', 'dass21', 'escala_ansiedad'] },
-      { label: 'Organización cognitiva', modules: ['tcc_flexibilidad', 'tcc_abc', 'redes_apoyo'] },
+      { label: 'Organización cognitiva', modules: ['tcc_flexibilidad', 'tcc_abc'] },
       { label: 'NF beta frontal + activación', modules: ['neurofeedback', 'tcc_activacion', 'escala_animo'] },
       { label: 'Pensamientos y sesgos', modules: ['tcc_socratico', 'tcc_sesgos', 'tcc_preocupaciones'] },
       { label: 'NF alpha/theta + estrés', modules: ['neurofeedback', 'tcc_estres', 'escala_ansiedad'] },
@@ -48,7 +48,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
       { label: 'Plan de seguridad', modules: ['tcc_plan_seguridad'] },
       {
         label: 'Regulación + apoyo',
-        modules: ['tcc_abc', 'bilateral_stimulation', 'neurofeedback', 'escala_ansiedad', 'redes_apoyo'],
+        modules: ['tcc_abc', 'bilateral_stimulation', 'neurofeedback', 'escala_ansiedad'],
       },
       { label: 'Seguimiento trauma', modules: ['pcl5', 'escala_ansiedad'] },
       { label: 'NF alpha/theta', modules: ['neurofeedback', 'escala_ansiedad'] },

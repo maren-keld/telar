@@ -5,7 +5,6 @@ import {
   getClinicalNotes,
   getSessionsWithModules,
   getSpaceChecks,
-  setSpaceCheck,
   updateClinicalNote,
 } from '../db.js';
 import { bindAutoSave, flushPendingAutoSaves } from '../autobind.js';
@@ -763,6 +762,15 @@ async function renderPerfilTab(listEl, treatmentId, profile, rerender) {
 
   await renderSections();
 
+  // Lite sync: cambios en Estudio de caso refrescan Perfil sin segundo store.
+  const { onCaseStudyChanged } = await import('../case-study-store.js');
+  onCaseStudyChanged(({ treatmentId: tid }) => {
+    if (Number(tid) !== Number(treatmentId)) return;
+    if (!listEl.isConnected) return;
+    if (sectionsHost.contains(document.activeElement)) return;
+    void renderSections();
+  });
+
   let perfilRequest = null;
   const perfilBtnLabel = 'Analizar perfil con IA';
   listEl.querySelector('#btn-analyze-perfil')?.addEventListener('click', async () => {
@@ -856,7 +864,8 @@ async function renderPerfilSections(host, treatmentId, { query = '', onlySelecte
 
   host.querySelectorAll('[data-space-check]').forEach((cb) => {
     cb.addEventListener('change', async () => {
-      await setSpaceCheck(treatmentId, cb.dataset.category, cb.value, cb.checked);
+      const { syncProfileCheck } = await import('../case-study-store.js');
+      await syncProfileCheck(treatmentId, cb.dataset.category, cb.value, cb.checked);
       const section = cb.closest('.perfil-section');
       const boxes = section?.querySelectorAll('[data-space-check]');
       const count = section?.querySelector('.perfil-section__count');
@@ -906,11 +915,12 @@ Usa exactamente los nombres de las listas proporcionadas.`,
   });
 
   const parsed = parseProfileAiJson(text);
+  const { syncProfileCheck } = await import('../case-study-store.js');
   const apply = async (category, labels) => {
     const allowed = new Set(defaultsFor(category));
     for (const label of labels || []) {
       if (allowed.has(label)) {
-        await setSpaceCheck(treatmentId, category, label, true);
+        await syncProfileCheck(treatmentId, category, label, true);
       }
     }
   };
