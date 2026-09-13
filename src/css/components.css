@@ -932,12 +932,14 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
 
 .patient-menu-mode-btn,
 .tools-mode-btn {
-  padding: 7px 0;
+  padding: 7px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-app);
   font: inherit;
   font-size: 0.82rem;
+  line-height: 1.2;
+  white-space: normal;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background 120ms, color 120ms, border-color 120ms;
