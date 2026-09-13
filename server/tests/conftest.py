@@ -28,6 +28,8 @@ TABLES = (
     "shared_forms",
     "ai_mistral_grants",
     "ai_mistral_ip_hits",
+    "panel_sessions",
+    "panel_login_hits",
 )
 
 

@@ -17,15 +17,16 @@ PANEL_PASSWORD = "clave-de-panel"
 
 @pytest.fixture
 def panel(api, monkeypatch):
-    """Cliente con el panel encendido; la ruta acepta ?secret= para curl."""
+    """Cliente con el panel encendido y sesión de cookie (F-007)."""
     monkeypatch.setattr(api_module, "PANEL_PASSWORD", PANEL_PASSWORD)
+    api.post("/panel/login", data={"password": PANEL_PASSWORD})
     return api
 
 
 def landing(api, **query):
-    query.setdefault("secret", PANEL_PASSWORD)
     qs = "&".join(f"{k}={v}" for k, v in query.items())
-    return api.get(f"/api/admin/landing?{qs}").json
+    suffix = f"?{qs}" if qs else ""
+    return api.get(f"/api/admin/landing{suffix}").json
 
 
 def post_event(api, name, ip=None):
@@ -197,9 +198,12 @@ def test_landing_without_geoip_database_still_serves_the_rest(panel, monkeypatch
     assert body["sources"][0]["key"] == "reddit"
 
 
-def test_landing_requires_the_panel_password(panel):
-    assert panel.get("/api/admin/landing").status_code == 401
-    assert panel.get("/api/admin/landing?secret=incorrecta").status_code == 401
+def test_landing_requires_the_panel_password(api, monkeypatch):
+    monkeypatch.setattr(api_module, "PANEL_PASSWORD", PANEL_PASSWORD)
+    assert api.get("/api/admin/landing").status_code == 401
+    assert api.get("/api/admin/landing?secret=incorrecta").status_code == 401
+    assert api.get(f"/api/admin/landing?secret={PANEL_PASSWORD}").status_code == 401
+    assert api.get(f"/api/admin/landing?token={PANEL_PASSWORD}").status_code == 401
 
 
 def test_landing_is_off_when_the_panel_has_no_password(api, monkeypatch):
