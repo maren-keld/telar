@@ -7,7 +7,7 @@ import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
-  isInformeWorkspaceMode,
+  indexChromeState,
 } from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
@@ -32,7 +32,7 @@ const TOOL_ICONS = {
   supervision: SETTINGS_ICONS.supervision,
 };
 
-function toolsItemsHtml() {
+export function toolsItemsHtml() {
   return `
     <ul class="workspace-tools-tab__list">
       <li>
@@ -65,7 +65,7 @@ function toolsItemsHtml() {
     </ul>`;
 }
 
-function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresentation }) {
+export function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresentation }) {
   root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', () => {
     requireProOrSubscribe({
       onAllowed: async () => {
@@ -98,6 +98,7 @@ export function mountWorkspaceToolsTab(host, opts) {
   const profile = loadProfile();
   const currentMode = getCurrentWorkspaceMode();
   const indexMode = getWorkspaceIndexMode();
+  const chrome = indexChromeState(indexMode);
   const isDark = profile.darkMode;
 
   host.innerHTML = `
@@ -114,16 +115,20 @@ export function mountWorkspaceToolsTab(host, opts) {
       <div class="tools-section-divider"></div>
       <p class="tools-section-label">Espacio de trabajo</p>
       <div class="tools-mode-row">
-        <button type="button" class="tools-mode-btn${isInformeWorkspaceMode(indexMode) ? ' tools-mode-btn--active' : ''}" data-space-mode="chrono">Cronológico (informe)</button>
-        <button type="button" class="tools-mode-btn${indexMode === 'estudio' ? ' tools-mode-btn--active' : ''}" data-space-mode="estudio">Estudio de caso</button>
+        <button type="button" class="tools-mode-btn${chrome.informe ? ' tools-mode-btn--active' : ''}" data-space-mode="chrono" aria-pressed="${chrome.informe ? 'true' : 'false'}">Cronológico (informe)</button>
+        <button type="button" class="tools-mode-btn${chrome.estudio ? ' tools-mode-btn--active' : ''}" data-space-mode="estudio" aria-pressed="${chrome.estudio ? 'true' : 'false'}">Estudio de caso</button>
       </div>
 
-      <div class="tools-section-divider"></div>
+      ${
+        chrome.showIndex
+          ? `<div class="tools-section-divider"></div>
       <p class="tools-section-label">Índice</p>
-      <div class="tools-mode-row${indexMode === 'estudio' ? ' tools-mode-row--disabled' : ''}">
-        <button type="button" class="tools-mode-btn${indexMode === 'chrono' ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono" ${indexMode === 'estudio' ? 'disabled' : ''}>Cronológica</button>
-        <button type="button" class="tools-mode-btn${indexMode === 'category' ? ' tools-mode-btn--active' : ''}" data-index-mode="category" ${indexMode === 'estudio' ? 'disabled' : ''}>Por categoría</button>
-      </div>
+      <div class="tools-mode-row">
+        <button type="button" class="tools-mode-btn${chrome.categoryActive ? ' tools-mode-btn--active' : ''}" data-index-mode="category">Categoría</button>
+        <button type="button" class="tools-mode-btn${chrome.chronoActive ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono">Sesiones</button>
+      </div>`
+          : ''
+      }
 
       <div class="tools-section-divider"></div>
       <div class="tools-toggle-row" id="tools-dark-toggle">

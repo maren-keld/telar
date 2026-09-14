@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { tokenMs, setToggle, clampTooltipBox } from '../../src/js/transitions.js';
+import { tokenMs, setToggle, clampTooltipBox, tooltipRelatedStaysInHost } from '../../src/js/transitions.js';
 
 test('tokenMs cae al fallback si la variable no está', () => {
   assert.equal(tokenMs('--no-existe-esta-var', 150), 150);
@@ -37,4 +37,14 @@ test('clampTooltipBox mantiene el tooltip bajo un botón del header', () => {
   assert.ok(box.left >= 8);
   assert.ok(box.left + 180 <= 400 - 8);
   assert.equal(box.top, 48);
+});
+
+test('tooltipRelatedStaysInHost no cancela el show al cruzar un hijo SVG', () => {
+  const host = { contains(node) { return node && node.parent === this; } };
+  const path = { parent: host };
+  const tip = { id: 'telar-tooltip' };
+  assert.equal(tooltipRelatedStaysInHost(host, path, tip), true);
+  assert.equal(tooltipRelatedStaysInHost(host, tip, tip), true);
+  assert.equal(tooltipRelatedStaysInHost(null, path, tip), false);
+  assert.equal(tooltipRelatedStaysInHost(host, { parent: null }, tip), false);
 });

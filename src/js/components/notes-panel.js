@@ -11,7 +11,7 @@ import { bindAutoSave, flushPendingAutoSaves } from '../autobind.js';
 import { spaceCheckDescription } from '../space-check-descriptions.js';
 import { loadProfile } from '../profile.js';
 import { escapeHtml, practitionerInitials, toast } from '../utils.js';
-import { bindSlidingTabs, revealStreaming } from '../transitions.js';
+import { revealStreaming } from '../transitions.js';
 import { resolveAiConfig } from '../ai-config.js';
 import { hasAiApiConsent } from '../ai-consent.js';
 import { cancelChatCompletion, chatCompletion, createAiRequest } from '../ai-client.js';
@@ -136,40 +136,18 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   const notesPanelSignal = notesPanelDocAbort.signal;
 
   let refreshList = async () => {};
-  let activeTab = 'notas';
-  try {
-    if (localStorage.getItem(DEMO_FOCUS_SCORES_KEY) === String(treatmentId)) {
-      localStorage.removeItem(DEMO_FOCUS_SCORES_KEY);
-      activeTab = 'puntajes';
-    }
-  } catch {
-    /* ignore */
-  }
+  const activeTab = 'notas';
   const profile = loadProfile();
   const defaultInitials = practitionerInitials(profile.name);
   let showAllNotes = false;
 
   container.innerHTML = `
-    <div class="space-tools" data-active-tab="${activeTab}">
-      <nav class="space-tools__tabs2" role="tablist">
-        <span class="t-tabs-pill" aria-hidden="true"></span>
-        ${[
-          ['notas', 'Bitácora'],
-          ['puntajes', 'Puntajes'],
-          ['perfil', 'Ejes'],
-          ['herramientas', 'Herramientas'],
-        ]
-          .map(
-            ([id, label]) =>
-              `<button type="button" class="space-tab2${id === activeTab ? ' active' : ''}" data-tab="${id}" role="tab" aria-selected="${id === activeTab ? 'true' : 'false'}" title="${escapeHtml(label)}"><span>${escapeHtml(label)}</span></button>`,
-          )
-          .join('')}
-      </nav>
+    <div class="space-tools" data-active-tab="notas">
       <div class="space-tools__content">
         <div class="notes-scroll notes-scroll--prejump" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
-        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica (${NOTES_MOD_KBD}N)"${activeTab !== 'notas' ? ' hidden' : ''}>+ Nota</button>
+        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica (${NOTES_MOD_KBD}N)">+ Nota</button>
       </div>
       <aside class="ai-dock" aria-label="Asistente IA">
         <div class="ai-dock__chips" id="ai-dock-chips">
@@ -342,25 +320,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       mountWorkspaceToolsTab(listEl, { treatmentId, ...toolsOpts });
     }
   };
-
-  container.querySelectorAll('.space-tab2').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      activeTab = btn.dataset.tab;
-      const tools = container.querySelector('.space-tools');
-      if (tools) tools.dataset.activeTab = activeTab;
-      container.querySelectorAll('.space-tab2').forEach((b) => {
-        const on = b === btn;
-        b.classList.toggle('active', on);
-        b.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      container.querySelector('.space-tools__tabs2')?._moveTabsPill?.(true);
-      const fab = container.querySelector('#btn-add-note');
-      if (fab) fab.hidden = activeTab !== 'notas';
-      if (activeTab === 'notas') listEl.classList.add('notes-scroll--prejump');
-      await refreshList({ scrollBottom: activeTab === 'notas' });
-    });
-  });
-  bindSlidingTabs(container.querySelector('.space-tools__tabs2'));
 
   container.querySelector('#btn-add-note')?.addEventListener('click', async () => {
     const id = await addClinicalNote(treatmentId, {
@@ -658,7 +617,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   }
 
   const focusNotasTab = async () => {
-    activeTab = 'notas';
     const tools = container.querySelector('.space-tools');
     if (tools) tools.dataset.activeTab = 'notas';
     container.querySelectorAll('.space-tab2').forEach((b) => {
@@ -666,7 +624,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       b.classList.toggle('active', on);
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    container.querySelector('.space-tools__tabs2')?._moveTabsPill?.(true);
     const fab = container.querySelector('#btn-add-note');
     if (fab) fab.hidden = false;
     listEl.classList.add('notes-scroll--prejump');

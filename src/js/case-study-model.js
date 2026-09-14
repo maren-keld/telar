@@ -4,12 +4,26 @@
  */
 
 export const CASE_STUDY_AXES = [
-  { id: 'problem', label: 'Problemas', addLabel: 'Añadir problema' },
-  { id: 'resource', label: 'Recursos / factores protectores', addLabel: 'Añadir recurso' },
-  { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa' },
-  { id: 'risk', label: 'Vulnerabilidades / riesgo', addLabel: 'Añadir vulnerabilidad' },
-  { id: 'other', label: 'Otros', addLabel: 'Añadir elemento' },
+  { id: 'problem', label: 'Problemas', addLabel: 'Añadir problema', nav: true },
+  { id: 'resource', label: 'Recursos / factores protectores', addLabel: 'Añadir recurso', nav: true },
+  { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa', nav: true },
+  { id: 'risk', label: 'Vulnerabilidades / riesgo', addLabel: 'Añadir vulnerabilidad', nav: true },
+  { id: 'other', label: 'Otros', addLabel: 'Añadir elemento', nav: true },
 ];
+
+export const ESTUDIO_NAV = [
+  { id: 'summary', label: 'Resumen', kind: 'page' },
+  { id: 'problem', label: 'Problemas', kind: 'axis' },
+  { id: 'resource', label: 'Recursos / factores protectores', kind: 'axis' },
+  { id: 'defense', label: 'Defensas psíquicas', kind: 'axis' },
+  { id: 'risk', label: 'Vulnerabilidades / riesgo', kind: 'axis' },
+  { id: 'scores', label: 'Puntajes', kind: 'page' },
+  { id: 'docs', label: 'Documentación', kind: 'page' },
+  { id: 'other', label: 'Otros', kind: 'axis' },
+];
+
+export const SUPPORT_NETWORK_TITLE = 'Red de apoyo (emocional)';
+export const SUPPORT_NETWORK_KIND = 'support_network';
 
 const AXIS_BY_ID = Object.fromEntries(CASE_STUDY_AXES.map((axis) => [axis.id, axis]));
 
@@ -72,16 +86,32 @@ function normalizeStatus(axis, status) {
 
 export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
   const axis = normalizeAxis(raw.axis || fallbackAxis);
+  const kind =
+    raw.kind === SUPPORT_NETWORK_KIND ||
+    String(raw.title || raw.name || '').trim().toLowerCase() === SUPPORT_NETWORK_TITLE.toLowerCase()
+      ? SUPPORT_NETWORK_KIND
+      : 'standard';
   return {
     id: String(raw.id || makeCaseStudyId()),
-    axis,
-    title: String(raw.title || raw.name || '').trim(),
-    status: normalizeStatus(axis, raw.status),
+    axis: kind === SUPPORT_NETWORK_KIND ? 'resource' : axis,
+    kind,
+    title:
+      kind === SUPPORT_NETWORK_KIND
+        ? SUPPORT_NETWORK_TITLE
+        : String(raw.title || raw.name || '').trim(),
+    status: normalizeStatus(kind === SUPPORT_NETWORK_KIND ? 'resource' : axis, raw.status),
     manifestations: normalizeItems(raw.manifestations, { checkable: false }),
     indicators: normalizeItems(raw.indicators),
     objectives: normalizeItems(raw.objectives),
     evidence: normalizeItems(raw.evidence || raw.evidenceRefs, { checkable: false }),
     notes: String(raw.notes || '').trim(),
+    people: (Array.isArray(raw.people) ? raw.people : []).map(normalizeSupportPerson),
+    activities: (Array.isArray(raw.activities) ? raw.activities : [])
+      .map((row) => ({
+        moduleType: String(row.moduleType || row.type || '').trim(),
+        sessionId: row.sessionId != null && row.sessionId !== '' ? String(row.sessionId) : '',
+      }))
+      .filter((row) => row.moduleType),
   };
 }
 
@@ -138,15 +168,6 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
     ...(profileSeeds.risk || []),
   ];
 
-  const elements = uniqueByAxisTitle(
-    hasNative ? raw.elements.map((el) => normalizeCaseStudyElement(el)) : legacyElements,
-  );
-
-  const selectedAxis = normalizeAxis(raw.selectedAxis || elements[0]?.axis || 'problem');
-  const selectedElementId = elements.some((el) => el.id === raw.selectedElementId)
-    ? raw.selectedElementId
-    : elements.find((el) => el.axis === selectedAxis)?.id || elements[0]?.id || '';
-
   const supportPeople = (
     Array.isArray(raw.supportPeople)
       ? raw.supportPeople
@@ -155,12 +176,43 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
         : []
   ).map(normalizeSupportPerson);
 
+  let nextElements = uniqueByAxisTitle(
+    hasNative ? raw.elements.map((el) => normalizeCaseStudyElement(el)) : legacyElements,
+  );
+  if (!nextElements.some((el) => el.kind === SUPPORT_NETWORK_KIND)) {
+    nextElements = [
+      ...nextElements,
+      normalizeCaseStudyElement({
+        axis: 'resource',
+        kind: SUPPORT_NETWORK_KIND,
+        title: SUPPORT_NETWORK_TITLE,
+        people: supportPeople,
+        status: 'active',
+      }),
+    ];
+  } else if (supportPeople.length) {
+    nextElements = nextElements.map((el) => {
+      if (el.kind !== SUPPORT_NETWORK_KIND || el.people.length) return el;
+      return { ...el, people: supportPeople };
+    });
+  }
+
+  const selectedAxis = normalizeAxis(raw.selectedAxis || nextElements[0]?.axis || 'problem');
+  const selectedElementId = nextElements.some((el) => el.id === raw.selectedElementId)
+    ? raw.selectedElementId
+    : nextElements.find((el) => el.axis === selectedAxis)?.id || nextElements[0]?.id || '';
+
+  const network = nextElements.find((el) => el.kind === SUPPORT_NETWORK_KIND);
+
   return {
     version: 1,
     selectedAxis,
+    selectedNav: ESTUDIO_NAV.some((item) => item.id === raw.selectedNav)
+      ? raw.selectedNav
+      : selectedAxis,
     selectedElementId,
-    elements,
-    supportPeople,
+    elements: nextElements,
+    supportPeople: network?.people?.length ? network.people : supportPeople,
   };
 }
 
@@ -185,6 +237,7 @@ export function profileLiteFromCaseStudy(caseStudy) {
   for (const el of caseStudy?.elements || []) {
     const category = AXIS_PROFILE_MAP[el.axis];
     if (!category || !el.title.trim()) continue;
+    if (el.kind === SUPPORT_NETWORK_KIND) continue;
     out[category].push(el.title.trim());
   }
   return out;
@@ -228,4 +281,16 @@ export function applyProfileCheckToCaseStudy(caseStudy, category, label, checked
 
 export function statusesForAxis(axis) {
   return STATUS_OPTIONS[normalizeAxis(axis)] || STATUS_OPTIONS.problem;
+}
+
+const AXIS_MODULE_HINTS = {
+  problem: ['gad7', 'dass21', 'tcc_abc', 'tcc_preocupaciones', 'tcc_registro_pensamientos'],
+  resource: ['tcc_gratitud', 'tcc_activacion', 'rosenberg', 'tcc_autoconceptos'],
+  defense: ['eed', 'tcc_sesgos', 'tcc_socratico', 'tcc_flexibilidad'],
+  risk: ['tcc_plan_seguridad', 'tcc_estres', 'pcl5', 'tcc_exposicion'],
+  other: ['nota_sesion', 'tcc_prevencion_recaida'],
+};
+
+export function suggestedModulesForAxis(axis) {
+  return AXIS_MODULE_HINTS[normalizeAxis(axis)] || AXIS_MODULE_HINTS.other;
 }

@@ -10,7 +10,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
       'Programa base: ASRS/GAD-7, TCC (organización, activación, sesgos), redes y reevaluación. Sin neurofeedback.',
     featured: true,
     sessions: [
-      { label: 'Evaluación inicial', modules: ['asrs', 'gad7', 'diagnostico'] },
+      { label: 'Evaluación inicial', modules: ['asrs', 'gad7'] },
       { label: 'Perfil clínico', modules: ['dass21', 'escala_fer'] },
       { label: 'Organización cognitiva', modules: ['tcc_flexibilidad', 'tcc_abc', 'escala_ansiedad'] },
       { label: 'Activación y rutinas', modules: ['tcc_activacion', 'tcc_estres', 'escala_animo'] },
@@ -27,7 +27,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
       'Misma estructura de 8 sesiones con biofeedback EEG experimental intercalado junto a escalas y TCC; no mide atención ni diagnostica TDAH.',
     featured: true,
     sessions: [
-      { label: 'Evaluación inicial', modules: ['asrs', 'gad7', 'diagnostico'] },
+      { label: 'Evaluación inicial', modules: ['asrs', 'gad7'] },
       { label: 'Baseline NF + perfil', modules: ['neurofeedback', 'dass21', 'escala_ansiedad'] },
       { label: 'Organización cognitiva', modules: ['tcc_flexibilidad', 'tcc_abc'] },
       { label: 'NF beta frontal + activación', modules: ['neurofeedback', 'tcc_activacion', 'escala_animo'] },
@@ -44,7 +44,7 @@ const LEGACY_TREATMENT_TEMPLATES = {
       'Tamizaje trauma (PCL-5), plan de seguridad, regulación bilateral/NF. Añade A-DES manualmente si el paciente es adolescente.',
     featured: false,
     sessions: [
-      { label: 'Tamizaje trauma', modules: ['pcl5', 'diagnostico'] },
+      { label: 'Tamizaje trauma', modules: ['pcl5'] },
       { label: 'Plan de seguridad', modules: ['tcc_plan_seguridad'] },
       {
         label: 'Regulación + apoyo',

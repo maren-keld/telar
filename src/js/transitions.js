@@ -214,6 +214,17 @@ export function clampTooltipBox(left, top, width, height, vw, vh, pad = 8) {
   };
 }
 
+/** QA-009 / F-010A: no cancelar el show al cruzar SVG hijos del mismo control. */
+export function tooltipRelatedStaysInHost(host, related, tip) {
+  if (!host || related == null) return false;
+  if (related === tip || related === host) return true;
+  try {
+    return Boolean(host.contains(related));
+  } catch {
+    return false;
+  }
+}
+
 function initTooltips() {
   if (document.getElementById('telar-tooltip')) return;
   const tip = document.createElement('span');
@@ -313,6 +324,7 @@ function initTooltips() {
         const truncated = labelEl.scrollWidth > labelEl.clientWidth + 1;
         if (!truncated) return;
       }
+      clearTimeout(hideTimer);
       clearTimeout(showTimer);
       showTimer = window.setTimeout(() => show(el, text), 160);
     },
@@ -322,9 +334,12 @@ function initTooltips() {
   document.addEventListener(
     'pointerout',
     (e) => {
-      if (!active && !showTimer) return;
+      const host = e.target.closest?.('[title], [data-tooltip]');
       const to = e.relatedTarget;
-      if (to && active && (active.contains(to) || to === tip)) return;
+      if (tooltipRelatedStaysInHost(host, to, tip) || tooltipRelatedStaysInHost(active, to, tip)) {
+        return;
+      }
+      if (!active && !showTimer) return;
       hideTimer = window.setTimeout(hide, 40);
     },
     true,

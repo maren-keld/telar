@@ -15,7 +15,7 @@ import {
   treatmentHasModuleType,
 } from '../db.js';
 import { escapeHtml, toast } from '../utils.js';
-import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
+import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL, LIBRARY_HIDDEN_TYPES } from '../module-categories.js';
 import { whereFor, whereLabel } from '../module-where.js';
 import { clinicCountryCode, localizeValidityText, validityHeading } from '../clinic-country.js';
 import {
@@ -268,7 +268,9 @@ export function selectorListInnerHtml({
   const catsHtml = cats
     .map((cat) => {
       const available = getModuleDefs();
-      const types = cat.types.filter((type) => available[type] && !isLicensePendingModule(type));
+      const types = cat.types.filter(
+        (type) => available[type] && !isLicensePendingModule(type) && !LIBRARY_HIDDEN_TYPES.has(type),
+      );
       if (!types.length) return '';
       const items = types
         .map((type) => {

@@ -22,6 +22,9 @@ export const CATEGORY_BLURBS = {
 export const CUSTOM_CATEGORY_LABEL = 'Mis módulos';
 export const CUSTOM_CATEGORY_BLURB = 'Módulos personalizados';
 
+/** Fuera del catálogo (F-010B). El renderer legacy sigue si hay filas antiguas. */
+export const LIBRARY_HIDDEN_TYPES = new Set(['diagnostico']);
+
 export const CATEGORY_ORDER = ['conceptualizacion', 'pruebas', 'tcc', 'significado', 'intervencion'];
 
 export const CATEGORIES = [
@@ -29,7 +32,7 @@ export const CATEGORIES = [
     id: 'conceptualizacion',
     label: CATEGORY_LABELS.conceptualizacion,
     blurb: CATEGORY_BLURBS.conceptualizacion,
-    types: ['registro_inicial', 'motivo_consulta', 'diagnostico', 'nota_sesion', 'tcc_plan_seguridad'],
+    types: ['registro_inicial', 'motivo_consulta', 'nota_sesion', 'tcc_plan_seguridad'],
   },
   {
     id: 'pruebas',

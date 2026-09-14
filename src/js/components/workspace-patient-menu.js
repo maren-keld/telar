@@ -14,7 +14,7 @@ import { setToggle } from '../transitions.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
-  isInformeWorkspaceMode,
+  indexChromeState,
 } from '../workspace-index-mode.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
@@ -44,6 +44,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
   const profile = loadProfile();
   const currentMode = getCurrentWorkspaceMode();
   const indexMode = getWorkspaceIndexMode();
+  const chrome = indexChromeState(indexMode);
   const isDark = profile.darkMode;
 
   const siblings = (await listTreatmentsForPatient(treatment.patient_id)).filter(
@@ -108,24 +109,28 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         <div class="patient-menu-divider"></div>
         <label class="dropdown-label">Espacio de trabajo</label>
         <div class="patient-menu-mode-row">
-          <button type="button" class="patient-menu-mode-btn${isInformeWorkspaceMode(indexMode) ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="chrono">
+          <button type="button" class="patient-menu-mode-btn${chrome.informe ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="chrono" aria-pressed="${chrome.informe ? 'true' : 'false'}">
             Cronológico (informe)
           </button>
-          <button type="button" class="patient-menu-mode-btn${indexMode === 'estudio' ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="estudio">
+          <button type="button" class="patient-menu-mode-btn${chrome.estudio ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="estudio" aria-pressed="${chrome.estudio ? 'true' : 'false'}">
             Estudio de caso
           </button>
         </div>
 
-        <div class="patient-menu-divider"></div>
+        ${
+          chrome.showIndex
+            ? `<div class="patient-menu-divider"></div>
         <label class="dropdown-label">Índice</label>
         <div class="patient-menu-mode-row">
-          <button type="button" class="patient-menu-mode-btn${indexMode === 'chrono' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="chrono" ${indexMode === 'estudio' ? 'disabled' : ''}>
-            Cronológica
+          <button type="button" class="patient-menu-mode-btn${chrome.categoryActive ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="category">
+            Categoría
           </button>
-          <button type="button" class="patient-menu-mode-btn${indexMode === 'category' ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="category" ${indexMode === 'estudio' ? 'disabled' : ''}>
-            Por categoría
+          <button type="button" class="patient-menu-mode-btn${chrome.chronoActive ? ' patient-menu-mode-btn--active' : ''}" data-index-mode="chrono">
+            Sesiones
           </button>
-        </div>
+        </div>`
+            : ''
+        }
 
         <div class="patient-menu-divider"></div>
         <div class="patient-menu-toggle-row" id="patient-menu-dark-toggle">

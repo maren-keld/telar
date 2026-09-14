@@ -250,7 +250,10 @@ export async function renderWorkspace(
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
   const preserveCenterScroll =
     pendingCenterScrollRestore != null || (sameTreatment && forceFullRender);
-  const keepNotes = sameTreatment ? container.querySelector('#rightsidebar') : null;
+  const keepNotes =
+    sameTreatment && container.dataset.workspaceIndexMode === indexMode
+      ? container.querySelector('#rightsidebar')
+      : null;
   if (keepNotes) keepNotes.remove();
 
   container._unmountHighlight?.();
@@ -297,7 +300,7 @@ export async function renderWorkspace(
             <button type="button" class="workspace-sidebar-toggle${indexMode === 'estudio' ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
               title="Estudio de caso" aria-label="Estudio de caso" aria-pressed="${indexMode === 'estudio' ? 'true' : 'false'}">
               <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                <circle cx="12" cy="10" r="3"/><path d="M12 13v3"/><path d="M8 21h8"/><path d="M10 18h4"/><path d="M6 8l2.2 1.2"/><path d="M18 8l-2.2 1.2"/>
               </svg>
             </button>
           </div>
@@ -405,14 +408,7 @@ export async function renderWorkspace(
     },
   };
   if (estudioMode) {
-    const leftScroll = container.querySelector('.workspace-sidebar__scroll');
-    const estudioApi = await mountEstudioDeCaso({
-      leftHost: leftScroll,
-      centerHost,
-      treatmentId,
-    });
-    container._unmountEstudio = () => estudioApi?.unmount?.();
-    container._flushEstudio = () => estudioApi?.flush?.();
+    /* Estudio se monta tras toolsOpts (export PDF / docs). */
   } else if (sessions.length) {
     await renderAllCenterModules(centerHost, sessions, treatment, activeModule, {
       treatmentId,
@@ -585,6 +581,18 @@ export async function renderWorkspace(
       });
     },
   };
+
+  if (estudioMode) {
+    const leftScroll = container.querySelector('.workspace-sidebar__scroll');
+    const estudioApi = await mountEstudioDeCaso({
+      leftHost: leftScroll,
+      centerHost,
+      treatmentId,
+      toolsOpts,
+    });
+    container._unmountEstudio = () => estudioApi?.unmount?.();
+    container._flushEstudio = () => estudioApi?.flush?.();
+  }
 
   if (indexMode !== 'category') {
     bindWorkspaceModuleDnD(container, {

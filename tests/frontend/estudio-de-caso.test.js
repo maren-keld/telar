@@ -3,9 +3,13 @@ import test from 'node:test';
 
 import {
   applyProfileCheckToCaseStudy,
+  ESTUDIO_NAV,
   normalizeCaseStudyData,
   profileLiteFromCaseStudy,
   PROFILE_AXIS_MAP,
+  SUPPORT_NETWORK_KIND,
+  SUPPORT_NETWORK_TITLE,
+  suggestedModulesForAxis,
 } from '../../src/js/case-study-model.js';
 import {
   isEstudioWorkspaceMode,
@@ -15,8 +19,12 @@ import {
   setWorkspaceIndexMode,
 } from '../../src/js/workspace-index-mode.js';
 import { getModuleDef } from '../../src/js/config.js';
-import { CATEGORIES } from '../../src/js/module-categories.js';
+import { CATEGORIES, LIBRARY_HIDDEN_TYPES } from '../../src/js/module-categories.js';
 import { getTreatmentTemplate } from '../../src/js/treatment-templates.js';
+import { selectorListInnerHtml } from '../../src/js/components/module-selector.js';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 test('normalizeCaseStudyData migra problemas y checks de perfil e incluye eje Otros', () => {
   const study = normalizeCaseStudyData(
@@ -39,10 +47,12 @@ test('normalizeCaseStudyData migra problemas y checks de perfil e incluye eje Ot
     },
   );
 
-  assert.equal(study.elements.length, 4);
+  assert.equal(study.elements.length, 5);
+  assert.ok(study.elements.some((el) => el.kind === SUPPORT_NETWORK_KIND));
+  assert.equal(study.elements.find((el) => el.kind === SUPPORT_NETWORK_KIND).title, SUPPORT_NETWORK_TITLE);
   assert.deepEqual(
     study.elements.map((el) => el.axis),
-    ['problem', 'resource', 'defense', 'risk'],
+    ['problem', 'resource', 'defense', 'risk', 'resource'],
   );
   assert.equal(study.elements[0].title, 'Déficit atencional');
   assert.equal(study.supportPeople[0].name, 'Ana');
@@ -119,4 +129,51 @@ test('Redes de apoyo no es agregable al programa; sí existe en librería', () =
     const ids = tpl.sessions.flatMap((s) => s.modules);
     assert.equal(ids.includes('redes_apoyo'), false, `${id} no debe sembrar redes_apoyo`);
   }
+});
+
+test('Diagnósticos sale de librería, add-picker y plantillas (legacy renderer se conserva)', () => {
+  assert.equal(LIBRARY_HIDDEN_TYPES.has('diagnostico'), true);
+  assert.equal(PROGRAM_ADD_BLOCKLIST.has('diagnostico'), true);
+  assert.ok(getModuleDef('diagnostico'));
+  const conceptualizacion = CATEGORIES.find((c) => c.id === 'conceptualizacion');
+  assert.equal(conceptualizacion.types.includes('diagnostico'), false);
+  const addable = new Set(listAddableModuleOptions().map((m) => m.type));
+  assert.equal(addable.has('diagnostico'), false);
+  const html = selectorListInnerHtml();
+  assert.doesNotMatch(html, /Diagnósticos/);
+  for (const id of ['tdah_8', 'tdah_nf_8', 'trauma_regulacion']) {
+    const tpl = getTreatmentTemplate(id);
+    const ids = tpl.sessions.flatMap((s) => s.modules);
+    assert.equal(ids.includes('diagnostico'), false, `${id} no debe sembrar diagnostico`);
+  }
+});
+
+test('leftSidebar Estudio: Resumen, ejes, Puntajes, Documentación, Otros', () => {
+  assert.deepEqual(
+    ESTUDIO_NAV.map((n) => n.id),
+    ['summary', 'problem', 'resource', 'defense', 'risk', 'scores', 'docs', 'other'],
+  );
+});
+
+test('Actividades sugieren módulos por eje; red de apoyo es Personas', () => {
+  assert.ok(suggestedModulesForAxis('problem').includes('gad7'));
+  const study = normalizeCaseStudyData({});
+  const net = study.elements.find((el) => el.kind === SUPPORT_NETWORK_KIND);
+  assert.ok(net);
+  assert.equal(net.axis, 'resource');
+});
+
+test('chrome Índice usa Categoría y Sesiones; rail sin tabs Puntajes/Ejes/Herramientas', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const tools = readFileSync(join(root, '../../src/js/components/workspace-tools-menu.js'), 'utf8');
+  const patient = readFileSync(join(root, '../../src/js/components/workspace-patient-menu.js'), 'utf8');
+  const notes = readFileSync(join(root, '../../src/js/components/notes-panel.js'), 'utf8');
+  assert.match(tools, /Categoría/);
+  assert.match(tools, /Sesiones/);
+  assert.doesNotMatch(tools, /Por categoría/);
+  assert.match(patient, /Categoría/);
+  assert.match(patient, />\s*Sesiones\s*</);
+  assert.doesNotMatch(notes, /data-tab="puntajes"/);
+  assert.doesNotMatch(notes, /data-tab="herramientas"/);
+  assert.doesNotMatch(notes, /data-tab="perfil"/);
 });

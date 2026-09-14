@@ -18,22 +18,36 @@ import {
 } from './db.js';
 import { escapeHtml } from './utils.js';
 import { t } from './i18n.js';
+import { LIBRARY_HIDDEN_TYPES } from './module-categories.js';
 
 export const WORKSPACE_INDEX_MODE_KEY = 'telar.workspace.indexMode';
 export const WORKSPACE_INDEX_TYPE_KEY = 'telar.workspace.indexType';
 
 /** Módulos que siguen en librería pero no se ofrecen al agregar al programa. */
-export const PROGRAM_ADD_BLOCKLIST = new Set(['redes_apoyo']);
+export const PROGRAM_ADD_BLOCKLIST = new Set(['redes_apoyo', 'diagnostico']);
+
+/** Fuera del catálogo (F-010B). El renderer legacy sigue existiendo si hay filas antiguas. */
+export { LIBRARY_HIDDEN_TYPES } from './module-categories.js';
+
+export function isInformeWorkspaceMode(mode = getWorkspaceIndexMode()) {
+  return mode === 'chrono' || mode === 'category';
+}
+
+export function indexChromeState(mode = getWorkspaceIndexMode()) {
+  return {
+    informe: isInformeWorkspaceMode(mode),
+    estudio: isEstudioWorkspaceMode(mode),
+    chronoActive: mode === 'chrono',
+    categoryActive: mode === 'category',
+    showIndex: isInformeWorkspaceMode(mode),
+  };
+}
 
 let memoryIndexMode = 'chrono';
 let memoryIndexType = '';
 
 export function isEstudioWorkspaceMode(mode = getWorkspaceIndexMode()) {
   return mode === 'estudio';
-}
-
-export function isInformeWorkspaceMode(mode = getWorkspaceIndexMode()) {
-  return mode === 'chrono' || mode === 'category';
 }
 
 export function getWorkspaceIndexMode() {
@@ -176,7 +190,7 @@ export function listAddableModuleOptions(categoryId = null) {
   const out = [];
   const push = (type, label, catId, categoryLabel) => {
     if (!type || type === 'selector_modulo' || seen.has(type)) return;
-    if (PROGRAM_ADD_BLOCKLIST.has(type)) return;
+    if (PROGRAM_ADD_BLOCKLIST.has(type) || LIBRARY_HIDDEN_TYPES.has(type)) return;
     if (isLicensePendingModule(type)) return;
     seen.add(type);
     out.push({ type, label, categoryId: catId, categoryLabel });

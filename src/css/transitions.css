@@ -288,7 +288,7 @@
     0 4px 42px 0 rgba(0, 0, 0, 0.06);
   opacity: 0;
   pointer-events: none;
-  z-index: 12000;
+  z-index: 40000;
   transition:
     opacity var(--tt-out-dur) var(--tt-out-ease),
     transform var(--tt-out-dur) var(--tt-out-ease);
@@ -311,7 +311,7 @@
   max-width: min(260px, calc(100vw - 24px));
   bottom: auto;
   transform: scale(var(--tt-scale));
-  z-index: 12000;
+  z-index: 40000;
 }
 .t-tt--fixed.is-open {
   opacity: 1;
