@@ -27,8 +27,20 @@ export const ESTUDIO_NAV = [
   AXIS_NAV('other'),
 ];
 
-export const SUPPORT_NETWORK_TITLE = 'Red de apoyo (emocional)';
+export const SUPPORT_NETWORK_TITLE = 'Red de apoyo';
 export const SUPPORT_NETWORK_KIND = 'support_network';
+
+/** Títulos legacy que deben migrar al elemento único de personas. */
+export const SUPPORT_NETWORK_TITLE_ALIASES = [
+  'red de apoyo',
+  'red de apoyo (emocional)',
+  'red de apoyo emocional',
+];
+
+export function isSupportNetworkTitle(title) {
+  const want = String(title || '').trim().toLowerCase();
+  return SUPPORT_NETWORK_TITLE_ALIASES.includes(want);
+}
 
 const AXIS_BY_ID = Object.fromEntries(CASE_STUDY_AXES.map((axis) => [axis.id, axis]));
 
@@ -111,8 +123,7 @@ function normalizeStatus(axis, status) {
 export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
   const axis = normalizeAxis(raw.axis || fallbackAxis);
   const kind =
-    raw.kind === SUPPORT_NETWORK_KIND ||
-    String(raw.title || raw.name || '').trim().toLowerCase() === SUPPORT_NETWORK_TITLE.toLowerCase()
+    raw.kind === SUPPORT_NETWORK_KIND || isSupportNetworkTitle(raw.title || raw.name)
       ? SUPPORT_NETWORK_KIND
       : 'standard';
   return {
@@ -142,13 +153,35 @@ export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
 
 function uniqueByAxisTitle(elements) {
   const seen = new Set();
-  return elements.filter((element) => {
+  const out = [];
+  let networkKept = null;
+  for (const element of elements) {
+    if (element.kind === SUPPORT_NETWORK_KIND) {
+      if (!networkKept) {
+        networkKept = { ...element, title: SUPPORT_NETWORK_TITLE, axis: 'resource' };
+        out.push(networkKept);
+      } else {
+        const people = [...(networkKept.people || [])];
+        for (const person of element.people || []) {
+          if (!person?.name) continue;
+          if (people.some((p) => p.name.toLowerCase() === person.name.toLowerCase())) continue;
+          people.push(person);
+        }
+        networkKept.people = people;
+        if (!networkKept.notes && element.notes) networkKept.notes = element.notes;
+      }
+      continue;
+    }
     const key = `${element.axis}::${element.title.trim().toLowerCase()}`;
-    if (!element.title) return true;
-    if (seen.has(key)) return false;
+    if (!element.title) {
+      out.push(element);
+      continue;
+    }
+    if (seen.has(key)) continue;
     seen.add(key);
-    return true;
-  });
+    out.push(element);
+  }
+  return out;
 }
 
 function legacyProblemToElement(rawProblem = {}) {

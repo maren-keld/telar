@@ -233,10 +233,12 @@
 .workspace-index-switch--chips {
   display: inline-flex;
   align-items: stretch;
+  height: 32px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-card);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .workspace-mode-chip {
@@ -246,9 +248,15 @@
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 0 12px;
+  min-height: 32px;
+  height: 32px;
   cursor: pointer;
-  line-height: 1.2;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .workspace-mode-chip + .workspace-mode-chip {

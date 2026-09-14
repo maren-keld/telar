@@ -223,8 +223,16 @@ export async function renderCssrs(host, moduleRow) {
           <div class="likert-head gad7-head cssrs-head cssrs-head--q6">
             <div class="likert-head__q">${escapeHtml(t('cssrs.item6', 'Ítem 6 · siempre preguntar'))}</div>
             <div class="cssrs-head__dual">
-              <span>${escapeHtml(t('cssrs.window.lifetime', 'Alguna vez'))}</span>
-              <span>${escapeHtml(t('cssrs.window.recent', 'Últimos 3 meses'))}</span>
+              <div class="cssrs-head__dual-col">
+                <span class="cssrs-head__dual-window">${escapeHtml(t('cssrs.window.lifetime', 'Alguna vez'))}</span>
+                <span class="cssrs-head__dual-yn">${escapeHtml(yes)}</span>
+                <span class="cssrs-head__dual-yn">${escapeHtml(no)}</span>
+              </div>
+              <div class="cssrs-head__dual-col">
+                <span class="cssrs-head__dual-window">${escapeHtml(t('cssrs.window.recent', 'Últimos 3 meses'))}</span>
+                <span class="cssrs-head__dual-yn">${escapeHtml(yes)}</span>
+                <span class="cssrs-head__dual-yn">${escapeHtml(no)}</span>
+              </div>
             </div>
           </div>
           ${QUESTIONS.filter((q) => q.dual)

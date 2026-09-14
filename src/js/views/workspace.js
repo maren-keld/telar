@@ -201,6 +201,10 @@ export async function renderWorkspace(
   }
 
   const patientLabel = `${escapeHtml(treatment.patient_name)}${treatment.number > 1 ? ` ${treatment.number}` : ''}`;
+  // FAIL-5: apertura fresca de tratamiento siempre en Programa (no Estudio).
+  if (!sameTreatment && isEstudioWorkspaceMode()) {
+    dispatchProgramaWorkspace();
+  }
   const indexMode = getWorkspaceIndexMode();
   const estudioMode = isEstudioWorkspaceMode(indexMode);
   const indexType = indexMode === 'category' ? resolveIndexType(sessions, activeModule) : '';

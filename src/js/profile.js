@@ -27,6 +27,7 @@ const DEFAULTS = {
   aiPreviewSkip: false,
   customModules: [],
   customTags: [],
+  customCaseStudyElements: [],
   hiddenDxProblems: [],
   cloudBackupDestDir: '',
   cloudBackupEnabled: false,

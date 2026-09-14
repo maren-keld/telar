@@ -5,7 +5,7 @@ import {
   psychometricChartTypes,
   psychometricSeries,
 } from '../psychometric-summary.js';
-import { parseJsonSafe } from '../utils.js';
+import { escapeHtml, parseJsonSafe } from '../utils.js';
 import { cssrsBandScore, cssrsRiskBand } from '../modules/cssrs.js';
 
 const DASS_STRESS_BANDS = [
