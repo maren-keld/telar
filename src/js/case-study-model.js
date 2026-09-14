@@ -45,25 +45,50 @@ export const AXIS_PROFILE_MAP = {
   risk: 'riesgos',
 };
 
+/** Problemas/Riesgos: Gestionado | Resuelto (no «Presente»). Otros ejes conservan Presente. */
 const STATUS_OPTIONS = {
-  problem: ['present', 'developing', 'unknown'],
+  problem: ['managed', 'resolved', 'unknown'],
   resource: ['present', 'developing', 'unknown'],
   defense: ['present', 'developing', 'unknown'],
-  risk: ['present', 'developing', 'unknown'],
+  risk: ['managed', 'resolved', 'unknown'],
   other: ['present', 'developing', 'unknown'],
 };
 
 export const STATUS_LABELS = {
   present: 'Presente',
+  managed: 'Gestionado',
+  resolved: 'Resuelto',
   developing: 'Desarrollar',
   unknown: 'Desconocido',
 };
 
 const LEGACY_STATUS = {
   active: 'present',
+  present: 'present',
   in_progress: 'developing',
+  developing: 'developing',
   graduated: 'present',
   restratified: 'present',
+};
+
+/** En ejes problem/risk, Presente/Desarrollar legacy → Gestionado; graduated → Resuelto. */
+const LEGACY_STATUS_BY_AXIS = {
+  problem: {
+    active: 'managed',
+    present: 'managed',
+    in_progress: 'managed',
+    developing: 'managed',
+    graduated: 'resolved',
+    restratified: 'managed',
+  },
+  risk: {
+    active: 'managed',
+    present: 'managed',
+    in_progress: 'managed',
+    developing: 'managed',
+    graduated: 'resolved',
+    restratified: 'managed',
+  },
 };
 
 function itemText(item) {
@@ -90,10 +115,19 @@ export function normalizeAxis(axis) {
 }
 
 function normalizeStatus(axis, status) {
-  const allowed = STATUS_OPTIONS[normalizeAxis(axis)] || STATUS_OPTIONS.problem;
-  const mapped = LEGACY_STATUS[status] || status;
+  const ax = normalizeAxis(axis);
+  const allowed = STATUS_OPTIONS[ax] || STATUS_OPTIONS.problem;
+  const byAxis = LEGACY_STATUS_BY_AXIS[ax]?.[status];
+  const mapped = byAxis || LEGACY_STATUS[status] || status;
   if (allowed.includes(mapped)) return mapped;
+  // p. ej. «present» guardado en resource sigue válido; en problem ya se remapó
+  if (allowed.includes(status)) return status;
   return 'unknown';
+}
+
+export function statusLabelFor(axis, status) {
+  const normalized = normalizeStatus(axis, status);
+  return STATUS_LABELS[normalized] || STATUS_LABELS.unknown;
 }
 
 export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
@@ -111,6 +145,8 @@ export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
       kind === SUPPORT_NETWORK_KIND
         ? SUPPORT_NETWORK_TITLE
         : String(raw.title || raw.name || '').trim(),
+    description: String(raw.description || '').trim(),
+    bundled: Boolean(raw.bundled),
     status: normalizeStatus(kind === SUPPORT_NETWORK_KIND ? 'resource' : axis, raw.status),
     manifestations: normalizeItems(raw.manifestations, { checkable: false }),
     indicators: normalizeItems(raw.indicators),
@@ -299,7 +335,7 @@ export const AXIS_MODULE_HINTS = {
   problem: ['gad7', 'dass21', 'tcc_abc', 'tcc_preocupaciones', 'tcc_registro_pensamientos'],
   resource: ['tcc_gratitud', 'tcc_activacion', 'rosenberg', 'tcc_autoconceptos'],
   defense: ['eed', 'tcc_sesgos', 'tcc_socratico', 'tcc_flexibilidad'],
-  risk: ['tcc_plan_seguridad', 'tcc_estres', 'pcl5', 'tcc_exposicion'],
+  risk: ['cssrs', 'tcc_plan_seguridad', 'tcc_estres', 'pcl5', 'tcc_exposicion'],
   other: ['nota_sesion', 'tcc_prevencion_recaida'],
 };
 

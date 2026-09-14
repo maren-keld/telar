@@ -22,6 +22,7 @@ import { renderEscalaAnsiedad } from './escala-ansiedad.js';
 import { renderEscalaFer } from './escala-fer.js';
 import { renderRosenberg } from './rosenberg.js';
 import { renderGad7 } from './gad7.js';
+import { renderCssrs } from './cssrs.js';
 import { renderAsrs } from './asrs.js';
 import { renderPcl5 } from './pcl5.js';
 import { renderSprintEcl } from './sprint-ecl.js';
@@ -71,6 +72,7 @@ const LEGACY_RENDERERS = {
   escala_fer: renderEscalaFer,
   rosenberg: renderRosenberg,
   gad7: renderGad7,
+  cssrs: renderCssrs,
   asrs: renderAsrs,
   pcl5: renderPcl5,
   sprint_ecl: renderSprintEcl,

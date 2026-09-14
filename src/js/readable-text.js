@@ -79,6 +79,18 @@ function formatGad7(d) {
   return `Total: ${total}/21 (${band})`;
 }
 
+function formatCssrs(d) {
+  const answers = d.answers || {};
+  const keys = Object.keys(answers);
+  if (!keys.length && !d.triage && !d.triageLabel) return '';
+  const label = d.triageLabel || d.triage || 'sin triage';
+  const answered = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q6_recent']
+    .filter((k) => answers[k] === 'yes' || answers[k] === 'no')
+    .map((k) => `${k}=${answers[k]}`)
+    .join(', ');
+  return [`Triage: ${label}`, answered ? `Respuestas: ${answered}` : null].filter(Boolean).join('\n');
+}
+
 function formatAsrs(d) {
   const s = asrsSummary(d);
   if (!s) return '';
@@ -379,6 +391,8 @@ export function buildReadableText(moduleType, data) {
       return formatDass21(d);
     case 'gad7':
       return formatGad7(d);
+    case 'cssrs':
+      return formatCssrs(d);
     case 'asrs':
       return formatAsrs(d);
     case 'pcl5':

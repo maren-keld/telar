@@ -7,6 +7,13 @@ import { shareableContentFor } from './share-content.js';
 import { shareAnsweredAt, shareInfo, shareUrl } from './share-sync.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
+import { loadCaseStudy } from './case-study-store.js';
+import {
+  CASE_STUDY_AXES,
+  STATUS_LABELS,
+  SUPPORT_NETWORK_KIND,
+  statusLabelFor,
+} from './case-study-model.js';
 
 function homeworkKind(moduleType, shareable) {
   if (shareable?.def || questionnaireDefFor(moduleType)) return 'cuestionario';
@@ -51,6 +58,31 @@ Usa estos URLs literales en emails. No inventes ni acortes enlaces telarapp.cl. 
 ${lines.join('\n')}`;
 }
 
+function formatEstudioAxisBlock(caseStudy) {
+  const axesWanted = ['resource', 'defense', 'problem', 'risk'];
+  const lines = ['## Estudio de caso (factores protectores, defensas, problemas, riesgos)'];
+  let any = false;
+  for (const axisId of axesWanted) {
+    const meta = CASE_STUDY_AXES.find((a) => a.id === axisId);
+    const els = (caseStudy?.elements || []).filter(
+      (el) => el.axis === axisId && el.title && el.kind !== SUPPORT_NETWORK_KIND,
+    );
+    lines.push(`\n### ${meta?.label || axisId}`);
+    if (!els.length) {
+      lines.push('_Sin elementos._');
+      continue;
+    }
+    any = true;
+    for (const el of els) {
+      const status = statusLabelFor(axisId, el.status) || STATUS_LABELS[el.status] || el.status;
+      lines.push(`- ${el.title} [${status}]`);
+      if (el.description) lines.push(`  Descripción: ${el.description}`);
+      if (el.notes) lines.push(`  Notas: ${el.notes}`);
+    }
+  }
+  return any || (caseStudy?.elements || []).length ? lines.join('\n') : '';
+}
+
 /** Construye el contexto clínico como texto markdown (sin guardar a disco). */
 export async function buildCaseContextText(treatmentId) {
   const treatment = await getTreatment(treatmentId);
@@ -58,6 +90,12 @@ export async function buildCaseContextText(treatmentId) {
 
   const sessions = await getSessionsWithModules(treatmentId);
   const notes = await getClinicalNotes(treatmentId);
+  let caseStudy = null;
+  try {
+    caseStudy = await loadCaseStudy(treatmentId);
+  } catch {
+    caseStudy = null;
+  }
 
   const parts = [
     `# Contexto clínico — ${treatment.patient_name}`,
@@ -67,6 +105,11 @@ export async function buildCaseContextText(treatmentId) {
     buildPsychometricSummaryBlock(sessions) || '_Sin puntajes psicométricos registrados._',
     '',
   ];
+
+  const estudio = formatEstudioAxisBlock(caseStudy);
+  if (estudio) {
+    parts.push(estudio, '');
+  }
 
   const homework = formatPatientHomeworkForPrompt(sessions);
   if (homework) {

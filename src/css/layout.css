@@ -115,8 +115,35 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 16px 12px;
+  padding: 16px 16px 8px;
   flex-shrink: 0;
+}
+
+.workspace-space-chips {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+  flex-shrink: 0;
+}
+
+.workspace-space-chip {
+  flex: 1;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workspace-space-chip.is-active {
+  background: var(--accent-soft, #e8eef6);
+  border-color: var(--accent, #1a2b48);
+  color: var(--accent, #1a2b48);
 }
 
 .workspace-back {

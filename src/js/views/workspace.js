@@ -47,6 +47,7 @@ import {
   getWorkspaceIndexMode,
   getWorkspaceIndexType,
   isEstudioWorkspaceMode,
+  isInformeWorkspaceMode,
   resolveIndexType,
   sessionRuleHtml,
   sessionsForCenter,
@@ -280,11 +281,17 @@ export async function renderWorkspace(
           <h1 class="workspace-patient-name">${patientLabel}</h1>
           <button type="button" class="workspace-patient-menu" id="btn-patient-menu" title="Opciones del paciente" aria-label="Opciones del paciente">${ICON_MORE_VERT}</button>
         </header>
+        <div class="workspace-space-chips" role="group" aria-label="Espacio de trabajo">
+          <button type="button" class="workspace-space-chip${estudioMode ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
+            aria-pressed="${estudioMode ? 'true' : 'false'}">Estudio de caso</button>
+          <button type="button" class="workspace-space-chip${!estudioMode ? ' is-active' : ''}" data-sidebar-index-mode="chrono" data-space-programa="1"
+            aria-pressed="${!estudioMode ? 'true' : 'false'}">Programa</button>
+        </div>
         <div class="workspace-sidebar__scroll">
           ${sidebarScrollHtml}
         </div>
         <footer class="workspace-sidebar__footer">
-          <div class="workspace-index-switch" role="group" aria-label="Orden del índice">
+          <div class="workspace-index-switch" role="group" aria-label="Orden del índice" ${estudioMode ? 'hidden' : ''}>
             <button type="button" class="workspace-sidebar-toggle${indexMode === 'chrono' ? ' is-active' : ''}" data-sidebar-index-mode="chrono"
               title="Índice cronológico" aria-label="Índice cronológico" aria-pressed="${indexMode === 'chrono' ? 'true' : 'false'}">
               <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -295,12 +302,6 @@ export async function renderWorkspace(
               title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
               <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
-              </svg>
-            </button>
-            <button type="button" class="workspace-sidebar-toggle${indexMode === 'estudio' ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
-              title="Estudio de caso" aria-label="Estudio de caso" aria-pressed="${indexMode === 'estudio' ? 'true' : 'false'}">
-              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="10" r="3"/><path d="M12 13v3"/><path d="M8 21h8"/><path d="M10 18h4"/><path d="M6 8l2.2 1.2"/><path d="M18 8l-2.2 1.2"/>
               </svg>
             </button>
           </div>
@@ -524,7 +525,12 @@ export async function renderWorkspace(
 
   container.querySelectorAll('[data-sidebar-index-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      dispatchWorkspaceIndexMode(btn.dataset.sidebarIndexMode);
+      const next = btn.dataset.sidebarIndexMode;
+      // Chip «Programa»: si ya estamos en informe (chrono/category), no forzar chrono.
+      if (btn.dataset.spacePrograma === '1' && isInformeWorkspaceMode(getWorkspaceIndexMode())) {
+        return;
+      }
+      dispatchWorkspaceIndexMode(next);
     });
   });
 

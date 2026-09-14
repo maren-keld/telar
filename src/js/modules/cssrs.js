@@ -8,21 +8,29 @@ import { getLocale, t } from '../i18n.js';
  * C-SSRS Screener (Screen Version — Recent / past month).
  * Wording © The Research Foundation for Mental Hygiene, Inc. / Columbia Lighthouse Project.
  * Free clinical use authorized for Telar (Columbia reply 2026-09-14).
+ * UI alineada a GAD-7/DASS: Sí/No en columnas, timeframes y triage por color.
  */
 
 const QUESTIONS = [
   {
     id: 'q1',
+    band: 'low',
+    timeframe: 'month',
     en: 'Have you wished you were dead or wished you could go to sleep and not wake up?',
     es: '¿Ha deseado estar muerto/a o ha deseado poder dormirse y no despertar?',
   },
   {
     id: 'q2',
+    band: 'low',
+    timeframe: 'month',
     en: 'Have you actually had any thoughts of killing yourself?',
     es: '¿Ha tenido realmente pensamientos de suicidarse?',
   },
   {
     id: 'q3',
+    band: 'moderate',
+    timeframe: 'month',
+    branch: true,
     en: 'Have you been thinking about how you might do this?',
     es: '¿Ha estado pensando en cómo podría hacerlo?',
     hintEn:
@@ -32,6 +40,9 @@ const QUESTIONS = [
   },
   {
     id: 'q4',
+    band: 'high',
+    timeframe: 'month',
+    branch: true,
     en: 'Have you had these thoughts and had some intention of acting on them?',
     es: '¿Ha tenido estos pensamientos y alguna intención de actuar según ellos?',
     hintEn: 'As opposed to “I have the thoughts but I definitely will not do anything about them.”',
@@ -39,11 +50,16 @@ const QUESTIONS = [
   },
   {
     id: 'q5',
+    band: 'high',
+    timeframe: 'month',
+    branch: true,
     en: 'Have you started to work out or worked out the details of how to kill yourself? Do you intend to carry out this plan?',
     es: '¿Ha empezado a elaborar o ha elaborado los detalles de cómo suicidarse? ¿Tiene intención de llevar a cabo este plan?',
   },
   {
     id: 'q6',
+    band: 'moderate',
+    timeframe: 'lifetime',
     en: 'Have you ever done anything, started to do anything, or prepared to do anything to end your life?',
     es: '¿Ha hecho alguna vez algo, empezado a hacer algo o se ha preparado para hacer algo para acabar con su vida?',
     hintEn:
@@ -103,24 +119,45 @@ function bandLabel(band) {
   return t(band.labelKey, useEnglish() ? band.labelEn : band.label);
 }
 
-function rowHtml(q, selected) {
-  const hint = qHint(q);
+function ynOpt(name, selected, yes, no) {
   const yesChecked = selected === 'yes' ? 'checked' : '';
   const noChecked = selected === 'no' ? 'checked' : '';
-  const yes = useEnglish() ? 'Yes' : 'Sí';
-  const no = useEnglish() ? 'No' : 'No';
   return `
-    <fieldset class="cssrs-row" data-cssrs-q="${q.id}">
-      <legend class="cssrs-row__q">
-        <span class="cssrs-row__n">${q.id.replace('q', '')}.</span>
-        <span>${escapeHtml(qText(q))}</span>
-      </legend>
-      ${hint ? `<p class="cssrs-row__hint text-muted">${escapeHtml(hint)}</p>` : ''}
-      <div class="cssrs-row__opts" role="radiogroup" aria-label="${escapeHtml(qText(q))}">
-        <label class="likert-opt"><input type="radio" name="${q.id}" value="yes" ${yesChecked} /><span>${escapeHtml(yes)}</span></label>
-        <label class="likert-opt"><input type="radio" name="${q.id}" value="no" ${noChecked} /><span>${escapeHtml(no)}</span></label>
+    <div class="likert-row__opts cssrs-row__opts" role="radiogroup" aria-label="${escapeHtml(name)}">
+      <label class="likert-opt cssrs-opt" title="${escapeHtml(yes)}" aria-label="${escapeHtml(yes)}">
+        <input type="radio" name="${name}" value="yes" ${yesChecked} />
+        <span class="cssrs-opt__text">${escapeHtml(yes)}</span>
+      </label>
+      <label class="likert-opt cssrs-opt" title="${escapeHtml(no)}" aria-label="${escapeHtml(no)}">
+        <input type="radio" name="${name}" value="no" ${noChecked} />
+        <span class="cssrs-opt__text">${escapeHtml(no)}</span>
+      </label>
+    </div>`;
+}
+
+function rowHtml(q, selected, yes, no) {
+  const hint = qHint(q);
+  const high = q.band === 'high';
+  return `
+    <div class="likert-row cssrs-row cssrs-row--${q.band}" data-cssrs-q="${q.id}" ${q.branch ? 'data-cssrs-branch="1"' : ''}>
+      <div class="likert-row__q">
+        <span class="likert-row__n">${q.id.replace('q', '')}.</span>
+        <span class="cssrs-row__prompt">${escapeHtml(qText(q))}</span>
+        ${hint ? `<p class="cssrs-row__hint text-muted">${escapeHtml(hint)}</p>` : ''}
       </div>
-    </fieldset>`;
+      ${ynOpt(q.id, selected, yes, no)}
+      <div class="cssrs-triage-cell cssrs-triage-cell--${q.band}" aria-hidden="true">
+        ${high ? `<span>${escapeHtml(useEnglish() ? 'High Risk' : 'Riesgo alto')}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function sectionHead(left, right) {
+  return `
+    <div class="cssrs-section-head" role="presentation">
+      <span class="cssrs-section-head__left">${escapeHtml(left)}</span>
+      <span class="cssrs-section-head__right">${escapeHtml(right)}</span>
+    </div>`;
 }
 
 export async function renderCssrs(host, moduleRow) {
@@ -129,6 +166,12 @@ export async function renderCssrs(host, moduleRow) {
   const band0 = cssrsRiskBand(answers);
   const yes = useEnglish() ? 'Yes' : 'Sí';
   const no = useEnglish() ? 'No' : 'No';
+  const pastMonth = useEnglish() ? 'Past Month' : 'Mes pasado';
+  const lifetime = useEnglish() ? 'Lifetime' : 'Alguna vez (vida)';
+  const past3 = useEnglish() ? 'Past 3 Months' : 'Últimos 3 meses';
+
+  const monthQs = QUESTIONS.filter((q) => q.timeframe === 'month');
+  const lifeQs = QUESTIONS.filter((q) => q.timeframe === 'lifetime');
 
   host.innerHTML = `
     <div class="card psych-module cssrs-module">
@@ -150,24 +193,63 @@ export async function renderCssrs(host, moduleRow) {
         </div>
       </div>
       <div class="psych-module__scroll">
-        <form id="cssrs-form" class="cssrs-form">
+        <form id="cssrs-form" class="likert-form cssrs-form">
           <p class="cssrs-instruction text-muted">${escapeHtml(
-            t('cssrs.instruction', 'Ask the bolded items. Timeframe: past month (unless noted).'),
+            t(
+              'cssrs.instruction',
+              useEnglish()
+                ? 'Ask the bolded items. Timeframe: past month (unless noted). If YES to 2, ask 3–5; if NO to 2, skip to 6.'
+                : 'Pregunte los ítems en negrita. Marco temporal: mes pasado (salvo indicación). Si 2 = Sí, pregunte 3–5; si 2 = No, pase al 6.',
+            ),
           )}</p>
-          ${QUESTIONS.map((q) => rowHtml(q, yn(answers[q.id]))).join('')}
-          <fieldset class="cssrs-row" data-cssrs-q="q6_recent" id="cssrs-q6-recent">
-            <legend class="cssrs-row__q">${escapeHtml(
-              t('cssrs.q6recent', 'If yes to item 6: was this within the past three months?'),
-            )}</legend>
-            <div class="cssrs-row__opts" role="radiogroup">
-              <label class="likert-opt"><input type="radio" name="q6_recent" value="yes" ${
-                yn(answers.q6_recent) === 'yes' ? 'checked' : ''
-              } /><span>${escapeHtml(yes)}</span></label>
-              <label class="likert-opt"><input type="radio" name="q6_recent" value="no" ${
-                yn(answers.q6_recent) === 'no' ? 'checked' : ''
-              } /><span>${escapeHtml(no)}</span></label>
+
+          ${sectionHead(
+            useEnglish() ? 'Always ask questions 1 and 2.' : 'Siempre pregunte 1 y 2.',
+            pastMonth,
+          )}
+          <div class="likert-head cssrs-head">
+            <div class="likert-head__q">${escapeHtml(useEnglish() ? 'Item' : 'Ítem')}</div>
+            <div class="likert-head__opts cssrs-head__opts">
+              <span>${escapeHtml(yes)}</span>
+              <span>${escapeHtml(no)}</span>
             </div>
-          </fieldset>
+            <div class="cssrs-head__triage" aria-hidden="true"></div>
+          </div>
+          ${monthQs
+            .filter((q) => !q.branch)
+            .map((q) => rowHtml(q, yn(answers[q.id]), yes, no))
+            .join('')}
+          <p class="cssrs-branch-note" data-cssrs-branch-note>${escapeHtml(
+            useEnglish()
+              ? 'If YES to 2, ask questions 3, 4 and 5. If NO to 2, skip to question 6.'
+              : 'Si 2 = Sí, pregunte 3, 4 y 5. Si 2 = No, pase a la pregunta 6.',
+          )}</p>
+          ${monthQs
+            .filter((q) => q.branch)
+            .map((q) => rowHtml(q, yn(answers[q.id]), yes, no))
+            .join('')}
+
+          ${sectionHead(
+            useEnglish() ? 'Always ask question 6' : 'Siempre pregunte la 6',
+            `${lifetime} · ${past3}`,
+          )}
+          ${lifeQs.map((q) => rowHtml(q, yn(answers[q.id]), yes, no)).join('')}
+          <div class="likert-row cssrs-row cssrs-row--high" data-cssrs-q="q6_recent" id="cssrs-q6-recent">
+            <div class="likert-row__q">
+              <span class="cssrs-row__prompt">${escapeHtml(
+                t(
+                  'cssrs.q6recent',
+                  useEnglish()
+                    ? 'If yes to item 6: was this within the past three months?'
+                    : 'Si respondió Sí al ítem 6: ¿fue en los últimos tres meses?',
+                ),
+              )}</span>
+            </div>
+            ${ynOpt('q6_recent', yn(answers.q6_recent), yes, no)}
+            <div class="cssrs-triage-cell cssrs-triage-cell--high" aria-hidden="true">
+              <span>${escapeHtml(useEnglish() ? 'High Risk' : 'Riesgo alto')}</span>
+            </div>
+          </div>
         </form>
         <p class="cssrs-note">${escapeHtml(
           t(
@@ -230,4 +312,12 @@ export async function renderCssrs(host, moduleRow) {
   bindAutoSave(form, persist, workspaceAutoSaveStatus());
   form.addEventListener('change', recompute);
   syncVisibility();
+}
+
+/** Resumen para PDF / contexto. */
+export function cssrsSummary(data) {
+  const answers = data?.answers || {};
+  if (!Object.keys(answers).length) return null;
+  const band = cssrsRiskBand(answers);
+  return { triage: band.key, label: band.label };
 }

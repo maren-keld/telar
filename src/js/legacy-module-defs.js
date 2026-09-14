@@ -42,6 +42,7 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
   'sig_pregunta_milagro',
   'dass21',
   'gad7',
+  'cssrs',
   'asrs',
   'pcl5',
   'sprint_ecl',
@@ -64,6 +65,8 @@ const FALLBACK_DESCRIPTIONS = {
   motivo_consulta: 'Anamnesis de la primera sesión: motivo acotado, expectativas y antecedentes.',
   neurofeedback: 'Sesión en vivo con Muse, FFT y análisis local.',
   bilateral_stimulation: 'Estímulo visual alternado (EMDR-adjacent).',
+  cssrs:
+    'Columbia-Suicide Severity Rating Scale (screener recent): ideación y conducta con triage de color.',
 };
 
 const FALLBACK_LABELS = {
@@ -71,6 +74,7 @@ const FALLBACK_LABELS = {
   neurofeedback: 'Neurofeedback',
   dass21: 'DASS-21 — Depresión, ansiedad y estrés',
   gad7: 'GAD-7 — Ansiedad generalizada',
+  cssrs: 'C-SSRS — Screener de riesgo suicida',
   asrs: 'ASRS v1.1 — TDAH en adultos',
   pcl5: 'PCL-5 — Tamizaje TEPT',
   sprint_ecl: 'SPRINT-E — TEPT breve',

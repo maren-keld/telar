@@ -12,11 +12,12 @@ import {
   normalizeCaseStudyData,
   normalizeCaseStudyElement,
   STATUS_LABELS,
+  statusLabelFor,
+  statusesForAxis,
   suggestedModulesForAxis,
 } from '../case-study-model.js';
 import {
   elementInAxis,
-  essentialWordsFromCaseStudy,
   libraryItemsForAxis,
   libraryPresetFor,
   libraryTitleForAxis,
@@ -34,6 +35,15 @@ import { renderWorkspaceScores, usedScoreTests } from '../components/workspace-s
 import { bindToolsActions, toolsItemsHtml } from '../components/workspace-tools-menu.js';
 import { applyModuleSearch } from '../components/module-selector.js';
 import { AFFILIATIONS, DOMAINS, genogramHtml } from '../modules/redes-apoyo.js';
+import { computeVitalRisk } from '../vital-risk-score.js';
+
+function vitalOrbMarkup() {
+  return `<div class="dither-orb-empty">
+    <div class="dither-orb" aria-hidden="true">
+      <span class="dither-orb__core" id="estudio-vital-orb-core"></span>
+    </div>
+  </div>`;
+}
 
 const LIST_FIELDS = [
   {
@@ -49,6 +59,8 @@ const LIST_FIELDS = [
 
 const STATUS_ICONS = {
   present: '<circle cx="12" cy="12" r="8"/><path d="M8 12.2l2.4 2.4L16 9"/>',
+  managed: '<circle cx="12" cy="12" r="8"/><path d="M8 12.2l2.4 2.4L16 9"/>',
+  resolved: '<path d="M5 13l4 4L19 7"/><path d="M5 19h14"/>',
   developing: '<path d="M12 20V10"/><path d="M12 10c2-3 4-4 6-4-1 3-3 5-6 6"/><path d="M12 10c-2-3-4-4-6-4 1 3 3 5 6 6"/>',
   unknown: '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.8.8-1.5 1.2-1.5 2.5"/><path d="M12 17h.01"/>',
 };
@@ -71,15 +83,17 @@ function selectOptions(list, current) {
     .join('');
 }
 
-export function statusToggleHtml(status) {
-  const current = STATUS_LABELS[status] ? status : 'unknown';
+export function statusToggleHtml(status, axis = 'problem') {
+  const options = statusesForAxis(axis);
+  const current = options.includes(status) ? status : 'unknown';
   return `
     <div class="estudio-status" data-field="status" data-status="${current}" role="group" aria-label="Estado del elemento">
-      ${['present', 'developing', 'unknown']
+      ${options
         .map((id) => {
           const selected = id === current;
-          return `<button type="button" class="estudio-status__btn${selected ? ' is-selected' : ''}" data-status-set="${id}" title="${escapeHtml(STATUS_LABELS[id])}" aria-label="${escapeHtml(STATUS_LABELS[id])}" aria-pressed="${selected ? 'true' : 'false'}">
-            ${iconSvg(STATUS_ICONS[id], 'estudio-status__glyph')}
+          const label = statusLabelFor(axis, id) || STATUS_LABELS[id] || id;
+          return `<button type="button" class="estudio-status__btn${selected ? ' is-selected' : ''}" data-status-set="${id}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" aria-pressed="${selected ? 'true' : 'false'}">
+            ${iconSvg(STATUS_ICONS[id] || STATUS_ICONS.unknown, 'estudio-status__glyph')}
             ${selected ? '<span class="estudio-status__check" aria-hidden="true">✓</span>' : ''}
           </button>`;
         })
@@ -131,10 +145,20 @@ function activityRowHtml(activity, index, sessions, suggestions) {
     </div>`;
 }
 
+function catalogDescriptionFor(axis, title) {
+  const want = String(title || '').trim().toLowerCase();
+  if (!want) return '';
+  const item = libraryItemsForAxis(axis).find((row) => row.title.toLowerCase() === want);
+  return item?.description || '';
+}
+
 function elementRowHtml(element, axis, sessions) {
   const isNetwork = element.kind === SUPPORT_NETWORK_KIND;
   const hasNotes = Boolean((element.notes || '').trim());
   const suggestions = suggestedModulesForAxis(axis);
+  const bundled = Boolean(element.bundled) || Boolean(catalogDescriptionFor(axis, element.title));
+  const description =
+    element.description || (bundled && !isNetwork ? catalogDescriptionFor(axis, element.title) : '');
 
   const lists = isNetwork
     ? ''
@@ -188,11 +212,23 @@ function elementRowHtml(element, axis, sessions) {
         </div>
       </section>`;
 
+  const titleBlock =
+    isNetwork || bundled
+      ? `<div class="estudio-element__title-block">
+          <h3 class="estudio-element__title estudio-element__title--static">${escapeHtml(element.title)}</h3>
+          ${
+            description
+              ? `<p class="estudio-element__desc">${escapeHtml(description)}</p>`
+              : ''
+          }
+        </div>`
+      : `<input type="text" class="estudio-element__title" data-field="title" value="${escapeHtml(element.title)}" placeholder="Título del elemento…" />`;
+
   return `
-    <article class="estudio-element card" data-element-id="${escapeHtml(element.id)}" data-kind="${escapeHtml(element.kind || 'standard')}">
+    <article class="estudio-element card" data-element-id="${escapeHtml(element.id)}" data-kind="${escapeHtml(element.kind || 'standard')}" data-bundled="${bundled ? '1' : '0'}" data-description="${escapeHtml(description)}">
       <header class="estudio-element__head">
-        <input type="text" class="estudio-element__title" data-field="title" value="${escapeHtml(element.title)}" placeholder="Título del elemento…" ${isNetwork ? 'readonly' : ''} />
-        ${statusToggleHtml(element.status)}
+        ${titleBlock}
+        ${statusToggleHtml(element.status, axis)}
         ${isNetwork ? '' : `<button type="button" class="btn btn-ghost estudio-element__delete" data-delete-element title="Eliminar elemento" aria-label="Eliminar">×</button>`}
       </header>
       <div class="estudio-element__notes-wrap" data-notes-wrap>
@@ -250,11 +286,12 @@ function axisNavHtml(caseStudy, selectedNav, sessions) {
             .map((el) => {
               const tone = summaryDotsForAxis({ elements: [el] }, item.id)[0]?.tone || 'muted';
               const status = el.status || 'unknown';
+              const statusLabel = statusLabelFor(item.id, status) || STATUS_LABELS[status] || status;
               return `
           <button type="button" class="estudio-axis-nav__child" data-nav="${item.id}" data-focus-element="${escapeHtml(el.id)}">
             <span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)} estudio-score-dot--${escapeHtml(status)}" aria-hidden="true"></span>
             <span class="estudio-axis-nav__child-label">${escapeHtml(el.title)}</span>
-            <span class="estudio-axis-nav__child-status" title="${escapeHtml(STATUS_LABELS[status] || status)}" aria-label="${escapeHtml(STATUS_LABELS[status] || status)}">
+            <span class="estudio-axis-nav__child-status" title="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}">
               ${iconSvg(STATUS_ICONS[status] || STATUS_ICONS.unknown, 'estudio-axis-nav__status-glyph')}
             </span>
           </button>`;
@@ -344,25 +381,51 @@ function sessionsCardHtml(sessions) {
     </article>`;
 }
 
-function wordCloudHtml(caseStudy) {
-  const words = essentialWordsFromCaseStudy(caseStudy);
-  if (!words.length) return '';
-  const max = words[0].count || 1;
-  const chips = words
-    .map((item) => {
-      const weight = 0.85 + (item.count / max) * 1.15;
-      return `<span class="estudio-cloud__word" style="font-size: ${weight.toFixed(2)}em">${escapeHtml(item.word)}</span>`;
-    })
-    .join('');
+function vitalRiskCardHtml(vital) {
+  const reasons =
+    vital.reasons?.length > 0
+      ? `<ul class="estudio-vital__reasons">${vital.reasons
+          .slice(0, 4)
+          .map((r) => `<li>${escapeHtml(r)}</li>`)
+          .join('')}</ul>`
+      : `<p class="estudio-vital__empty">Sin señales activas aún.</p>`;
   return `
-    <article class="estudio-summary-card card estudio-summary-card--cloud">
-      <h3 class="estudio-summary-card__title">Nube de palabras</h3>
-      <p class="estudio-cloud__caption">Esencial del caso</p>
-      <div class="estudio-cloud">${chips}</div>
+    <article class="estudio-summary-card card estudio-summary-card--vital">
+      <h3 class="estudio-summary-card__title">Riesgo vital <span class="estudio-vital__badge">experimental</span></h3>
+      <div class="estudio-vital">
+        ${vitalOrbMarkup()}
+        <div class="estudio-vital__meta">
+          <p class="estudio-vital__level"><strong>${escapeHtml(vital.label)}</strong></p>
+          ${reasons}
+        </div>
+      </div>
     </article>`;
 }
 
-function summaryHtml(caseStudy, sessions) {
+function scoresTabsHtml(sessions) {
+  const tests = usedScoreTests(sessions);
+  if (!tests.length) {
+    return `
+      <article class="estudio-summary-card card estudio-summary-card--scores">
+        <h3 class="estudio-summary-card__title">Puntajes</h3>
+        <p class="estudio-element__empty">Sin tests con puntaje en este tratamiento aún.</p>
+      </article>`;
+  }
+  const tabs = tests
+    .map(
+      (test, i) =>
+        `<button type="button" class="estudio-score-tab${i === 0 ? ' is-active' : ''}" data-score-tab="${escapeHtml(test.type)}" aria-pressed="${i === 0 ? 'true' : 'false'}">${escapeHtml(test.label)}</button>`,
+    )
+    .join('');
+  return `
+    <article class="estudio-summary-card card estudio-summary-card--scores">
+      <h3 class="estudio-summary-card__title">Puntajes</h3>
+      <div class="estudio-score-tabs" role="tablist" aria-label="Tests usados">${tabs}</div>
+      <div class="estudio-summary-scores-host" id="estudio-summary-scores-host"></div>
+    </article>`;
+}
+
+function summaryHtml(caseStudy, sessions, vital) {
   const people = namedSupportPeople(caseStudy);
   const axisCards = CASE_STUDY_AXES.map((axis) => {
     const els = (caseStudy.elements || []).filter(
@@ -394,8 +457,11 @@ function summaryHtml(caseStudy, sessions) {
           <h2 class="estudio-case__title">Resumen</h2>
         </div>
       </header>
-      ${sessionsCardHtml(sessions)}
-      ${wordCloudHtml(caseStudy)}
+      <div class="estudio-summary__top">
+        ${sessionsCardHtml(sessions)}
+        ${vitalRiskCardHtml(vital)}
+      </div>
+      ${scoresTabsHtml(sessions)}
       <div class="estudio-summary__axes">${axisCards}</div>
       ${geno}
     </div>`;
@@ -446,7 +512,13 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           id,
           axis: prev.axis || axisId,
           kind: article.dataset.kind,
-          title: article.querySelector('[data-field="title"]')?.value || '',
+          title:
+            article.querySelector('[data-field="title"]')?.value ||
+            article.querySelector('.estudio-element__title--static')?.textContent ||
+            prev.title ||
+            '',
+          description: article.dataset.description || prev.description || '',
+          bundled: article.dataset.bundled === '1' || Boolean(prev.bundled),
           status: article.querySelector('[data-field="status"]')?.dataset.status || prev.status,
           notes: article.querySelector('[data-field="notes"]')?.value || '',
           people,
@@ -480,7 +552,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
     }
   }, notifySaveError);
 
-  const addElementWithTitle = async (title) => {
+  const addElementWithTitle = async (title, { bundled = false } = {}) => {
     const name = String(title || '').trim();
     if (!name) {
       toast('Escribe un título o elige uno de la librería.');
@@ -494,6 +566,13 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       return;
     }
     const el = emptyCaseStudyElement(selectedNav, name);
+    const catalog = libraryItemsForAxis(selectedNav).find(
+      (item) => item.title.toLowerCase() === name.toLowerCase(),
+    );
+    if (bundled || catalog) {
+      el.bundled = true;
+      el.description = catalog?.description || '';
+    }
     const preset = libraryPresetFor(selectedNav, name);
     if (preset?.indicators?.length) {
       el.indicators = preset.indicators.map((text) => ({ text, checked: false }));
@@ -512,12 +591,15 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       suppressRemotePaint = false;
     }
     await paint();
-    centerHost.querySelector(`[data-element-id="${el.id}"] [data-field="title"]`)?.focus();
+    centerHost
+      .querySelector(`[data-element-id="${el.id}"] [data-field="title"]`)
+      ?.focus();
   };
 
   let bindCenter;
   let bindSummaryNav;
   let selectNav;
+  let unmountVitalOrb = () => {};
 
   const navHost = () => leftHost.querySelector('#estudio-axis-nav') || leftHost;
 
@@ -535,13 +617,57 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
     else centerHost.scrollTop = 0;
   };
 
+  const mountSummaryExtras = async () => {
+    unmountVitalOrb();
+    unmountVitalOrb = () => {};
+    const core = centerHost.querySelector('#estudio-vital-orb-core');
+    if (core) {
+      const vital = computeVitalRisk({ sessions, caseStudy });
+      core.style.setProperty('--orb-color-dark', vital.palette.dark);
+      core.style.setProperty('--orb-color-light', vital.palette.light);
+      try {
+        const { mountDitherOrb } = await import('../dither-orb.js');
+        unmountVitalOrb = mountDitherOrb(core, { size: 88 });
+      } catch {
+        /* Node / tests sin HTMLElement */
+      }
+    }
+
+    const scoresHost = centerHost.querySelector('#estudio-summary-scores-host');
+    const tabs = [...centerHost.querySelectorAll('[data-score-tab]')];
+    if (!scoresHost || !tabs.length) return;
+
+    const showTab = async (type) => {
+      tabs.forEach((btn) => {
+        const on = btn.dataset.scoreTab === type;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      scoresHost.innerHTML = '';
+      try {
+        await renderWorkspaceScores(scoresHost, treatmentId, [type], { expandAll: true });
+      } catch (err) {
+        scoresHost.innerHTML = `<p class="estudio-element__empty">${escapeHtml(err?.message || 'No se pudieron cargar los puntajes.')}</p>`;
+      }
+    };
+
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        void showTab(btn.dataset.scoreTab);
+      });
+    });
+    await showTab(tabs[0].dataset.scoreTab);
+  };
+
   const paint = async () => {
     const navMeta = ESTUDIO_NAV.find((n) => n.id === selectedNav) || ESTUDIO_NAV[0];
     refreshAxisNav();
 
     if (navMeta.id === 'summary') {
-      centerHost.innerHTML = `<div class="estudio-case">${summaryHtml(caseStudy, sessions)}</div>`;
+      const vital = computeVitalRisk({ sessions, caseStudy });
+      centerHost.innerHTML = `<div class="estudio-case">${summaryHtml(caseStudy, sessions, vital)}</div>`;
       bindSummaryNav();
+      await mountSummaryExtras();
       return;
     }
 
@@ -703,7 +829,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        await addElementWithTitle(btn.dataset.pickLibraryTitle);
+        await addElementWithTitle(btn.dataset.pickLibraryTitle, { bundled: true });
       });
     });
 
@@ -711,7 +837,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       e.preventDefault();
       e.stopPropagation();
       const input = centerHost.querySelector('[data-library-custom]');
-      await addElementWithTitle(input?.value);
+      await addElementWithTitle(input?.value, { bundled: false });
     });
 
     centerHost.querySelectorAll('[data-status-set]').forEach((btn) => {
@@ -886,6 +1012,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
   return {
     unmount() {
+      unmountVitalOrb();
       stop();
       delete leftHost.dataset.estudioNavBound;
       leftHost.innerHTML = '';
