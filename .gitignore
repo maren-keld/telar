@@ -29,7 +29,9 @@ playwright-report/
 # Interno — no publicar en GitHub
 .cursor/
 CLAUDE.md
-docs/
+# docs/ privados, excepto mapa ops para agentes
+docs/*
+!docs/ops-status.md
 GROKBOT.md
 
 # Contenido clínico propietario (open-core)
