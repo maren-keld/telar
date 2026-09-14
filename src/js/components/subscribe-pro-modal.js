@@ -6,6 +6,7 @@ import {
 } from '../subscription-config.js';
 import { openExternalUrl } from '../tauri-bridge.js';
 import { playOverlayOpen, animateAndRemove } from '../transitions.js';
+import { clinicCountryCode } from '../clinic-country.js';
 import {
   activateDevPro,
   fetchSubscriptionHealth,
@@ -29,8 +30,53 @@ const MP_SUBSCRIPTIONS_URL = 'https://www.mercadopago.cl/subscriptions';
 export function openSubscribeProModal({ onSubscribed } = {}) {
   const pro = isProUser();
   const proEmail = (loadProfile().email || '').trim();
+  const isUsa = clinicCountryCode() === 'US';
   const overlay = document.createElement('div');
   overlay.className = 'modal-backdrop subscribe-pro-overlay';
+  const ctaBlock = pro
+    ? `
+        <p class="subscribe-pro-modal__active" style="text-align:center;font-weight:600;color:#2e7d4f">
+          ✓ Suscripción activa${proEmail ? ` · ${proEmail}` : ''}
+        </p>
+        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-manage">
+          ${isUsa ? `Contactar ${SUPPORT_MAIL}` : 'Cancelar o gestionar en Mercado Pago'}
+        </button>
+        <p class="subscribe-pro-modal__fine">
+          ${
+            isUsa
+              ? `Para gestionar Plus en USA escribe a ${SUPPORT_MAIL}.`
+              : 'Abre tu cuenta de Mercado Pago para ver pagos, cambiar tarjeta o cancelar. Si cancelas, Telar vuelve a Demo en el próximo chequeo (al abrir la app).'
+          }
+        </p>`
+    : isUsa
+      ? `
+        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-usa">
+          Contactar ${SUPPORT_MAIL} — Plus USA
+        </button>
+        <p class="subscribe-pro-modal__fine">
+          En Estados Unidos el Plan Profesional (Plus) se activa por correo. Escríbenos a
+          <strong>${SUPPORT_MAIL}</strong> y te guiamos.
+        </p>
+        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
+          Activar Pro (solo desarrollo, sin pago)
+        </button>`
+      : `
+        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">
+          Suscribirse — ${formatSubscriptionPriceCLP(SUBSCRIPTION_PRICE_CLP)}
+        </button>
+        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
+          Activar Pro (solo desarrollo, sin pago)
+        </button>
+        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-verify" style="margin-top:8px">
+          Ya pagué — actualizar mi plan
+        </button>
+        <p class="subscribe-pro-modal__fine" id="subscribe-pro-pending" hidden>
+          Tras pagar en Mercado Pago, vuelve a Telar: el plan se activará en unos segundos.
+        </p>
+        <p class="subscribe-pro-modal__fine">
+          Pago seguro con Mercado Pago. Se cobra mensualmente; puedes cancelar desde tu cuenta MP.
+        </p>`;
+
   overlay.innerHTML = `
     <div class="subscribe-pro-modal" role="dialog" aria-labelledby="subscribe-pro-title">
       <aside class="subscribe-pro-modal__brand">
@@ -46,38 +92,11 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           En Demo tienes todos los packs clínicos, Neurofeedback en vivo y hasta <strong>${FREE_ACTIVE_PATIENT_LIMIT} pacientes activos</strong> — los archivados, completados o en pausa no ocupan cupo.
           El Plan Profesional desbloquea:
         </p>
-        <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite" ${pro ? 'hidden' : ''}>Comprobando servidor de pagos…</p>
+        <p class="subscribe-pro-modal__api-status" id="subscribe-pro-api-status" aria-live="polite" ${pro || isUsa ? 'hidden' : ''}>Comprobando servidor de pagos…</p>
         <ul class="subscribe-pro-features">
           ${PRO_FEATURES.map((f) => `<li><span class="subscribe-pro-features__plus">+</span>${f}</li>`).join('')}
         </ul>
-        ${pro ? `
-        <p class="subscribe-pro-modal__active" style="text-align:center;font-weight:600;color:#2e7d4f">
-          ✓ Suscripción activa${proEmail ? ` · ${proEmail}` : ''}
-        </p>
-        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-manage">
-          Cancelar o gestionar en Mercado Pago
-        </button>
-        <p class="subscribe-pro-modal__fine">
-          Abre tu cuenta de Mercado Pago para ver pagos, cambiar tarjeta o cancelar.
-          Si cancelas, Telar vuelve a Demo en el próximo chequeo (al abrir la app).
-        </p>
-        ` : `
-        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">
-          Suscribirse — ${formatSubscriptionPriceCLP(SUBSCRIPTION_PRICE_CLP)}
-        </button>
-        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
-          Activar Pro (solo desarrollo, sin pago)
-        </button>
-        <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-verify" style="margin-top:8px">
-          Ya pagué — actualizar mi plan
-        </button>
-        <p class="subscribe-pro-modal__fine" id="subscribe-pro-pending" hidden>
-          Tras pagar en Mercado Pago, vuelve a Telar: el plan se activará en unos segundos.
-        </p>
-        <p class="subscribe-pro-modal__fine">
-          Pago seguro con Mercado Pago. Se cobra mensualmente; puedes cancelar desde tu cuenta MP.
-        </p>
-        `}
+        ${ctaBlock}
         <footer class="subscribe-pro-modal__foot">
           <a href="mailto:${SUPPORT_MAIL}" class="subscribe-pro-modal__link" id="subscribe-pro-contact">¿Tienes alguna pregunta? ${SUPPORT_MAIL}</a>
           <button type="button" class="subscribe-pro-modal__link subscribe-pro-modal__link--btn" id="subscribe-pro-help">
@@ -102,7 +121,11 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
   const apiStatus = overlay.querySelector('#subscribe-pro-api-status');
 
   overlay.querySelector('#subscribe-pro-manage')?.addEventListener('click', () => {
-    openExternalUrl(MP_SUBSCRIPTIONS_URL);
+    if (isUsa) {
+      openExternalUrl(`mailto:${SUPPORT_MAIL}?subject=Telar%20Plus%20USA`);
+    } else {
+      openExternalUrl(MP_SUBSCRIPTIONS_URL);
+    }
   });
 
   overlay.querySelector('#subscribe-pro-contact')?.addEventListener('click', (e) => {
@@ -115,7 +138,27 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
     openExternalUrl(url);
   });
 
+  overlay.querySelector('#subscribe-pro-usa')?.addEventListener('click', () => {
+    openExternalUrl(`mailto:${SUPPORT_MAIL}?subject=Telar%20Plus%20USA`);
+  });
+
   if (pro) return;
+  if (isUsa) {
+    overlay.querySelector('#subscribe-pro-dev')?.addEventListener('click', async () => {
+      try {
+        await activateDevPro();
+        close();
+        onSubscribed?.();
+      } catch (e) {
+        if (apiStatus) {
+          apiStatus.hidden = false;
+          apiStatus.textContent = e?.message || 'No se pudo activar Pro en desarrollo';
+          apiStatus.classList.add('subscribe-pro-modal__api-status--err');
+        }
+      }
+    });
+    return;
+  }
 
   fetchSubscriptionHealth()
     .then((health) => {

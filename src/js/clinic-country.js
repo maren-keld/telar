@@ -21,6 +21,7 @@ export const CLINIC_COUNTRIES = [
   { id: 'PE', label: 'Perú' },
   { id: 'CO', label: 'Colombia' },
   { id: 'ES', label: 'España' },
+  { id: 'US', label: 'Estados Unidos' },
   { id: 'OTRO', label: 'Otro' },
 ];
 
@@ -80,6 +81,11 @@ const COVERAGE = {
     label: 'Cobertura sanitaria',
     options: ['Seguridad Social', 'Mutua', 'Seguro privado', 'Particular', 'Otro'],
     defaultOption: 'Seguridad Social',
+  },
+  US: {
+    label: 'Health coverage',
+    options: ['Private insurance', 'Medicare', 'Medicaid', 'Self-pay', 'Other'],
+    defaultOption: 'Private insurance',
   },
   OTRO: {
     label: 'Cobertura de salud',
@@ -147,6 +153,12 @@ const ID_SPEC = {
     shortLabel: 'DNI',
     placeholder: '12345678A',
     format: 'dni_es',
+  },
+  US: {
+    label: 'ID number',
+    shortLabel: 'ID',
+    placeholder: '',
+    format: 'plain',
   },
   OTRO: {
     label: 'Número de ID',

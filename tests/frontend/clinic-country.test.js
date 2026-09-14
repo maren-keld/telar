@@ -17,8 +17,9 @@ import { iaAnamnesisPlaceholderAttr, IA_ANAMNESIS_PLACEHOLDER } from '../../src/
 test('país válido solo de la lista', () => {
   assert.equal(isValidClinicCountry('CL'), true);
   assert.equal(isValidClinicCountry('AR'), true);
+  assert.equal(isValidClinicCountry('US'), true);
   assert.equal(isValidClinicCountry(''), false);
-  assert.equal(isValidClinicCountry('US'), false);
+  assert.equal(isValidClinicCountry('ZZ'), false);
 });
 
 test('previsión / cobertura cambia con el país', () => {

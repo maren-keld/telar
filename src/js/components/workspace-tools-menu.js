@@ -39,7 +39,7 @@ export function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
             <strong>Exportar programa PDF</strong>
-            <small>Resumen del tratamiento para el paciente o supervisión${isProUser() ? '' : ' · Plan Profesional'}</small>
+            <small>Resumen del tratamiento para el paciente o supervisión</small>
           </span>
         </button>
       </li>

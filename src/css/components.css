@@ -658,6 +658,31 @@ input[type='search']::-webkit-search-results-decoration {
   white-space: nowrap;
 }
 
+.app-update-modal {
+  max-width: 420px;
+}
+
+.app-update-modal__body {
+  margin: 0 0 18px;
+  line-height: 1.45;
+  color: var(--text-secondary, #445);
+}
+
+.app-update-modal__notes {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+}
+
+.app-update-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 .unlock-page__build {
   margin-top: 24px;
   font-size: 0.75rem;

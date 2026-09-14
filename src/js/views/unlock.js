@@ -4,7 +4,7 @@ import { appVersionLabel } from '../app-version.js';
 import { ICON_FINGERPRINT, ICON_LOCK } from '../icons.js';
 import { loadProfile } from '../profile.js';
 import { getInvoke, openExternalUrl } from '../tauri-bridge.js';
-import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-updates.js';
+import { checkForAppUpdate, getPendingUpdate, installAppUpdate, promptAppUpdate } from '../app-updates.js';
 import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
 import { scheduleAutoCloudBackup, restoreCloudBackupFlow } from '../cloud-backup.js';
 import { toast, escapeHtml } from '../utils.js';
@@ -300,7 +300,9 @@ export async function renderUnlock(host, { onNavigate }) {
   const updateBtn = host.querySelector('#unlockUpdateBtn');
 
   const showUpdateBar = (info) => {
-    if (!updateBar || !info) return;
+    if (!info) return;
+    promptAppUpdate(info);
+    if (!updateBar) return;
     const label = updateBar.querySelector('.unlock-update-bar__text');
     if (label) label.textContent = `Actualización ${info.version} disponible`;
     updateBar.classList.remove('unlock-update-bar--hidden');

@@ -33,12 +33,26 @@ test('PDF export programa no exige Pro', () => {
   assert.match(modal, /support@telarapp\.cl/);
 });
 
-test('updater: error de check no se confunde con up-to-date', () => {
+test('updater: popup Más tarde / Descargar ahora', () => {
   const root = dirname(fileURLToPath(import.meta.url));
   const updates = readFileSync(join(root, '../../src/js/app-updates.js'), 'utf8');
   const settings = readFileSync(join(root, '../../src/js/views/settings.js'), 'utf8');
+  assert.match(updates, /promptAppUpdate/);
+  assert.match(updates, /Hay una actualización disponible/);
+  assert.match(updates, /Más tarde/);
+  assert.match(updates, /Descargar ahora/);
   assert.match(updates, /throw new Error/);
   assert.match(settings, /No se pudo comprobar actualizaciones/);
+});
+
+test('Plus USA modal usa support@telarapp.cl', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const modal = readFileSync(join(root, '../../src/js/components/subscribe-pro-modal.js'), 'utf8');
+  const clinic = readFileSync(join(root, '../../src/js/clinic-country.js'), 'utf8');
+  assert.match(modal, /isUsa/);
+  assert.match(modal, /subscribe-pro-usa/);
+  assert.match(modal, /support@telarapp\.cl/);
+  assert.match(clinic, /id: 'US'/);
 });
 
 test('i18n detecta locale de sistema', () => {
