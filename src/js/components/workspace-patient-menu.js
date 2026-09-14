@@ -16,6 +16,7 @@ import {
   getWorkspaceIndexMode,
   indexChromeState,
 } from '../workspace-index-mode.js';
+import { bindToolsActions, toolsItemsHtml } from './workspace-tools-menu.js';
 
 const WORKSPACE_LEFT_WIDTH_KEY = 'telar.workspace.leftSidebarWidth';
 const LEFT_FOCUS_CSS_THRESHOLD = 90;
@@ -38,7 +39,7 @@ function treatmentTitle(treatment) {
   return treatment.number > 1 ? `${name} · T${treatment.number}` : name;
 }
 
-export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate, onUpdated }) {
+export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate, onUpdated, toolsOpts = {} }) {
   const root = document.getElementById('modal-root');
   const rect = anchorEl.getBoundingClientRect();
   const profile = loadProfile();
@@ -76,8 +77,6 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
   root.innerHTML = `
     <div class="dropdown-backdrop" id="workspace-patient-menu-backdrop">
       <div class="dropdown-menu patient-menu t-dropdown" data-origin="top-left" style="top:${rect.bottom + 4}px;left:${Math.max(8, Math.min(rect.left, window.innerWidth - 276))}px;max-height:${Math.max(160, window.innerHeight - rect.bottom - 12)}px">
-        <p class="dropdown-menu__title">${treatmentTitle(treatment)}</p>
-
         <label class="dropdown-label">Estado del tratamiento</label>
         <div class="patient-menu-status-list">
           ${statusItems}
@@ -94,6 +93,10 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         <button type="button" class="btn btn-ghost btn-block patient-menu-new-treatment" id="workspace-menu-new-treatment">
           + Añadir tratamiento
         </button>
+
+        <div class="patient-menu-divider"></div>
+        <label class="dropdown-label">Documentación</label>
+        <div class="patient-menu-tools">${toolsItemsHtml()}</div>
 
         <div class="patient-menu-divider"></div>
         <label class="dropdown-label">Vista</label>
@@ -199,6 +202,11 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     } catch (err) {
       toast(err.message || 'No se pudo crear el tratamiento');
     }
+  });
+
+  bindToolsActions(root.querySelector('.patient-menu-tools') || root, {
+    treatmentId: treatment.id,
+    ...toolsOpts,
   });
 
   root.querySelectorAll('[data-mode]').forEach((btn) => {

@@ -23,7 +23,7 @@ export const CUSTOM_CATEGORY_LABEL = 'Mis módulos';
 export const CUSTOM_CATEGORY_BLURB = 'Módulos personalizados';
 
 /** Fuera del catálogo (F-010B). El renderer legacy sigue si hay filas antiguas. */
-export const LIBRARY_HIDDEN_TYPES = new Set(['diagnostico']);
+export const LIBRARY_HIDDEN_TYPES = new Set(['diagnostico', 'oasis', 'odsis']);
 
 export const CATEGORY_ORDER = ['conceptualizacion', 'pruebas', 'tcc', 'significado', 'intervencion'];
 

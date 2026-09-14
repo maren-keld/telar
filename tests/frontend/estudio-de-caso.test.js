@@ -165,14 +165,15 @@ test('Diagnósticos sale de librería, add-picker y plantillas (legacy renderer 
   }
 });
 
-test('leftSidebar Estudio: Resumen, Documentación, ejes, Puntajes, Otros', () => {
+test('leftSidebar Estudio: Resumen, ejes, Evolución y Bots/Agentes', () => {
   assert.deepEqual(
     ESTUDIO_NAV.map((n) => n.id),
-    ['summary', 'docs', 'problem', 'resource', 'defense', 'risk', 'scores', 'other'],
+    ['summary', 'problem', 'resource', 'defense', 'risk', 'scores', 'other'],
   );
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'resource').label, 'Factores protectores');
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'risk').label, 'Riesgos');
-  assert.equal(ESTUDIO_NAV[1].id, 'docs');
+  assert.equal(ESTUDIO_NAV.find((n) => n.id === 'scores').label, 'Evolución');
+  assert.equal(ESTUDIO_NAV.find((n) => n.id === 'other').label, 'Bots/Agentes');
 });
 
 test('Actividades sugieren módulos por eje; red de apoyo es Personas', () => {
@@ -205,14 +206,14 @@ test('Estudio entra en Resumen si no hay selectedNav guardado', () => {
   assert.equal(study.selectedNav, 'summary');
 });
 
-test('estados del elemento son presente / desarrollar / desconocido (default desconocido)', () => {
+test('estados del elemento son presente / en desarrollo / desconocido (default desconocido)', () => {
   const fresh = emptyCaseStudyElement('problem', 'Ansiedad');
   assert.equal(fresh.status, 'unknown');
   assert.equal(STATUS_LABELS.present, 'Presente');
   assert.equal(statusLabelFor('problem', 'present'), 'Gestionado');
   assert.equal(statusLabelFor('risk', 'present'), 'Gestionado');
   assert.equal(statusLabelFor('resource', 'present'), 'Presente');
-  assert.equal(STATUS_LABELS.developing, 'Desarrollar');
+  assert.equal(STATUS_LABELS.developing, 'En desarrollo');
   assert.equal(STATUS_LABELS.unknown, 'Desconocido');
   assert.equal(normalizeCaseStudyElement({ axis: 'problem', title: 'X', status: 'active' }).status, 'present');
   assert.equal(normalizeCaseStudyElement({ axis: 'risk', title: 'Y', status: 'in_progress' }).status, 'developing');
@@ -221,7 +222,7 @@ test('estados del elemento son presente / desarrollar / desconocido (default des
   assert.match(html, /data-status-set="developing"/);
   assert.match(html, /data-status-set="unknown"/);
   assert.doesNotMatch(html, /<select/);
-  assert.match(html, /Desarrollar/);
+  assert.match(html, /En desarrollo/);
   assert.match(html, /Desconocido/);
   assert.doesNotMatch(html, /A desarrollar/);
   assert.doesNotMatch(html, /Desconocidos/);

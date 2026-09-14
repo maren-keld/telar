@@ -962,12 +962,25 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
   border-radius: var(--radius-sm);
   background: var(--bg-app);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   line-height: 1.2;
   white-space: normal;
   color: var(--text-secondary);
   cursor: pointer;
   transition: background 120ms, color 120ms, border-color 120ms;
+}
+
+.patient-menu-tools .workspace-tools-tab__list {
+  gap: 6px;
+}
+
+.patient-menu-tools .workspace-tools-tab__item {
+  padding: 9px 10px;
+}
+
+.patient-menu-tools .workspace-tools-tab__icon {
+  width: 30px;
+  height: 30px;
 }
 
 .patient-menu-mode-btn:hover,

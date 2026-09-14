@@ -99,9 +99,6 @@ export function mountWorkspaceToolsTab(host, opts) {
 
   host.innerHTML = `
     <div class="workspace-tools-tab">
-      ${toolsItemsHtml()}
-
-      <div class="tools-section-divider"></div>
       <p class="tools-section-label">Vista</p>
       <div class="tools-mode-row">
         <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">Foco</button>
@@ -134,8 +131,6 @@ export function mountWorkspaceToolsTab(host, opts) {
         </button>
       </div>
     </div>`;
-
-  bindToolsActions(host, opts);
 
   let dark = isDark;
   host.querySelector('#tools-dark-toggle')?.addEventListener('click', () => {

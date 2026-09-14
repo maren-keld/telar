@@ -510,6 +510,7 @@ export async function renderWorkspace(
     openWorkspacePatientMenu(e.currentTarget, treatment, {
       onNavigate,
       onUpdated: () => toast('Estado del tratamiento actualizado'),
+      toolsOpts,
     });
   });
 
@@ -557,11 +558,11 @@ export async function renderWorkspace(
     },
     onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
-      toast('PDF exportado en Documentos/Telar/exportaciones');
+      toast('PDF exportado en el Escritorio');
     },
     onExportCasePresentation: async () => {
       const filename = await exportCasePresentationPdf(treatmentId);
-      toast(`${filename} — anonimizado, listo para supervisión`);
+      toast(`${filename} — guardado en el Escritorio, anonimizado y listo para supervisión`);
     },
     onTemplateApplied: async () => {
       const s = container._workspaceRenderState || {};

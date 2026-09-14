@@ -103,7 +103,7 @@ Opción A — cuestionario. Bloque \`\`\`json con esta forma (schema ${QUESTIONN
   "attribution": { "authors": "Quién lo escribió", "license": "Uso clínico" }
 }
 Reglas: "kind" puede ser "sum", "mean" o "count-threshold"; con "count-threshold" hace falta "itemThresholds" con un umbral por ítem ({"gte":2} o {"lte":1}). Si hay ítems con "reverse" es obligatorio "scoring.reverseMax". Los índices de "subscales" e "items" son base 0. Un ítem puede ser deslizador: { "text": "...", "kind": "slider", "min": 0, "max": 10 }.
-No copies escalas con copyright (PHQ-9, GAD-7, AQ, RAADS y similares): esas ya vienen en Telar o requieren licencia.
+No copies escalas con copyright (PHQ-9, GAD-7, AQ, RAADS y similares): esas ya vienen en Telar o requieren licencia. No menciones ni propongas OASIS u ODSIS: no forman parte del catálogo clínico disponible para este flujo.
 
 Opción B — experiencia interactiva. Bloque \`\`\`html con un fragmento autocontenido (puedes usar <style> y <script> inline). No hay internet dentro del módulo: nada de CDN, fuentes remotas ni fetch. La actividad DEBE poder responderse (botones, colores, pasos o campos). Devuelve un FRAGMENTO: <style> y markup, sin <!doctype>, sin <html>, sin <head> ni <body>. Cierra todas las etiquetas <style>. Para guardar en la ficha del paciente usa el puente que Telar inyecta:
   Telar.load()            → datos guardados antes, o null

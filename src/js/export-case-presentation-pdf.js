@@ -373,7 +373,7 @@ export async function exportCasePresentationPdf(treatmentId) {
     await getInvoke()('open_pdf_export', {
       filename,
       data: Array.from(new Uint8Array(bytes)),
-      destination: null,
+      destination: 'desktop',
     });
     return filename;
   }

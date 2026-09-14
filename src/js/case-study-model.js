@@ -8,7 +8,7 @@ export const CASE_STUDY_AXES = [
   { id: 'resource', label: 'Factores protectores', addLabel: 'Añadir factor protector', nav: true },
   { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa', nav: true },
   { id: 'risk', label: 'Riesgos', addLabel: 'Añadir riesgo', nav: true },
-  { id: 'other', label: 'Otros', addLabel: 'Añadir elemento', nav: true },
+  { id: 'other', label: 'Bots/Agentes', addLabel: 'Añadir elemento', nav: true },
 ];
 
 const AXIS_NAV = (id) => {
@@ -18,12 +18,11 @@ const AXIS_NAV = (id) => {
 
 export const ESTUDIO_NAV = [
   { id: 'summary', label: 'Resumen', kind: 'page' },
-  { id: 'docs', label: 'Documentación', kind: 'page' },
   AXIS_NAV('problem'),
   AXIS_NAV('resource'),
   AXIS_NAV('defense'),
   AXIS_NAV('risk'),
-  { id: 'scores', label: 'Puntajes', kind: 'page' },
+  { id: 'scores', label: 'Evolución', kind: 'page' },
   AXIS_NAV('other'),
 ];
 
@@ -67,7 +66,7 @@ const STATUS_OPTIONS = {
 
 export const STATUS_LABELS = {
   present: 'Presente',
-  developing: 'Desarrollar',
+  developing: 'En desarrollo',
   unknown: 'Desconocido',
 };
 

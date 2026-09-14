@@ -28,12 +28,12 @@ import { getSessionsWithModules, isSessionDone } from '../db.js';
 import { escapeHtml, toast } from '../utils.js';
 import { notifySaveError } from '../save-status.js';
 import { queuedPersist } from '../autobind.js';
-import { listAddableModuleOptions } from '../workspace-index-mode.js';
 import { moduleLabelFor } from '../custom-modules.js';
 import { renderWorkspaceScores, usedScoreTests } from '../components/workspace-scores.js';
 import { computeVitalRisk, vitalRiskOrbHtml } from '../vital-risk.js';
-import { bindToolsActions, toolsItemsHtml } from '../components/workspace-tools-menu.js';
 import { applyModuleSearch } from '../components/module-selector.js';
+import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
+import { estudioRelationForModule } from '../case-study-catalog.js';
 import { AFFILIATIONS, DOMAINS, genogramHtml } from '../modules/redes-apoyo.js';
 
 const LIST_FIELDS = [
@@ -107,28 +107,11 @@ function itemRowHtml(listKey, item, index, { checkable, placeholder }) {
     </div>`;
 }
 
-function activityRowHtml(activity, index, sessions, suggestions) {
-  const options = listAddableModuleOptions();
+function activityRowHtml(activity, index, sessions) {
+  const session = (sessions || []).find((row) => String(row.id) === String(activity.sessionId));
   return `
-    <div class="estudio-activity-row" data-activity-index="${index}">
-      <select data-activity-field="moduleType" aria-label="Módulo">
-        <option value="">Módulo…</option>
-        ${options
-          .map(
-            (opt) =>
-              `<option value="${escapeHtml(opt.type)}" ${activity.moduleType === opt.type ? 'selected' : ''}>${escapeHtml(opt.label)}${suggestions.includes(opt.type) ? ' · relacionado' : ''}</option>`,
-          )
-          .join('')}
-      </select>
-      <select data-activity-field="sessionId" aria-label="Sesión">
-        <option value="">Sesión…</option>
-        ${(sessions || [])
-          .map(
-            (s) =>
-              `<option value="${s.id}" ${String(activity.sessionId) === String(s.id) ? 'selected' : ''}>Sesión ${s.number}</option>`,
-          )
-          .join('')}
-      </select>
+    <div class="estudio-activity-row" data-activity-index="${index}" data-module-type="${escapeHtml(activity.moduleType || '')}" data-session-id="${escapeHtml(activity.sessionId || '')}">
+      <span class="estudio-module-link"><strong>${escapeHtml(moduleLabelFor(activity.moduleType))}</strong>${session ? ` · Sesión ${session.number}` : ''}</span>
       <button type="button" class="btn btn-ghost" data-remove-activity title="Quitar">×</button>
     </div>`;
 }
@@ -181,14 +164,14 @@ function elementRowHtml(element, axis, sessions) {
     : `
       <section class="estudio-element__field">
         <header class="estudio-element__field-head">
-          <h4 class="estudio-element__field-title">Actividades${hintButton(fieldHintFor(axis, 'activities'))}</h4>
-          <button type="button" class="btn btn-ghost btn-sm" data-add-activity data-element-id="${escapeHtml(element.id)}">+ Actividad</button>
+          <h4 class="estudio-element__field-title">Módulos${hintButton(fieldHintFor(axis, 'activities'))}</h4>
+          <button type="button" class="btn btn-ghost btn-sm" data-add-activity data-element-id="${escapeHtml(element.id)}">+ Añadir módulo</button>
         </header>
         <p class="estudio-element__hint">Módulos relacionados: ${suggestions.map((t) => escapeHtml(moduleLabelFor(t))).join(' · ')}</p>
         <div class="estudio-activity-list">
           ${
-            activities.map((row, i) => activityRowHtml(row, i, sessions, suggestions)).join('') ||
-            '<p class="estudio-element__empty">Sin actividades aún.</p>'
+            activities.map((row, i) => activityRowHtml(row, i, sessions)).join('') ||
+            '<p class="estudio-element__empty">Sin módulos asociados aún.</p>'
           }
         </div>
       </section>`;
@@ -263,9 +246,10 @@ function axisNavHtml(caseStudy, selectedNav, sessions) {
               const tone = summaryDotsForAxis({ elements: [el] }, item.id)[0]?.tone || 'muted';
               const status = el.status || 'unknown';
               const statusLabel = statusLabelFor(item.id, status);
+              const suicidePulse = item.id === 'problem' && /suicid/i.test(el.title || '') ? ' estudio-score-dot--suicidality' : '';
               return `
           <button type="button" class="estudio-axis-nav__child" data-nav="${item.id}" data-focus-element="${escapeHtml(el.id)}">
-            <span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)} estudio-score-dot--${escapeHtml(status)}" aria-hidden="true"></span>
+            <span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)} estudio-score-dot--${escapeHtml(status)}${suicidePulse}" aria-hidden="true"></span>
             <span class="estudio-axis-nav__child-label">${escapeHtml(el.title)}</span>
             <span class="estudio-axis-nav__child-status" title="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}">
               ${iconSvg(STATUS_ICONS[status] || STATUS_ICONS.unknown, 'estudio-axis-nav__status-glyph')}
@@ -360,28 +344,44 @@ function sessionsCardHtml(sessions) {
 function scoreTabsHtml() {
   return `
     <article class="estudio-summary-card card estudio-summary-card--scores">
-      <h3 class="estudio-summary-card__title">Puntajes</h3>
+      <h3 class="estudio-summary-card__title">Evolución</h3>
       <div class="estudio-resumen-scores" id="estudio-resumen-scores"></div>
     </article>`;
 }
 
+function linkedModulesForElement(element, sessions) {
+  const explicit = (element.activities || []).map((row) => row.moduleType).filter(Boolean);
+  const fromProgram = (sessions || [])
+    .flatMap((session) => session.modules || [])
+    .filter((mod) => {
+      const relation = estudioRelationForModule(mod.module_type);
+      return relation && relation.axis === element.axis && (!relation.element || relation.element === element.title);
+    })
+    .map((mod) => mod.module_type);
+  return [...new Set([...explicit, ...fromProgram])];
+}
+
 function summaryHtml(caseStudy, sessions, vital) {
   const people = namedSupportPeople(caseStudy);
-  const axisCards = CASE_STUDY_AXES.map((axis) => {
+  const axisCards = CASE_STUDY_AXES.filter((axis) => axis.id !== 'other').map((axis) => {
     const els = (caseStudy.elements || []).filter(
       (el) => el.axis === axis.id && el.title && el.kind !== SUPPORT_NETWORK_KIND,
     );
-    return `
-      <article class="estudio-summary-card card">
-        <h3 class="estudio-summary-card__title">${escapeHtml(axis.label)}</h3>
-        <div class="estudio-summary-card__chips">
-          ${
-            els
-              .map((el) => `<span class="estudio-summary-chip">${escapeHtml(el.title)}</span>`)
-              .join('') || '<span class="estudio-element__empty">Sin elementos seleccionados.</span>'
-          }
-        </div>
-      </article>`;
+    return `<section class="estudio-axis-matrix card">
+      <h3 class="estudio-summary-card__title">${escapeHtml(axis.label)}</h3>
+      <div class="estudio-axis-matrix__head"><span>Elemento</span><span>Módulos del programa</span></div>
+      ${els.map((el) => {
+        const linked = linkedModulesForElement(el, sessions);
+        const recommended = suggestedModulesForAxis(axis.id).slice(0, 2);
+        const tone = summaryDotsForAxis({ elements: [el] }, axis.id)[0]?.tone || 'muted';
+        return `<div class="estudio-axis-matrix__row">
+          <div><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span>${escapeHtml(el.title)}</div>
+          <div>${linked.length
+            ? linked.map((type) => `<span class="estudio-summary-chip">${escapeHtml(moduleLabelFor(type))}</span>`).join('')
+            : `<span class="estudio-axis-matrix__recommendation">Sugeridos: ${recommended.map((type) => escapeHtml(moduleLabelFor(type))).join(' · ')}</span>`}</div>
+        </div>`;
+      }).join('') || '<p class="estudio-element__empty">Sin elementos seleccionados.</p>'}
+    </section>`;
   }).join('');
   const geno = people.length
     ? `<article class="estudio-summary-card card estudio-summary-card--genogram">
@@ -443,8 +443,8 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         notes: block.querySelector('[data-support-field="notes"]')?.value || '',
       }));
       const activities = [...article.querySelectorAll('.estudio-activity-row')].map((row) => ({
-        moduleType: row.querySelector('[data-activity-field="moduleType"]')?.value || '',
-        sessionId: row.querySelector('[data-activity-field="sessionId"]')?.value || '',
+        moduleType: row.dataset.moduleType || '',
+        sessionId: row.dataset.sessionId || '',
       }));
       axisElements.push(
         normalizeCaseStudyElement({
@@ -597,7 +597,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           <header class="estudio-case__head">
             <div>
               <p class="estudio-case__eyebrow">Estudio de caso</p>
-              <h2 class="estudio-case__title">Puntajes</h2>
+              <h2 class="estudio-case__title">Evolución</h2>
             </div>
           </header>
           <div class="estudio-scores-host" id="estudio-scores-host"></div>
@@ -611,21 +611,6 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           host.innerHTML = `<p class="estudio-element__empty">${escapeHtml(err?.message || 'No se pudieron cargar los puntajes.')}</p>`;
         }
       }
-      return;
-    }
-
-    if (navMeta.id === 'docs') {
-      centerHost.innerHTML = `
-        <div class="estudio-case">
-          <header class="estudio-case__head">
-            <div>
-              <p class="estudio-case__eyebrow">Estudio de caso</p>
-              <h2 class="estudio-case__title">Documentación</h2>
-            </div>
-          </header>
-          <div class="estudio-docs card" id="estudio-docs-host">${toolsItemsHtml()}</div>
-        </div>`;
-      bindToolsActions(centerHost.querySelector('#estudio-docs-host'), toolsOpts);
       return;
     }
 
@@ -659,13 +644,17 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         <div class="estudio-case__rows">
           ${
             visible.map((el) => elementRowHtml(el, selectedNav, sessions)).join('') ||
-            `<div class="estudio-case__empty-state card">
-              <p class="estudio-case__empty">Sin elementos en este eje.</p>
-              <button type="button" class="btn btn-secondary" data-add-element data-open-library>Abrir librería</button>
-            </div>`
+            (selectedNav === 'other'
+              ? `<div class="estudio-case__empty-state card estudio-bots-empty">
+                  <p class="estudio-case__empty">Próximamente automatiza envío de emails, recordatorios, entre otros.</p>
+                </div>`
+              : `<div class="estudio-case__empty-state card">
+                  <p class="estudio-case__empty">Sin elementos en este eje.</p>
+                  <button type="button" class="btn btn-secondary" data-add-element data-open-library>Abrir librería</button>
+                </div>`)
           }
         </div>
-        <button type="button" class="btn btn-secondary btn-block estudio-add-axis" data-add-element data-open-library>+ ${escapeHtml(axisMeta.addLabel)}</button>
+        ${selectedNav === 'other' ? '' : `<button type="button" class="btn btn-secondary btn-block estudio-add-axis" data-add-element data-open-library>+ ${escapeHtml(axisMeta.addLabel)}</button>`}
       </div>`;
 
     bindCenter();
@@ -842,11 +831,17 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
     centerHost.querySelectorAll('[data-add-activity]').forEach((btn) => {
       btn.addEventListener('click', async () => {
+        const added = await openAddModuleSessionModal({ treatmentId });
+        if (!added?.moduleType) return;
         caseStudy = collectLive();
         const el = caseStudy.elements.find((row) => row.id === btn.dataset.elementId);
         if (!el) return;
-        const hint = suggestedModulesForAxis(el.axis)[0] || '';
-        el.activities = [...(el.activities || []), { moduleType: hint, sessionId: String(sessions[0]?.id || '') }];
+        el.activities = [
+          ...(el.activities || []),
+          { moduleType: added.moduleType, sessionId: String(added.sessionId || '') },
+        ];
+        el.status = 'developing';
+        sessions = await getSessionsWithModules(treatmentId);
         suppressRemotePaint = true;
         try {
           caseStudy = await saveCaseStudy(treatmentId, caseStudy);
