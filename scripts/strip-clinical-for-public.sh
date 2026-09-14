@@ -22,7 +22,7 @@ echo '# Handouts clínicos en packs/ (instalador oficial). Ver packs/demo/.' > s
 # Módulos clínicos — quitar del motor (fallback legacy desactivado en build público)
 CLINICAL_MODULES=(
   asrs ades bilateral-stimulation dass21 eed escala-ansiedad escala-fer
-  gad7 iesr pcl5 qols rosenberg sprint-ecl
+  gad7 cssrs iesr pcl5 qols rosenberg sprint-ecl
   tcc-activacion tcc-plan-seguridad
 )
 for m in "${CLINICAL_MODULES[@]}"; do

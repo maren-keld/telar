@@ -18,12 +18,12 @@ const AXIS_NAV = (id) => {
 
 export const ESTUDIO_NAV = [
   { id: 'summary', label: 'Resumen', kind: 'page' },
+  { id: 'docs', label: 'Documentación', kind: 'page' },
   AXIS_NAV('problem'),
   AXIS_NAV('resource'),
   AXIS_NAV('defense'),
   AXIS_NAV('risk'),
   { id: 'scores', label: 'Puntajes', kind: 'page' },
-  { id: 'docs', label: 'Documentación', kind: 'page' },
   AXIS_NAV('other'),
 ];
 

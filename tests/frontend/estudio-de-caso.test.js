@@ -164,13 +164,14 @@ test('Diagnósticos sale de librería, add-picker y plantillas (legacy renderer 
   }
 });
 
-test('leftSidebar Estudio: Resumen, ejes, Puntajes, Documentación, Otros', () => {
+test('leftSidebar Estudio: Resumen, Documentación, ejes, Puntajes, Otros', () => {
   assert.deepEqual(
     ESTUDIO_NAV.map((n) => n.id),
-    ['summary', 'problem', 'resource', 'defense', 'risk', 'scores', 'docs', 'other'],
+    ['summary', 'docs', 'problem', 'resource', 'defense', 'risk', 'scores', 'other'],
   );
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'resource').label, 'Factores protectores');
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'risk').label, 'Riesgos');
+  assert.equal(ESTUDIO_NAV[1].id, 'docs');
 });
 
 test('Actividades sugieren módulos por eje; red de apoyo es Personas', () => {
@@ -326,7 +327,15 @@ test('FAIL-3: hints M/I/O/E, placeholder por eje, PDF y librería módulos', () 
   assert.match(view, /estudio-axis-nav__child/);
   assert.match(pdf, /appendCaseStudyPdf/);
   assert.match(css, /estudio-library__item/);
-  assert.match(css, /min-height: 96px/);
+  assert.match(css, /min-height: 72px/);
+  assert.match(css, /font-size: 0\.78rem/);
+  assert.match(view, /refreshAxisNav/);
+  assert.match(view, /const geno = people\.length/);
+  // Resumen: genograma al final; sin card Mapa del caso
+  const summaryFn = view.slice(view.indexOf('function summaryHtml'), view.indexOf('export async function mountEstudioDeCaso'));
+  assert.match(summaryFn, /\$\{geno\}/);
+  assert.ok(summaryFn.indexOf('${geno}') > summaryFn.indexOf('estudio-summary__axes'));
+  assert.doesNotMatch(summaryFn, /summaryScorecardHtml/);
 
   const preview = previewHtml('gad7', { label: 'GAD-7 — Ansiedad generalizada' }, null);
   assert.match(preview, /En Estudio de caso/);

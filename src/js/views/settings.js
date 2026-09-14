@@ -752,7 +752,13 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
       }
     } catch (err) {
       console.error(err);
-      toast(err?.message || String(err));
+      const msg = err?.message || String(err);
+      // QA-002: 404 / red no es “ya tienes la última”
+      if (/404|not found|failed to fetch|error|network|timed out|timeout/i.test(msg)) {
+        toast('No se pudo comprobar actualizaciones. Inténtalo más tarde.');
+      } else {
+        toast(msg);
+      }
     } finally {
       btn?.removeAttribute('disabled');
     }

@@ -372,21 +372,22 @@
   background: var(--bg-card);
   color: var(--text);
   font: inherit;
+  font-size: 0.82rem;
   height: 40px;
 }
 
 .estudio-support-notes textarea {
   width: 100%;
-  min-height: 96px;
+  min-height: 72px;
   margin-top: 6px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   color: var(--text);
   font: inherit;
-  font-size: 0.88rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.4;
   resize: vertical;
 }
 

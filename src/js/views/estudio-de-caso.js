@@ -272,6 +272,7 @@ function axisNavHtml(caseStudy, selectedNav, sessions) {
 }
 
 export function summaryScorecardHtml(caseStudy) {
+  // Retained for tests / callers; Resumen no longer shows "Mapa del caso".
   const rows = CASE_STUDY_AXES.map((axis) => {
     const dots = summaryDotsForAxis(caseStudy, axis.id);
     return `
@@ -394,10 +395,9 @@ function summaryHtml(caseStudy, sessions) {
         </div>
       </header>
       ${sessionsCardHtml(sessions)}
-      ${summaryScorecardHtml(caseStudy)}
       ${wordCloudHtml(caseStudy)}
-      ${geno}
       <div class="estudio-summary__axes">${axisCards}</div>
+      ${geno}
     </div>`;
 }
 
@@ -521,6 +521,14 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
   const navHost = () => leftHost.querySelector('#estudio-axis-nav') || leftHost;
 
+  const refreshAxisNav = () => {
+    navHost().innerHTML = `
+      <div class="estudio-axis-nav" role="navigation" aria-label="Estudio de caso">
+        <p class="estudio-axis-nav__eyebrow">Estudio de caso</p>
+        ${axisNavHtml(caseStudy, selectedNav, sessions)}
+      </div>`;
+  };
+
   const scrollCenterTop = () => {
     const root = centerHost.closest('#workspace-center-scroll');
     if (root) root.scrollTop = 0;
@@ -529,11 +537,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
   const paint = async () => {
     const navMeta = ESTUDIO_NAV.find((n) => n.id === selectedNav) || ESTUDIO_NAV[0];
-    navHost().innerHTML = `
-      <div class="estudio-axis-nav" role="navigation" aria-label="Estudio de caso">
-        <p class="estudio-axis-nav__eyebrow">Estudio de caso</p>
-        ${axisNavHtml(caseStudy, selectedNav, sessions)}
-      </div>`;
+    refreshAxisNav();
 
     if (navMeta.id === 'summary') {
       centerHost.innerHTML = `<div class="estudio-case">${summaryHtml(caseStudy, sessions)}</div>`;
@@ -727,6 +731,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           }
         });
         await persist();
+        refreshAxisNav();
       });
     });
 

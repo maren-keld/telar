@@ -309,7 +309,7 @@ export async function renderUnlock(host, { onNavigate }) {
   if (getPendingUpdate()) {
     showUpdateBar(getPendingUpdate());
   } else {
-    checkForAppUpdate().then(showUpdateBar);
+    checkForAppUpdate().then(showUpdateBar).catch(() => {});
   }
 
   document.addEventListener('app-update-status', (ev) => {

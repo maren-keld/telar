@@ -152,6 +152,16 @@ const GEO_PRICING = {
     planPeriod: '/mes',
     planFull: 'US$ 20/mes',
   },
+  US: {
+    country: 'United States',
+    sessionFee: 'US$ 150',
+    museCost: 'US$ 249',
+    planPrice: 'US$ 20',
+    planPeriod: '/mo',
+    planFull: 'US$ 20/mo',
+    supportEmail: 'support@telarapp.cl',
+    subscribeMailto: 'mailto:support@telarapp.cl?subject=Telar%20Plus%20USA',
+  },
   ES: {
     country: 'España',
     sessionFee: '65 €',
@@ -238,8 +248,21 @@ function applyGeoPricing(code) {
   setText('[data-geo-plan-period]', data.planPeriod);
   setText('[data-geo-plan-full]', data.planFull);
 
+  const supportEmail = data.supportEmail || 'contacto@telarapp.cl';
+  document.querySelectorAll('[data-geo-support-email]').forEach((el) => {
+    el.textContent = supportEmail;
+    if (el.tagName === 'A') el.setAttribute('href', `mailto:${supportEmail}`);
+  });
+  document.querySelectorAll('[data-geo-subscribe-cta]').forEach((el) => {
+    if (data.subscribeMailto) {
+      el.setAttribute('href', data.subscribeMailto);
+      if (el.dataset.geoSubscribeLabel) el.textContent = el.dataset.geoSubscribeLabel;
+    }
+  });
+
   document.documentElement.dataset.geoCountry = code;
   document.documentElement.dataset.planUsd = String(PLAN_USD_MONTHLY);
+  if (data.supportEmail) document.documentElement.dataset.supportEmail = data.supportEmail;
 }
 
 function initGeoPricing() {

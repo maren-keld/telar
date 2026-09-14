@@ -2571,6 +2571,59 @@ body.is-dragging-module .session-block__title {
   color: var(--text-secondary);
 }
 
+.cssrs-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cssrs-row {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.cssrs-row[hidden] {
+  display: none;
+}
+
+.cssrs-row__q {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.cssrs-row__n {
+  margin-right: 4px;
+  color: var(--text-muted);
+}
+
+.cssrs-row__hint {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.cssrs-row__opts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cssrs-instruction {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.cssrs-note {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.psych-score-pill.cssrs-band--none { border-color: #c5cdd6; background: #f4f6f8; }
+.psych-score-pill.cssrs-band--low { border-color: #a8d5ba; background: #edf7f0; }
+.psych-score-pill.cssrs-band--moderate { border-color: #f0d78c; background: #fff8e6; }
+.psych-score-pill.cssrs-band--high { border-color: #e8a0a0; background: #ffe8e8; }
+
 /* --- Escalas de packs: bandas de severidad genéricas --- */
 .psych-score-pill.psych-band--minimal { border-color: #a8d5ba; background: #edf7f0; }
 .psych-score-pill.psych-band--mild { border-color: #f0d78c; background: #fff8e6; }
@@ -3675,12 +3728,13 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 
 .support-notes-wrap textarea {
   width: 100%;
-  min-height: 72px;
+  min-height: 64px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
   background: var(--bg-input);
   color: var(--text-primary);
   resize: vertical;

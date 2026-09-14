@@ -69,6 +69,16 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
       'Puntaje 0–21: mínima (0–4), leve (5–9), moderada (10–14), severa (15–21). No sustituye evaluación clínica integral.',
     license: 'Uso clínico con atribución (Pfizer / autores)',
   },
+  cssrs: {
+    authors: 'Posner et al.; The Columbia Lighthouse Project / RFMH',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Instrumento de referencia para ideación y conducta suicida; amplia adopción clínica e investigación.',
+    validity:
+      'Screener (Screen Version — Recent) con triage bajo / moderado / alto según ítems 1–6 y conducta en 3 meses.',
+    learnMore:
+      'Si ítem 2 = No, pasar al 6. Ítems 4–5 o conducta reciente → riesgo alto (protocolo de seguridad). © RFMH; uso clínico gratuito autorizado.',
+    license: '© RFMH / Columbia Lighthouse Project — uso clínico gratuito autorizado (2026-09-14)',
+  },
   asrs: {
     authors: 'Kessler et al. (2005); WHO',
     ageRange: 'Adultos (≥ 18 años)',

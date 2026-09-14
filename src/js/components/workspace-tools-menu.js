@@ -3,7 +3,6 @@ import { SETTINGS_ICONS } from '../icons.js';
 import { toast } from '../utils.js';
 import { setToggle } from '../transitions.js';
 import { openReferenceDocumentsModal } from './reference-documents-modal.js';
-import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
@@ -66,16 +65,13 @@ export function toolsItemsHtml() {
 }
 
 export function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresentation }) {
-  root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: async () => {
-        try {
-          await onExportPdf();
-        } catch (e) {
-          toast(e.message || 'No se pudo exportar');
-        }
-      },
-    });
+  // PDF de programa: gratis (mismo criterio que presentación de caso — canal de adopción).
+  root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', async () => {
+    try {
+      await onExportPdf();
+    } catch (e) {
+      toast(e.message || 'No se pudo exportar');
+    }
   });
 
   // Sin gate Pro a propósito: este PDF circula hacia el supervisor y es el canal

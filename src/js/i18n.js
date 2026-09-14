@@ -463,9 +463,24 @@ export function applyLocale(locale) {
   document.documentElement.lang = next;
 }
 
+export function detectSystemLocale() {
+  try {
+    const lang =
+      (typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || '';
+    return String(lang).toLowerCase().startsWith('en') ? 'en' : 'es';
+  } catch {
+    return 'es';
+  }
+}
+
 export function initLocaleFromProfile() {
   const profile = loadProfile();
-  applyLocale(profile.locale || 'es');
+  const stored = profile.locale;
+  if (stored === 'en' || stored === 'es') {
+    applyLocale(stored);
+    return;
+  }
+  applyLocale(detectSystemLocale());
 }
 
 export function setLocale(locale) {

@@ -41,6 +41,7 @@ export const CATEGORIES = [
     types: [
       'dass21',
       'gad7',
+      'cssrs',
       'asrs',
       'pcl5',
       'sprint_ecl',

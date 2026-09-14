@@ -18,10 +18,11 @@ import {
 const PRO_FEATURES = [
   'Pacientes activos ilimitados',
   'Grabar sesiones de Neurofeedback y exportar CSV/PDF',
-  'Exportar programa de tratamiento (PDF)',
   'Acceso a curso de Neurofeedback y mentoría',
   'Respaldo cifrado en la nube (carpeta sincronizada)',
 ];
+
+const SUPPORT_MAIL = 'support@telarapp.cl';
 
 const MP_SUBSCRIPTIONS_URL = 'https://www.mercadopago.cl/subscriptions';
 
@@ -78,7 +79,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
         </p>
         `}
         <footer class="subscribe-pro-modal__foot">
-          <a href="mailto:contacto@telarapp.cl" class="subscribe-pro-modal__link" id="subscribe-pro-contact">¿Tienes alguna pregunta? contacto@telarapp.cl</a>
+          <a href="mailto:${SUPPORT_MAIL}" class="subscribe-pro-modal__link" id="subscribe-pro-contact">¿Tienes alguna pregunta? ${SUPPORT_MAIL}</a>
           <button type="button" class="subscribe-pro-modal__link subscribe-pro-modal__link--btn" id="subscribe-pro-help">
             ¿Problemas con la suscripción?
           </button>
@@ -106,11 +107,11 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
 
   overlay.querySelector('#subscribe-pro-contact')?.addEventListener('click', (e) => {
     e.preventDefault();
-    openExternalUrl('mailto:contacto@telarapp.cl');
+    openExternalUrl(`mailto:${SUPPORT_MAIL}`);
   });
 
   overlay.querySelector('#subscribe-pro-help')?.addEventListener('click', () => {
-    const url = 'mailto:contacto@telarapp.cl?subject=Suscripción%20Plan%20Profesional';
+    const url = `mailto:${SUPPORT_MAIL}?subject=Suscripción%20Plan%20Profesional`;
     openExternalUrl(url);
   });
 
