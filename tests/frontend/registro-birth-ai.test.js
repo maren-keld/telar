@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { cleanSessionLabel, parseAiActions } from '../../src/js/ai-actions.js';
-import { birthParts, isoFromParts } from '../../src/js/modules/registro-inicial.js';
+import { birthParts, isoFromParts, parseBirthIso } from '../../src/js/modules/registro-inicial.js';
 
 test('birthParts quita el cero a la izquierda para casar con el select', () => {
   assert.deepEqual(birthParts('1992-03-05'), { year: '1992', month: '3', day: '5' });
@@ -13,6 +13,12 @@ test('birthParts quita el cero a la izquierda para casar con el select', () => {
 test('isoFromParts vuelve a guardar con cero a la izquierda', () => {
   assert.equal(isoFromParts('1992', '3', '5'), '1992-03-05');
   assert.equal(isoFromParts('1992', '', '5'), '');
+});
+
+test('parseBirthIso acepta datetime SQLite y no pierde el día', () => {
+  assert.equal(parseBirthIso('1992-03-05 00:00:00'), '1992-03-05');
+  assert.equal(parseBirthIso('1988-7-9'), '1988-07-09');
+  assert.deepEqual(birthParts('1992-03-05T12:00:00Z'), { year: '1992', month: '3', day: '5' });
 });
 
 test('roundtrip fecha de nacimiento no se pierde', () => {

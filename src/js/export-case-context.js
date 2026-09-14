@@ -1,4 +1,6 @@
 import { getClinicalNotes, getSessionsWithModules, getTreatment } from './db.js';
+import { loadCaseStudy } from './case-study-store.js';
+import { CASE_STUDY_AXES, statusLabelFor, SUPPORT_NETWORK_KIND } from './case-study-model.js';
 import { buildReadableText } from './readable-text.js';
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
 import { moduleLabelFor } from './custom-modules.js';
@@ -51,6 +53,34 @@ Usa estos URLs literales en emails. No inventes ni acortes enlaces telarapp.cl. 
 ${lines.join('\n')}`;
 }
 
+function formatCaseStudyForPrompt(caseStudy) {
+  if (!caseStudy?.elements?.length) return '';
+  const blocks = CASE_STUDY_AXES.map((axis) => {
+    const els = (caseStudy.elements || []).filter(
+      (el) => el.axis === axis.id && (el.title || el.kind === SUPPORT_NETWORK_KIND),
+    );
+    if (!els.length) return '';
+    const lines = els.map((el) => {
+      const status = statusLabelFor(axis.id, el.status);
+      const notes = String(el.notes || '').trim();
+      if (el.kind === SUPPORT_NETWORK_KIND) {
+        const people = (el.people || [])
+          .map((p) => p.name)
+          .filter(Boolean)
+          .join(', ');
+        return `- ${el.title} (${status})${people ? `: ${people}` : ''}`;
+      }
+      return `- ${el.title} (${status})${notes ? ` — ${notes}` : ''}`;
+    });
+    return `### ${axis.label}\n${lines.join('\n')}`;
+  }).filter(Boolean);
+  if (!blocks.length) return '';
+  return `## Estudio de caso (ejes)
+Factores protectores, defensas, problemas y riesgos del estudio.
+
+${blocks.join('\n\n')}`;
+}
+
 /** Construye el contexto clínico como texto markdown (sin guardar a disco). */
 export async function buildCaseContextText(treatmentId) {
   const treatment = await getTreatment(treatmentId);
@@ -58,6 +88,7 @@ export async function buildCaseContextText(treatmentId) {
 
   const sessions = await getSessionsWithModules(treatmentId);
   const notes = await getClinicalNotes(treatmentId);
+  const caseStudy = await loadCaseStudy(treatmentId).catch(() => null);
 
   const parts = [
     `# Contexto clínico — ${treatment.patient_name}`,
@@ -67,6 +98,11 @@ export async function buildCaseContextText(treatmentId) {
     buildPsychometricSummaryBlock(sessions) || '_Sin puntajes psicométricos registrados._',
     '',
   ];
+
+  const ejes = formatCaseStudyForPrompt(caseStudy);
+  if (ejes) {
+    parts.push(ejes, '');
+  }
 
   const homework = formatPatientHomeworkForPrompt(sessions);
   if (homework) {

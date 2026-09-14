@@ -5,7 +5,8 @@ import {
   psychometricChartTypes,
   psychometricSeries,
 } from '../psychometric-summary.js';
-import { escapeHtml, parseJsonSafe } from '../utils.js';
+import { parseJsonSafe } from '../utils.js';
+import { cssrsBandScore, cssrsRiskBand } from '../modules/cssrs.js';
 
 const DASS_STRESS_BANDS = [
   { max: 14, label: 'Normal', cls: 'dass-sev--normal', hint: 'Puntaje Normal es menor o igual a 14' },
@@ -213,16 +214,47 @@ function buildFerSeries(sessions, kind) {
   return points;
 }
 
+function buildCssrsSeries(sessions) {
+  const points = [];
+  sessions.forEach((s) => {
+    const mod = s.modules.find((m) => m.module_type === 'cssrs');
+    if (!mod) return;
+    const data = parseJsonSafe(mod.data, {});
+    const key = data.triage || cssrsRiskBand(data.answers || {}).key;
+    if (!key || key === 'none') {
+      if (!data.answers || !Object.keys(data.answers).length) return;
+    }
+    points.push({ label: `S${s.number}`, value: cssrsBandScore(key) });
+  });
+  return points;
+}
+
 function canvasIn(root, id) {
   return root?.querySelector(`#${id}`) || document.getElementById(id);
+}
+
+function scoreGroupFromId(id) {
+  if (String(id).startsWith('chart-dass')) return 'dass21';
+  if (String(id).startsWith('chart-eed')) return 'eed';
+  if (String(id).startsWith('chart-nf')) return 'neurofeedback';
+  if (String(id).startsWith('chart-rosenberg')) return 'rosenberg';
+  if (String(id).startsWith('chart-qols')) return 'qols';
+  if (String(id).startsWith('chart-fer')) return 'escala_fer';
+  if (String(id) === 'chart-animo') return 'escala_animo';
+  if (String(id) === 'chart-ansiedad') return 'escala_ansiedad';
+  if (String(id).startsWith('chart-bls')) return 'bilateral_stimulation';
+  if (String(id).startsWith('chart-cssrs')) return 'cssrs';
+  const m = String(id).match(/^chart-(.+)$/);
+  return m ? m[1] : 'other';
 }
 
 function accordionHtml(id, title, hint, bodyHtml, open = true, hintIsHtml = false) {
   const hintBlock = hint
     ? `<p class="score-accordion__hint">${hintIsHtml ? hint : escapeHtml(hint)}</p>`
     : '';
+  const group = scoreGroupFromId(id);
   return `
-    <section class="score-accordion${open ? ' score-accordion--open' : ''}" data-accordion>
+    <section class="score-accordion${open ? ' score-accordion--open' : ''}" data-accordion data-score-group="${escapeHtml(group)}">
       <button type="button" class="score-accordion__head" aria-expanded="${open}">
         <span class="score-accordion__title">${escapeHtml(title)}</span>
         <span class="score-accordion__chev" aria-hidden="true">▾</span>
@@ -246,6 +278,7 @@ const SCORE_NAV_TYPES = new Set([
   'escala_animo',
   'escala_ansiedad',
   'bilateral_stimulation',
+  'cssrs',
   ...psychometricChartTypes(),
 ]);
 
@@ -264,7 +297,7 @@ export function usedScoreTests(sessions) {
   return out;
 }
 
-export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { expandAll = false } = {}) {
+export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { expandAll = false, tabbed = false } = {}) {
   listEl.querySelectorAll('canvas').forEach((canvas) => {
     const prev = window.Chart?.getChart?.(canvas);
     if (prev) prev.destroy();
@@ -453,13 +486,42 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     );
   }
 
+  if (types.has('cssrs')) {
+    const series = buildCssrsSeries(sessions);
+    sections.push(
+      accordionHtml(
+        'chart-cssrs',
+        'C-SSRS Screener',
+        'Triage por sesión (0 sin indicadores · 1 bajo · 2 moderado · 3 alto)',
+        series.length
+          ? lineChartHtml('chart-cssrs', 3)
+          : '<p class="scores-empty">Sin C-SSRS registrados aún.</p>',
+        !sections.length,
+      ),
+    );
+  }
+
   if (!sections.length) {
     listEl.innerHTML =
       '<p class="scores-empty">Añade módulos de pruebas o neurofeedback al tratamiento para ver gráficos aquí.</p>';
     return;
   }
 
-  listEl.innerHTML = `<div class="scores-panel">${sections.join('')}</div>`;
+  const tests = usedScoreTests(sessions).filter((test) =>
+    sections.some((html) => html.includes(`data-score-group="${test.type}"`)),
+  );
+  const tabsHtml =
+    tabbed && tests.length > 1
+      ? `<div class="estudio-score-tabs" role="tablist" aria-label="Tests">
+          ${tests
+            .map(
+              (test, i) =>
+                `<button type="button" class="estudio-score-tab${i === 0 ? ' is-active' : ''}" data-score-tab="${escapeHtml(test.type)}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}">${escapeHtml(test.label)}</button>`,
+            )
+            .join('')}
+        </div>`
+      : '';
+  listEl.innerHTML = `${tabsHtml}<div class="scores-panel">${sections.join('')}</div>`;
 
   listEl.querySelectorAll('[data-accordion]').forEach((acc) => {
     const head = acc.querySelector('.score-accordion__head');
@@ -476,9 +538,8 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     });
   }
 
-  if (!window.Chart) return;
-
   const paint = () => {
+    if (!window.Chart) return;
     if (types.has('dass21')) {
       paintDassChart(listEl, 'chart-dass-stress', buildDassSeries(sessions, STRESS_IDX), DASS_STRESS_BANDS);
       paintDassChart(listEl, 'chart-dass-dep', buildDassSeries(sessions, DEP_IDX), DASS_DEP_BANDS);
@@ -525,9 +586,31 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
       const { pre, post } = buildBlsSudSeries(sessions);
       paintBlsSud(listEl, 'chart-bls-sud', pre, post);
     }
+    if (types.has('cssrs')) {
+      paintSimpleLine(listEl, 'chart-cssrs', buildCssrsSeries(sessions), 3, '#c0392b');
+    }
   };
 
-  requestAnimationFrame(paint);
+  const applyTab = (type) => {
+    listEl.querySelectorAll('[data-score-tab]').forEach((btn) => {
+      const on = btn.dataset.scoreTab === type;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    listEl.querySelectorAll('[data-score-group]').forEach((sec) => {
+      sec.hidden = Boolean(type) && sec.dataset.scoreGroup !== type;
+    });
+    requestAnimationFrame(paint);
+  };
+
+  if (tabbed && tests.length) {
+    listEl.querySelectorAll('[data-score-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => applyTab(btn.dataset.scoreTab));
+    });
+    applyTab(tests[0].type);
+  } else {
+    requestAnimationFrame(paint);
+  }
 }
 
 function paintDassChart(root, id, series, bands) {

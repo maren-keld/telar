@@ -175,10 +175,22 @@
   height: 40px;
 }
 
+.estudio-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.estudio-summary__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+}
+
 .estudio-summary__axes {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 22px;
 }
 
 .estudio-summary-card {
@@ -222,11 +234,124 @@
 
 .estudio-scores-host .score-accordion {
   margin: 0;
-  padding: 4px 0 8px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
+}
+
+.estudio-scores-host .score-accordion__head,
+.estudio-resumen-scores .score-accordion__head {
+  background: var(--bg-card);
+}
+
+.estudio-element__bundled {
+  flex: 1;
+  min-width: 0;
+}
+
+.estudio-element__title-static {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.estudio-element__catalog-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.estudio-score-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.estudio-score-tab {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.estudio-score-tab.is-active {
+  color: var(--text-primary);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.estudio-summary-card--vital {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.estudio-vital__exp {
+  margin-left: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.vital-orb {
+  --vital: 0.12;
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 4px 0 8px;
+}
+
+.vital-orb__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 210deg, #8b1e1e, #e53935, #f4c430, #c5e1a5, #2e7d32, #1b5e20);
+}
+
+.vital-orb__dither {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background-image:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.12) 0 4deg, transparent 4deg 8deg),
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 55%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.vital-orb__core {
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #8b1e1e calc(var(--vital) * 100%), #1b5e20 calc((1 - var(--vital)) * 100%));
+}
+
+.vital-orb__pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.vital-orb__label {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
 }
 
 .estudio-element__status {
@@ -515,8 +640,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid currentColor;
-  background: transparent;
+  border: 0;
+  background: currentColor;
 }
 
 .estudio-score-dot--green { color: #2e7d32; }
@@ -529,7 +654,12 @@
 }
 
 .estudio-score-dot--developing {
-  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+  background: currentColor;
+}
+
+.estudio-score-dot--unknown {
+  background: currentColor;
+  opacity: 0.4;
 }
 
 .estudio-summary-card--genogram {

@@ -59,6 +59,18 @@ export const STATUS_LABELS = {
   unknown: 'Desconocido',
 };
 
+const AXIS_PRESENT_LABEL = {
+  problem: 'Gestionado',
+  risk: 'Gestionado',
+};
+
+export function statusLabelFor(axis, status) {
+  if (status === 'present' && AXIS_PRESENT_LABEL[normalizeAxis(axis)]) {
+    return AXIS_PRESENT_LABEL[normalizeAxis(axis)];
+  }
+  return STATUS_LABELS[status] || STATUS_LABELS.unknown;
+}
+
 const LEGACY_STATUS = {
   active: 'present',
   in_progress: 'developing',
@@ -111,6 +123,7 @@ export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
       kind === SUPPORT_NETWORK_KIND
         ? SUPPORT_NETWORK_TITLE
         : String(raw.title || raw.name || '').trim(),
+    bundled: Boolean(raw.bundled),
     status: normalizeStatus(kind === SUPPORT_NETWORK_KIND ? 'resource' : axis, raw.status),
     manifestations: normalizeItems(raw.manifestations, { checkable: false }),
     indicators: normalizeItems(raw.indicators),

@@ -5,24 +5,31 @@ import { workspaceAutoSaveStatus } from '../save-status.js';
 import { getLocale, t } from '../i18n.js';
 
 /**
- * C-SSRS Screener (Screen Version — Recent / past month).
+ * C-SSRS Screener (Screen Version — Recent).
  * Wording © The Research Foundation for Mental Hygiene, Inc. / Columbia Lighthouse Project.
  * Free clinical use authorized for Telar (Columbia reply 2026-09-14).
+ *
+ * Branching (screener): always 1–2 (past month). If Q2=Yes → 3–5; else skip to 6.
+ * Q6 always: lifetime + past 3 months.
  */
 
-const QUESTIONS = [
+export const QUESTIONS = [
   {
     id: 'q1',
+    tint: 'yellow',
     en: 'Have you wished you were dead or wished you could go to sleep and not wake up?',
     es: '¿Ha deseado estar muerto/a o ha deseado poder dormirse y no despertar?',
   },
   {
     id: 'q2',
+    tint: 'yellow',
     en: 'Have you actually had any thoughts of killing yourself?',
     es: '¿Ha tenido realmente pensamientos de suicidarse?',
   },
   {
     id: 'q3',
+    tint: 'orange',
+    follow: true,
     en: 'Have you been thinking about how you might do this?',
     es: '¿Ha estado pensando en cómo podría hacerlo?',
     hintEn:
@@ -32,6 +39,9 @@ const QUESTIONS = [
   },
   {
     id: 'q4',
+    tint: 'red',
+    follow: true,
+    high: true,
     en: 'Have you had these thoughts and had some intention of acting on them?',
     es: '¿Ha tenido estos pensamientos y alguna intención de actuar según ellos?',
     hintEn: 'As opposed to “I have the thoughts but I definitely will not do anything about them.”',
@@ -39,11 +49,16 @@ const QUESTIONS = [
   },
   {
     id: 'q5',
+    tint: 'red',
+    follow: true,
+    high: true,
     en: 'Have you started to work out or worked out the details of how to kill yourself? Do you intend to carry out this plan?',
     es: '¿Ha empezado a elaborar o ha elaborado los detalles de cómo suicidarse? ¿Tiene intención de llevar a cabo este plan?',
   },
   {
     id: 'q6',
+    tint: 'split',
+    dual: true,
     en: 'Have you ever done anything, started to do anything, or prepared to do anything to end your life?',
     es: '¿Ha hecho alguna vez algo, empezado a hacer algo o se ha preparado para hacer algo para acabar con su vida?',
     hintEn:
@@ -53,7 +68,7 @@ const QUESTIONS = [
   },
 ];
 
-function yn(value) {
+export function yn(value) {
   if (value === true || value === 'yes' || value === '1' || value === 1) return 'yes';
   if (value === false || value === 'no' || value === '0' || value === 0) return 'no';
   return null;
@@ -75,7 +90,7 @@ function qHint(q) {
 export function cssrsRiskBand(answers) {
   const a = Object.fromEntries(QUESTIONS.map((q) => [q.id, yn(answers[q.id])]));
   const recent = yn(answers.q6_recent) === 'yes';
-  if (a.q4 === 'yes' || a.q5 === 'yes' || (a.q6 === 'yes' && recent)) {
+  if (a.q4 === 'yes' || a.q5 === 'yes' || recent) {
     return { key: 'high', labelKey: 'cssrs.risk.high', label: 'Riesgo alto', labelEn: 'High risk', cls: 'cssrs-band--high' };
   }
   if (a.q2 === 'yes' || a.q3 === 'yes' || a.q6 === 'yes') {
@@ -99,28 +114,65 @@ export function cssrsRiskBand(answers) {
   };
 }
 
+export function cssrsBandScore(key) {
+  if (key === 'high') return 3;
+  if (key === 'moderate') return 2;
+  if (key === 'low') return 1;
+  return 0;
+}
+
 function bandLabel(band) {
   return t(band.labelKey, useEnglish() ? band.labelEn : band.label);
 }
 
-function rowHtml(q, selected) {
-  const hint = qHint(q);
-  const yesChecked = selected === 'yes' ? 'checked' : '';
-  const noChecked = selected === 'no' ? 'checked' : '';
+function ynOpts(name, selected, aria) {
   const yes = useEnglish() ? 'Yes' : 'Sí';
   const no = useEnglish() ? 'No' : 'No';
+  const yesChecked = selected === 'yes' ? 'checked' : '';
+  const noChecked = selected === 'no' ? 'checked' : '';
   return `
-    <fieldset class="cssrs-row" data-cssrs-q="${q.id}">
-      <legend class="cssrs-row__q">
-        <span class="cssrs-row__n">${q.id.replace('q', '')}.</span>
+    <div class="likert-row__opts cssrs-yn" role="radiogroup" aria-label="${escapeHtml(aria)}">
+      <label class="likert-opt gad7-opt cssrs-opt" title="${escapeHtml(yes)}" aria-label="${escapeHtml(yes)}">
+        <input type="radio" name="${name}" value="yes" ${yesChecked} />
+        <span class="likert-dot"></span>
+      </label>
+      <label class="likert-opt gad7-opt cssrs-opt" title="${escapeHtml(no)}" aria-label="${escapeHtml(no)}">
+        <input type="radio" name="${name}" value="no" ${noChecked} />
+        <span class="likert-dot"></span>
+      </label>
+    </div>`;
+}
+
+function rowHtml(q, answers) {
+  const hint = qHint(q);
+  const n = q.id.replace('q', '');
+  const tint = q.tint || 'yellow';
+  const dual = Boolean(q.dual);
+  return `
+    <div class="likert-row cssrs-row cssrs-row--${tint}${q.follow ? ' cssrs-row--follow' : ''}" data-cssrs-q="${q.id}">
+      <div class="likert-row__q">
+        <span class="likert-row__n">${n}.</span>
         <span>${escapeHtml(qText(q))}</span>
-      </legend>
-      ${hint ? `<p class="cssrs-row__hint text-muted">${escapeHtml(hint)}</p>` : ''}
-      <div class="cssrs-row__opts" role="radiogroup" aria-label="${escapeHtml(qText(q))}">
-        <label class="likert-opt"><input type="radio" name="${q.id}" value="yes" ${yesChecked} /><span>${escapeHtml(yes)}</span></label>
-        <label class="likert-opt"><input type="radio" name="${q.id}" value="no" ${noChecked} /><span>${escapeHtml(no)}</span></label>
+        ${q.high ? `<span class="cssrs-high-tag">${escapeHtml(useEnglish() ? 'High risk' : 'Riesgo alto')}</span>` : ''}
       </div>
-    </fieldset>`;
+      ${hint ? `<p class="cssrs-row__hint text-muted">${escapeHtml(hint)}</p>` : ''}
+      ${
+        dual
+          ? `<div class="cssrs-dual">
+              <div class="cssrs-tf cssrs-tf--lifetime">
+                <span class="cssrs-tf__label">${escapeHtml(useEnglish() ? 'Lifetime' : 'Alguna vez')}</span>
+                ${ynOpts(q.id, yn(answers[q.id]), qText(q))}
+              </div>
+              <div class="cssrs-tf cssrs-tf--recent">
+                <span class="cssrs-tf__label">${escapeHtml(useEnglish() ? 'Past 3 months' : 'Últimos 3 meses')}</span>
+                ${ynOpts('q6_recent', yn(answers.q6_recent), useEnglish() ? 'Past 3 months' : 'Últimos 3 meses')}
+              </div>
+            </div>`
+          : `<div class="cssrs-tf cssrs-tf--month">
+              ${ynOpts(q.id, yn(answers[q.id]), qText(q))}
+            </div>`
+      }
+    </div>`;
 }
 
 export async function renderCssrs(host, moduleRow) {
@@ -131,7 +183,7 @@ export async function renderCssrs(host, moduleRow) {
   const no = useEnglish() ? 'No' : 'No';
 
   host.innerHTML = `
-    <div class="card psych-module cssrs-module">
+    <div class="card psych-module cssrs-module gad7-module">
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
@@ -139,7 +191,7 @@ export async function renderCssrs(host, moduleRow) {
             <p class="module-card-head__sub">${escapeHtml(
               t(
                 'cssrs.subtitle',
-                'Columbia-Suicide Severity Rating Scale · Screen Version — Recent (past month).',
+                'Columbia-Suicide Severity Rating Scale · Versión screening — reciente (último mes).',
               ),
             )}</p>
           </div>
@@ -150,29 +202,39 @@ export async function renderCssrs(host, moduleRow) {
         </div>
       </div>
       <div class="psych-module__scroll">
-        <form id="cssrs-form" class="cssrs-form">
+        <form id="cssrs-form" class="likert-form gad7-form cssrs-form">
           <p class="cssrs-instruction text-muted">${escapeHtml(
-            t('cssrs.instruction', 'Ask the bolded items. Timeframe: past month (unless noted).'),
+            t(
+              'cssrs.instruction',
+              'Siempre preguntar 1 y 2 (último mes). Si SÍ en 2, preguntar 3–5; si NO, pasar al 6. El 6 cubre alguna vez (vida) y los últimos 3 meses.',
+            ),
           )}</p>
-          ${QUESTIONS.map((q) => rowHtml(q, yn(answers[q.id]))).join('')}
-          <fieldset class="cssrs-row" data-cssrs-q="q6_recent" id="cssrs-q6-recent">
-            <legend class="cssrs-row__q">${escapeHtml(
-              t('cssrs.q6recent', 'If yes to item 6: was this within the past three months?'),
-            )}</legend>
-            <div class="cssrs-row__opts" role="radiogroup">
-              <label class="likert-opt"><input type="radio" name="q6_recent" value="yes" ${
-                yn(answers.q6_recent) === 'yes' ? 'checked' : ''
-              } /><span>${escapeHtml(yes)}</span></label>
-              <label class="likert-opt"><input type="radio" name="q6_recent" value="no" ${
-                yn(answers.q6_recent) === 'no' ? 'checked' : ''
-              } /><span>${escapeHtml(no)}</span></label>
+          <div class="likert-head gad7-head cssrs-head cssrs-head--month">
+            <div class="likert-head__q">${escapeHtml(t('cssrs.item', 'Ítem'))}</div>
+            <div class="likert-head__opts cssrs-head__opts">
+              <span class="cssrs-head__window">${escapeHtml(t('cssrs.window.month', 'Último mes'))}</span>
+              <span>${escapeHtml(yes)}</span>
+              <span>${escapeHtml(no)}</span>
             </div>
-          </fieldset>
+          </div>
+          ${QUESTIONS.filter((q) => !q.dual)
+            .map((q) => rowHtml(q, answers))
+            .join('')}
+          <div class="likert-head gad7-head cssrs-head cssrs-head--q6">
+            <div class="likert-head__q">${escapeHtml(t('cssrs.item6', 'Ítem 6 · siempre preguntar'))}</div>
+            <div class="cssrs-head__dual">
+              <span>${escapeHtml(t('cssrs.window.lifetime', 'Alguna vez'))}</span>
+              <span>${escapeHtml(t('cssrs.window.recent', 'Últimos 3 meses'))}</span>
+            </div>
+          </div>
+          ${QUESTIONS.filter((q) => q.dual)
+            .map((q) => rowHtml(q, answers))
+            .join('')}
         </form>
         <p class="cssrs-note">${escapeHtml(
           t(
             'cssrs.note',
-            '© 2008 The Research Foundation for Mental Hygiene, Inc. Free clinical use authorized by The Columbia Lighthouse Project. Not a substitute for full clinical assessment; activate safety protocol on high risk.',
+            '© 2008 The Research Foundation for Mental Hygiene, Inc. Uso clínico gratuito autorizado por The Columbia Lighthouse Project. No sustituye evaluación clínica; activar protocolo de seguridad si hay riesgo alto.',
           ),
         )}</p>
       </div>
@@ -181,15 +243,12 @@ export async function renderCssrs(host, moduleRow) {
   const form = host.querySelector('#cssrs-form');
   const pill = host.querySelector('#cssrs-pill');
   const bandEl = host.querySelector('#cssrs-band');
-  const recentFs = host.querySelector('#cssrs-q6-recent');
 
   const syncVisibility = () => {
     const showFollow = yn(answers.q2) === 'yes';
-    for (const id of ['q3', 'q4', 'q5']) {
-      const el = form.querySelector(`[data-cssrs-q="${id}"]`);
-      if (el) el.hidden = !showFollow;
-    }
-    if (recentFs) recentFs.hidden = yn(answers.q6) !== 'yes';
+    form.querySelectorAll('.cssrs-row--follow').forEach((el) => {
+      el.hidden = !showFollow;
+    });
   };
 
   const readForm = () => {
@@ -204,7 +263,6 @@ export async function renderCssrs(host, moduleRow) {
       delete next.q4;
       delete next.q5;
     }
-    if (yn(next.q6) !== 'yes') delete next.q6_recent;
     Object.keys(answers).forEach((k) => delete answers[k]);
     Object.assign(answers, next);
   };

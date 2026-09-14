@@ -44,6 +44,7 @@ import {
   bindCategoryCollapse,
   canAddAnotherOfType,
   dispatchWorkspaceIndexMode,
+  dispatchProgramaWorkspace,
   getWorkspaceIndexMode,
   getWorkspaceIndexType,
   isEstudioWorkspaceMode,
@@ -284,25 +285,11 @@ export async function renderWorkspace(
           ${sidebarScrollHtml}
         </div>
         <footer class="workspace-sidebar__footer">
-          <div class="workspace-index-switch" role="group" aria-label="Orden del índice">
-            <button type="button" class="workspace-sidebar-toggle${indexMode === 'chrono' ? ' is-active' : ''}" data-sidebar-index-mode="chrono"
-              title="Índice cronológico" aria-label="Índice cronológico" aria-pressed="${indexMode === 'chrono' ? 'true' : 'false'}">
-              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>
-              </svg>
-            </button>
-            <button type="button" class="workspace-sidebar-toggle${indexMode === 'category' ? ' is-active' : ''}" data-sidebar-index-mode="category"
-              title="Índice por categoría" aria-label="Índice por categoría" aria-pressed="${indexMode === 'category' ? 'true' : 'false'}">
-              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
-              </svg>
-            </button>
-            <button type="button" class="workspace-sidebar-toggle${indexMode === 'estudio' ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
-              title="Estudio de caso" aria-label="Estudio de caso" aria-pressed="${indexMode === 'estudio' ? 'true' : 'false'}">
-              <svg class="workspace-sidebar-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="10" r="3"/><path d="M12 13v3"/><path d="M8 21h8"/><path d="M10 18h4"/><path d="M6 8l2.2 1.2"/><path d="M18 8l-2.2 1.2"/>
-              </svg>
-            </button>
+          <div class="workspace-index-switch workspace-index-switch--chips" role="group" aria-label="Vista del espacio">
+            <button type="button" class="workspace-mode-chip${!estudioMode ? ' is-active' : ''}" data-sidebar-index-mode="programa"
+              title="Programa" aria-pressed="${!estudioMode ? 'true' : 'false'}">Programa</button>
+            <button type="button" class="workspace-mode-chip${estudioMode ? ' is-active' : ''}" data-sidebar-index-mode="estudio"
+              title="Estudio de caso" aria-pressed="${estudioMode ? 'true' : 'false'}">Estudio</button>
           </div>
           <button type="button" class="workspace-sidebar-toggle" id="btn-sidebar-toggle"
             title="Contraer o expandir sesiones" aria-label="Contraer o expandir sesiones">
@@ -524,7 +511,9 @@ export async function renderWorkspace(
 
   container.querySelectorAll('[data-sidebar-index-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      dispatchWorkspaceIndexMode(btn.dataset.sidebarIndexMode);
+      const mode = btn.dataset.sidebarIndexMode;
+      if (mode === 'programa') dispatchProgramaWorkspace();
+      else dispatchWorkspaceIndexMode(mode);
     });
   });
 

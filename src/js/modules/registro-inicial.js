@@ -22,11 +22,24 @@ const OCCUPATION_OPTIONS = [
   'Trabajador de hogar',
 ];
 
+/** Extrae YYYY-MM-DD de ISO, datetime SQLite u otras variantes. */
+export function parseBirthIso(raw) {
+  const s = String(raw || '').trim();
+  const m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return '';
+  const y = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (!y || month < 1 || month > 12 || day < 1 || day > 31) return '';
+  return `${String(y).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 function birthParts(iso) {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+  const normalized = parseBirthIso(iso);
+  if (!normalized) {
     return { year: '', month: '', day: '' };
   }
-  const [year, month, day] = iso.split('-');
+  const [year, month, day] = normalized.split('-');
   // Los <option> usan "3", no "03"; sin Number() el select queda vacío y el
   // siguiente autoguardado borra la fecha de nacimiento.
   return {
@@ -57,7 +70,7 @@ export function seedRegistroFields(data = {}, treatment = {}, country = clinicCo
     phone: String(data.phone || treatment.patient_phone || ''),
     address: String(data.address || treatment.patient_address || ''),
     genero: String(data.genero || treatment.patient_gender || ''),
-    birth_date: String(data.birth_date || treatment.patient_birth_date || ''),
+    birth_date: parseBirthIso(data.birth_date || treatment.patient_birth_date || ''),
   };
 }
 
@@ -290,7 +303,17 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     const formEl = host.querySelector('#form-registro');
     if (!formEl) return;
     const fd = new FormData(formEl);
-    const birth_date = syncBirthHidden();
+    let birth_date = syncBirthHidden();
+    const year = host.querySelector('#birth-year')?.value;
+    const month = host.querySelector('#birth-month')?.value;
+    const day = host.querySelector('#birth-day')?.value;
+    const storedBirth = parseBirthIso(data.birth_date || treatment.patient_birth_date || seeded.birth_date);
+    // Selects incompletos no deben borrar una fecha ya guardada.
+    if (!birth_date && storedBirth && (year || month || day)) {
+      birth_date = storedBirth;
+      const hidden = host.querySelector('[name="birth_date"]');
+      if (hidden) hidden.value = birth_date;
+    }
     const form = {
       nombre: fd.get('nombre') ?? '',
       id_number: fd.get('id_number') ?? '',

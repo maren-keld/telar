@@ -22,6 +22,7 @@ import { LIBRARY_HIDDEN_TYPES } from './module-categories.js';
 
 export const WORKSPACE_INDEX_MODE_KEY = 'telar.workspace.indexMode';
 export const WORKSPACE_INDEX_TYPE_KEY = 'telar.workspace.indexType';
+export const WORKSPACE_INFORME_MODE_KEY = 'telar.workspace.informeMode';
 
 /** Módulos que siguen en librería pero no se ofrecen al agregar al programa. */
 export const PROGRAM_ADD_BLOCKLIST = new Set(['redes_apoyo', 'diagnostico']);
@@ -45,6 +46,7 @@ export function indexChromeState(mode = getWorkspaceIndexMode()) {
 
 let memoryIndexMode = 'chrono';
 let memoryIndexType = '';
+let memoryInformeMode = 'chrono';
 
 export function isEstudioWorkspaceMode(mode = getWorkspaceIndexMode()) {
   return mode === 'estudio';
@@ -55,6 +57,7 @@ export function getWorkspaceIndexMode() {
     const raw = localStorage.getItem(WORKSPACE_INDEX_MODE_KEY);
     if (raw === 'category' || raw === 'estudio' || raw === 'chrono') {
       memoryIndexMode = raw;
+      if (raw === 'category' || raw === 'chrono') memoryInformeMode = raw;
       return raw;
     }
   } catch {
@@ -63,9 +66,31 @@ export function getWorkspaceIndexMode() {
   return memoryIndexMode === 'category' || memoryIndexMode === 'estudio' ? memoryIndexMode : 'chrono';
 }
 
+export function getWorkspaceInformeMode() {
+  try {
+    const raw = localStorage.getItem(WORKSPACE_INFORME_MODE_KEY);
+    if (raw === 'category' || raw === 'chrono') {
+      memoryInformeMode = raw;
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  if (memoryIndexMode === 'category' || memoryIndexMode === 'chrono') return memoryIndexMode;
+  return 'chrono';
+}
+
 export function setWorkspaceIndexMode(mode) {
   const next = mode === 'category' || mode === 'estudio' ? mode : 'chrono';
   memoryIndexMode = next;
+  if (next === 'chrono' || next === 'category') {
+    memoryInformeMode = next;
+    try {
+      localStorage.setItem(WORKSPACE_INFORME_MODE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
   try {
     localStorage.setItem(WORKSPACE_INDEX_MODE_KEY, next);
   } catch {
@@ -77,6 +102,10 @@ export function setWorkspaceIndexMode(mode) {
 export function dispatchWorkspaceIndexMode(mode) {
   const next = setWorkspaceIndexMode(mode);
   document.dispatchEvent(new CustomEvent('telar:workspace-index-mode', { detail: { mode: next } }));
+}
+
+export function dispatchProgramaWorkspace() {
+  return dispatchWorkspaceIndexMode(getWorkspaceInformeMode());
 }
 
 export function getWorkspaceIndexType() {

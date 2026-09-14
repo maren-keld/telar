@@ -12,6 +12,7 @@ import {
   profileLiteFromCaseStudy,
   PROFILE_AXIS_MAP,
   STATUS_LABELS,
+  statusLabelFor,
   SUPPORT_NETWORK_KIND,
   SUPPORT_NETWORK_TITLE,
   suggestedModulesForAxis,
@@ -208,6 +209,9 @@ test('estados del elemento son presente / desarrollar / desconocido (default des
   const fresh = emptyCaseStudyElement('problem', 'Ansiedad');
   assert.equal(fresh.status, 'unknown');
   assert.equal(STATUS_LABELS.present, 'Presente');
+  assert.equal(statusLabelFor('problem', 'present'), 'Gestionado');
+  assert.equal(statusLabelFor('risk', 'present'), 'Gestionado');
+  assert.equal(statusLabelFor('resource', 'present'), 'Presente');
   assert.equal(STATUS_LABELS.developing, 'Desarrollar');
   assert.equal(STATUS_LABELS.unknown, 'Desconocido');
   assert.equal(normalizeCaseStudyElement({ axis: 'problem', title: 'X', status: 'active' }).status, 'present');
@@ -322,7 +326,10 @@ test('FAIL-3: hints M/I/O/E, placeholder por eje, PDF y librería módulos', () 
   assert.match(view, /<select data-support-field="domain"/);
   assert.doesNotMatch(view, /iconForElement/);
   assert.match(view, /sessionsCardHtml/);
-  assert.match(view, /wordCloudHtml/);
+  assert.match(view, /scoreTabsHtml/);
+  assert.match(view, /estudio-resumen-scores/);
+  assert.doesNotMatch(view, /wordCloudHtml/);
+  assert.doesNotMatch(view, /Nube de palabras/);
   assert.match(view, /scrollCenterTop/);
   assert.match(view, /estudio-axis-nav__child/);
   assert.match(pdf, /appendCaseStudyPdf/);
