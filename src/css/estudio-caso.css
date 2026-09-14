@@ -22,13 +22,14 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 4px 8px 4px 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  font: inherit;
 }
 
 .estudio-axis-nav__item:hover {
@@ -41,8 +42,9 @@
 }
 
 .estudio-axis-nav__label {
-  font-size: 0.92rem;
-  line-height: 1.25;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .estudio-axis-nav__count {
@@ -147,7 +149,13 @@
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  font-size: 0.82rem;
   resize: vertical;
+}
+
+.estudio-element__notes::placeholder {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .estudio-element__hint {
@@ -286,7 +294,13 @@
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   color: var(--text);
+  font-size: 0.82rem;
   resize: vertical;
+}
+
+.estudio-element__notes::placeholder {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .estudio-element__notes-toggle.is-active,
@@ -364,6 +378,166 @@
   line-height: 1.2;
 }
 
+.estudio-case__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 16px;
+}
+
+.estudio-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.estudio-status__btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.estudio-status__btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.estudio-status__btn.is-selected {
+  color: var(--success, #3d9b6e);
+}
+
+.estudio-status__glyph {
+  width: 18px;
+  height: 18px;
+}
+
+.estudio-status__check {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-card, #fff);
+  color: var(--accent, #2f6fed);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.estudio-scorecard {
+  padding: 16px 18px 14px;
+  margin-bottom: 14px;
+}
+
+.estudio-scorecard__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.estudio-scorecard__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.estudio-scorecard__label {
+  flex: 0 0 42%;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.estudio-scorecard__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.estudio-scorecard__empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.estudio-score-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: transparent;
+}
+
+.estudio-score-dot--green { color: #2e7d32; }
+.estudio-score-dot--yellow { color: #c9a227; }
+.estudio-score-dot--red { color: #c62828; }
+.estudio-score-dot--muted { color: var(--text-muted, #9aa3b2); }
+
+.estudio-score-dot--present {
+  background: currentColor;
+}
+
+.estudio-score-dot--developing {
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+
+.estudio-summary-card--genogram {
+  overflow: hidden;
+}
+
+.estudio-summary-card--genogram .genogram-canvas {
+  min-height: 180px;
+}
+
+.estudio-library {
+  padding: 16px 18px 18px;
+}
+
+.estudio-library .module-selector-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.estudio-library__list {
+  max-height: min(52vh, 480px);
+  overflow: auto;
+  margin: 12px 0;
+}
+
+.estudio-library__desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.estudio-library__custom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.estudio-library__custom .input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+}
+
 @media (max-width: 720px) {
   .estudio-support-row {
     grid-template-columns: 1fr 1fr;
@@ -373,5 +547,9 @@
   .estudio-redes__head,
   .estudio-element__head {
     flex-wrap: wrap;
+  }
+
+  .estudio-scorecard__label {
+    flex-basis: 48%;
   }
 }

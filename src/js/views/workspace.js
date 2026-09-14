@@ -738,7 +738,13 @@ function bindWorkspaceDelegatedClicks(container) {
     }
 
     const addSessionMod = e.target.closest('.btn-add-module[data-session-id], .center-add-module');
-    if (addSessionMod && container.contains(addSessionMod)) {
+    if (
+      addSessionMod &&
+      container.contains(addSessionMod) &&
+      !addSessionMod.closest('.estudio-case') &&
+      !addSessionMod.hasAttribute('data-add-element') &&
+      !addSessionMod.hasAttribute('data-open-library')
+    ) {
       void openSessionSelector(
         data.treatmentId,
         Number(addSessionMod.dataset.sessionId),

@@ -39,6 +39,52 @@ export const URGENCIA_HINT = {
   alta: 'Riesgo de daño (ideas de muerte, descompensación, violencia) o necesidad de intervenir en esta sesión / derivar.',
 };
 
+/** Textareas que «Reorganizar con IA» lee y rellena (no consumo ni urgencia). */
+export const ANAMNESIS_REORDER_FIELDS = [
+  {
+    key: 'motivo',
+    label: 'Motivo principal',
+    hint: 'tercera persona, breve (2–5 frases). Solo motivo de consulta: qué trae a la persona y el malestar principal.',
+  },
+  {
+    key: 'expectativas',
+    label: 'Expectativas del tratamiento',
+    hint: 'tercera persona. Qué espera del tratamiento.',
+  },
+  {
+    key: 'antecedentes',
+    label: 'Antecedentes relevantes',
+    hint: 'primera persona (voz del paciente). Historia, contexto y hechos relevantes que no son el motivo acotado.',
+  },
+  {
+    key: 'tratamientos_previos',
+    label: 'Tratamientos previos',
+    hint: 'terapias, hospitalizaciones; qué sirvió y qué no.',
+  },
+  {
+    key: 'medicacion',
+    label: 'Medicación',
+    hint: 'fármaco, dosis, adherencia.',
+  },
+  {
+    key: 'psiquiatra',
+    label: 'Psiquiatra / médico tratante',
+    hint: 'quién indica, especialidad, contacto.',
+  },
+  {
+    key: 'salud_fisica',
+    label: 'Salud física / factores orgánicos',
+    hint: 'tiroides, anemia, vitamina D, B12, sueño, dolor, últimos exámenes; control médico.',
+  },
+  {
+    key: 'relacion_ia',
+    label: 'Relación con la IA',
+    hint: 'cómo se lleva con chatbots (ChatGPT y similares); las cinco preguntas del módulo si hay material.',
+  },
+];
+
+export const ANAMNESIS_REORDER_KEYS = ANAMNESIS_REORDER_FIELDS.map((f) => f.key);
+
 function reorderButtonHtml() {
   return `
     <button type="button" class="btn btn-secondary btn-sm btn-ai-reorder" data-reorder-anamnesis data-botonera-extra>
@@ -58,31 +104,94 @@ export function stripAiFences(text) {
     .trim();
 }
 
+const OBJECT_STRING = '[object Object]';
+
+/** Flatten IA JSON values to textarea text. Never writes `[object Object]`. */
+export function stringifyAnamnesisValue(value, depth = 0) {
+  if (value == null) return '';
+  if (typeof value === 'string') {
+    const text = value.trim();
+    return text === OBJECT_STRING ? '' : text;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (depth > 5) return '';
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyAnamnesisValue(item, depth + 1))
+      .filter(Boolean)
+      .join('\n');
+  }
+  if (typeof value === 'object') {
+    for (const key of ['text', 'content', 'value', 'body']) {
+      if (key in value) {
+        const inner = stringifyAnamnesisValue(value[key], depth + 1);
+        if (inner) return inner;
+      }
+    }
+    return Object.values(value)
+      .map((item) => stringifyAnamnesisValue(item, depth + 1))
+      .filter(Boolean)
+      .join('\n');
+  }
+  return '';
+}
+
+function unwrapAnamnesisObject(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  if (ANAMNESIS_REORDER_KEYS.some((key) => key in obj)) return obj;
+  for (const nested of Object.values(obj)) {
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      const found = unwrapAnamnesisObject(nested);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function parseAnamnesisObject(obj) {
+  const source = unwrapAnamnesisObject(obj);
+  if (!source) return null;
+  const parsed = {};
+  for (const key of ANAMNESIS_REORDER_KEYS) {
+    if (!(key in source)) continue;
+    parsed[key] = stringifyAnamnesisValue(source[key]);
+  }
+  if (!Object.keys(parsed).length) return null;
+  if (!ANAMNESIS_REORDER_KEYS.some((key) => parsed[key])) return null;
+  return parsed;
+}
+
 export function parseAnamnesisJson(raw) {
-  const cleaned = stripAiFences(raw);
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return parseAnamnesisObject(raw);
+  }
+  const cleaned = stripAiFences(typeof raw === 'string' ? raw : stringifyAnamnesisValue(raw));
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   if (start < 0 || end <= start) return null;
   try {
     const obj = JSON.parse(cleaned.slice(start, end + 1));
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
-    if (!('motivo' in obj) || !('expectativas' in obj) || !('antecedentes' in obj)) return null;
-    const motivo = String(obj.motivo || '').trim();
-    const expectativas = String(obj.expectativas || '').trim();
-    const antecedentes = String(obj.antecedentes || '').trim();
-    if (!motivo && !expectativas && !antecedentes) return null;
-    return { motivo, expectativas, antecedentes };
+    return parseAnamnesisObject(obj);
   } catch {
     return null;
   }
 }
 
 export function anamnesisFieldSnapshot(form) {
-  return {
-    motivo: String(form?.querySelector('[name="motivo"]')?.value || ''),
-    expectativas: String(form?.querySelector('[name="expectativas"]')?.value || ''),
-    antecedentes: String(form?.querySelector('[name="antecedentes"]')?.value || ''),
-  };
+  return Object.fromEntries(
+    ANAMNESIS_REORDER_KEYS.map((key) => [
+      key,
+      String(form?.querySelector(`[name="${key}"]`)?.value || ''),
+    ]),
+  );
+}
+
+export function hasAnamnesisReorderInput(snapshot = {}) {
+  return ANAMNESIS_REORDER_KEYS.some((key) => String(snapshot[key] || '').trim());
+}
+
+function anamnesisSnapshotsEqual(a, b) {
+  return ANAMNESIS_REORDER_KEYS.every((key) => (a?.[key] ?? '') === (b?.[key] ?? ''));
 }
 
 /** No aplicar la IA si el form se desmontó, se reemplazó o el terapeuta siguió escribiendo. */
@@ -92,42 +201,51 @@ export function shouldApplyAnamnesisAi({ form, snapshot, generation } = {}) {
     return { ok: false, reason: 'replaced' };
   }
   const current = anamnesisFieldSnapshot(form);
-  if (
-    current.motivo !== snapshot.motivo ||
-    current.expectativas !== snapshot.expectativas ||
-    current.antecedentes !== snapshot.antecedentes
-  ) {
+  if (!anamnesisSnapshotsEqual(current, snapshot)) {
     return { ok: false, reason: 'diverged' };
   }
   return { ok: true };
 }
 
-export async function reorganizeAnamnesis({ motivo, expectativas, antecedentes }) {
-  const system = `Eres un editor clínico. Redistribuyes texto ya escrito por el terapeuta entre tres campos de anamnesis, sin diagnosticar ni inventar.
+export function anamnesisReorderUserMessage(fields = {}) {
+  return ANAMNESIS_REORDER_FIELDS.map(
+    ({ key, label }) => `${label} (${key}):\n${String(fields[key] || '').trim() || '—'}`,
+  ).join('\n\n');
+}
+
+export function anamnesisReorderContextText(fields = {}) {
+  return ANAMNESIS_REORDER_FIELDS.filter(({ key }) => String(fields[key] || '').trim())
+    .map(({ label, key }) => `${label}:\n${String(fields[key]).trim()}`)
+    .join('\n\n');
+}
+
+export async function reorganizeAnamnesis(fields) {
+  const snapshot = fields || {};
+  const fieldLines = ANAMNESIS_REORDER_FIELDS.map(
+    ({ key, label, hint }) => `- ${key}: ${label}. ${hint}`,
+  ).join('\n');
+  const jsonKeys = ANAMNESIS_REORDER_KEYS.join(', ');
+  const system = `Eres un editor clínico. Redistribuyes texto ya escrito por el terapeuta entre los campos de anamnesis, sin diagnosticar ni inventar.
 
 Campos:
-- motivo: tercera persona, breve (2–5 frases). Solo el motivo de consulta presentable: qué trae a la persona y el malestar principal. Nada de historia larga ni expectativas.
-- expectativas: tercera persona. Qué espera del tratamiento.
-- antecedentes: primera persona (voz del paciente). Historia, contexto y hechos relevantes que no son el motivo acotado.
+${fieldLines}
 
 Reglas:
 - No agregues hechos, hipótesis ni vocabulario que no esté en el texto.
 - No quites información: muévela al campo que le corresponde.
 - Puedes corregir ortografía leve.
-- Devuelve SOLO un JSON con las claves motivo, expectativas y antecedentes. Sin markdown.`;
+- Cada valor del JSON debe ser un string (texto plano). Nunca un objeto ni un array.
+- Devuelve SOLO un JSON con las claves ${jsonKeys}. Sin markdown.`;
 
   const { text } = await chatCompletion({
-    maxTokens: 1200,
+    maxTokens: 2000,
     messages: [
       { role: 'system', content: system },
-      {
-        role: 'user',
-        content: `Motivo actual:\n${motivo || '—'}\n\nExpectativas actuales:\n${expectativas || '—'}\n\nAntecedentes actuales:\n${antecedentes || '—'}`,
-      },
+      { role: 'user', content: anamnesisReorderUserMessage(snapshot) },
     ],
   });
   const parsed = parseAnamnesisJson(text);
-  if (!parsed) throw new Error('La IA no devolvió los tres campos.');
+  if (!parsed) throw new Error('La IA no devolvió los campos de anamnesis.');
   return parsed;
 }
 
@@ -218,7 +336,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
   const generation = String(Date.now());
   form.dataset.anamnesisGeneration = generation;
   const lockReorderFields = (locked) => {
-    for (const name of ['motivo', 'expectativas', 'antecedentes']) {
+    for (const name of ANAMNESIS_REORDER_KEYS) {
       const el = form.querySelector(`[name="${name}"]`);
       if (el) el.readOnly = locked;
     }
@@ -231,9 +349,8 @@ export async function renderMotivoConsulta(host, moduleRow) {
     e.stopPropagation();
 
     const snapshot = anamnesisFieldSnapshot(form);
-    const { motivo, expectativas, antecedentes } = snapshot;
-    if (!motivo.trim() && !expectativas.trim() && !antecedentes.trim()) {
-      toast('Escribe algo en motivo, expectativas o antecedentes antes de reorganizar.');
+    if (!hasAnamnesisReorderInput(snapshot)) {
+      toast('Escribe algo en los campos de anamnesis antes de reorganizar.');
       form.querySelector('[name="motivo"]')?.focus();
       return;
     }
@@ -244,8 +361,8 @@ export async function renderMotivoConsulta(host, moduleRow) {
 
     try {
       await confirmClinicalAiSend({
-        contextText: [motivo, expectativas, antecedentes].filter((v) => String(v).trim()).join('\n\n'),
-        purpose: 'Reorganizar motivo, expectativas y antecedentes',
+        contextText: anamnesisReorderContextText(snapshot),
+        purpose: 'Reorganizar campos de anamnesis',
       });
 
       btn.disabled = true;
@@ -261,7 +378,7 @@ export async function renderMotivoConsulta(host, moduleRow) {
       }
 
       toast('Reorganizando con IA…');
-      const next = await reorganizeAnamnesis({ motivo, expectativas, antecedentes });
+      const next = await reorganizeAnamnesis(snapshot);
       const apply = shouldApplyAnamnesisAi({ form, snapshot, generation });
       if (!apply.ok) {
         if (apply.reason === 'diverged') {
@@ -275,9 +392,9 @@ export async function renderMotivoConsulta(host, moduleRow) {
         const el = form.querySelector(`[name="${name}"]`);
         if (el) el.value = value;
       };
-      setVal('motivo', next.motivo);
-      setVal('expectativas', next.expectativas);
-      setVal('antecedentes', next.antecedentes);
+      for (const key of ANAMNESIS_REORDER_KEYS) {
+        if (key in next) setVal(key, next[key]);
+      }
       await persist();
       toast('Anamnesis reorganizada');
     } catch (err) {

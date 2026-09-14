@@ -41,18 +41,24 @@ export const AXIS_PROFILE_MAP = {
 };
 
 const STATUS_OPTIONS = {
-  problem: ['active', 'in_progress', 'graduated'],
-  resource: ['active', 'in_progress', 'graduated'],
-  defense: ['active', 'in_progress', 'graduated'],
-  risk: ['active', 'in_progress', 'restratified'],
-  other: ['active', 'in_progress', 'graduated'],
+  problem: ['present', 'developing', 'unknown'],
+  resource: ['present', 'developing', 'unknown'],
+  defense: ['present', 'developing', 'unknown'],
+  risk: ['present', 'developing', 'unknown'],
+  other: ['present', 'developing', 'unknown'],
 };
 
 export const STATUS_LABELS = {
-  active: 'Activo',
-  in_progress: 'En curso',
-  graduated: 'Graduado',
-  restratified: 'Reestratificado',
+  present: 'Presente',
+  developing: 'A desarrollar',
+  unknown: 'Desconocidos',
+};
+
+const LEGACY_STATUS = {
+  active: 'present',
+  in_progress: 'developing',
+  graduated: 'present',
+  restratified: 'present',
 };
 
 function itemText(item) {
@@ -79,9 +85,10 @@ export function normalizeAxis(axis) {
 }
 
 function normalizeStatus(axis, status) {
-  const allowed = STATUS_OPTIONS[axis] || STATUS_OPTIONS.problem;
-  if (allowed.includes(status)) return status;
-  return axis === 'risk' ? 'active' : 'in_progress';
+  const allowed = STATUS_OPTIONS[normalizeAxis(axis)] || STATUS_OPTIONS.problem;
+  const mapped = LEGACY_STATUS[status] || status;
+  if (allowed.includes(mapped)) return mapped;
+  return 'unknown';
 }
 
 export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
@@ -209,7 +216,7 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
     selectedAxis,
     selectedNav: ESTUDIO_NAV.some((item) => item.id === raw.selectedNav)
       ? raw.selectedNav
-      : selectedAxis,
+      : 'summary',
     selectedElementId,
     elements: nextElements,
     supportPeople: network?.people?.length ? network.people : supportPeople,
@@ -217,7 +224,7 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
 }
 
 export function emptyCaseStudyElement(axis = 'problem', title = '') {
-  return normalizeCaseStudyElement({ axis, title, status: 'active' }, axis);
+  return normalizeCaseStudyElement({ axis, title, status: 'unknown' }, axis);
 }
 
 export function profileSeedsFromChecks(checksByCategory = {}) {

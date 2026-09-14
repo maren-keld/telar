@@ -314,7 +314,7 @@ function genogramNodeHtml(node, { isPatient = false } = {}) {
     </div>`;
 }
 
-function genogramHtml(people) {
+export function genogramHtml(people) {
   if (!people.length) {
     return `<div class="genogram-canvas genogram-canvas--empty"><p class="text-muted">Añade personas en la vista Lista para ver el genograma.</p></div>`;
   }

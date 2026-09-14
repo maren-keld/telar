@@ -9,19 +9,27 @@ import {
   emptyCaseStudyElement,
   normalizeCaseStudyData,
   normalizeCaseStudyElement,
-  statusesForAxis,
   STATUS_LABELS,
   suggestedModulesForAxis,
 } from '../case-study-model.js';
+import {
+  elementInAxis,
+  libraryItemsForAxis,
+  libraryTitleForAxis,
+  namedSupportPeople,
+  summaryDotsForAxis,
+} from '../case-study-catalog.js';
 import { loadCaseStudy, onCaseStudyChanged, saveCaseStudy } from '../case-study-store.js';
 import { getSessionsWithModules } from '../db.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, toast } from '../utils.js';
 import { notifySaveError } from '../save-status.js';
 import { queuedPersist } from '../autobind.js';
 import { listAddableModuleOptions } from '../workspace-index-mode.js';
 import { moduleLabelFor } from '../custom-modules.js';
 import { renderWorkspaceScores } from '../components/workspace-scores.js';
 import { bindToolsActions, toolsItemsHtml } from '../components/workspace-tools-menu.js';
+import { applyModuleSearch } from '../components/module-selector.js';
+import { genogramHtml } from '../modules/redes-apoyo.js';
 
 const LIST_FIELDS = [
   {
@@ -46,8 +54,14 @@ const ELEMENT_ICONS = [
   '<path d="M5 12h14M12 5l7 7-7 7"/>',
 ];
 
-function iconSvg(paths) {
-  return `<svg class="estudio-element__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const STATUS_ICONS = {
+  present: '<circle cx="12" cy="12" r="8"/><path d="M8 12.2l2.4 2.4L16 9"/>',
+  developing: '<path d="M12 20V10"/><path d="M12 10c2-3 4-4 6-4-1 3-3 5-6 6"/><path d="M12 10c-2-3-4-4-6-4 1 3 3 5 6 6"/>',
+  unknown: '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.8.8-1.5 1.2-1.5 2.5"/><path d="M12 17h.01"/>',
+};
+
+function iconSvg(paths, className = 'estudio-element__glyph') {
+  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 }
 
 function iconForElement(id, axis) {
@@ -56,6 +70,22 @@ function iconForElement(id, axis) {
   for (let i = 0; i < key.length; i++) n = (n + key.charCodeAt(i) * (i + 1)) % ELEMENT_ICONS.length;
   const axisShift = { problem: 0, resource: 1, defense: 2, risk: 3, other: 4 }[axis] || 0;
   return iconSvg(ELEMENT_ICONS[(n + axisShift) % ELEMENT_ICONS.length]);
+}
+
+export function statusToggleHtml(status) {
+  const current = STATUS_LABELS[status] ? status : 'unknown';
+  return `
+    <div class="estudio-status" data-field="status" data-status="${current}" role="group" aria-label="Estado del elemento">
+      ${['present', 'developing', 'unknown']
+        .map((id) => {
+          const selected = id === current;
+          return `<button type="button" class="estudio-status__btn${selected ? ' is-selected' : ''}" data-status-set="${id}" title="${escapeHtml(STATUS_LABELS[id])}" aria-label="${escapeHtml(STATUS_LABELS[id])}" aria-pressed="${selected ? 'true' : 'false'}">
+            ${iconSvg(STATUS_ICONS[id], 'estudio-status__glyph')}
+            ${selected ? '<span class="estudio-status__check" aria-hidden="true">✓</span>' : ''}
+          </button>`;
+        })
+        .join('')}
+    </div>`;
 }
 
 function itemRowHtml(listKey, item, index, { checkable, placeholder }) {
@@ -75,7 +105,6 @@ function itemRowHtml(listKey, item, index, { checkable, placeholder }) {
       <button type="button" class="btn btn-ghost estudio-item-remove" data-remove-item data-list="${listKey}" data-index="${index}" title="Quitar" aria-label="Quitar">×</button>
     </div>`;
 }
-
 
 function activityRowHtml(activity, index, sessions, suggestions) {
   const options = listAddableModuleOptions();
@@ -104,12 +133,6 @@ function activityRowHtml(activity, index, sessions, suggestions) {
 }
 
 function elementRowHtml(element, axis, sessions) {
-  const statusOpts = statusesForAxis(axis)
-    .map(
-      (id) =>
-        `<option value="${id}" ${element.status === id ? 'selected' : ''}>${escapeHtml(STATUS_LABELS[id] || id)}</option>`,
-    )
-    .join('');
   const isNetwork = element.kind === SUPPORT_NETWORK_KIND;
   const hasNotes = Boolean((element.notes || '').trim());
   const suggestions = suggestedModulesForAxis(axis);
@@ -169,7 +192,7 @@ function elementRowHtml(element, axis, sessions) {
       <header class="estudio-element__head">
         <span class="estudio-element__icon" aria-hidden="true">${iconForElement(element.id, axis)}</span>
         <input type="text" class="estudio-element__title" data-field="title" value="${escapeHtml(element.title)}" placeholder="Título del elemento…" ${isNetwork ? 'readonly' : ''} />
-        <select class="estudio-element__status" data-field="status" aria-label="Estado">${statusOpts}</select>
+        ${statusToggleHtml(element.status)}
         ${isNetwork ? '' : `<button type="button" class="btn btn-ghost estudio-element__delete" data-delete-element title="Eliminar elemento" aria-label="Eliminar">×</button>`}
       </header>
       <div class="estudio-element__notes-wrap" data-notes-wrap>
@@ -200,12 +223,11 @@ function supportPersonHtml(person, index) {
     </div>`;
 }
 
-
 function axisNavHtml(caseStudy, selectedNav) {
   return ESTUDIO_NAV.map((item) => {
     const count =
       item.kind === 'axis'
-        ? (caseStudy.elements || []).filter((el) => el.axis === item.id).length
+        ? (caseStudy.elements || []).filter((el) => el.axis === item.id && el.kind !== SUPPORT_NETWORK_KIND && el.title).length
         : '';
     const active = item.id === selectedNav;
     return `
@@ -216,9 +238,74 @@ function axisNavHtml(caseStudy, selectedNav) {
   }).join('');
 }
 
+export function summaryScorecardHtml(caseStudy) {
+  const rows = CASE_STUDY_AXES.map((axis) => {
+    const dots = summaryDotsForAxis(caseStudy, axis.id);
+    return `
+      <div class="estudio-scorecard__row">
+        <span class="estudio-scorecard__label">${escapeHtml(axis.label)}</span>
+        <span class="estudio-scorecard__dots" aria-label="${escapeHtml(axis.label)}">
+          ${
+            dots
+              .map(
+                (dot) =>
+                  `<span class="estudio-score-dot estudio-score-dot--${escapeHtml(dot.tone)} estudio-score-dot--${escapeHtml(dot.status)}" title="${escapeHtml(dot.title)}"></span>`,
+              )
+              .join('') || '<span class="estudio-scorecard__empty">sin elementos</span>'
+          }
+        </span>
+      </div>`;
+  }).join('');
+  return `
+    <article class="estudio-scorecard card">
+      <h3 class="estudio-scorecard__title">Mapa del caso</h3>
+      ${rows}
+    </article>`;
+}
+
+export function elementLibraryHtml(axis, caseStudy) {
+  const items = libraryItemsForAxis(axis);
+  const title = libraryTitleForAxis(axis);
+  const list = items
+    .map((item) => {
+      const inUse = elementInAxis(caseStudy.elements, axis, item.title);
+      const search = `${item.title} ${item.description}`.toLowerCase();
+      return `
+        <button type="button" class="mod-selector-item" data-pick-library-title="${escapeHtml(item.title)}" data-search="${escapeHtml(search)}" ${inUse ? 'disabled' : ''}>
+          <span>
+            <strong>${escapeHtml(item.title)}</strong>
+            ${item.description ? `<small class="estudio-library__desc">${escapeHtml(item.description)}</small>` : ''}
+          </span>
+          ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
+        </button>`;
+    })
+    .join('');
+  return `
+    <div class="card module-selector-inline estudio-library" data-element-library>
+      <div class="module-selector-head">
+        <div class="module-selector-head__text">
+          <h2 class="module-title">${escapeHtml(title)}</h2>
+        </div>
+        <button type="button" class="btn btn-ghost" data-close-library>Cerrar</button>
+      </div>
+      <div class="mod-selector-search-wrap">
+        <input type="search" class="mod-selector-search input" data-library-search
+          placeholder="Buscar elemento…" autocomplete="off" />
+      </div>
+      <div class="estudio-library__list" data-library-list>${list}</div>
+      <div class="estudio-library__custom">
+        <input type="text" class="input" data-library-custom placeholder="Título personalizado…" />
+        <button type="button" class="btn btn-secondary" data-library-custom-add>Añadir</button>
+      </div>
+    </div>`;
+}
+
 function summaryHtml(caseStudy) {
+  const people = namedSupportPeople(caseStudy);
   const axisCards = CASE_STUDY_AXES.map((axis) => {
-    const els = (caseStudy.elements || []).filter((el) => el.axis === axis.id && el.title);
+    const els = (caseStudy.elements || []).filter(
+      (el) => el.axis === axis.id && el.title && el.kind !== SUPPORT_NETWORK_KIND,
+    );
     return `
       <article class="estudio-summary-card card">
         <h3 class="estudio-summary-card__title">${escapeHtml(axis.label)}</h3>
@@ -231,6 +318,12 @@ function summaryHtml(caseStudy) {
         </div>
       </article>`;
   }).join('');
+  const geno = people.length
+    ? `<article class="estudio-summary-card card estudio-summary-card--genogram">
+        <h3 class="estudio-summary-card__title">Genograma</h3>
+        ${genogramHtml(people)}
+      </article>`
+    : '';
   return `
     <div class="estudio-summary">
       <header class="estudio-case__head">
@@ -239,14 +332,17 @@ function summaryHtml(caseStudy) {
           <h2 class="estudio-case__title">Resumen</h2>
         </div>
       </header>
+      ${summaryScorecardHtml(caseStudy)}
+      ${geno}
       <div class="estudio-summary__axes">${axisCards}</div>
-      <p class="estudio-element__hint">Puntajes y documentos están en el índice izquierdo.</p>
     </div>`;
 }
 
 export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, toolsOpts = {} }) {
   let caseStudy = await loadCaseStudy(treatmentId);
-  let selectedNav = caseStudy.selectedNav || 'summary';
+  let selectedNav = 'summary';
+  let pickerOpen = false;
+  let suppressRemotePaint = false;
   let sessions = await getSessionsWithModules(treatmentId);
 
   const collectLive = () => {
@@ -288,7 +384,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           axis: prev.axis || axisId,
           kind: article.dataset.kind,
           title: article.querySelector('[data-field="title"]')?.value || '',
-          status: article.querySelector('[data-field="status"]')?.value || prev.status,
+          status: article.querySelector('[data-field="status"]')?.dataset.status || prev.status,
           notes: article.querySelector('[data-field="notes"]')?.value || '',
           people,
           activities,
@@ -313,15 +409,49 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
   };
 
   const persist = queuedPersist(async () => {
-    caseStudy = await saveCaseStudy(treatmentId, collectLive());
+    suppressRemotePaint = true;
+    try {
+      caseStudy = await saveCaseStudy(treatmentId, collectLive());
+    } finally {
+      suppressRemotePaint = false;
+    }
   }, notifySaveError);
 
-  let bindLeft;
+  const addElementWithTitle = async (title) => {
+    const name = String(title || '').trim();
+    if (!name) {
+      toast('Escribe un título o elige uno de la librería.');
+      return;
+    }
+    if (centerHost.querySelector('.estudio-element')) caseStudy = collectLive();
+    if (elementInAxis(caseStudy.elements, selectedNav, name)) {
+      toast('Ese elemento ya está en este eje.');
+      pickerOpen = false;
+      await paint();
+      return;
+    }
+    const el = emptyCaseStudyElement(selectedNav, name);
+    caseStudy.elements = [...(caseStudy.elements || []), el];
+    caseStudy.selectedElementId = el.id;
+    caseStudy.selectedNav = selectedNav;
+    pickerOpen = false;
+    suppressRemotePaint = true;
+    try {
+      caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+    } finally {
+      suppressRemotePaint = false;
+    }
+    await paint();
+    centerHost.querySelector(`[data-element-id="${el.id}"] [data-field="title"]`)?.focus();
+  };
+
   let bindCenter;
+
+  const navHost = () => leftHost.querySelector('#estudio-axis-nav') || leftHost;
 
   const paint = async () => {
     const navMeta = ESTUDIO_NAV.find((n) => n.id === selectedNav) || ESTUDIO_NAV[0];
-    leftHost.innerHTML = `
+    navHost().innerHTML = `
       <div class="estudio-axis-nav" role="navigation" aria-label="Estudio de caso">
         <p class="estudio-axis-nav__eyebrow">Estudio de caso</p>
         ${axisNavHtml(caseStudy, selectedNav)}
@@ -329,7 +459,6 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
     if (navMeta.id === 'summary') {
       centerHost.innerHTML = `<div class="estudio-case">${summaryHtml(caseStudy)}</div>`;
-      bindLeft();
       return;
     }
 
@@ -346,8 +475,13 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         </div>`;
       const host = centerHost.querySelector('#estudio-scores-host');
       const moduleTypes = [...new Set(sessions.flatMap((s) => (s.modules || []).map((m) => m.module_type)))];
-      if (host) await renderWorkspaceScores(host, treatmentId, moduleTypes, { expandAll: true });
-      bindLeft();
+      if (host) {
+        try {
+          await renderWorkspaceScores(host, treatmentId, moduleTypes, { expandAll: true });
+        } catch (err) {
+          host.innerHTML = `<p class="estudio-element__empty">${escapeHtml(err?.message || 'No se pudieron cargar los puntajes.')}</p>`;
+        }
+      }
       return;
     }
 
@@ -363,12 +497,27 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           <div class="estudio-docs card" id="estudio-docs-host">${toolsItemsHtml()}</div>
         </div>`;
       bindToolsActions(centerHost.querySelector('#estudio-docs-host'), toolsOpts);
-      bindLeft();
       return;
     }
 
     const axisMeta = CASE_STUDY_AXES.find((a) => a.id === selectedNav) || CASE_STUDY_AXES[0];
     const elements = (caseStudy.elements || []).filter((el) => el.axis === selectedNav);
+    const visible = elements.filter((el) => el.kind === SUPPORT_NETWORK_KIND || el.title || el.kind === 'standard');
+
+    if (pickerOpen) {
+      centerHost.innerHTML = `
+        <div class="estudio-case" data-treatment-id="${treatmentId}">
+          <header class="estudio-case__head">
+            <div>
+              <p class="estudio-case__eyebrow">Estudio de caso</p>
+              <h2 class="estudio-case__title">${escapeHtml(axisMeta.label)}</h2>
+            </div>
+          </header>
+          ${elementLibraryHtml(selectedNav, caseStudy)}
+        </div>`;
+      bindCenter();
+      return;
+    }
 
     centerHost.innerHTML = `
       <div class="estudio-case" data-treatment-id="${treatmentId}">
@@ -380,46 +529,104 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         </header>
         <div class="estudio-case__rows">
           ${
-            elements.map((el) => elementRowHtml(el, selectedNav, sessions)).join('') ||
-            `<p class="estudio-case__empty">Sin elementos en este eje. Añade el primero para trabajar manifestaciones, indicadores, objetivos y evidencia.</p>`
+            visible.map((el) => elementRowHtml(el, selectedNav, sessions)).join('') ||
+            `<div class="estudio-case__empty-state card">
+              <p class="estudio-case__empty">Sin elementos en este eje.</p>
+              <button type="button" class="btn btn-secondary" data-add-element data-open-library>Abrir librería</button>
+            </div>`
           }
         </div>
-        <button type="button" class="btn btn-secondary btn-block center-add-module estudio-add-axis" data-add-element>+ ${escapeHtml(axisMeta.addLabel)}</button>
+        <button type="button" class="btn btn-secondary btn-block estudio-add-axis" data-add-element data-open-library>+ ${escapeHtml(axisMeta.addLabel)}</button>
       </div>`;
 
     bindCenter();
-    bindLeft();
   };
 
-  bindLeft = () => {
-    leftHost.querySelectorAll('[data-nav]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        if (centerHost.querySelector('.estudio-element')) {
-          caseStudy = collectLive();
-          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
-        }
-        selectedNav = btn.dataset.nav;
-        caseStudy.selectedNav = selectedNav;
-        const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
-        if (meta?.kind === 'axis') caseStudy.selectedAxis = selectedNav;
-        await paint();
-      });
+  if (!leftHost.dataset.estudioNavBound) {
+    leftHost.dataset.estudioNavBound = '1';
+    leftHost.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-nav]');
+      if (!btn || !leftHost.contains(btn)) return;
+      e.preventDefault();
+      const nextNav = btn.dataset.nav;
+      if (!nextNav || nextNav === selectedNav) return;
+      if (centerHost.querySelector('.estudio-element')) {
+        caseStudy = collectLive();
+      }
+      selectedNav = nextNav;
+      pickerOpen = false;
+      caseStudy.selectedNav = selectedNav;
+      const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
+      if (meta?.kind === 'axis') caseStudy.selectedAxis = selectedNav;
+      suppressRemotePaint = true;
+      try {
+        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+      } finally {
+        suppressRemotePaint = false;
+      }
+      await paint();
     });
-  };
+  }
 
   bindCenter = () => {
     const onEdit = () => {
       void persist();
     };
 
-    centerHost.querySelector('[data-add-element]')?.addEventListener('click', async () => {
-      caseStudy = collectLive();
-      const el = emptyCaseStudyElement(selectedNav, '');
-      caseStudy.elements = [...(caseStudy.elements || []), el];
-      caseStudy.selectedElementId = el.id;
-      caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+    centerHost.querySelectorAll('[data-add-element], [data-open-library]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (centerHost.querySelector('.estudio-element')) caseStudy = collectLive();
+        pickerOpen = true;
+        await paint();
+      });
+    });
+
+    const libraryList = centerHost.querySelector('[data-library-list]');
+    const searchInput = centerHost.querySelector('[data-library-search]');
+    if (libraryList && searchInput) {
+      searchInput.addEventListener('input', () => applyModuleSearch(libraryList, searchInput.value));
+    }
+
+    centerHost.querySelector('[data-close-library]')?.addEventListener('click', async () => {
+      pickerOpen = false;
       await paint();
-      centerHost.querySelector(`[data-element-id="${el.id}"] [data-field="title"]`)?.focus();
+    });
+
+    centerHost.querySelectorAll('[data-pick-library-title]').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await addElementWithTitle(btn.dataset.pickLibraryTitle);
+      });
+    });
+
+    centerHost.querySelector('[data-library-custom-add]')?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const input = centerHost.querySelector('[data-library-custom]');
+      await addElementWithTitle(input?.value);
+    });
+
+    centerHost.querySelectorAll('[data-status-set]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const wrap = btn.closest('[data-field="status"]');
+        if (!wrap) return;
+        wrap.dataset.status = btn.dataset.statusSet;
+        wrap.querySelectorAll('[data-status-set]').forEach((b) => {
+          const on = b.dataset.statusSet === wrap.dataset.status;
+          b.classList.toggle('is-selected', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          const check = b.querySelector('.estudio-status__check');
+          if (on && !check) {
+            b.insertAdjacentHTML('beforeend', '<span class="estudio-status__check" aria-hidden="true">✓</span>');
+          } else if (!on && check) {
+            check.remove();
+          }
+        });
+        await persist();
+      });
     });
 
     centerHost.querySelectorAll('[data-add-item]').forEach((btn) => {
@@ -430,7 +637,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         const el = caseStudy.elements.find((row) => row.id === id);
         if (!el) return;
         el[list] = [...(el[list] || []), { text: '', checked: false }];
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -444,7 +656,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         const list = btn.dataset.list;
         const index = Number(btn.dataset.index);
         el[list] = (el[list] || []).filter((_, i) => i !== index);
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -454,7 +671,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         caseStudy = collectLive();
         const id = btn.closest('.estudio-element')?.dataset.elementId;
         caseStudy.elements = (caseStudy.elements || []).filter((el) => el.id !== id);
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -466,7 +688,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         if (!el) return;
         const hint = suggestedModulesForAxis(el.axis)[0] || '';
         el.activities = [...(el.activities || []), { moduleType: hint, sessionId: String(sessions[0]?.id || '') }];
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -479,7 +706,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         if (!el) return;
         const index = Number(btn.closest('[data-activity-index]')?.dataset.activityIndex);
         el.activities = (el.activities || []).filter((_, i) => i !== index);
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -493,7 +725,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         { name: '', gender: '', relation: 'Otro', domain: 'Apoyo emocional', notes: '' },
       ];
       caseStudy.supportPeople = network.people;
-      caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+      suppressRemotePaint = true;
+      try {
+        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+      } finally {
+        suppressRemotePaint = false;
+      }
       await paint();
     });
 
@@ -505,7 +742,12 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         const index = Number(btn.closest('.estudio-support-person')?.dataset.supportIndex);
         network.people = (network.people || []).filter((_, i) => i !== index);
         caseStudy.supportPeople = network.people;
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
         await paint();
       });
     });
@@ -529,22 +771,28 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
   const stop = onCaseStudyChanged(async ({ treatmentId: tid }) => {
     if (Number(tid) !== Number(treatmentId)) return;
+    if (suppressRemotePaint) return;
     if (centerHost.contains(document.activeElement)) return;
     caseStudy = await loadCaseStudy(treatmentId);
     sessions = await getSessionsWithModules(treatmentId);
-    selectedNav = caseStudy.selectedNav || selectedNav;
     await paint();
   });
 
   return {
     unmount() {
       stop();
+      delete leftHost.dataset.estudioNavBound;
       leftHost.innerHTML = '';
       centerHost.innerHTML = '';
     },
     async flush() {
       if (centerHost.querySelector('.estudio-element')) {
-        caseStudy = await saveCaseStudy(treatmentId, collectLive());
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, collectLive());
+        } finally {
+          suppressRemotePaint = false;
+        }
       }
     },
   };

@@ -3,14 +3,24 @@ import test from 'node:test';
 
 import {
   applyProfileCheckToCaseStudy,
+  emptyCaseStudyElement,
   ESTUDIO_NAV,
   normalizeCaseStudyData,
+  normalizeCaseStudyElement,
   profileLiteFromCaseStudy,
   PROFILE_AXIS_MAP,
+  STATUS_LABELS,
   SUPPORT_NETWORK_KIND,
   SUPPORT_NETWORK_TITLE,
   suggestedModulesForAxis,
 } from '../../src/js/case-study-model.js';
+import {
+  libraryItemsForAxis,
+  namedSupportPeople,
+  summaryDotTone,
+  summaryDotsForAxis,
+} from '../../src/js/case-study-catalog.js';
+import { elementLibraryHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
 import {
   isEstudioWorkspaceMode,
   isInformeWorkspaceMode,
@@ -176,4 +186,82 @@ test('chrome Índice usa Categoría y Sesiones; rail sin tabs Puntajes/Ejes/Herr
   assert.doesNotMatch(notes, /data-tab="puntajes"/);
   assert.doesNotMatch(notes, /data-tab="herramientas"/);
   assert.doesNotMatch(notes, /data-tab="perfil"/);
+});
+
+test('Estudio entra en Resumen si no hay selectedNav guardado', () => {
+  const study = normalizeCaseStudyData({
+    elements: [{ axis: 'problem', title: 'Ansiedad' }],
+  });
+  assert.equal(study.selectedNav, 'summary');
+});
+
+test('estados del elemento son presente / a desarrollar / desconocidos (default desconocidos)', () => {
+  const fresh = emptyCaseStudyElement('problem', 'Ansiedad');
+  assert.equal(fresh.status, 'unknown');
+  assert.equal(STATUS_LABELS.present, 'Presente');
+  assert.equal(STATUS_LABELS.developing, 'A desarrollar');
+  assert.equal(STATUS_LABELS.unknown, 'Desconocidos');
+  assert.equal(normalizeCaseStudyElement({ axis: 'problem', title: 'X', status: 'active' }).status, 'present');
+  assert.equal(normalizeCaseStudyElement({ axis: 'risk', title: 'Y', status: 'in_progress' }).status, 'developing');
+  const html = statusToggleHtml('unknown');
+  assert.match(html, /data-status-set="present"/);
+  assert.match(html, /data-status-set="developing"/);
+  assert.match(html, /data-status-set="unknown"/);
+  assert.doesNotMatch(html, /<select/);
+});
+
+test('+ Añadir elemento abre librería del eje, no session_modules', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const view = readFileSync(join(root, '../../src/js/views/estudio-de-caso.js'), 'utf8');
+  const workspace = readFileSync(join(root, '../../src/js/views/workspace.js'), 'utf8');
+  assert.match(view, /data-open-library/);
+  assert.match(view, /elementLibraryHtml/);
+  assert.doesNotMatch(view, /center-add-module/);
+  assert.match(workspace, /data-add-element/);
+  const study = normalizeCaseStudyData({});
+  const lib = elementLibraryHtml('defense', study);
+  assert.match(lib, /Librería de defensas/);
+  assert.match(lib, /Humor/);
+  assert.ok(libraryItemsForAxis('problem').some((item) => item.title === 'Ansiedad alta'));
+  assert.ok(libraryItemsForAxis('resource').some((item) => item.title === 'Autocuidado'));
+});
+
+test('Resumen: dots athletic por eje y genograma si hay personas', () => {
+  const study = normalizeCaseStudyData({
+    elements: [
+      { axis: 'problem', title: 'Ansiedad', status: 'present' },
+      { axis: 'resource', title: 'Autocuidado', status: 'developing' },
+      { axis: 'defense', title: 'Humor', status: 'present' },
+      { axis: 'defense', title: 'Negación', status: 'unknown' },
+      { axis: 'risk', title: 'Aislamiento social', status: 'present' },
+      {
+        axis: 'resource',
+        kind: SUPPORT_NETWORK_KIND,
+        title: SUPPORT_NETWORK_TITLE,
+        people: [{ name: 'Ana', relation: 'Madre' }],
+      },
+    ],
+  });
+  assert.equal(summaryDotTone(study.elements.find((el) => el.title === 'Ansiedad')), 'red');
+  assert.equal(summaryDotTone(study.elements.find((el) => el.title === 'Autocuidado')), 'green');
+  assert.equal(summaryDotTone(study.elements.find((el) => el.title === 'Humor')), 'green');
+  assert.equal(summaryDotTone(study.elements.find((el) => el.title === 'Negación')), 'red');
+  assert.equal(summaryDotTone(study.elements.find((el) => el.title === 'Aislamiento social')), 'yellow');
+  assert.equal(summaryDotsForAxis(study, 'problem').length, 1);
+  assert.equal(namedSupportPeople(study)[0].name, 'Ana');
+  const html = summaryScorecardHtml(study);
+  assert.match(html, /estudio-score-dot--red/);
+  assert.match(html, /estudio-score-dot--green/);
+  assert.match(html, /estudio-score-dot--yellow/);
+});
+
+test('ejes vacíos siguen en el nav y el centro ofrece empty state', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const view = readFileSync(join(root, '../../src/js/views/estudio-de-caso.js'), 'utf8');
+  const css = readFileSync(join(root, '../../src/css/estudio-caso.css'), 'utf8');
+  assert.match(view, /Sin elementos en este eje/);
+  assert.match(view, /Abrir librería/);
+  assert.match(css, /font-size: 13px/);
+  assert.match(css, /\.estudio-element__notes::placeholder/);
+  assert.match(view, /selectedNav = 'summary'/);
 });
