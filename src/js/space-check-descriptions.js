@@ -28,8 +28,6 @@ export const SPACE_CHECK_DESCRIPTIONS = {
       'Vinculación activa con grupos o comunidades que ofrecen pertenencia, propósito y reciprocidad.',
     'Propósito o sentido espiritual':
       'Orientación hacia valores trascendentes o significativos que otorgan coherencia a la existencia.',
-    'Red de apoyo emocional':
-      'Presencia de personas significativas disponibles para brindar escucha, contención y ayuda práctica.',
     'Regulación afectiva':
       'Habilidad para modular la intensidad de las emociones, equilibrando expresión y contención.',
     'Tolerancia a la frustración':

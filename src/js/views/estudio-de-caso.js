@@ -24,7 +24,7 @@ import {
   summaryDotsForAxis,
 } from '../case-study-catalog.js';
 import { loadCaseStudy, onCaseStudyChanged, saveCaseStudy } from '../case-study-store.js';
-import { getSessionsWithModules } from '../db.js';
+import { getSessionsWithModules, isSessionDone } from '../db.js';
 import { escapeHtml, toast } from '../utils.js';
 import { notifySaveError } from '../save-status.js';
 import { queuedPersist } from '../autobind.js';
@@ -349,7 +349,7 @@ export function elementLibraryHtml(axis, caseStudy) {
 
 function sessionsCardHtml(sessions) {
   const total = (sessions || []).length;
-  const done = (sessions || []).filter((s) => s.status === 'completada').length;
+  const done = (sessions || []).filter((s) => isSessionDone(s)).length;
   return `
     <article class="estudio-summary-card card estudio-summary-card--sessions">
       <h3 class="estudio-summary-card__title">Sesiones</h3>
@@ -509,6 +509,14 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
     if (preset?.objectives?.length) {
       el.objectives = preset.objectives.map((text) => ({ text, checked: false }));
     }
+    if (!bundled && !el.bundled) {
+      try {
+        const { addCustomCaseStudyElement } = await import('../case-study-custom-library.js');
+        addCustomCaseStudyElement({ axis: selectedNav, title: name });
+      } catch {
+        /* ignore catalog write failures */
+      }
+    }
     caseStudy.elements = [...(caseStudy.elements || []), el];
     caseStudy.selectedElementId = el.id;
     caseStudy.selectedNav = selectedNav;
@@ -532,7 +540,6 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
   const refreshAxisNav = () => {
     navHost().innerHTML = `
       <div class="estudio-axis-nav" role="navigation" aria-label="Estudio de caso">
-        <p class="estudio-axis-nav__eyebrow">Estudio de caso</p>
         ${axisNavHtml(caseStudy, selectedNav, sessions)}
       </div>`;
   };
@@ -541,6 +548,27 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
     const root = centerHost.closest('#workspace-center-scroll');
     if (root) root.scrollTop = 0;
     else centerHost.scrollTop = 0;
+  };
+
+  const scrollToElement = (elementId) => {
+    if (!elementId) {
+      scrollCenterTop();
+      return;
+    }
+    const target = centerHost.querySelector(`[data-element-id="${CSS.escape(String(elementId))}"]`);
+    const root = centerHost.closest('#workspace-center-scroll') || centerHost;
+    if (!target) {
+      scrollCenterTop();
+      return;
+    }
+    const rootRect = root.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const nextTop = root.scrollTop + (targetRect.top - rootRect.top) - 12;
+    if (typeof root.scrollTo === 'function') {
+      root.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+    } else {
+      root.scrollTop = Math.max(0, nextTop);
+    }
   };
 
   const paint = async () => {
@@ -643,28 +671,34 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
     bindCenter();
   };
 
-  selectNav = async (nextNav) => {
+  selectNav = async (nextNav, { focusElementId = '' } = {}) => {
     if (!nextNav) return;
-    if (nextNav === selectedNav) {
+    const sameNav = nextNav === selectedNav;
+    if (!sameNav) {
+      if (centerHost.querySelector('.estudio-element')) {
+        caseStudy = collectLive();
+      }
+      selectedNav = nextNav;
+      pickerOpen = false;
+      caseStudy.selectedNav = selectedNav;
+      const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
+      if (meta?.kind === 'axis') caseStudy.selectedAxis = selectedNav;
+      if (focusElementId) caseStudy.selectedElementId = focusElementId;
+      suppressRemotePaint = true;
+      try {
+        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+      } finally {
+        suppressRemotePaint = false;
+      }
+      await paint();
+    } else if (focusElementId) {
+      caseStudy.selectedElementId = focusElementId;
+    }
+    if (focusElementId) {
+      requestAnimationFrame(() => scrollToElement(focusElementId));
+    } else {
       scrollCenterTop();
-      return;
     }
-    if (centerHost.querySelector('.estudio-element')) {
-      caseStudy = collectLive();
-    }
-    selectedNav = nextNav;
-    pickerOpen = false;
-    caseStudy.selectedNav = selectedNav;
-    const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
-    if (meta?.kind === 'axis') caseStudy.selectedAxis = selectedNav;
-    suppressRemotePaint = true;
-    try {
-      caseStudy = await saveCaseStudy(treatmentId, caseStudy);
-    } finally {
-      suppressRemotePaint = false;
-    }
-    await paint();
-    scrollCenterTop();
   };
 
   bindSummaryNav = () => {
@@ -687,7 +721,8 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       const btn = e.target.closest('[data-nav]');
       if (!btn || !leftHost.contains(btn)) return;
       e.preventDefault();
-      await selectNav(btn.dataset.nav);
+      const focusId = btn.dataset.focusElement || '';
+      await selectNav(btn.dataset.nav, { focusElementId: focusId });
     });
   }
 

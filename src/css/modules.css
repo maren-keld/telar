@@ -2574,20 +2574,21 @@ body.is-dragging-module .session-block__title {
 .cssrs-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .cssrs-module .likert-row.cssrs-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  border-bottom: 0;
-}
   gap: 8px 12px;
   align-items: start;
   margin: 0;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 10px 4px 10px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
 }
 
 .cssrs-row[hidden] {
@@ -2604,10 +2605,14 @@ body.is-dragging-module .session-block__title {
   font-size: 0.82rem;
 }
 
-.cssrs-row--yellow { background: #fffbe6; }
-.cssrs-row--orange { background: #fde8c8; }
-.cssrs-row--red { background: #f8d7da; }
-.cssrs-row--split { background: transparent; padding-left: 0; padding-right: 0; }
+.cssrs-row--yellow { border-left-color: #e6c84a; }
+.cssrs-row--orange { border-left-color: #e09a3e; }
+.cssrs-row--red { border-left-color: #d96b6b; }
+.cssrs-row--split {
+  border-left-color: #c5cdd6;
+  padding-left: 10px;
+  padding-right: 4px;
+}
 
 .cssrs-high-tag {
   display: inline-block;
@@ -2633,36 +2638,31 @@ body.is-dragging-module .session-block__title {
 }
 
 .cssrs-dual {
-  grid-column: 1 / -1;
+  grid-column: 2;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(2, auto);
+  gap: 16px;
+  justify-content: end;
+  align-items: start;
 }
 
-.cssrs-tf--lifetime {
-  background: #fde8c8;
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-
+.cssrs-tf--lifetime,
 .cssrs-tf--recent {
-  background: #f8d7da;
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
 }
 
 .cssrs-tf__label {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 650;
-  margin-bottom: 6px;
-  color: var(--text-secondary);
+  display: none;
 }
 
 .cssrs-head--month {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
 }
 
 .cssrs-head__opts {
@@ -2682,16 +2682,35 @@ body.is-dragging-module .session-block__title {
 .cssrs-head--q6 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  margin-top: 8px;
+  margin-top: 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
 }
 
 .cssrs-head__dual {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  min-width: 220px;
+  grid-template-columns: repeat(2, auto);
+  gap: 16px;
+  min-width: 0;
   font-size: 0.72rem;
   font-weight: 600;
+  text-align: center;
+}
+
+.cssrs-head__dual-col {
+  display: grid;
+  grid-template-columns: 28px 28px;
+  gap: 8px;
+  justify-items: center;
+}
+
+.cssrs-head__dual-window {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.cssrs-head__dual-yn {
   text-align: center;
 }
 

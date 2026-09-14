@@ -5,9 +5,11 @@ import { SPACE_CHECK_DESCRIPTIONS } from './space-check-descriptions.js';
 import {
   AXIS_MODULE_HINTS,
   CASE_STUDY_AXES,
+  isSupportNetworkTitle,
   SUPPORT_NETWORK_KIND,
   SUPPORT_NETWORK_TITLE,
 } from './case-study-model.js';
+import { customLibraryItemsForAxis } from './case-study-custom-library.js';
 
 /** Semillas del módulo Diagnóstico (indicadores/objetivos/puntajes asociados). */
 const PROBLEM_LIBRARY = [
@@ -139,31 +141,40 @@ function titlesFromDescriptions(category) {
 }
 
 export function libraryItemsForAxis(axis) {
+  let base = [];
   if (axis === 'problem') {
-    return PROBLEM_LIBRARY.map((item) => ({
+    base = PROBLEM_LIBRARY.map((item) => ({
       title: item.title,
       description: (item.indicators || []).slice(0, 2).join(' · '),
     }));
-  }
-  if (axis === 'resource') {
-    return titlesFromDescriptions('fortalezas').map((title) => ({
-      title,
-      description: SPACE_CHECK_DESCRIPTIONS.fortalezas[title] || '',
-    }));
-  }
-  if (axis === 'defense') {
-    return titlesFromDescriptions('defensas').map((title) => ({
+  } else if (axis === 'resource') {
+    base = titlesFromDescriptions('fortalezas')
+      .filter((title) => !isSupportNetworkTitle(title))
+      .map((title) => ({
+        title,
+        description: SPACE_CHECK_DESCRIPTIONS.fortalezas[title] || '',
+      }));
+  } else if (axis === 'defense') {
+    base = titlesFromDescriptions('defensas').map((title) => ({
       title,
       description: SPACE_CHECK_DESCRIPTIONS.defensas[title] || '',
     }));
-  }
-  if (axis === 'risk') {
-    return titlesFromDescriptions('riesgos').map((title) => ({
+  } else if (axis === 'risk') {
+    base = titlesFromDescriptions('riesgos').map((title) => ({
       title,
       description: SPACE_CHECK_DESCRIPTIONS.riesgos[title] || '',
     }));
+  } else {
+    base = OTHER_LIBRARY.map((title) => ({ title, description: '' }));
   }
-  return OTHER_LIBRARY.map((title) => ({ title, description: '' }));
+  const seen = new Set(base.map((item) => item.title.toLowerCase()));
+  const customs = customLibraryItemsForAxis(axis).filter((item) => {
+    const key = item.title.toLowerCase();
+    if (seen.has(key) || isSupportNetworkTitle(item.title)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [...base, ...customs];
 }
 
 export function libraryTitleForAxis(axis) {
@@ -235,7 +246,7 @@ const MODULE_ESTUDIO_LINKS = {
   tcc_flexibilidad: { axis: 'defense', element: 'Humor' },
   nota_sesion: { axis: 'other', element: '' },
   tcc_prevencion_recaida: { axis: 'other', element: 'Hipótesis de trabajo' },
-  redes_apoyo: { axis: 'resource', element: 'Red de apoyo (emocional)' },
+  redes_apoyo: { axis: 'resource', element: 'Red de apoyo' },
 };
 
 export function estudioRelationForModule(type) {

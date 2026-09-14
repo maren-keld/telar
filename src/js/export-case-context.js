@@ -9,6 +9,7 @@ import { shareableContentFor } from './share-content.js';
 import { shareAnsweredAt, shareInfo, shareUrl } from './share-sync.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
+import { computeVitalRisk } from './vital-risk.js';
 
 function homeworkKind(moduleType, shareable) {
   if (shareable?.def || questionnaireDefFor(moduleType)) return 'cuestionario';
@@ -53,30 +54,64 @@ Usa estos URLs literales en emails. No inventes ni acortes enlaces telarapp.cl. 
 ${lines.join('\n')}`;
 }
 
-function formatCaseStudyForPrompt(caseStudy) {
-  if (!caseStudy?.elements?.length) return '';
-  const blocks = CASE_STUDY_AXES.map((axis) => {
-    const els = (caseStudy.elements || []).filter(
+function listTexts(items) {
+  return (items || [])
+    .map((item) => String(item?.text || item || '').trim())
+    .filter(Boolean);
+}
+
+function formatElementDetails(el) {
+  const chunks = [];
+  const manifestations = listTexts(el.manifestations);
+  const indicators = listTexts(el.indicators);
+  const objectives = listTexts(el.objectives);
+  const evidence = listTexts(el.evidence);
+  const activities = (el.activities || [])
+    .map((row) => moduleLabelFor(row.moduleType) || row.moduleType)
+    .filter(Boolean);
+  if (manifestations.length) chunks.push(`manifestaciones: ${manifestations.join('; ')}`);
+  if (indicators.length) chunks.push(`indicadores: ${indicators.join('; ')}`);
+  if (objectives.length) chunks.push(`objetivos: ${objectives.join('; ')}`);
+  if (evidence.length) chunks.push(`evidencia: ${evidence.join('; ')}`);
+  if (activities.length) chunks.push(`actividades: ${activities.join('; ')}`);
+  return chunks.length ? ` [${chunks.join(' · ')}]` : '';
+}
+
+/** Snapshot de Estudio de caso para prompts de IA (ejes + detalles). */
+export function formatCaseStudyForPrompt(caseStudy, { vital = null } = {}) {
+  const blocks = [];
+  if (vital && (vital.label || vital.score != null)) {
+    const reasons = Array.isArray(vital.reasons) ? vital.reasons.filter(Boolean).join('; ') : '';
+    blocks.push(
+      `### Riesgo vital (experimental)\n- ${vital.label || 'Bajo'} (score ${Number(vital.score || 0).toFixed(2)})${reasons ? ` — ${reasons}` : ''}`,
+    );
+  }
+  if (!caseStudy?.elements?.length && !blocks.length) return '';
+  for (const axis of CASE_STUDY_AXES) {
+    const els = (caseStudy?.elements || []).filter(
       (el) => el.axis === axis.id && (el.title || el.kind === SUPPORT_NETWORK_KIND),
     );
-    if (!els.length) return '';
+    if (!els.length) continue;
     const lines = els.map((el) => {
       const status = statusLabelFor(axis.id, el.status);
       const notes = String(el.notes || '').trim();
       if (el.kind === SUPPORT_NETWORK_KIND) {
         const people = (el.people || [])
-          .map((p) => p.name)
+          .map((p) => {
+            const bits = [p.name, p.relation, p.domain].filter(Boolean);
+            return bits.join(' · ');
+          })
           .filter(Boolean)
-          .join(', ');
-        return `- ${el.title} (${status})${people ? `: ${people}` : ''}`;
+          .join('; ');
+        return `- ${el.title || 'Red de apoyo'} (${status})${people ? `: ${people}` : ''}${notes ? ` — ${notes}` : ''}`;
       }
-      return `- ${el.title} (${status})${notes ? ` — ${notes}` : ''}`;
+      return `- ${el.title} (${status})${notes ? ` — ${notes}` : ''}${formatElementDetails(el)}`;
     });
-    return `### ${axis.label}\n${lines.join('\n')}`;
-  }).filter(Boolean);
+    blocks.push(`### ${axis.label}\n${lines.join('\n')}`);
+  }
   if (!blocks.length) return '';
   return `## Estudio de caso (ejes)
-Factores protectores, defensas, problemas y riesgos del estudio.
+Incluye riesgo vital experimental, problemas, factores protectores, red de apoyo, defensas psíquicas, riesgos y demás ejes visibles del estudio.
 
 ${blocks.join('\n\n')}`;
 }
@@ -89,6 +124,11 @@ export async function buildCaseContextText(treatmentId) {
   const sessions = await getSessionsWithModules(treatmentId);
   const notes = await getClinicalNotes(treatmentId);
   const caseStudy = await loadCaseStudy(treatmentId).catch(() => null);
+  const vital = computeVitalRisk({
+    sessions,
+    caseStudy: caseStudy || {},
+    marital: '',
+  });
 
   const parts = [
     `# Contexto clínico — ${treatment.patient_name}`,
@@ -99,7 +139,7 @@ export async function buildCaseContextText(treatmentId) {
     '',
   ];
 
-  const ejes = formatCaseStudyForPrompt(caseStudy);
+  const ejes = formatCaseStudyForPrompt(caseStudy, { vital });
   if (ejes) {
     parts.push(ejes, '');
   }

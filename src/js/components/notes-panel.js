@@ -921,7 +921,6 @@ function defaultsFor(tab) {
       'Insight',
       'Participación en comunidad',
       'Propósito o sentido espiritual',
-      'Red de apoyo emocional',
       'Regulación afectiva',
       'Tolerancia a la frustración',
       'Vínculos seguros',
