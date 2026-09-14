@@ -69,3 +69,78 @@ test('Plus USA geo apunta a support@telarapp.cl', () => {
   assert.match(geo, /US:\s*\{/);
   assert.match(geo, /support@telarapp\.cl/);
 });
+
+test('FAIL-4: C-SSRS wired as legacy renderer with GAD-like Sí/No UI', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const index = readFileSync(join(root, '../../src/js/modules/index.js'), 'utf8');
+  const legacy = readFileSync(join(root, '../../src/js/legacy-module-defs.js'), 'utf8');
+  const cssrs = readFileSync(join(root, '../../src/js/modules/cssrs.js'), 'utf8');
+  assert.match(index, /cssrs:\s*renderCssrs/);
+  assert.match(legacy, /'cssrs'/);
+  assert.match(cssrs, /Past Month|Mes pasado/);
+  assert.match(cssrs, /cssrs-triage-cell/);
+  assert.match(cssrs, /If YES to 2|Si 2 = Sí/);
+});
+
+test('FAIL-4: sidebar chips Estudio|Programa and no footer microscope', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const workspace = readFileSync(join(root, '../../src/js/views/workspace.js'), 'utf8');
+  assert.match(workspace, /workspace-space-chips/);
+  assert.match(workspace, /Estudio de caso/);
+  assert.match(workspace, />Programa</);
+  assert.doesNotMatch(workspace, /data-sidebar-index-mode="estudio"[\s\S]*microscope|M12 13v3.*data-sidebar-index-mode="estudio"/);
+  // Footer no longer has the estudio microscope toggle (chip instead).
+  const footer = workspace.slice(workspace.indexOf('workspace-sidebar__footer'));
+  assert.doesNotMatch(footer, /data-sidebar-index-mode="estudio"/);
+});
+
+test('FAIL-4: AI context includes Estudio axes', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const ctx = readFileSync(join(root, '../../src/js/export-case-context.js'), 'utf8');
+  assert.match(ctx, /loadCaseStudy/);
+  assert.match(ctx, /formatEstudioAxisBlock/);
+  assert.match(ctx, /Factores protectores|resource/);
+});
+
+test('FAIL-4: DOB coherent payload preserves birth_date', async () => {
+  const { coherentRegistroPayload } = await import('../../src/js/modules/registro-inicial.js');
+  const kept = coherentRegistroPayload({
+    form: { birth_date: '' },
+    seeded: { birth_date: '' },
+    stored: { patient_birth_date: '1990-03-15' },
+  });
+  assert.equal(kept.birth_date, '1990-03-15');
+  const cleared = coherentRegistroPayload({
+    form: { birth_date: '' },
+    seeded: { birth_date: '1990-03-15' },
+    stored: { patient_birth_date: '1990-03-15' },
+  });
+  assert.equal(cleared.birth_date, '');
+});
+
+test('FAIL-4: vital risk score rises with C-SSRS high', async () => {
+  const { computeVitalRisk } = await import('../../src/js/vital-risk-score.js');
+  const low = computeVitalRisk({ sessions: [], caseStudy: { elements: [] } });
+  assert.ok(low.level < 0.25);
+  const high = computeVitalRisk({
+    sessions: [
+      {
+        modules: [
+          {
+            module_type: 'cssrs',
+            data: JSON.stringify({ answers: { q4: 'yes' } }),
+          },
+          {
+            module_type: 'motivo_consulta',
+            data: JSON.stringify({ urgencia: 'alta' }),
+          },
+        ],
+      },
+    ],
+    caseStudy: {
+      elements: [{ axis: 'risk', title: 'Ideación suicida', status: 'managed' }],
+    },
+  });
+  assert.ok(high.level > 0.7);
+  assert.equal(high.label, 'Alto');
+});

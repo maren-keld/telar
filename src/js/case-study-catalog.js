@@ -142,7 +142,10 @@ export function libraryItemsForAxis(axis) {
   if (axis === 'problem') {
     return PROBLEM_LIBRARY.map((item) => ({
       title: item.title,
-      description: '',
+      description:
+        item.description ||
+        (item.objectives?.[0] ? String(item.objectives[0]) : '') ||
+        (item.indicators?.[0] ? String(item.indicators[0]) : ''),
     }));
   }
   if (axis === 'resource') {

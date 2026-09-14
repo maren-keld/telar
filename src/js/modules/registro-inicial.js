@@ -93,6 +93,11 @@ export function coherentRegistroPayload({ form = {}, seeded = {}, stored = {} } 
     email: pickIdentityField(form.email, seeded.email, firstStored(stored, ['email', 'patient_email'])),
     phone: pickIdentityField(form.phone, seeded.phone, firstStored(stored, ['phone', 'patient_phone'])),
     address: pickIdentityField(form.address, seeded.address, firstStored(stored, ['address', 'patient_address'])),
+    birth_date: pickIdentityField(
+      form.birth_date,
+      seeded.birth_date,
+      firstStored(stored, ['birth_date', 'patient_birth_date']),
+    ),
   };
 }
 
@@ -265,8 +270,16 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     const year = host.querySelector('#birth-year')?.value;
     const month = host.querySelector('#birth-month')?.value;
     const day = host.querySelector('#birth-day')?.value;
-    const iso = isoFromParts(year, month, day);
     const hidden = host.querySelector('[name="birth_date"]');
+    const prev = hidden?.value || '';
+    // Parcial: no pisar ISO previo (evita wipe al cambiar un solo select).
+    if ((year || month || day) && !(year && month && day)) {
+      const a = calcAge(prev);
+      const ageEl = host.querySelector('#age-display');
+      if (ageEl) ageEl.textContent = a != null ? `(${a} años)` : '';
+      return prev;
+    }
+    const iso = isoFromParts(year, month, day);
     if (hidden) hidden.value = iso;
     const a = calcAge(iso);
     const ageEl = host.querySelector('#age-display');
@@ -290,13 +303,14 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     const formEl = host.querySelector('#form-registro');
     if (!formEl) return;
     const fd = new FormData(formEl);
-    const birth_date = syncBirthHidden();
+    const birthFromForm = syncBirthHidden();
     const form = {
       nombre: fd.get('nombre') ?? '',
       id_number: fd.get('id_number') ?? '',
       email: fd.get('email') ?? '',
       phone: fd.get('phone') ?? '',
       address: fd.get('address') ?? '',
+      birth_date: birthFromForm,
     };
     const identity = coherentRegistroPayload({
       form,
@@ -309,6 +323,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
         patient_email: treatment.patient_email,
         patient_phone: treatment.patient_phone,
         patient_address: treatment.patient_address,
+        patient_birth_date: treatment.patient_birth_date,
+        birth_date: data.birth_date || treatment.patient_birth_date,
       },
     });
     const payload = {
@@ -318,13 +334,16 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
       phone: identity.phone,
       address: identity.address,
       genero: fd.get('genero') || '',
-      birth_date,
+      birth_date: identity.birth_date,
       marital_status: fd.get('marital_status'),
       source: fd.get('source'),
       prevision: fd.get('prevision') || coverage.spec.defaultOption,
       education_level: normalizeEducationLevel(fd.get('education_level') || ''),
       occupations,
     };
+    if (payload.birth_date && host.querySelector('[name="birth_date"]')) {
+      host.querySelector('[name="birth_date"]').value = payload.birth_date;
+    }
     const merged = mergeModuleReadable(moduleRow, payload);
     await savePatientAndModule({
       patient: {
