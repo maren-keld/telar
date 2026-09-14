@@ -161,23 +161,19 @@ export async function renderModulesLibrary(container, { onNavigate }) {
     });
   });
 
-  container.querySelector('#btn-import-pack')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: async () => {
-        try {
-          const path = await pickPackFile();
-          if (!path) return;
-          const { pack, modules, warnings } = await installPackFromPath(path);
-          toast(`«${pack.label}»: ${modules.length} ${modules.length === 1 ? 'módulo' : 'módulos'} importados`);
-          if (warnings.length) console.warn('Pack importado con avisos:', warnings);
-          await rerender();
-          if (warnings.length) toast(warnings[0]);
-        } catch (err) {
-          console.error(err);
-          toast(invokeErrorMessage(err, 'No se pudo importar el pack'));
-        }
-      },
-    });
+  container.querySelector('#btn-import-pack')?.addEventListener('click', async () => {
+    try {
+      const path = await pickPackFile();
+      if (!path) return;
+      const { pack, modules, warnings } = await installPackFromPath(path);
+      toast(`«${pack.label}»: ${modules.length} ${modules.length === 1 ? 'módulo' : 'módulos'} importados`);
+      if (warnings.length) console.warn('Pack importado con avisos:', warnings);
+      await rerender();
+      if (warnings.length) toast(warnings[0]);
+    } catch (err) {
+      console.error(err);
+      toast(invokeErrorMessage(err, 'No se pudo importar el pack'));
+    }
   });
 
   container.querySelector('[data-export-own]')?.addEventListener('click', async () => {

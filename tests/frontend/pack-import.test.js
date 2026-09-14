@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 const { parsePackContents, packFilesFor, packModuleId } = await import('../../src/js/pack-import.js');
 
@@ -94,6 +97,21 @@ test('las experiencias interactivas avisan de librerías de internet', () => {
   assert.equal(modules[0].kind, 'interactive');
   assert.equal(modules[0].title, 'Juego');
   assert.ok(warnings.some((w) => w.includes('cdn.example')));
+});
+
+test('importar pack no exige suscripción Pro', () => {
+  const src = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../../src/js/views/modules-library.js'),
+    'utf8',
+  );
+  const match = src.match(
+    /querySelector\('#btn-import-pack'\)[\s\S]*?addEventListener\('click',\s*async \(\) => \{([\s\S]*?)\n  \}\);/,
+  );
+  assert.ok(match, 'debe existir el handler de Importar pack');
+  assert.equal(match[1].includes('requireProOrSubscribe'), false);
+  assert.ok(match[1].includes('installPackFromPath'));
+  assert.ok(src.includes("querySelector('#btn-create-module-lib')"));
+  assert.match(src, /#btn-create-module-lib[\s\S]*?requireProOrSubscribe/);
 });
 
 test('un pack sin ningún módulo aprovechable falla con mensaje', () => {
