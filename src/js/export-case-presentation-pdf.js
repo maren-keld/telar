@@ -32,6 +32,8 @@ import {
 } from './pdf-utils.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
+import { loadCaseStudy } from './case-study-store.js';
+import { renderCaseStudyPdfBlock } from './export-case-study-pdf.js';
 
 /** Módulos que no aportan al arco de sesiones (son estructura, no trabajo clínico). */
 const STRUCTURAL_MODULES = new Set(['selector_modulo', 'registro_inicial']);
@@ -103,7 +105,7 @@ function diagnosticoLines(data) {
  * @returns {{code:string, context:string[], motivo:string, hipotesis:string[],
  *   series:Array, arc:Array, flagged:string[], questions:string[], meta:object}}
  */
-export function buildCasePresentationData({ treatment, sessions, notes = [], profile = {} }) {
+export function buildCasePresentationData({ treatment, sessions, notes = [], profile = {}, caseStudy = null }) {
   const reg = registroInicialData(sessions);
   const code = caseCode(treatment.id);
 
@@ -187,6 +189,7 @@ export function buildCasePresentationData({ treatment, sessions, notes = [], pro
     arc,
     flagged,
     questions,
+    caseStudy,
     meta: {
       sessionCount: sessions.length,
       status: TREATMENT_STATUS[treatment.status]?.label || treatment.status || '—',
@@ -256,6 +259,10 @@ function renderCasePdf(data) {
       y = pdfText(doc, `• ${line}`, MARGIN, y, { size: 9.5, maxWidth: MAX_W });
       y += 1;
     }
+  }
+
+  if (data.caseStudy) {
+    y = renderCaseStudyPdfBlock(doc, y, data.caseStudy);
   }
 
   if (data.series.length) {
@@ -341,9 +348,10 @@ export async function exportCasePresentationPdf(treatmentId) {
   const treatment = await getTreatment(treatmentId);
   if (!treatment) throw new Error('Tratamiento no encontrado');
 
-  const [sessions, notes] = await Promise.all([
+  const [sessions, notes, caseStudy] = await Promise.all([
     getSessionsWithModules(treatmentId),
     getClinicalNotes(treatmentId),
+    loadCaseStudy(treatmentId).catch(() => null),
   ]);
 
   const data = buildCasePresentationData({
@@ -351,6 +359,7 @@ export async function exportCasePresentationPdf(treatmentId) {
     sessions,
     notes,
     profile: loadProfile(),
+    caseStudy,
   });
 
   const doc = renderCasePdf(data);

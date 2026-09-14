@@ -15,6 +15,7 @@ import {
 import { captureScoreChartImages } from './components/workspace-scores.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
+import { appendCaseStudyPdf } from './export-case-study-pdf.js';
 
 const MODULES_NAME_ONLY = new Set(['motivo_consulta', 'diagnostico']);
 
@@ -235,6 +236,8 @@ export async function exportTreatmentPdf(treatmentId) {
       y = renderDiagnosticoBlock(doc, y, entry.data);
     }
   }
+
+  y = await appendCaseStudyPdf(doc, y, treatmentId);
 
   const psychBlock = buildPsychometricSummaryBlock(sessions);
   if (psychBlock) {

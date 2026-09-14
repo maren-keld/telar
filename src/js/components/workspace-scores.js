@@ -1,4 +1,5 @@
 import { getSessionsWithModules } from '../db.js';
+import { moduleLabelFor } from '../custom-modules.js';
 import {
   psychometricChartMeta,
   psychometricChartTypes,
@@ -233,6 +234,34 @@ function accordionHtml(id, title, hint, bodyHtml, open = true, hintIsHtml = fals
 
 function lineChartHtml(canvasId, yMax) {
   return `<div class="score-chart-wrap"><canvas id="${canvasId}" height="160"></canvas></div>`;
+}
+
+const SCORE_NAV_TYPES = new Set([
+  'dass21',
+  'eed',
+  'neurofeedback',
+  'rosenberg',
+  'qols',
+  'escala_fer',
+  'escala_animo',
+  'escala_ansiedad',
+  'bilateral_stimulation',
+  ...psychometricChartTypes(),
+]);
+
+/** Tests presentes en el tratamiento, para el nav de Puntajes. */
+export function usedScoreTests(sessions) {
+  const seen = new Set();
+  const out = [];
+  for (const session of sessions || []) {
+    for (const mod of session.modules || []) {
+      const type = mod.module_type;
+      if (!SCORE_NAV_TYPES.has(type) || seen.has(type)) continue;
+      seen.add(type);
+      out.push({ type, label: moduleLabelFor(type) });
+    }
+  }
+  return out;
 }
 
 export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { expandAll = false } = {}) {

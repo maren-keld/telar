@@ -5,21 +5,26 @@
 
 export const CASE_STUDY_AXES = [
   { id: 'problem', label: 'Problemas', addLabel: 'Añadir problema', nav: true },
-  { id: 'resource', label: 'Recursos / factores protectores', addLabel: 'Añadir recurso', nav: true },
+  { id: 'resource', label: 'Factores protectores', addLabel: 'Añadir factor protector', nav: true },
   { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa', nav: true },
-  { id: 'risk', label: 'Vulnerabilidades / riesgo', addLabel: 'Añadir vulnerabilidad', nav: true },
+  { id: 'risk', label: 'Riesgos', addLabel: 'Añadir riesgo', nav: true },
   { id: 'other', label: 'Otros', addLabel: 'Añadir elemento', nav: true },
 ];
 
+const AXIS_NAV = (id) => {
+  const axis = CASE_STUDY_AXES.find((a) => a.id === id);
+  return { id, label: axis.label, kind: 'axis' };
+};
+
 export const ESTUDIO_NAV = [
   { id: 'summary', label: 'Resumen', kind: 'page' },
-  { id: 'problem', label: 'Problemas', kind: 'axis' },
-  { id: 'resource', label: 'Recursos / factores protectores', kind: 'axis' },
-  { id: 'defense', label: 'Defensas psíquicas', kind: 'axis' },
-  { id: 'risk', label: 'Vulnerabilidades / riesgo', kind: 'axis' },
+  AXIS_NAV('problem'),
+  AXIS_NAV('resource'),
+  AXIS_NAV('defense'),
+  AXIS_NAV('risk'),
   { id: 'scores', label: 'Puntajes', kind: 'page' },
   { id: 'docs', label: 'Documentación', kind: 'page' },
-  { id: 'other', label: 'Otros', kind: 'axis' },
+  AXIS_NAV('other'),
 ];
 
 export const SUPPORT_NETWORK_TITLE = 'Red de apoyo (emocional)';
@@ -50,8 +55,8 @@ const STATUS_OPTIONS = {
 
 export const STATUS_LABELS = {
   present: 'Presente',
-  developing: 'A desarrollar',
-  unknown: 'Desconocidos',
+  developing: 'Desarrollar',
+  unknown: 'Desconocido',
 };
 
 const LEGACY_STATUS = {
@@ -290,7 +295,7 @@ export function statusesForAxis(axis) {
   return STATUS_OPTIONS[normalizeAxis(axis)] || STATUS_OPTIONS.problem;
 }
 
-const AXIS_MODULE_HINTS = {
+export const AXIS_MODULE_HINTS = {
   problem: ['gad7', 'dass21', 'tcc_abc', 'tcc_preocupaciones', 'tcc_registro_pensamientos'],
   resource: ['tcc_gratitud', 'tcc_activacion', 'rosenberg', 'tcc_autoconceptos'],
   defense: ['eed', 'tcc_sesgos', 'tcc_socratico', 'tcc_flexibilidad'],
@@ -300,4 +305,60 @@ const AXIS_MODULE_HINTS = {
 
 export function suggestedModulesForAxis(axis) {
   return AXIS_MODULE_HINTS[normalizeAxis(axis)] || AXIS_MODULE_HINTS.other;
+}
+
+const FIELD_HINTS = {
+  manifestations: {
+    problem: 'Cómo se expresa en la clínica. Ej.: inquietud motora, rumiación al acostarse.',
+    resource: 'Cómo se nota este recurso en la vida cotidiana. Ej.: pide ayuda cuando se desborda.',
+    defense: 'Cómo aparece esta defensa en sesión o en la vida. Ej.: ríe al hablar de temas dolorosos.',
+    risk: 'Cómo se manifiesta este riesgo. Ej.: evita salir después de las 18 h.',
+    other: 'Cómo se observa este elemento. Ej.: lo menciona en cada sesión.',
+  },
+  indicators: {
+    problem: 'Señales observables o puntajes asociados. Ej.: GAD-7 ≥10, evita reuniones de equipo.',
+    resource: 'Cómo se comprueba que está activo. Ej.: 3 contactos de apoyo en la semana.',
+    defense: 'Señales de que opera. Ej.: EED alto en desadaptativas, cambia de tema al hablar del trauma.',
+    risk: 'Señales o puntajes de alarma. Ej.: PCL-5 ≥31, ideación pasiva en la semana.',
+    other: 'Cómo se verifica. Ej.: aparece en notas de 3 sesiones seguidas.',
+  },
+  objectives: {
+    problem: 'Qué se busca trabajar. Ej.: reducir ansiedad anticipatoria en 8 semanas.',
+    resource: 'Cómo sostener o fortalecer el recurso. Ej.: practicar autocuidado 3 veces por semana.',
+    defense: 'Hacia dónde orientar la defensa. Ej.: pasar de negación a supresión flexible.',
+    risk: 'Qué se busca contener. Ej.: plan de seguridad actualizado y contactos identificables.',
+    other: 'Qué se quiere aclarar o registrar. Ej.: hipótesis de trabajo revisada en sesión 4.',
+  },
+  evidence: {
+    problem: 'Avances o fuentes, con fecha. Ej.: 12/09 — GAD-7 bajó de 14 a 9.',
+    resource: 'Situaciones observadas, con fecha. Ej.: 08/09 — pidió ayuda en una crisis.',
+    defense: 'Ejemplos en sesión, con fecha. Ej.: 05/09 — pudo nombrar el afecto sin intelectualizar.',
+    risk: 'Cambios o persistencia, con fecha. Ej.: 10/09 — no hubo ideación en 14 días.',
+    other: 'Notas o fuentes, con fecha. Ej.: 03/09 — relato de contexto laboral.',
+  },
+  activities: {
+    problem: 'Módulos o tareas a trabajar en sesión. Ej.: GAD-7 en la sesión 3.',
+    resource: 'Módulos o prácticas que activan el recurso. Ej.: registro de gratitud en sesión 4.',
+    defense: 'Módulos para explorar la defensa. Ej.: EED en sesión 2.',
+    risk: 'Módulos de evaluación o contención. Ej.: plan de seguridad en sesión 1.',
+    other: 'Módulos o tareas asociadas. Ej.: nota de sesión para registrar el contexto.',
+  },
+};
+
+export function fieldHintFor(axis, fieldKey) {
+  const byAxis = FIELD_HINTS[fieldKey];
+  if (!byAxis) return '';
+  return byAxis[normalizeAxis(axis)] || byAxis.other || '';
+}
+
+export function customPlaceholderForAxis(axis) {
+  return (
+    {
+      problem: 'Problema personalizado',
+      resource: 'Recurso o factor protector personalizado',
+      defense: 'Defensa personalizada',
+      risk: 'Vulnerabilidad o riesgo personalizado',
+      other: 'Elemento personalizado',
+    }[normalizeAxis(axis)] || 'Recurso o vulnerabilidad personalizada'
+  );
 }

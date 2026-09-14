@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import {
   applyProfileCheckToCaseStudy,
+  customPlaceholderForAxis,
   emptyCaseStudyElement,
   ESTUDIO_NAV,
+  fieldHintFor,
   normalizeCaseStudyData,
   normalizeCaseStudyElement,
   profileLiteFromCaseStudy,
@@ -15,12 +17,16 @@ import {
   suggestedModulesForAxis,
 } from '../../src/js/case-study-model.js';
 import {
+  essentialWordsFromCaseStudy,
+  estudioRelationForModule,
   libraryItemsForAxis,
+  libraryPresetFor,
   namedSupportPeople,
   summaryDotTone,
   summaryDotsForAxis,
 } from '../../src/js/case-study-catalog.js';
 import { elementLibraryHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
+import { previewHtml } from '../../src/js/components/module-selector.js';
 import {
   isEstudioWorkspaceMode,
   isInformeWorkspaceMode,
@@ -163,6 +169,8 @@ test('leftSidebar Estudio: Resumen, ejes, Puntajes, Documentación, Otros', () =
     ESTUDIO_NAV.map((n) => n.id),
     ['summary', 'problem', 'resource', 'defense', 'risk', 'scores', 'docs', 'other'],
   );
+  assert.equal(ESTUDIO_NAV.find((n) => n.id === 'resource').label, 'Factores protectores');
+  assert.equal(ESTUDIO_NAV.find((n) => n.id === 'risk').label, 'Riesgos');
 });
 
 test('Actividades sugieren módulos por eje; red de apoyo es Personas', () => {
@@ -195,12 +203,12 @@ test('Estudio entra en Resumen si no hay selectedNav guardado', () => {
   assert.equal(study.selectedNav, 'summary');
 });
 
-test('estados del elemento son presente / a desarrollar / desconocidos (default desconocidos)', () => {
+test('estados del elemento son presente / desarrollar / desconocido (default desconocido)', () => {
   const fresh = emptyCaseStudyElement('problem', 'Ansiedad');
   assert.equal(fresh.status, 'unknown');
   assert.equal(STATUS_LABELS.present, 'Presente');
-  assert.equal(STATUS_LABELS.developing, 'A desarrollar');
-  assert.equal(STATUS_LABELS.unknown, 'Desconocidos');
+  assert.equal(STATUS_LABELS.developing, 'Desarrollar');
+  assert.equal(STATUS_LABELS.unknown, 'Desconocido');
   assert.equal(normalizeCaseStudyElement({ axis: 'problem', title: 'X', status: 'active' }).status, 'present');
   assert.equal(normalizeCaseStudyElement({ axis: 'risk', title: 'Y', status: 'in_progress' }).status, 'developing');
   const html = statusToggleHtml('unknown');
@@ -208,6 +216,10 @@ test('estados del elemento son presente / a desarrollar / desconocidos (default 
   assert.match(html, /data-status-set="developing"/);
   assert.match(html, /data-status-set="unknown"/);
   assert.doesNotMatch(html, /<select/);
+  assert.match(html, /Desarrollar/);
+  assert.match(html, /Desconocido/);
+  assert.doesNotMatch(html, /A desarrollar/);
+  assert.doesNotMatch(html, /Desconocidos/);
 });
 
 test('+ Añadir elemento abre librería del eje, no session_modules', () => {
@@ -222,6 +234,10 @@ test('+ Añadir elemento abre librería del eje, no session_modules', () => {
   const lib = elementLibraryHtml('defense', study);
   assert.match(lib, /Librería de defensas/);
   assert.match(lib, /Humor/);
+  assert.match(lib, /Defensa personalizada/);
+  assert.doesNotMatch(lib, /Título personalizado/);
+  const problemsLib = elementLibraryHtml('problem', study);
+  assert.match(problemsLib, /Problema personalizado/);
   assert.ok(libraryItemsForAxis('problem').some((item) => item.title === 'Ansiedad alta'));
   assert.ok(libraryItemsForAxis('resource').some((item) => item.title === 'Autocuidado'));
 });
@@ -253,6 +269,10 @@ test('Resumen: dots athletic por eje y genograma si hay personas', () => {
   assert.match(html, /estudio-score-dot--red/);
   assert.match(html, /estudio-score-dot--green/);
   assert.match(html, /estudio-score-dot--yellow/);
+  assert.match(html, /data-nav="problem"/);
+  assert.match(html, /data-nav="resource"/);
+  assert.match(html, /Factores protectores/);
+  assert.match(html, /Riesgos/);
 });
 
 test('ejes vacíos siguen en el nav y el centro ofrece empty state', () => {
@@ -264,4 +284,52 @@ test('ejes vacíos siguen en el nav y el centro ofrece empty state', () => {
   assert.match(css, /font-size: 13px/);
   assert.match(css, /\.estudio-element__notes::placeholder/);
   assert.match(view, /selectedNav = 'summary'/);
+});
+
+test('FAIL-3: hints M/I/O/E, placeholder por eje, PDF y librería módulos', () => {
+  assert.equal(customPlaceholderForAxis('resource'), 'Recurso o factor protector personalizado');
+  assert.equal(customPlaceholderForAxis('risk'), 'Vulnerabilidad o riesgo personalizado');
+  const objHint = fieldHintFor('problem', 'objectives');
+  const evHint = fieldHintFor('problem', 'evidence');
+  assert.match(objHint, /Qué se busca trabajar/);
+  assert.doesNotMatch(objHint, /objetivos para desarrollar/i);
+  assert.match(evHint, /fecha/);
+  assert.doesNotMatch(evHint, /evidencia de mejora/i);
+  assert.match(fieldHintFor('problem', 'indicators'), /puntajes asociados|GAD-7/);
+
+  const preset = libraryPresetFor('problem', 'Ansiedad alta');
+  assert.ok(preset.indicators.some((t) => /DASS-21/.test(t)));
+  assert.ok(preset.objectives.includes('Reducir niveles de ansiedad'));
+
+  const gad = estudioRelationForModule('gad7');
+  assert.equal(gad.axis, 'problem');
+  assert.equal(gad.element, 'Ansiedad alta');
+  assert.equal(gad.axisLabel, 'Problemas');
+
+  const words = essentialWordsFromCaseStudy({
+    elements: [{ axis: 'problem', title: 'Ansiedad alta', manifestations: [{ text: 'Rumiación nocturna' }] }],
+  });
+  assert.ok(words.some((w) => w.word.includes('ansiedad')));
+  assert.ok(words.some((w) => w.word.includes('rumi')));
+
+  const root = dirname(fileURLToPath(import.meta.url));
+  const view = readFileSync(join(root, '../../src/js/views/estudio-de-caso.js'), 'utf8');
+  const pdf = readFileSync(join(root, '../../src/js/export-treatment-pdf.js'), 'utf8');
+  const css = readFileSync(join(root, '../../src/css/estudio-caso.css'), 'utf8');
+  assert.match(view, /data-support-field="relation"/);
+  assert.match(view, /<select data-support-field="relation"/);
+  assert.match(view, /<select data-support-field="domain"/);
+  assert.doesNotMatch(view, /iconForElement/);
+  assert.match(view, /sessionsCardHtml/);
+  assert.match(view, /wordCloudHtml/);
+  assert.match(view, /scrollCenterTop/);
+  assert.match(view, /estudio-axis-nav__child/);
+  assert.match(pdf, /appendCaseStudyPdf/);
+  assert.match(css, /estudio-library__item/);
+  assert.match(css, /min-height: 96px/);
+
+  const preview = previewHtml('gad7', { label: 'GAD-7 — Ansiedad generalizada' }, null);
+  assert.match(preview, /En Estudio de caso/);
+  assert.match(preview, /Problemas/);
+  assert.match(preview, /Ansiedad alta/);
 });

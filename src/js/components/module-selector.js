@@ -18,6 +18,7 @@ import { escapeHtml, toast } from '../utils.js';
 import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL, LIBRARY_HIDDEN_TYPES } from '../module-categories.js';
 import { whereFor, whereLabel } from '../module-where.js';
 import { clinicCountryCode, localizeValidityText, validityHeading } from '../clinic-country.js';
+import { estudioRelationForModule } from '../case-study-catalog.js';
 import {
   moduleViewportOffset,
   scheduleRestoreModuleViewportOffset,
@@ -114,11 +115,18 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', sho
   const whereLine = whereId
     ? `<p class="mod-info__where">${escapeHtml(whereLabel(whereId))}</p>`
     : '';
+  const estudio = estudioRelationForModule(type);
+  const estudioLine = estudio
+    ? `<p class="mod-info__estudio">En Estudio de caso: eje <strong>${escapeHtml(estudio.axisLabel)}</strong>${
+        estudio.element ? ` · elemento <strong>${escapeHtml(estudio.element)}</strong>` : ''
+      }. Útil para trabajar ese eje.</p>`
+    : '';
 
   return `
     <div class="mod-info">
       <h3 class="mod-info__title">${escapeHtml(def.label)}</h3>
       ${whereLine}
+      ${estudioLine}
       ${rows}
       ${psych?.learnMore ? `<p class="mod-info__note">${escapeHtml(psych.learnMore)}</p>` : ''}
       ${

@@ -5,7 +5,7 @@ import { syncModuleReadableText } from '../readable-text.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 
-const AFFILIATIONS = [
+export const AFFILIATIONS = [
   'Madre',
   'Padre',
   'Hijo/a',
@@ -20,7 +20,7 @@ const AFFILIATIONS = [
   'Amigo/a',
   'Otro',
 ];
-const DOMAINS = ['Armonía', 'Conflicto', 'Apoyo emocional', 'Apoyo práctico', 'Contacto limitado'];
+export const DOMAINS = ['Armonía', 'Conflicto', 'Apoyo emocional', 'Apoyo práctico', 'Contacto limitado'];
 
 export async function renderRedesApoyo(host, moduleRow) {
   const data = parseJsonSafe(moduleRow.data, {});
