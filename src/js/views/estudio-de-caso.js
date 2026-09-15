@@ -333,14 +333,22 @@ export function elementLibraryHtml(axis, caseStudy) {
     </div>`;
 }
 
+function studyAiCardHtml() {
+  // Reemplaza la antigua sessionsCardHtml: el acceso al estudio ocupa este espacio.
+  return `
+    <button type="button" class="estudio-summary-card card estudio-summary-card--study-ai" data-autocomplete-case-study>
+      <span class="estudio-summary-card__eyebrow">Estudio de caso</span>
+      <strong class="estudio-summary-card__study-title">Estudiar caso IA</strong>
+      <span class="estudio-summary-card__study-copy">Ordena la información clínica y propone ejes con evidencia de tu anamnesis.</span>
+      <span class="estudio-summary-card__study-action">Abrir estudio <span aria-hidden="true">→</span></span>
+    </button>`;
+}
+
+// Compatibilidad con consumidores/tests antiguos: ya no se monta en el Resumen.
 function sessionsCardHtml(sessions) {
   const total = (sessions || []).length;
   const done = (sessions || []).filter((s) => isSessionDone(s)).length;
-  return `
-    <article class="estudio-summary-card card estudio-summary-card--sessions">
-      <h3 class="estudio-summary-card__title">Sesiones</h3>
-      <p class="estudio-sessions__stat"><strong>${done} de ${total}</strong> completadas</p>
-    </article>`;
+  return `<article class="estudio-summary-card card estudio-summary-card--sessions"><h3>Sesiones</h3><p>${done} de ${total} completadas</p></article>`;
 }
 
 function scoreTabsHtml() {
@@ -398,10 +406,9 @@ function summaryHtml(caseStudy, sessions, vital) {
           <p class="estudio-case__eyebrow">Estudio de caso</p>
           <h2 class="estudio-case__title">Resumen</h2>
         </div>
-        <button type="button" class="btn btn-secondary" data-autocomplete-case-study>Autocompletar ejes con IA</button>
       </header>
       <div class="estudio-summary__top">
-        ${sessionsCardHtml(sessions)}
+        ${studyAiCardHtml()}
         ${vitalRiskOrbHtml(vital, escapeHtml)}
       </div>
       ${scoreTabsHtml()}

@@ -250,6 +250,53 @@
   padding: 14px 16px;
 }
 
+.estudio-summary-card--study-ai {
+  display: flex;
+  min-height: 184px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.estudio-summary-card--study-ai:hover,
+.estudio-summary-card--study-ai:focus-visible {
+  border-color: var(--text-primary);
+  box-shadow: 0 8px 20px rgba(18, 39, 76, 0.12);
+  transform: translateY(-2px);
+}
+
+.estudio-summary-card__eyebrow,
+.estudio-summary-card__study-action {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.estudio-summary-card__study-title {
+  font-size: 1.45rem;
+}
+
+.estudio-summary-card__study-copy {
+  max-width: 34rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.estudio-summary-card__study-action {
+  margin-top: 6px;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
 .estudio-summary-card__title {
   margin: 0 0 10px;
   font-size: 1rem;
@@ -343,9 +390,32 @@
 }
 
 .estudio-summary-card--vital {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  --vital: 0.12;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 184px;
+  color: #fff;
+  background:
+    linear-gradient(115deg, #247333 0%, #a8d66b 24%, #f4d35e 47%, #f29a8c 67%, #d9272e 86%, #8e111b 100%);
+}
+
+.estudio-summary-card--vital::before {
+  position: absolute;
+  z-index: -1;
+  inset: -30%;
+  content: "";
+  opacity: 0.3;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.6) 0 1px, transparent 1.5px);
+  background-size: 8px 8px;
+  mix-blend-mode: overlay;
+  animation: vital-card-dither 7s steps(14, end) infinite;
+}
+
+.estudio-summary-card--vital .estudio-summary-card__title {
+  position: relative;
+  z-index: 1;
+  color: #fff;
 }
 
 .estudio-vital__exp {
@@ -354,60 +424,68 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.82);
 }
 
-.vital-orb {
-  --vital: 0.12;
+.vital-risk-card__body {
   position: relative;
-  width: 92px;
-  height: 92px;
-  margin: 4px 0 8px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 18px;
+  flex: 1;
 }
 
-.vital-orb__ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 210deg, #8b1e1e, #e53935, #f4c430, #c5e1a5, #2e7d32, #1b5e20);
-}
-
-.vital-orb__dither {
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background-image:
-    repeating-conic-gradient(rgba(0, 0, 0, 0.12) 0 4deg, transparent 4deg 8deg),
-    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 55%);
-  mix-blend-mode: overlay;
-  opacity: calc(0.28 + var(--vital) * 0.62);
-  animation: vital-dither 2.8s steps(10, end) infinite;
-  pointer-events: none;
-}
-
-.vital-orb__core {
-  position: absolute;
-  inset: 14px;
-  border-radius: 50%;
-  background: color-mix(in srgb, #8b1e1e calc(var(--vital) * 100%), #1b5e20 calc((1 - var(--vital)) * 100%));
-  animation: vital-core 2.6s ease-in-out infinite alternate;
-}
-
-.vital-orb__pct {
-  position: absolute;
-  inset: 0;
+.vital-risk-card__score {
   display: grid;
   place-items: center;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  align-content: center;
+  min-height: 110px;
+  text-align: center;
 }
 
-.vital-orb__label {
+.vital-risk-card__score strong {
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  line-height: 0.95;
+  font-weight: 700;
+}
+
+.vital-risk-card__score span {
+  margin-top: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.vital-risk-card__findings {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: var(--radius-sm);
+  background: rgba(20, 38, 31, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+.vital-risk-card__findings h4 {
+  margin: 0 0 7px;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vital-risk-card__findings ul {
   margin: 0;
-  font-size: 0.92rem;
-  font-weight: 650;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.vital-risk-card__findings li + li {
+  margin-top: 3px;
+}
+
+@keyframes vital-card-dither {
+  0%, 100% { transform: translate3d(-2%, -1%, 0) rotate(0deg); }
+  50% { transform: translate3d(2%, 1%, 0) rotate(2deg); }
 }
 
 .estudio-element__status {
@@ -890,6 +968,8 @@
 }
 
 @media (max-width: 720px) {
+  .vital-risk-card__body { grid-template-columns: 1fr; gap: 10px; }
+  .vital-risk-card__score { min-height: 86px; }
   .estudio-axis-matrix__head { display: none; }
   .estudio-axis-matrix__row { grid-template-columns: 1fr; gap: 6px; }
   .estudio-support-row {

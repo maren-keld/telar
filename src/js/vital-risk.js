@@ -58,6 +58,7 @@ function textHaystack(sessions, caseStudy, marital) {
  */
 export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' } = {}) {
   const reasons = [];
+  const findings = [];
   let score = 0.12;
   const maritalStatus = marital || maritalFromSessions(sessions);
 
@@ -68,6 +69,8 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     cssrsKey = data.triage || cssrsRiskBand(data.answers || {}).key;
     const bandScore = cssrsBandScore(cssrsKey);
     score = [0.12, 0.28, 0.55, 0.88][bandScore] ?? 0.12;
+    const cssrsFinding = `C-SSRS: ${cssrsKey === 'none' ? 'sin señales registradas' : cssrsKey}`;
+    findings.push(cssrsFinding);
     if (cssrsKey !== 'none') reasons.push(`C-SSRS ${cssrsKey}`);
   }
 
@@ -79,6 +82,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
   } else if (urgencia === 'media') {
     score += 0.05;
   }
+  findings.push(`Urgencia: ${urgencia || 'sin registro'}`);
 
   const gad = latestModule(sessions, 'gad7');
   const gadTotal = gad ? gad7Total(parseJsonSafe(gad.mod.data, {})) : null;
@@ -86,6 +90,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += 0.1;
     reasons.push('GAD-7 severo');
   }
+  findings.push(`GAD-7: ${gadTotal == null ? 'sin registro' : `${gadTotal} puntos`}`);
 
   const dass = latestModule(sessions, 'dass21');
   const dassAnx = dass ? dassAnxiety(parseJsonSafe(dass.mod.data, {})) : null;
@@ -93,6 +98,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += 0.08;
     reasons.push('DASS ansiedad severa');
   }
+  findings.push(`DASS-21 ansiedad: ${dassAnx == null ? 'sin registro' : `${dassAnx} puntos`}`);
 
   const riskEls = (caseStudy.elements || []).filter(
     (el) => el.axis === 'risk' && el.title && el.status !== 'unknown',
@@ -101,6 +107,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += Math.min(0.24, riskEls.length * 0.08);
     reasons.push(`eje riesgos (${riskEls.length})`);
   }
+  riskEls.slice(0, 5).forEach((el) => findings.push(`Eje riesgos: ${el.title}`));
 
   const hay = textHaystack(sessions, caseStudy, maritalStatus);
   if (/solter/.test(hay) || /single/.test(String(maritalStatus).toLowerCase())) {
@@ -119,21 +126,25 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
   score = clamp01(score);
   const label =
     score >= 0.75 ? 'Alto' : score >= 0.45 ? 'Moderado' : score >= 0.25 ? 'Leve' : 'Bajo';
-  return { score, label, cssrsKey, reasons };
+  if (findings.length < 5) findings.push('Eje riesgos: sin elementos registrados');
+  return { score, label, cssrsKey, reasons, findings: [...new Set(findings)].slice(0, 5) };
 }
 
 export function vitalRiskOrbHtml(risk, escapeHtml) {
   const pct = Math.round((risk?.score || 0) * 100);
-  const reasons = (risk?.reasons || []).join(' · ') || 'sin señales registradas';
+  const findings = (risk?.findings || risk?.reasons || []).slice(0, 5);
   return `
-    <article class="estudio-summary-card card estudio-summary-card--vital" title="${escapeHtml(reasons)}">
+    <article class="estudio-summary-card card estudio-summary-card--vital" style="--vital:${(risk?.score || 0).toFixed(3)}">
       <h3 class="estudio-summary-card__title">Riesgo vital <span class="estudio-vital__exp">experimental</span></h3>
-      <div class="vital-orb" style="--vital:${(risk?.score || 0).toFixed(3)}" aria-label="Riesgo vital ${escapeHtml(risk?.label || 'Bajo')}">
-        <div class="vital-orb__ring" aria-hidden="true"></div>
-        <div class="vital-orb__dither" aria-hidden="true"></div>
-        <div class="vital-orb__core" aria-hidden="true"></div>
-        <span class="vital-orb__pct">${pct}</span>
+      <div class="vital-risk-card__body">
+        <div class="vital-risk-card__score" aria-label="Riesgo vital ${escapeHtml(risk?.label || 'Bajo')}: ${pct} de 100">
+          <strong>${pct}</strong>
+          <span>${escapeHtml(risk?.label || 'Bajo')}</span>
+        </div>
+        <div class="vital-risk-card__findings">
+          <h4>Hallazgos considerados</h4>
+          <ul>${findings.map((finding) => `<li>${escapeHtml(finding)}</li>`).join('')}</ul>
+        </div>
       </div>
-      <p class="vital-orb__label">${escapeHtml(risk?.label || 'Bajo')}</p>
     </article>`;
 }
