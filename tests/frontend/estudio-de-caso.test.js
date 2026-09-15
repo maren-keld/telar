@@ -416,3 +416,16 @@ Me afecta mucho lo que dicen mis compañeros.`);
   assert.ok(rows.some((row) => row.title === 'Alteraciones del sueño'));
   assert.ok(rows.some((row) => row.title === 'Celos y desconfianza'));
 });
+
+test('autocompletar literal cubre anamnesis estructurada pediátrica', () => {
+  const rows = fallbackCaseStudyRows(`Motivo: La familia solicita apoyo para que cumpla sus responsabilidades diarias y retome su asistencia al colegio.
+Expectativas: Apoyarla en la regulación de la rabia, la tristeza y la ansiedad.
+Antecedentes: Diagnóstico de TDAH. Presenta dificultades de memoria, concentración y organización temporal: olvida actividades.
+Antecedentes de intentos suicidas, ideación suicida, deseos de hacerse daño y autolesiones.
+Utiliza la escritura y el dibujo para expresar tristeza.`);
+  assert.ok(rows.some((row) => row.title === 'Dificultades de organización y atención'));
+  assert.ok(rows.some((row) => row.title === 'Ansiedad y ánimo bajo'));
+  assert.ok(rows.some((row) => row.title === 'Dificultades de asistencia escolar'));
+  assert.ok(rows.some((row) => row.title === 'Riesgo suicida'));
+  assert.ok(rows.some((row) => row.title === 'Capacidad de expresión emocional'));
+});

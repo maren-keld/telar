@@ -106,8 +106,13 @@ export function mergeCaseStudyAiElements(caseStudy, rows = []) {
 
 const FALLBACK_RULES = [
   { axis: 'risk', title: 'Riesgo suicida', pattern: /suicid|quitarme la vida|matarme|no quiero vivir/iu },
+  { axis: 'risk', title: 'Autolesiones', pattern: /autolesi[oó]n|hacerse da[nñ]o|cortarse/iu },
   { axis: 'risk', title: 'Consumo de cannabis', pattern: /marihu|cannabis|fumar(?:me)? un pito|adicci[oó]n/iu },
   { axis: 'risk', title: 'Agresividad e impulsividad', pattern: /agresiv|ira|exploto|explosiv|violencia|golpear/iu },
+  { axis: 'problem', title: 'Dificultades de organización y atención', pattern: /tdah|memoria|concentraci[oó]n|organizaci[oó]n|olvida|responsabil/iu },
+  { axis: 'problem', title: 'Ansiedad y ánimo bajo', pattern: /ansiedad|depresi[oó]n|tristeza|estado de [aá]nimo/iu },
+  { axis: 'problem', title: 'Regulación emocional y frustración', pattern: /rabia|frustraci[oó]n|tolerancia a la espera|hacer filas/iu },
+  { axis: 'problem', title: 'Dificultades de asistencia escolar', pattern: /asistencia al colegio|sistema escolar|colegio/iu },
   { axis: 'problem', title: 'Alteraciones del sueño', pattern: /duermo|dormir|despierto|sueño|insomnio/iu },
   { axis: 'problem', title: 'Celos y desconfianza', pattern: /celo|desconfianza|me paso .*pel[ií]culas/iu },
   { axis: 'problem', title: 'Estrés laboral', pattern: /despido|trabajo|compañer[oa]s?|turno|7x7|3 de noche/iu },
@@ -115,6 +120,8 @@ const FALLBACK_RULES = [
   { axis: 'defense', title: 'Sensibilidad interpersonal', pattern: /palabra me afecta|me afecta mucho|arrastro cosas/iu },
   { axis: 'resource', title: 'Motivación de cambio', pattern: /me gustar[ií]a|quiero (?:ser|controlar)|necesito saber|tratarme/iu },
   { axis: 'resource', title: 'Conducta prosocial', pattern: /ayudar|buen coraz[oó]n|apoyar/iu },
+  { axis: 'resource', title: 'Capacidad de expresión emocional', pattern: /expresar c[oó]mo se siente|escritura|dibujo|comunicar.*emocion/iu },
+  { axis: 'resource', title: 'Apoyo familiar', pattern: /familia|madre|pap[aá]|hermana/iu },
 ];
 
 /** Respaldo literal: organiza frases guardadas cuando el proveedor devuelve JSON vacío o inválido. */
@@ -126,15 +133,16 @@ export function fallbackCaseStudyRows(sourceText) {
   const rows = [];
   const perAxis = new Map();
   for (const fragment of fragments) {
-    const rule = FALLBACK_RULES.find(({ pattern }) => pattern.test(fragment));
-    if (!rule || (perAxis.get(rule.axis) || 0) >= 3) continue;
-    if (rows.some((row) => row.axis === rule.axis && row.title === rule.title)) {
-      const row = rows.find((candidate) => candidate.axis === rule.axis && candidate.title === rule.title);
-      if (row.manifestations.length < 3) row.manifestations.push(fragment);
-      continue;
+    for (const rule of FALLBACK_RULES.filter(({ pattern }) => pattern.test(fragment))) {
+      if ((perAxis.get(rule.axis) || 0) >= 3 && !rows.some((row) => row.axis === rule.axis && row.title === rule.title)) continue;
+      if (rows.some((row) => row.axis === rule.axis && row.title === rule.title)) {
+        const row = rows.find((candidate) => candidate.axis === rule.axis && candidate.title === rule.title);
+        if (row.manifestations.length < 3) row.manifestations.push(fragment);
+        continue;
+      }
+      rows.push({ axis: rule.axis, title: rule.title, status: 'unknown', manifestations: [fragment], indicators: [] });
+      perAxis.set(rule.axis, (perAxis.get(rule.axis) || 0) + 1);
     }
-    rows.push({ axis: rule.axis, title: rule.title, status: 'unknown', manifestations: [fragment], indicators: [] });
-    perAxis.set(rule.axis, (perAxis.get(rule.axis) || 0) + 1);
   }
   if (!rows.length && fragments[0]) {
     rows.push({ axis: 'problem', title: 'Motivo principal', status: 'unknown', manifestations: [fragments[0]], indicators: [] });
