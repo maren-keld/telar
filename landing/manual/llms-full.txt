@@ -187,7 +187,7 @@ Los cambios se **guardan solos** (autosave). No hace falta un botón Guardar en 
 Desde el workspace podés acceder a acciones del caso, por ejemplo:
 
 - Datos y notas del paciente
-- Exportar el programa de tratamiento como **PDF** o como documento **Word (.doc)** editable
+- Exportar el programa de tratamiento como **PDF** o como documento **Word (.docx)** editable
 - Presentación de caso anonimizada para supervisión
 - Acciones de IA si la tenés activada
 
@@ -455,7 +455,7 @@ Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** pa
 
 ## Programa del tratamiento
 
-En cualquier plan podés exportar el programa/tratamiento como **PDF** (visión de conjunto del caso) o como **Word (.doc)** editable. Ambos archivos se guardan localmente; revisá el resultado antes de compartirlo, especialmente si contiene texto largo o información sensible.
+En cualquier plan podés exportar el programa/tratamiento como **PDF** (visión de conjunto del caso) o como **Word (.docx)** editable. Ambos archivos se guardan localmente; revisá el resultado antes de compartirlo, especialmente si contiene texto largo o información sensible.
 
 ## Presentación / otros
 

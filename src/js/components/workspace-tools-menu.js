@@ -55,7 +55,7 @@ export function toolsItemsHtml({ compact = false } = {}) {
         <button type="button" class="workspace-tools-tab__item" data-action="export-word">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
-            <span>Exportar programa Word (.doc)</span>
+            <span>Exportar programa Word (.docx)</span>
             ${detail('Documento editable del programa de tratamiento')}
           </span>
         </button>
@@ -170,7 +170,7 @@ export function openWorkspaceToolsMenu(opts) {
         </header>
         <ul class="workspace-tools-menu__list">
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>Exportar programa PDF</span><small>Resumen del tratamiento</small></span></button></li>
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>Exportar programa Word (.doc)</span><small>Documento editable del tratamiento</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>Exportar programa Word (.docx)</span><small>Documento editable del tratamiento</small></span></button></li>
         </ul>
       </div>
     </div>`;

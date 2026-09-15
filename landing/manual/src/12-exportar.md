@@ -19,7 +19,7 @@ Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** pa
 
 ## Programa del tratamiento
 
-En cualquier plan podés exportar el programa/tratamiento como **PDF** (visión de conjunto del caso) o como **Word (.doc)** editable. Ambos archivos se guardan localmente; revisá el resultado antes de compartirlo, especialmente si contiene texto largo o información sensible.
+En cualquier plan podés exportar el programa/tratamiento como **PDF** (visión de conjunto del caso) o como **Word (.docx)** editable. Ambos archivos se guardan localmente; revisá el resultado antes de compartirlo, especialmente si contiene texto largo o información sensible.
 
 ## Presentación / otros
 

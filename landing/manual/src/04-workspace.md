@@ -30,7 +30,7 @@ Los cambios se **guardan solos** (autosave). No hace falta un botón Guardar en 
 Desde el workspace podés acceder a acciones del caso, por ejemplo:
 
 - Datos y notas del paciente
-- Exportar el programa de tratamiento como **PDF** o como documento **Word (.doc)** editable
+- Exportar el programa de tratamiento como **PDF** o como documento **Word (.docx)** editable
 - Presentación de caso anonimizada para supervisión
 - Acciones de IA si la tenés activada
 

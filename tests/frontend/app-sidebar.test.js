@@ -32,6 +32,6 @@ test('herramientas no muestra el asistente IA', () => {
   assert.doesNotMatch(src, /Asistente IA/);
   assert.doesNotMatch(src, /toolsAiSectionHtml/);
   assert.doesNotMatch(src, /Espacio de trabajo/);
-  assert.match(src, /Exportar programa Word \(\.doc\)/);
+  assert.match(src, /Exportar programa Word \(\.docx\)/);
   assert.doesNotMatch(src, /Documentos de referencia/);
 });
