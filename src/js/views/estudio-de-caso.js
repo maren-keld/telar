@@ -385,7 +385,7 @@ function summaryHtml(caseStudy, sessions, vital) {
         const recommended = suggestedModulesForElement(axis.id, el.title).slice(0, 2);
         const tone = summaryDotsForAxis({ elements: [el] }, axis.id)[0]?.tone || 'muted';
         return `<div class="estudio-axis-matrix__row">
-          <div><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span>${escapeHtml(el.title)}</div>
+          <div><span class="estudio-axis-matrix__element"><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span><span>${escapeHtml(el.title)}</span></span></div>
           <div>${linked.length
             ? linked.map((type) => `<span class="estudio-summary-chip">${escapeHtml(moduleLabelFor(type))}</span>`).join('')
             : `<span class="estudio-axis-matrix__recommendation">Sugeridos: ${recommended.map((type) => escapeHtml(moduleLabelFor(type))).join(' · ')}</span>`}</div>

@@ -244,6 +244,13 @@
 }
 
 .estudio-axis-matrix__row > div:first-child { font-weight: 600; }
+.estudio-axis-matrix__element {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.estudio-axis-matrix__element .estudio-score-dot { flex: 0 0 10px; }
 .estudio-axis-matrix .estudio-summary-chip { min-height: 24px; padding: 3px 7px; font-size: 0.72rem; }
 .estudio-axis-matrix__recommendation { color: var(--text-muted); font-size: 0.74rem; line-height: 1.25; }
 
@@ -393,6 +400,8 @@
 
 .card.estudio-summary-card--vital {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 280px;
   color: var(--text-primary);
@@ -418,8 +427,10 @@
   display: grid;
   grid-template-columns: minmax(88px, 0.64fr) minmax(0, 1.36fr);
   align-items: center;
+  justify-content: center;
   gap: 10px;
   flex: 1;
+  width: 100%;
 }
 
 .vital-risk-card__score {

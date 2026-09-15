@@ -252,8 +252,6 @@
   border-radius: 1px var(--radius-lg) var(--radius-lg) 1px;
   overflow: visible;
   box-shadow: var(--shadow-card);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 120px;
 }
 
 .kindle-note--starred {
@@ -279,6 +277,7 @@
   flex: 1 1 0;
   min-width: 0;
   padding: 12px 12px;
+  box-sizing: border-box;
 }
 
 .kindle-note__source {

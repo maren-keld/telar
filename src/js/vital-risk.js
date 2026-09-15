@@ -149,7 +149,7 @@ export function vitalRiskOrbHtml(risk, escapeHtml) {
           <span>${escapeHtml(risk?.label || 'Bajo')}</span>
         </div>
         <div class="vital-risk-card__findings">
-          <h4>Hallazgos considerados</h4>
+          <h4>Hallazgos</h4>
           <ul>${findings.map((finding) => `<li>${escapeHtml(finding)}</li>`).join('')}</ul>
         </div>
       </div>

@@ -42,6 +42,14 @@ export const CORE_MODULE_DEFS = {
     oncePerTreatment: false,
     allowMultipleInSession: false,
   },
+  // Fallback de catálogo: el pack clínico aporta los mismos metadatos, pero el
+  // selector debe seguir mostrando C-SSRS si el pack aún está cargando o falla.
+  cssrs: {
+    label: 'C-SSRS Screener — Riesgo suicida',
+    category: 'pruebas',
+    description: 'Tamizaje de ideación y conducta suicida con triage clínico.',
+    allowMultipleInSession: false,
+  },
   neurofeedback: {
     label: 'Neurofeedback',
     category: 'intervencion',
