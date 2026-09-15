@@ -114,6 +114,8 @@ export const NOTE_COLORS = [
   { id: 'lavender', label: 'Lavanda', short: 'La', class: 'note--lavender' },
   { id: 'pink', label: 'Rosa', short: 'Ro', class: 'note--pink' },
   { id: 'blue', label: 'Azul', short: 'Az', class: 'note--blue' },
+  { id: 'mint', label: 'Verde menta', short: 'Me', class: 'note--mint' },
+  { id: 'coral', label: 'Coral', short: 'Co', class: 'note--coral' },
 ];
 
 export const PATIENT_GENDER_OPTIONS = [
