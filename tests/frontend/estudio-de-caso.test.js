@@ -29,6 +29,7 @@ import {
 import { elementLibraryHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
 import {
   caseStudyAiSourceText,
+  fallbackCaseStudyRows,
   mergeCaseStudyAiElements,
   parseCaseStudyAiResult,
 } from '../../src/js/case-study-ai.js';
@@ -386,4 +387,19 @@ test('autocompletar acepta ejes en español y evidencia alternativa de la IA', (
   const problem = merged.caseStudy.elements.find((element) => element.title === 'Control de ira');
   assert.equal(problem.axis, 'problem');
   assert.equal(problem.manifestations[0].text, 'Refiere que explota rápidamente');
+});
+
+test('autocompletar acepta un arreglo JSON directo y objetos de evidencia', () => {
+  const rows = parseCaseStudyAiResult('[{"eje":"riesgos","nombre":"Consumo","evidencia":{"text":"Refiere consumo de cannabis"}}]');
+  const merged = mergeCaseStudyAiElements({ elements: [] }, rows);
+  assert.equal(merged.added, 1);
+  const consumo = merged.caseStudy.elements.find((element) => element.title === 'Consumo');
+  assert.equal(consumo.manifestations[0].text, 'Refiere consumo de cannabis');
+});
+
+test('autocompletar tiene respaldo literal para anamnesis extensa', () => {
+  const rows = fallbackCaseStudyRows(`Motivo: evitar despido\nReducir consumo de marihuana.\nMe gustaría controlar mi ira cuando exploto.\nDuermo 4 a 5 horas.\nCelos y desconfianza con mi pareja.`);
+  assert.ok(rows.length >= 4);
+  assert.ok(rows.some((row) => row.title === 'Consumo de cannabis'));
+  assert.ok(rows.some((row) => row.title === 'Alteraciones del sueño'));
 });

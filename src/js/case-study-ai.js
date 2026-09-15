@@ -25,13 +25,19 @@ export function caseStudyAiSourceText(sessions = []) {
 
 export function parseCaseStudyAiResult(raw) {
   const cleaned = String(raw || '').replace(/^```(?:json)?\s*/iu, '').replace(/\s*```$/u, '').trim();
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
+  const rowsFrom = (parsed) => {
+    if (Array.isArray(parsed)) return parsed;
+    return parsed?.elements || parsed?.ejes || parsed?.axes || parsed?.items || [];
+  };
+  try {
+    return rowsFrom(JSON.parse(cleaned));
+  } catch { /* Intenta rescatar JSON rodeado por explicación. */ }
+  const starts = [cleaned.indexOf('{'), cleaned.indexOf('[')].filter((index) => index >= 0);
+  const start = starts.length ? Math.min(...starts) : -1;
+  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
   if (start < 0 || end <= start) return [];
   try {
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    if (Array.isArray(parsed)) return parsed;
-    return parsed.elements || parsed.ejes || parsed.axes || [];
+    return rowsFrom(JSON.parse(cleaned.slice(start, end + 1)));
   } catch {
     return [];
   }
@@ -46,8 +52,10 @@ const AXIS_ALIASES = new Map([
 ]);
 
 function cleanEvidence(value) {
-  return (Array.isArray(value) ? value : [])
-    .map((text) => String(text || '').trim())
+  return (Array.isArray(value) ? value : value ? [value] : [])
+    .map((item) => typeof item === 'object'
+      ? String(item?.text || item?.frase || item?.quote || item?.evidence || '').trim()
+      : String(item || '').trim())
     .filter(Boolean)
     .slice(0, 3)
     .map((text) => ({ text, checked: false }));
@@ -70,7 +78,7 @@ export function mergeCaseStudyAiElements(caseStudy, rows = []) {
   let changed = 0;
   for (const row of rows) {
     const axis = AXIS_ALIASES.get(String(row?.axis || row?.eje || '').trim().toLocaleLowerCase()) || '';
-    const title = String(row?.title || '').trim();
+    const title = String(row?.title || row?.titulo || row?.name || row?.nombre || '').trim();
     if (!ALLOWED_AXES.has(axis) || !title || /^red de apoyo$/iu.test(title)) continue;
     const manifestations = cleanEvidence(row.manifestations || row.manifestaciones || row.evidence || row.evidencia);
     const indicators = cleanEvidence(row.indicators || row.indicadores);
@@ -96,6 +104,44 @@ export function mergeCaseStudyAiElements(caseStudy, rows = []) {
   return { caseStudy: normalizeCaseStudyData(next), added, changed };
 }
 
+const FALLBACK_RULES = [
+  { axis: 'risk', title: 'Riesgo suicida', pattern: /suicid|quitarme la vida|matarme|no quiero vivir/iu },
+  { axis: 'risk', title: 'Consumo de cannabis', pattern: /marihu|cannabis|fumar(?:me)? un pito|adicci[oó]n/iu },
+  { axis: 'risk', title: 'Agresividad e impulsividad', pattern: /agresiv|ira|exploto|explosiv|violencia|golpear/iu },
+  { axis: 'problem', title: 'Alteraciones del sueño', pattern: /duermo|dormir|despierto|sueño|insomnio/iu },
+  { axis: 'problem', title: 'Celos y desconfianza', pattern: /celo|desconfianza|me paso .*pel[ií]culas/iu },
+  { axis: 'problem', title: 'Estrés laboral', pattern: /despido|trabajo|compañer[oa]s?|turno|7x7|3 de noche/iu },
+  { axis: 'defense', title: 'Evitación', pattern: /evitar|me cuesta social|soledad|estar tranquilo/iu },
+  { axis: 'defense', title: 'Sensibilidad interpersonal', pattern: /palabra me afecta|me afecta mucho|arrastro cosas/iu },
+  { axis: 'resource', title: 'Motivación de cambio', pattern: /me gustar[ií]a|quiero (?:ser|controlar)|necesito saber|tratarme/iu },
+  { axis: 'resource', title: 'Conducta prosocial', pattern: /ayudar|buen coraz[oó]n|apoyar/iu },
+];
+
+/** Respaldo literal: organiza frases guardadas cuando el proveedor devuelve JSON vacío o inválido. */
+export function fallbackCaseStudyRows(sourceText) {
+  const fragments = String(sourceText || '')
+    .split(/\n+|(?<=[.!?])\s+/u)
+    .map((line) => line.replace(/^#+\s*[^\n]*$/u, '').replace(/^[\p{L} /-]+:\s*/u, '').trim())
+    .filter((line) => line.length >= 12 && !/^sesi[oó]n\b/iu.test(line));
+  const rows = [];
+  const perAxis = new Map();
+  for (const fragment of fragments) {
+    const rule = FALLBACK_RULES.find(({ pattern }) => pattern.test(fragment));
+    if (!rule || (perAxis.get(rule.axis) || 0) >= 3) continue;
+    if (rows.some((row) => row.axis === rule.axis && row.title === rule.title)) {
+      const row = rows.find((candidate) => candidate.axis === rule.axis && candidate.title === rule.title);
+      if (row.manifestations.length < 3) row.manifestations.push(fragment);
+      continue;
+    }
+    rows.push({ axis: rule.axis, title: rule.title, status: 'unknown', manifestations: [fragment], indicators: [] });
+    perAxis.set(rule.axis, (perAxis.get(rule.axis) || 0) + 1);
+  }
+  if (!rows.length && fragments[0]) {
+    rows.push({ axis: 'problem', title: 'Motivo principal', status: 'unknown', manifestations: [fragments[0]], indicators: [] });
+  }
+  return rows;
+}
+
 export async function autoCompleteCaseStudyWithAi(treatmentId) {
   const sessions = await getSessionsWithModules(treatmentId);
   const sourceText = caseStudyAiSourceText(sessions);
@@ -115,9 +161,10 @@ export async function autoCompleteCaseStudyWithAi(treatmentId) {
       { role: 'user', content: sourceText },
     ],
   });
+  const current = await loadCaseStudy(treatmentId);
   const rows = parseCaseStudyAiResult(text);
-  if (!rows.length) throw new Error('La IA no encontró evidencia suficiente para añadir ejes.');
-  const merged = mergeCaseStudyAiElements(await loadCaseStudy(treatmentId), rows);
+  let merged = mergeCaseStudyAiElements(current, rows);
+  if (!merged.changed) merged = mergeCaseStudyAiElements(current, fallbackCaseStudyRows(sourceText));
   if (!merged.changed) throw new Error('No hubo evidencia nueva suficiente para actualizar los ejes.');
   return { ...merged, sessions, sourceText, saved: await saveCaseStudy(treatmentId, merged.caseStudy) };
 }

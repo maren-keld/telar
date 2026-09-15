@@ -107,7 +107,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += Math.min(0.24, riskEls.length * 0.08);
     reasons.push(`eje riesgos (${riskEls.length})`);
   }
-  riskEls.slice(0, 5).forEach((el) => findings.push(`Eje riesgos: ${el.title}`));
+  riskEls.slice(0, 5).forEach((el) => findings.push(el.title));
 
   const hay = textHaystack(sessions, caseStudy, maritalStatus);
   if (/solter/.test(hay) || /single/.test(String(maritalStatus).toLowerCase())) {
@@ -126,7 +126,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
   score = clamp01(score);
   const label =
     score >= 0.75 ? 'Alto' : score >= 0.45 ? 'Moderado' : score >= 0.25 ? 'Leve' : 'Bajo';
-  if (findings.length < 5) findings.push('Eje riesgos: sin elementos registrados');
+  if (findings.length < 5) findings.push('Sin elementos de riesgo registrados');
   return { score, label, cssrsKey, reasons, findings: [...new Set(findings)].slice(0, 5) };
 }
 
