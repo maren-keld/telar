@@ -16,24 +16,28 @@ TODAY = "2026-08-20"
 def panel(api, monkeypatch):
     monkeypatch.setattr(api_module, "PANEL_PASSWORD", PANEL_PASSWORD)
     monkeypatch.setattr(crm, "today_chile", lambda now=None: TODAY)
+    api.post("/panel/login", data={"password": PANEL_PASSWORD})
     return api
 
 
 def crm_get(api, **query):
-    query.setdefault("secret", PANEL_PASSWORD)
     qs = "&".join(f"{k}={v}" for k, v in query.items())
-    return api.get(f"/api/admin/crm?{qs}")
+    suffix = f"?{qs}" if qs else ""
+    return api.get(f"/api/admin/crm{suffix}")
 
 
 def crm_patch(api, payload, **query):
-    query.setdefault("secret", PANEL_PASSWORD)
     qs = "&".join(f"{k}={v}" for k, v in query.items())
-    return api.patch(f"/api/admin/crm/today?{qs}", json=payload)
+    suffix = f"?{qs}" if qs else ""
+    return api.patch(f"/api/admin/crm/today{suffix}", json=payload)
 
 
-def test_crm_requires_the_panel_password(panel):
-    assert panel.get("/api/admin/crm").status_code == 401
-    assert panel.get("/api/admin/crm?secret=incorrecta").status_code == 401
+def test_crm_requires_the_panel_password(api, monkeypatch):
+    monkeypatch.setattr(api_module, "PANEL_PASSWORD", PANEL_PASSWORD)
+    assert api.get("/api/admin/crm").status_code == 401
+    assert api.get("/api/admin/crm?secret=incorrecta").status_code == 401
+    assert api.get(f"/api/admin/crm").status_code == 401
+    assert api.get(f"/api/admin/crm?token={PANEL_PASSWORD}").status_code == 401
 
 
 def test_new_crm_does_not_mark_the_past_as_missed(panel):
@@ -87,7 +91,7 @@ def test_completing_a_past_day_clears_it_from_missed(panel):
 
 def test_groups_people_and_reaches(panel):
     created = panel.post(
-        f"/api/admin/crm/groups?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/groups",
         json={
             "name": "Psicólogos Chile",
             "location": "Nacional",
@@ -101,7 +105,7 @@ def test_groups_people_and_reaches(panel):
     assert group["status"] == "por_crear"
 
     person = panel.post(
-        f"/api/admin/crm/people?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/people",
         json={
             "name": "Ana Pérez",
             "location": "Ñuñoa",
@@ -113,7 +117,7 @@ def test_groups_people_and_reaches(panel):
     assert person["location"] == "Ñuñoa"
 
     reach = panel.post(
-        f"/api/admin/crm/reaches?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/reaches",
         json={"kind": "grupo", "group_id": group["id"], "note": "Me presenté"},
     )
     assert reach.status_code == 200
@@ -123,7 +127,7 @@ def test_groups_people_and_reaches(panel):
     assert row["day"] == TODAY
 
     updated = panel.patch(
-        f"/api/admin/crm/groups/{group['id']}?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/groups/{group['id']}",
         json={"name": "Psicólogos Chile", "status": "creado", "location": "Nacional", "notes": ""},
     ).json["groups"][0]
     assert updated["status"] == "creado"
@@ -131,7 +135,7 @@ def test_groups_people_and_reaches(panel):
 
 def test_reach_without_where_is_rejected(panel):
     res = panel.post(
-        f"/api/admin/crm/reaches?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/reaches",
         json={"kind": "otro", "where_text": "  "},
     )
     assert res.status_code == 400
@@ -139,7 +143,7 @@ def test_reach_without_where_is_rejected(panel):
 
 def test_group_name_is_required(panel):
     res = panel.post(
-        f"/api/admin/crm/groups?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/groups",
         json={"name": "  "},
     )
     assert res.status_code == 400
@@ -176,11 +180,11 @@ def test_known_contacts_seed_the_red_map(panel, monkeypatch):
 
 def test_graph_links_person_to_group_and_reaches(panel):
     group = panel.post(
-        f"/api/admin/crm/groups?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/groups",
         json={"name": "Psicólogos Chile", "status": "por_crear"},
     ).json["groups"][0]
     person = panel.post(
-        f"/api/admin/crm/people?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/people",
         json={
             "name": "Ana Pérez",
             "location": "Ñuñoa",
@@ -191,7 +195,7 @@ def test_graph_links_person_to_group_and_reaches(panel):
     assert person["group_id"] == group["id"]
 
     panel.post(
-        f"/api/admin/crm/reaches?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/reaches",
         json={"kind": "persona", "person_id": person["id"], "note": "Le escribí"},
     )
     graph = crm_get(panel).json["graph"]
@@ -205,7 +209,7 @@ def test_graph_links_person_to_group_and_reaches(panel):
 
 def test_lost_people_sit_in_the_deep_ring_with_a_reason(panel):
     person = panel.post(
-        f"/api/admin/crm/people?secret={PANEL_PASSWORD}",
+        f"/api/admin/crm/people",
         json={
             "name": "Alumna del curso",
             "status": "no_instalo",
