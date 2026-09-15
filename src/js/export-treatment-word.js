@@ -64,7 +64,7 @@ export async function exportTreatmentWord(treatmentId) {
     <style>body{font-family:Arial,sans-serif;color:#172b4d;line-height:1.45;margin:2.2cm}h1{font-size:20pt;margin:0 0 6pt}h2{font-size:14pt;border-bottom:1px solid #cfd8e6;padding-bottom:4pt;margin-top:24pt}h3{font-size:11pt;margin:16pt 0 4pt}p{font-size:10.5pt;margin:0 0 8pt}.meta{color:#52657f;font-size:9.5pt}.patient{background:#f5f8fc;border:1px solid #d6e0ee;padding:10pt 12pt;margin:14pt 0}</style>
     </head><body><h1>Programa de tratamiento — Telar</h1><p class="meta">Generado: ${escapeHtml(formatDate(new Date().toISOString()))}</p>
     <div class="patient">${patientFields.map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`).join('')}</div>${sessionSections}</body></html>`;
-  const safeName = String(treatment.patient_name || 'paciente').replace(/[^\w\s-áéíóúñ]/giu, '').trim();
+  const safeName = String(treatment.patient_name || 'paciente').replace(/[^\w\sáéíóúñ]/giu, '').trim();
   const filename = `programa-tratamiento-${safeName || 'paciente'}.doc`;
 
   if (isTauriApp()) {
