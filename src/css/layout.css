@@ -203,10 +203,10 @@
 
 .workspace-sidebar__footer {
   flex-shrink: 0;
-  padding: 10px 12px;
+  padding: 10px clamp(20px, 11.5%, 48px) 10px clamp(20px, 14%, 58px);
   border-top: 1px solid var(--border);
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   gap: 6px;
 }
@@ -239,6 +239,7 @@
   background: var(--bg-card);
   overflow: hidden;
   box-sizing: border-box;
+  flex: 1 1 auto;
 }
 
 .workspace-mode-chip {

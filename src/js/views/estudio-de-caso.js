@@ -13,7 +13,7 @@ import {
   normalizeCaseStudyElement,
   STATUS_LABELS,
   statusLabelFor,
-  suggestedModulesForAxis,
+  suggestedModulesForElement,
 } from '../case-study-model.js';
 import {
   elementInAxis,
@@ -122,7 +122,7 @@ function elementRowHtml(element, axis, sessions) {
   const bundled = Boolean(element.bundled || catalog);
   const catalogDesc = catalog?.description || '';
   const hasNotes = Boolean((element.notes || '').trim());
-  const suggestions = suggestedModulesForAxis(axis);
+  const suggestions = suggestedModulesForElement(axis, element.title);
 
   const lists = isNetwork
     ? ''
@@ -338,9 +338,9 @@ function studyAiCardHtml() {
   return `
     <button type="button" class="estudio-summary-card card estudio-summary-card--study-ai" data-autocomplete-case-study>
       <span class="estudio-summary-card__eyebrow">Estudio de caso</span>
-      <strong class="estudio-summary-card__study-title">Estudiar caso IA</strong>
+      <strong class="estudio-summary-card__study-title">Estudiar caso con IA</strong>
       <span class="estudio-summary-card__study-copy">Ordena la información clínica y propone ejes con evidencia de tu anamnesis.</span>
-      <span class="estudio-summary-card__study-action">Abrir estudio <span aria-hidden="true">→</span></span>
+      <span class="estudio-summary-card__study-action">Comenzar análisis <span aria-hidden="true">→</span></span>
     </button>`;
 }
 
@@ -382,7 +382,7 @@ function summaryHtml(caseStudy, sessions, vital) {
       <div class="estudio-axis-matrix__head"><span>Elemento</span><span>Módulos del programa</span></div>
       ${els.map((el) => {
         const linked = linkedModulesForElement(el, sessions);
-        const recommended = suggestedModulesForAxis(axis.id).slice(0, 2);
+        const recommended = suggestedModulesForElement(axis.id, el.title).slice(0, 2);
         const tone = summaryDotsForAxis({ elements: [el] }, axis.id)[0]?.tone || 'muted';
         return `<div class="estudio-axis-matrix__row">
           <div><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span>${escapeHtml(el.title)}</div>

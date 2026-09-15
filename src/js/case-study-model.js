@@ -348,8 +348,22 @@ export const AXIS_MODULE_HINTS = {
   other: ['nota_sesion', 'tcc_prevencion_recaida'],
 };
 
+const ELEMENT_MODULE_HINTS = {
+  'indisciplina en el hogar': ['tcc_abc', 'tcc_monitoreo_actividades', 'nota_sesion'],
+  'conflictos de pareja': ['tcc_abc', 'tcc_socratico', 'nota_sesion'],
+  'dificultades relacionales': ['tcc_abc', 'tcc_socratico', 'nota_sesion'],
+  'uso problemático de sustancias': ['tcc_prevencion_recaida', 'tcc_estres', 'nota_sesion'],
+  'consumo de cannabis': ['tcc_prevencion_recaida', 'tcc_estres', 'nota_sesion'],
+  'alteraciones del sueño': ['tcc_monitoreo_actividades', 'tcc_estres', 'nota_sesion'],
+};
+
 export function suggestedModulesForAxis(axis) {
   return AXIS_MODULE_HINTS[normalizeAxis(axis)] || AXIS_MODULE_HINTS.other;
+}
+
+export function suggestedModulesForElement(axis, title = '') {
+  const key = String(title).trim().toLocaleLowerCase();
+  return ELEMENT_MODULE_HINTS[key] || suggestedModulesForAxis(axis);
 }
 
 const FIELD_HINTS = {

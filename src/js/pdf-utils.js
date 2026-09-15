@@ -37,8 +37,20 @@ export function pdfText(doc, text, x, y, { maxWidth = PDF_MAX_W, size = 10, styl
   doc.setFontSize(size);
   doc.setFont('helvetica', style);
   const lines = doc.splitTextToSize(pdfSafeText(text), maxWidth);
-  doc.text(lines, x, y);
-  return y + lines.length * (size * 0.42);
+  const lineHeight = size * 0.42;
+  // jsPDF no pagina automáticamente un bloque de texto. Escribimos línea por
+  // línea para que una anamnesis larga nunca quede cortada al pie de la hoja.
+  for (const line of lines) {
+    if (y + lineHeight > 280) {
+      doc.addPage();
+      y = PDF_MARGIN + 8;
+      doc.setFontSize(size);
+      doc.setFont('helvetica', style);
+    }
+    doc.text(line, x, y);
+    y += lineHeight;
+  }
+  return y;
 }
 
 export function ensurePdfSpace(doc, y, needed = 20) {

@@ -133,8 +133,15 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
 export function vitalRiskOrbHtml(risk, escapeHtml) {
   const pct = Math.round((risk?.score || 0) * 100);
   const findings = (risk?.findings || risk?.reasons || []).slice(0, 5);
+  const tone = pct >= 75
+    ? ['#b42318', '#ef4444']
+    : pct >= 45
+      ? ['#b45309', '#f59e0b']
+      : pct >= 25
+        ? ['#a16207', '#eab308']
+        : ['#157347', '#4caf50'];
   return `
-    <article class="estudio-summary-card card estudio-summary-card--vital" style="--vital:${(risk?.score || 0).toFixed(3)}">
+    <article class="estudio-summary-card card estudio-summary-card--vital" style="--vital:${(risk?.score || 0).toFixed(3)};--risk-tone-start:${tone[0]};--risk-tone-end:${tone[1]}">
       <h3 class="estudio-summary-card__title">Riesgo vital <span class="estudio-vital__exp">experimental</span></h3>
       <div class="vital-risk-card__body">
         <div class="vital-risk-card__score" aria-label="Riesgo vital ${escapeHtml(risk?.label || 'Bajo')}: ${pct} de 100">

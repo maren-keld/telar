@@ -12,7 +12,7 @@ Telar agrupa el trabajo clínico en **módulos**. Cada uno es una ficha o interv
 ## Categorías
 
 1. **Conceptualización** — registro inicial, motivo, diagnóstico, nota de sesión, redes de apoyo, plan de seguridad
-2. **Pruebas** — escalas con scoring (ASRS, GAD-7, PCL-5, DASS-21, etc.)
+2. **Pruebas** — escalas con scoring (ASRS, GAD-7, PCL-5, DASS-21, C-SSRS Screener, etc.)
 3. **Habilidades y tareas (TCC)** — ABC, sesgos, socrático, activación, exposición, etc.
 4. **Narrativa / significado** — externalización, felt sense, pregunta milagro, etc.
 5. **Intervención** — neurofeedback Muse 2, estimulación bilateral
@@ -37,3 +37,7 @@ La app comercial incluye packs clínicos (por ejemplo base compartida, TDAH adul
 ## Límites
 
 Algunos instrumentos pueden estar pendientes de permiso de licencia y no aparecen en el catálogo público hasta entonces. Los módulos no diagnostican ni prescriben.
+
+## C-SSRS Screener
+
+El **C-SSRS Screener — reciente** está disponible en Pruebas como un módulo de sesión. Pregunta ideación y conducta suicida siguiendo sus saltos: siempre 1–2 y 6; 3–5 solo cuando corresponde. El triage bajo, moderado o alto es una señal de apoyo y no sustituye juicio clínico, protocolos locales ni una evaluación de riesgo completa. La variante para deterioro cognitivo requiere administración y criterio clínico específico; no se selecciona automáticamente.

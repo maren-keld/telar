@@ -31,5 +31,7 @@ test('herramientas no muestra el asistente IA', () => {
   const src = read(join('../../src/js/components/workspace-tools-menu.js'));
   assert.doesNotMatch(src, /Asistente IA/);
   assert.doesNotMatch(src, /toolsAiSectionHtml/);
-  assert.match(src, /Espacio de trabajo/);
+  assert.doesNotMatch(src, /Espacio de trabajo/);
+  assert.match(src, /Exportar programa Word \(\.doc\)/);
+  assert.doesNotMatch(src, /Documentos de referencia/);
 });

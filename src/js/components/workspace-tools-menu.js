@@ -2,7 +2,6 @@ import { isProUser, loadProfile, saveProfile } from '../profile.js';
 import { SETTINGS_ICONS } from '../icons.js';
 import { toast } from '../utils.js';
 import { setToggle } from '../transitions.js';
-import { openReferenceDocumentsModal } from './reference-documents-modal.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
@@ -27,7 +26,6 @@ function dispatchWorkspaceMode(mode) {
 
 const TOOL_ICONS = {
   export: SETTINGS_ICONS.export,
-  reference: SETTINGS_ICONS.backup,
   supervision: SETTINGS_ICONS.supervision,
 };
 
@@ -39,7 +37,7 @@ export function toolsItemsHtml({ compact = false } = {}) {
         <button type="button" class="workspace-tools-tab__item" data-action="export-pdf">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
-            <strong>Exportar programa PDF</strong>
+            <span>Exportar programa PDF</span>
             ${detail('Resumen del tratamiento para el paciente o supervisión')}
           </span>
         </button>
@@ -48,24 +46,24 @@ export function toolsItemsHtml({ compact = false } = {}) {
         <button type="button" class="workspace-tools-tab__item" data-action="export-case">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
           <span class="workspace-tools-tab__text">
-            <strong>Presentación de caso</strong>
+            <span>Presentación de caso</span>
             ${detail('PDF anonimizado para supervisión — sin nombre ni RUT')}
           </span>
         </button>
       </li>
       <li>
-        <button type="button" class="workspace-tools-tab__item" data-action="reference-docs">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.reference}</span>
+        <button type="button" class="workspace-tools-tab__item" data-action="export-word">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
-            <strong>Documentos de referencia</strong>
-            ${detail('Adjuntar guías, protocolos o material clínico')}
+            <span>Exportar programa Word (.doc)</span>
+            ${detail('Documento editable del programa de tratamiento')}
           </span>
         </button>
       </li>
     </ul>`;
 }
 
-export function bindToolsActions(root, { treatmentId, onExportPdf, onExportCasePresentation }) {
+export function bindToolsActions(root, { onExportPdf, onExportWord, onExportCasePresentation }) {
   // PDF de programa: gratis (mismo criterio que presentación de caso — canal de adopción).
   root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', async () => {
     try {
@@ -85,8 +83,12 @@ export function bindToolsActions(root, { treatmentId, onExportPdf, onExportCaseP
     }
   });
 
-  root.querySelector('[data-action="reference-docs"]')?.addEventListener('click', () => {
-    openReferenceDocumentsModal({ treatmentId });
+  root.querySelector('[data-action="export-word"]')?.addEventListener('click', async () => {
+    try {
+      await onExportWord();
+    } catch (e) {
+      toast(e.message || 'No se pudo exportar el documento Word');
+    }
   });
 }
 
@@ -104,13 +106,6 @@ export function mountWorkspaceToolsTab(host, opts) {
       <div class="tools-mode-row">
         <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">Foco</button>
         <button type="button" class="tools-mode-btn${currentMode === 'full' ? ' tools-mode-btn--active' : ''}" data-mode="full">Completo</button>
-      </div>
-
-      <div class="tools-section-divider"></div>
-      <p class="tools-section-label">Espacio de trabajo</p>
-      <div class="tools-mode-row">
-        <button type="button" class="tools-mode-btn${chrome.informe ? ' tools-mode-btn--active' : ''}" data-space-mode="chrono" aria-pressed="${chrome.informe ? 'true' : 'false'}">Cronológico (informe)</button>
-        <button type="button" class="tools-mode-btn${chrome.estudio ? ' tools-mode-btn--active' : ''}" data-space-mode="estudio" aria-pressed="${chrome.estudio ? 'true' : 'false'}">Estudio de caso</button>
       </div>
 
       ${
@@ -151,13 +146,6 @@ export function mountWorkspaceToolsTab(host, opts) {
     });
   });
 
-  host.querySelectorAll('[data-space-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.spaceMode;
-      dispatchWorkspaceIndexMode(mode);
-    });
-  });
-
   host.querySelectorAll('[data-index-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
@@ -181,8 +169,8 @@ export function openWorkspaceToolsMenu(opts) {
           <button type="button" class="modal-close" data-dismiss aria-label="Cerrar">×</button>
         </header>
         <ul class="workspace-tools-menu__list">
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><strong>Exportar programa PDF</strong><small>Resumen del tratamiento</small></span></button></li>
-          <li><button type="button" class="workspace-tools-menu__item" data-action="reference-docs"><span class="workspace-tools-menu__text"><strong>Documentos de referencia</strong><small>Adjuntar guías y protocolos</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>Exportar programa PDF</span><small>Resumen del tratamiento</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>Exportar programa Word (.doc)</span><small>Documento editable del tratamiento</small></span></button></li>
         </ul>
       </div>
     </div>`;

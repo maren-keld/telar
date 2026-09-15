@@ -163,8 +163,15 @@ export async function autoCompleteCaseStudyWithAi(treatmentId) {
   });
   const current = await loadCaseStudy(treatmentId);
   const rows = parseCaseStudyAiResult(text);
+  // Complementa siempre con evidencia literal estable: la respuesta del modelo
+  // puede ser breve, pero no puede borrar ni sustituir la formulación existente.
   let merged = mergeCaseStudyAiElements(current, rows);
-  if (!merged.changed) merged = mergeCaseStudyAiElements(current, fallbackCaseStudyRows(sourceText));
+  const literal = mergeCaseStudyAiElements(merged.caseStudy, fallbackCaseStudyRows(sourceText));
+  merged = {
+    caseStudy: literal.caseStudy,
+    added: merged.added + literal.added,
+    changed: merged.changed + literal.changed,
+  };
   if (!merged.changed) throw new Error('No hubo evidencia nueva suficiente para actualizar los ejes.');
   return { ...merged, sessions, sourceText, saved: await saveCaseStudy(treatmentId, merged.caseStudy) };
 }

@@ -392,33 +392,15 @@
 }
 
 .card.estudio-summary-card--vital {
-  --vital: 0.12;
   position: relative;
-  isolation: isolate;
-  overflow: hidden;
   min-height: 0;
   height: 280px;
-  color: #fff;
-  background:
-    linear-gradient(115deg, #247333 0%, #a8d66b 24%, #f4d35e 47%, #f29a8c 67%, #d9272e 86%, #8e111b 100%);
-}
-
-.card.estudio-summary-card--vital::before {
-  position: absolute;
-  z-index: -1;
-  inset: -30%;
-  content: "";
-  opacity: 0.3;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.6) 0 1px, transparent 1.5px);
-  background-size: 8px 8px;
-  mix-blend-mode: overlay;
-  animation: vital-card-dither 7s steps(14, end) infinite;
+  color: var(--text-primary);
+  background: var(--bg-card);
 }
 
 .card.estudio-summary-card--vital .estudio-summary-card__title {
-  position: relative;
-  z-index: 1;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 5px;
   font-size: 0.78rem;
 }
@@ -429,12 +411,10 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--text-muted);
 }
 
 .vital-risk-card__body {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: minmax(88px, 0.64fr) minmax(0, 1.36fr);
   align-items: center;
@@ -454,6 +434,11 @@
   font-size: clamp(2rem, 4.2vw, 3rem);
   line-height: 0.95;
   font-weight: 700;
+  color: var(--risk-tone-start);
+  background: linear-gradient(135deg, var(--risk-tone-start), var(--risk-tone-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .vital-risk-card__score span {
@@ -464,10 +449,9 @@
 
 .vital-risk-card__findings {
   padding: 8px 9px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: rgba(20, 38, 31, 0.22);
-  backdrop-filter: blur(2px);
+  background: var(--bg-app);
 }
 
 .vital-risk-card__findings h4 {
@@ -488,10 +472,6 @@
   margin-top: 1px;
 }
 
-@keyframes vital-card-dither {
-  0%, 100% { transform: translate3d(-2%, -1%, 0) rotate(0deg); }
-  50% { transform: translate3d(2%, 1%, 0) rotate(2deg); }
-}
 
 .estudio-element__status {
   flex-shrink: 0;

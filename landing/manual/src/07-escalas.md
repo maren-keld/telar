@@ -30,6 +30,8 @@ Los rangos y etiquetas en pantalla son **orientativos**. No sustituyen el juicio
 
 Algunos módulos o flujos pueden marcar señales de atención (por ejemplo riesgo o umbrales). Tratalas como recordatorios de proceso clínico, no como diagnóstico automatizado.
 
+El **C-SSRS Screener — reciente** organiza preguntas de ideación y conducta suicida y muestra un triage orientativo. Aplicalo por personal formado, verificá cada respuesta con el contexto y activá el protocolo de seguridad correspondiente cuando haya una señal alta.
+
 ## Escalas frecuentes
 
-ASRS, GAD-7, PCL-5, DASS-21, Rosenberg, QOLS, A-DES, EED, FER, ánimo y ansiedad subjetiva, entre otras. La lista completa y actualizada está en [Módulos](https://telarapp.cl/modules).
+ASRS, GAD-7, PCL-5, DASS-21, C-SSRS Screener, Rosenberg, QOLS, A-DES, EED, FER, ánimo y ansiedad subjetiva, entre otras. La lista completa y actualizada está en [Módulos](https://telarapp.cl/modules).

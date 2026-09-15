@@ -187,9 +187,13 @@ Los cambios se **guardan solos** (autosave). No hace falta un botón Guardar en 
 Desde el workspace podés acceder a acciones del caso, por ejemplo:
 
 - Datos y notas del paciente
-- Exportaciones (handouts, PDF de tratamiento en Pro, presentación)
-- Documentos de referencia locales que adjuntás vos (no son el manual de Telar)
+- Exportar el programa de tratamiento como **PDF** o como documento **Word (.doc)** editable
+- Presentación de caso anonimizada para supervisión
 - Acciones de IA si la tenés activada
+
+En el Estudio de caso, **Programa** y **Estudio** se cambian desde la barra inferior izquierda. El Resumen incluye **Estudiar caso con IA**: primero pide consentimiento y solo propone ejes respaldados por evidencia textual de Registro inicial y Anamnesis; revisalos siempre antes de usarlos clínicamente.
+
+**Red de apoyo** y **Vínculos seguros** no son lo mismo: la primera registra personas y recursos concretos disponibles; el segundo describe la cualidad de apego, confianza y seguridad percibida en los vínculos.
 
 ## Navegación de la app
 
@@ -256,7 +260,7 @@ Telar agrupa el trabajo clínico en **módulos**. Cada uno es una ficha o interv
 ## Categorías
 
 1. **Conceptualización** — registro inicial, motivo, diagnóstico, nota de sesión, redes de apoyo, plan de seguridad
-2. **Pruebas** — escalas con scoring (ASRS, GAD-7, PCL-5, DASS-21, etc.)
+2. **Pruebas** — escalas con scoring (ASRS, GAD-7, PCL-5, DASS-21, C-SSRS Screener, etc.)
 3. **Habilidades y tareas (TCC)** — ABC, sesgos, socrático, activación, exposición, etc.
 4. **Narrativa / significado** — externalización, felt sense, pregunta milagro, etc.
 5. **Intervención** — neurofeedback Muse 2, estimulación bilateral
@@ -281,6 +285,10 @@ La app comercial incluye packs clínicos (por ejemplo base compartida, TDAH adul
 ## Límites
 
 Algunos instrumentos pueden estar pendientes de permiso de licencia y no aparecen en el catálogo público hasta entonces. Los módulos no diagnostican ni prescriben.
+
+## C-SSRS Screener
+
+El **C-SSRS Screener — reciente** está disponible en Pruebas como un módulo de sesión. Pregunta ideación y conducta suicida siguiendo sus saltos: siempre 1–2 y 6; 3–5 solo cuando corresponde. El triage bajo, moderado o alto es una señal de apoyo y no sustituye juicio clínico, protocolos locales ni una evaluación de riesgo completa. La variante para deterioro cognitivo requiere administración y criterio clínico específico; no se selecciona automáticamente.
 
 ---
 
@@ -313,9 +321,11 @@ Los rangos y etiquetas en pantalla son **orientativos**. No sustituyen el juicio
 
 Algunos módulos o flujos pueden marcar señales de atención (por ejemplo riesgo o umbrales). Tratalas como recordatorios de proceso clínico, no como diagnóstico automatizado.
 
+El **C-SSRS Screener — reciente** organiza preguntas de ideación y conducta suicida y muestra un triage orientativo. Aplicalo por personal formado, verificá cada respuesta con el contexto y activá el protocolo de seguridad correspondiente cuando haya una señal alta.
+
 ## Escalas frecuentes
 
-ASRS, GAD-7, PCL-5, DASS-21, Rosenberg, QOLS, A-DES, EED, FER, ánimo y ansiedad subjetiva, entre otras. La lista completa y actualizada está en [Módulos](https://telarapp.cl/modules).
+ASRS, GAD-7, PCL-5, DASS-21, C-SSRS Screener, Rosenberg, QOLS, A-DES, EED, FER, ánimo y ansiedad subjetiva, entre otras. La lista completa y actualizada está en [Módulos](https://telarapp.cl/modules).
 
 ---
 
@@ -443,9 +453,9 @@ Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** pa
 2. Usá la acción de exportar / PDF del módulo
 3. Guardá el archivo donde corresponda (carpeta del paciente, impresora, etc.)
 
-## PDF del tratamiento
+## Programa del tratamiento
 
-En cualquier plan podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso).
+En cualquier plan podés exportar el programa/tratamiento como **PDF** (visión de conjunto del caso) o como **Word (.doc)** editable. Ambos archivos se guardan localmente; revisá el resultado antes de compartirlo, especialmente si contiene texto largo o información sensible.
 
 ## Presentación / otros
 

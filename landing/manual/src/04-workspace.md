@@ -30,9 +30,13 @@ Los cambios se **guardan solos** (autosave). No hace falta un botón Guardar en 
 Desde el workspace podés acceder a acciones del caso, por ejemplo:
 
 - Datos y notas del paciente
-- Exportaciones (handouts, PDF de tratamiento en Pro, presentación)
-- Documentos de referencia locales que adjuntás vos (no son el manual de Telar)
+- Exportar el programa de tratamiento como **PDF** o como documento **Word (.doc)** editable
+- Presentación de caso anonimizada para supervisión
 - Acciones de IA si la tenés activada
+
+En el Estudio de caso, **Programa** y **Estudio** se cambian desde la barra inferior izquierda. El Resumen incluye **Estudiar caso con IA**: primero pide consentimiento y solo propone ejes respaldados por evidencia textual de Registro inicial y Anamnesis; revisalos siempre antes de usarlos clínicamente.
+
+**Red de apoyo** y **Vínculos seguros** no son lo mismo: la primera registra personas y recursos concretos disponibles; el segundo describe la cualidad de apego, confianza y seguridad percibida en los vínculos.
 
 ## Navegación de la app
 

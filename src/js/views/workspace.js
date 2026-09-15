@@ -28,6 +28,7 @@ import { syncModuleReadableText } from '../readable-text.js';
 import { renderModule, teardownBilateralStimulation, teardownInteractiveHtml } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
+import { exportTreatmentWord } from '../export-treatment-word.js';
 import { exportCasePresentationPdf } from '../export-case-presentation-pdf.js';
 import { handoutPdfFilename, renderHandoutPdf } from '../export-handout-pdf.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
@@ -559,6 +560,10 @@ export async function renderWorkspace(
     onExportPdf: async () => {
       await exportTreatmentPdf(treatmentId);
       toast('PDF exportado en el Escritorio');
+    },
+    onExportWord: async () => {
+      const filename = await exportTreatmentWord(treatmentId);
+      toast(`${filename} — documento editable guardado en el Escritorio`);
     },
     onExportCasePresentation: async () => {
       const filename = await exportCasePresentationPdf(treatmentId);

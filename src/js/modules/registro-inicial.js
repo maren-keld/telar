@@ -307,13 +307,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
     const year = host.querySelector('#birth-year')?.value;
     const month = host.querySelector('#birth-month')?.value;
     const day = host.querySelector('#birth-day')?.value;
-    const storedBirth = parseBirthIso(data.birth_date || treatment.patient_birth_date || seeded.birth_date);
-    // Selects incompletos no deben borrar una fecha ya guardada.
-    if (!birth_date && storedBirth && (year || month || day)) {
-      birth_date = storedBirth;
-      const hidden = host.querySelector('[name="birth_date"]');
-      if (hidden) hidden.value = birth_date;
-    }
+    // Una fecha parcial no es una fecha: no inventar enero/día 1 ni persistirla.
+    if (year || month || day) birth_date = isoFromParts(year, month, day);
     const form = {
       nombre: fd.get('nombre') ?? '',
       id_number: fd.get('id_number') ?? '',

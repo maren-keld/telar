@@ -1153,7 +1153,7 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 
 .workspace-tools-tab__item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   width: 100%;
   padding: 12px 14px;
@@ -1196,8 +1196,9 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
   min-width: 0;
 }
 
-.workspace-tools-tab__text strong {
+.workspace-tools-tab__text > span {
   font-size: 0.85rem;
+  font-weight: 400;
 }
 
 .workspace-tools-tab__text small {

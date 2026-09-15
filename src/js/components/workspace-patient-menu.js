@@ -109,17 +109,6 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
           </button>
         </div>
 
-        <div class="patient-menu-divider"></div>
-        <label class="dropdown-label">Espacio de trabajo</label>
-        <div class="patient-menu-mode-row">
-          <button type="button" class="patient-menu-mode-btn${chrome.informe ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="chrono" aria-pressed="${chrome.informe ? 'true' : 'false'}">
-            Cronológico (informe)
-          </button>
-          <button type="button" class="patient-menu-mode-btn${chrome.estudio ? ' patient-menu-mode-btn--active' : ''}" data-space-mode="estudio" aria-pressed="${chrome.estudio ? 'true' : 'false'}">
-            Estudio de caso
-          </button>
-        </div>
-
         ${
           chrome.showIndex
             ? `<div class="patient-menu-divider"></div>
@@ -216,13 +205,6 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         b.classList.toggle('patient-menu-mode-btn--active', b.dataset.mode === mode);
       });
       dispatchWorkspaceMode(mode);
-    });
-  });
-
-  root.querySelectorAll('[data-space-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      dispatchWorkspaceIndexMode(btn.dataset.spaceMode);
-      close();
     });
   });
 

@@ -403,3 +403,16 @@ test('autocompletar tiene respaldo literal para anamnesis extensa', () => {
   assert.ok(rows.some((row) => row.title === 'Consumo de cannabis'));
   assert.ok(rows.some((row) => row.title === 'Alteraciones del sueño'));
 });
+
+test('autocompletar literal cubre evidencia clínica aunque la IA responda pocos ejes', () => {
+  const rows = fallbackCaseStudyRows(`Evitar situación de agresividad con mi pareja.
+Reducir consumo de marihuana.
+Me cuesta controlar mi ira cuando exploto.
+Duermo 4 a 5 horas.
+Celos y desconfianza con mi pareja.
+Me afecta mucho lo que dicen mis compañeros.`);
+  assert.ok(rows.some((row) => row.title === 'Agresividad e impulsividad'));
+  assert.ok(rows.some((row) => row.title === 'Consumo de cannabis'));
+  assert.ok(rows.some((row) => row.title === 'Alteraciones del sueño'));
+  assert.ok(rows.some((row) => row.title === 'Celos y desconfianza'));
+});

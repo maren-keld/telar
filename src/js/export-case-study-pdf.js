@@ -16,31 +16,26 @@ const AXIS_TONES = {
 
 function axisHeader(doc, y, axis) {
   const [r, g, b] = AXIS_TONES[axis.id] || AXIS_TONES.other;
-  doc.setFillColor(245, 247, 251);
-  doc.roundedRect(MARGIN, y - 5, MAX_W, 10, 2, 2, 'F');
   doc.setFillColor(r, g, b);
-  doc.circle(MARGIN + 5, y, 2.2, 'F');
-  return pdfText(doc, axis.label, MARGIN + 10, y + 1.6, { size: 10.5, style: 'bold' });
+  doc.circle(MARGIN + 2.5, y - 1.5, 1.8, 'F');
+  doc.setTextColor(27, 45, 76);
+  const next = pdfText(doc, axis.label, MARGIN + 7, y, { size: 10.5, style: 'bold' });
+  doc.setTextColor(0, 0, 0);
+  return next;
 }
 
 function elementPill(doc, y, axis, title, status) {
   const [r, g, b] = AXIS_TONES[axis.id] || AXIS_TONES.other;
   const label = statusLabelFor(axis.id, status || 'unknown');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  const titleWidth = Math.min(MAX_W - 50, doc.getTextWidth(title) + 10);
-  doc.setFillColor(239, 243, 250);
-  doc.roundedRect(MARGIN + 2, y - 4.7, titleWidth, 8, 3, 3, 'F');
   doc.setFillColor(r, g, b);
-  doc.circle(MARGIN + 6, y - 0.7, 1.55, 'F');
+  doc.circle(MARGIN + 4, y - 1.3, 1.4, 'F');
   doc.setTextColor(27, 45, 76);
-  doc.text(title, MARGIN + 10, y + 1.6);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.6);
+  y = pdfText(doc, title, MARGIN + 8, y, { size: 9.5, style: 'bold', maxWidth: MAX_W - 8 });
   doc.setTextColor(105, 120, 145);
-  doc.text(label, MARGIN + titleWidth + 6, y + 1.1);
+  y = pdfText(doc, label, MARGIN + 8, y, { size: 7.6, maxWidth: MAX_W - 8 });
   doc.setTextColor(0, 0, 0);
-  return y + 7;
+  return y + 3;
 }
 
 export function renderCaseStudyPdfBlock(doc, y, caseStudy) {

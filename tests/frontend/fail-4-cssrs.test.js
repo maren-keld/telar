@@ -16,6 +16,12 @@ test('C-SSRS: Q2=no omite 3–5; conducta 3 meses es alto', () => {
   assert.equal(cssrsRiskBand({ q6_recent: 'yes' }).key, 'high');
 });
 
+test('C-SSRS aparece como módulo renderizable, no solo como metadato', () => {
+  const registry = readFileSync(join(root, '../../src/js/modules/index.js'), 'utf8');
+  assert.match(registry, /import \{ renderCssrs \} from '\.\/cssrs\.js'/);
+  assert.match(registry, /cssrs: renderCssrs/);
+});
+
 test('FAIL-4: chips Programa|Estudio, sin icono footer de estudio', () => {
   const ws = readFileSync(join(root, '../../src/js/views/workspace.js'), 'utf8');
   assert.match(ws, /workspace-mode-chip/);
