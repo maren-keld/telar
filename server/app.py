@@ -1662,25 +1662,57 @@ def admin_migrate_monthly_price():
     sdk = mp_sdk()
     candidates = []
     errors = []
+    seen_ids = set()
+
+    def add_candidate(body: dict, email: str | None = None):
+        """Solo cambia preapprovals mensuales de Telar, aunque aún no estén en
+        nuestra tabla local. Esto evita dejar fuera clientes históricos."""
+        preapproval_id = body.get("id")
+        recurring = (body or {}).get("auto_recurring") or {}
+        is_telar = "telar" in str(body.get("reason") or "").casefold()
+        if (
+            not preapproval_id
+            or preapproval_id in seen_ids
+            or not is_telar
+            or body.get("status") not in ACTIVE_STATUSES
+            or int(recurring.get("frequency") or 0) != 1
+            or recurring.get("frequency_type") != "months"
+            or int(recurring.get("transaction_amount") or 0) == PLAN_AMOUNT
+        ):
+            return
+        seen_ids.add(preapproval_id)
+        candidates.append({
+            "email": email or body.get("external_reference") or None,
+            "preapproval_id": preapproval_id,
+            "current_amount_clp": recurring.get("transaction_amount"),
+            "new_amount_clp": PLAN_AMOUNT,
+        })
+
     for row in rows:
         preapproval_id = row["mp_preapproval_id"]
         try:
-            body = fetch_mp_preapproval(preapproval_id)
-            recurring = (body or {}).get("auto_recurring") or {}
-            if (
-                (body or {}).get("status") in ACTIVE_STATUSES
-                and int(recurring.get("frequency") or 0) == 1
-                and recurring.get("frequency_type") == "months"
-                and int(recurring.get("transaction_amount") or 0) != PLAN_AMOUNT
-            ):
-                candidates.append({
-                    "email": row["email"],
-                    "preapproval_id": preapproval_id,
-                    "current_amount_clp": recurring.get("transaction_amount"),
-                    "new_amount_clp": PLAN_AMOUNT,
-                })
+            add_candidate(fetch_mp_preapproval(preapproval_id), row["email"])
         except Exception as exc:
             errors.append({"preapproval_id": preapproval_id, "error": str(exc)})
+
+    # La tabla local puede no contener suscripciones creadas antes de que se
+    # implementara la sincronización. MP permite paginarlas directamente.
+    offset = 0
+    while True:
+        try:
+            result = sdk.preapproval().search({"limit": 100, "offset": offset})
+            response = result.get("response") or {}
+            remote_rows = response.get("results") or []
+            for body in remote_rows:
+                add_candidate(body)
+            paging = response.get("paging") or {}
+            total = int(paging.get("total") or 0)
+            offset += len(remote_rows)
+            if not remote_rows or offset >= total:
+                break
+        except Exception as exc:
+            errors.append({"preapproval_search": True, "error": str(exc)})
+            break
 
     if request.args.get("confirm", "").lower() != "true":
         return jsonify({"ok": True, "dry_run": True, "candidates": candidates, "errors": errors})
