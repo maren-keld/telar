@@ -378,3 +378,12 @@ test('autocompletar ejes usa solo anamnesis y registro inicial, sin pisar notas 
   assert.equal(merged.caseStudy.elements[0].notes, 'Nota clínica propia.');
   assert.equal(merged.caseStudy.elements[0].manifestations[0].text, 'Refiere insomnio');
 });
+
+test('autocompletar acepta ejes en español y evidencia alternativa de la IA', () => {
+  const rows = parseCaseStudyAiResult('{"ejes":[{"eje":"problemas","title":"Control de ira","evidencia":["Refiere que explota rápidamente"]}]}');
+  const merged = mergeCaseStudyAiElements({ elements: [] }, rows);
+  assert.equal(merged.added, 1);
+  const problem = merged.caseStudy.elements.find((element) => element.title === 'Control de ira');
+  assert.equal(problem.axis, 'problem');
+  assert.equal(problem.manifestations[0].text, 'Refiere que explota rápidamente');
+});

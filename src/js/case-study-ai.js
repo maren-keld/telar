@@ -13,7 +13,8 @@ export function caseStudyAiSourceText(sessions = []) {
   return sessions.flatMap((session) => (session.modules || [])
     .filter((module) => SOURCE_TYPES.has(module.module_type))
     .map((module) => {
-      const text = buildReadableText(module.module_type, parseJsonSafe(module.data, {})).trim();
+      const data = parseJsonSafe(module.data, {});
+      const text = (buildReadableText(module.module_type, data) || data?.readable_text || data?.text || '').trim();
       if (!text) return '';
       const label = module.module_type === 'motivo_consulta' ? 'Anamnesis' : 'Registro inicial';
       return `### Sesión ${session.number || 'sin número'} · ${label}\n${text}`;
@@ -29,11 +30,20 @@ export function parseCaseStudyAiResult(raw) {
   if (start < 0 || end <= start) return [];
   try {
     const parsed = JSON.parse(cleaned.slice(start, end + 1));
-    return Array.isArray(parsed.elements) ? parsed.elements : [];
+    if (Array.isArray(parsed)) return parsed;
+    return parsed.elements || parsed.ejes || parsed.axes || [];
   } catch {
     return [];
   }
 }
+
+const AXIS_ALIASES = new Map([
+  ['problem', 'problem'], ['problems', 'problem'], ['problema', 'problem'], ['problemas', 'problem'],
+  ['resource', 'resource'], ['resources', 'resource'], ['recurso', 'resource'], ['recursos', 'resource'],
+  ['factor protector', 'resource'], ['factores protectores', 'resource'],
+  ['defense', 'defense'], ['defensa', 'defense'], ['defensas', 'defense'],
+  ['risk', 'risk'], ['riesgo', 'risk'], ['riesgos', 'risk'],
+]);
 
 function cleanEvidence(value) {
   return (Array.isArray(value) ? value : [])
@@ -59,11 +69,11 @@ export function mergeCaseStudyAiElements(caseStudy, rows = []) {
   let added = 0;
   let changed = 0;
   for (const row of rows) {
-    const axis = String(row?.axis || '').trim();
+    const axis = AXIS_ALIASES.get(String(row?.axis || row?.eje || '').trim().toLocaleLowerCase()) || '';
     const title = String(row?.title || '').trim();
     if (!ALLOWED_AXES.has(axis) || !title || /^red de apoyo$/iu.test(title)) continue;
-    const manifestations = cleanEvidence(row.manifestations);
-    const indicators = cleanEvidence(row.indicators);
+    const manifestations = cleanEvidence(row.manifestations || row.manifestaciones || row.evidence || row.evidencia);
+    const indicators = cleanEvidence(row.indicators || row.indicadores);
     if (!manifestations.length && !indicators.length) continue;
     const found = next.elements.find((element) =>
       element.axis === axis && element.title.toLocaleLowerCase() === title.toLocaleLowerCase());
