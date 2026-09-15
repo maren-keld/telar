@@ -854,7 +854,7 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
      mientras JS la remide en cada tecla produce saltos y parpadeo. */
   height: 36px;
   box-sizing: border-box;
-  overflow-y: hidden;
+  overscroll-behavior: contain;
 }
 
 /* Prompts sugeridos sobre el input */
