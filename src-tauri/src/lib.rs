@@ -519,6 +519,7 @@ pub fn run() {
             ai_secret::ai_mistral_key_store,
             ai_secret::ai_xai_key_load,
             ai_secret::ai_xai_key_store,
+            subscription_api::ai_email_challenge,
             subscription_api::mistral_provision,
             subscription_api::xai_provision,
             ollama::ollama_status,

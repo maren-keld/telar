@@ -259,9 +259,29 @@ pub fn subscription_health(api_base: String) -> Result<Value, String> {
 }
 
 #[tauri::command]
+pub fn ai_email_challenge(
+    email: String,
+    device_id: String,
+    product: String,
+    api_base: String,
+) -> Result<Value, String> {
+    let base = validated_api_base(&api_base)?;
+    let result = share_provision_agent()
+        .post(&format!("{base}/api/ai/email-challenge"))
+        .set("Content-Type", "application/json")
+        .send_json(serde_json::json!({
+            "email": email,
+            "device_id": device_id,
+            "product": product,
+        }));
+    handle_response(result, &base, "No se pudo enviar el código al correo")
+}
+
+#[tauri::command]
 pub fn mistral_provision(
     email: String,
     device_id: String,
+    email_code: String,
     api_base: String,
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
@@ -271,6 +291,7 @@ pub fn mistral_provision(
         .send_json(serde_json::json!({
             "email": email,
             "device_id": device_id,
+            "email_code": email_code,
         }));
     handle_response(result, &base, "No se pudo activar la IA de Telar")
 }
@@ -279,6 +300,7 @@ pub fn mistral_provision(
 pub fn xai_provision(
     email: String,
     device_id: String,
+    email_code: String,
     api_base: String,
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
@@ -288,6 +310,7 @@ pub fn xai_provision(
         .send_json(serde_json::json!({
             "email": email,
             "device_id": device_id,
+            "email_code": email_code,
         }));
     handle_response(result, &base, "No se pudo activar Grok para experiencias")
 }
