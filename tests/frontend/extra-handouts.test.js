@@ -96,7 +96,7 @@ test('Mis módulos van al final del selector', async () => {
   }
 });
 
-test('al seleccionar Diagnósticos o Redes de apoyo el preview muestra descripción', async () => {
+test('al seleccionar Formulación o Redes de apoyo el preview muestra descripción', async () => {
   const { previewHtml } = await import('../../src/js/components/module-selector.js');
   const { getModuleDef } = await import('../../src/js/config.js');
   const redes = getModuleDef('redes_apoyo');
@@ -106,7 +106,7 @@ test('al seleccionar Diagnósticos o Redes de apoyo el preview muestra descripci
   const redesPreview = previewHtml('redes_apoyo', redes, null);
   const dxPreview = previewHtml('diagnostico', dx, null);
   assert.match(redesPreview, /Mapa de personas/);
-  assert.match(dxPreview, /Problemas, indicadores/);
+  assert.match(dxPreview, /Tablero clínico por 4 ejes/);
   assert.doesNotMatch(redesPreview, /mod-selector-item__desc/);
 });
 

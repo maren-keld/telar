@@ -57,7 +57,7 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
 
 const FALLBACK_DESCRIPTIONS = {
   redes_apoyo: 'Mapa de personas, tipo de vínculo y áreas de apoyo.',
-  diagnostico: 'Problemas, indicadores y objetivos por tratamiento.',
+  diagnostico: 'Tablero clínico por 4 ejes: problemas, recursos, defensas y riesgo.',
   nota_sesion:
     'Registro libre de una sesión de seguimiento o acompañamiento. No sustituye escalas ni formulación.',
   registro_inicial: 'Datos demográficos y de contacto del paciente.',
@@ -83,7 +83,7 @@ const FALLBACK_LABELS = {
   escala_ansiedad: 'Escala de ansiedad (VAS)',
   escala_fer: 'Escala FER',
   redes_apoyo: 'Redes de apoyo',
-  diagnostico: 'Diagnósticos',
+  diagnostico: 'Formulación',
   nota_sesion: 'Nota de sesión',
   registro_inicial: 'Registro inicial',
   motivo_consulta: 'Anamnesis',

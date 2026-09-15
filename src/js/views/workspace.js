@@ -27,6 +27,7 @@ import { doneToastMessage, isModuleDone, toggleDoneOverride } from '../module-do
 import { syncModuleReadableText } from '../readable-text.js';
 import { renderModule, teardownBilateralStimulation, teardownInteractiveHtml } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
+import { DX_HELP_MESSAGE } from '../modules/diagnostico.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
 import { exportTreatmentWord } from '../export-treatment-word.js';
 import { exportCasePresentationPdf } from '../export-case-presentation-pdf.js';
@@ -908,12 +909,14 @@ function centerBotoneraOpts(mod, session, treatment, wrap, ctx) {
     mod.module_type,
   );
   const isNf = mod.module_type === 'neurofeedback';
+  const isDx = mod.module_type === 'diagnostico';
   const shareable = shareableContentFor(mod.module_type);
   return {
     swappable,
     handout,
     deletable,
     isNf,
+    isDx,
     shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
     shareAnswered: shareable ? shareAnsweredAt(mod.data) : null,
     moduleLabelText: moduleLabel(mod.module_type),
@@ -1309,7 +1312,7 @@ function createBotoneraEl({ isActive }) {
   return actions;
 }
 
-function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, shareAnswered, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
+function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, isDx, shareState, shareAnswered, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
   // Derecha → izquierda: cerrar, cambiar, imprimir, enviar, ayuda.
   if (shareAnswered) {
     const when = formatShareAnsweredAt(shareAnswered);
@@ -1332,6 +1335,20 @@ function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shar
     helpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       toast(NF_HELP_MESSAGE);
+    });
+    actions.appendChild(helpBtn);
+  }
+
+  if (isDx) {
+    const helpBtn = document.createElement('button');
+    helpBtn.type = 'button';
+    helpBtn.className = 'module-help-btn';
+    helpBtn.title = 'Ayuda Formulación';
+    helpBtn.setAttribute('aria-label', 'Ayuda Formulación');
+    helpBtn.textContent = '?';
+    helpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toast(DX_HELP_MESSAGE);
     });
     actions.appendChild(helpBtn);
   }

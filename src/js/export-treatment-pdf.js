@@ -225,7 +225,7 @@ export async function exportTreatmentPdf(treatmentId) {
   if (dxEntries.length) {
     y += 8;
     y = ensurePdfSpace(doc, y, 24);
-    y = pdfText(doc, 'Diagnósticos', MARGIN, y, { size: 12, style: 'bold' });
+    y = pdfText(doc, 'Formulación', MARGIN, y, { size: 12, style: 'bold' });
     y += 4;
     for (const entry of dxEntries) {
       y = ensurePdfSpace(doc, y, 16);

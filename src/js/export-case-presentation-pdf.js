@@ -76,6 +76,7 @@ function occupationsText(raw) {
 function diagnosticoLines(data) {
   const d = data || {};
   const out = [];
+  const formulation = d.formulation || {};
   const structured = d.structured || {};
   for (const [key, label] of [
     ['hipotesis', 'Hipótesis'],
@@ -89,8 +90,19 @@ function diagnosticoLines(data) {
     const val = String(structured[key] ?? '').trim();
     if (val) out.push(`${label}: ${val}`);
   }
-  const custom = String(d.custom_diagnosis ?? '').trim();
-  if (custom) out.push(`Diagnóstico: ${custom}`);
+  const custom = String(formulation.nominalDiagnosis || d.custom_diagnosis || '').trim();
+  if (custom) out.push(`Hipótesis diagnóstica: ${custom}`);
+  const summary = String(formulation.caseSummary || '').trim();
+  if (summary) out.push(`Síntesis clínica: ${summary}`);
+  for (const element of (formulation.elements || []).filter((item) => item?.title)) {
+    const objectives = dxItemTexts(element.objectives);
+    out.push(
+      objectives.length
+        ? `${element.title} — objetivos: ${objectives.join('; ')}`
+        : `${element.title}${element.axis ? ` (${element.axis})` : ''}`,
+    );
+  }
+  if (out.length) return out;
   for (const p of (d.problems || []).filter((x) => x.assigned && x.name)) {
     const objectives = dxItemTexts(p.objectives);
     out.push(objectives.length ? `${p.name} — objetivos: ${objectives.join('; ')}` : String(p.name));
