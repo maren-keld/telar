@@ -23,7 +23,9 @@ services:
       - key: WEBHOOK_SECRET
         generateValue: true
       - key: PLAN_AMOUNT_CLP
-        value: "19990"
+        value: "11990"
+      - key: PLAN_ANNUAL_AMOUNT_CLP
+        value: "129990"
       # Contraseña del panel privado telarapp.cl/panel. Sin ella el panel queda apagado.
       - key: PANEL_PASSWORD
         sync: false

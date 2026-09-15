@@ -4,6 +4,7 @@ import { syncModuleReadableText } from '../readable-text.js';
 import { bindAutoSave, queuedPersist } from '../autobind.js';
 import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 import { ICON_STAR } from '../icons.js';
+import { dispatchWorkspaceIndexMode } from '../workspace-index-mode.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 
 export const IA_ANAMNESIS_PROMPTS = [
@@ -249,7 +250,7 @@ Reglas:
   return parsed;
 }
 
-export async function renderMotivoConsulta(host, moduleRow) {
+export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
   const data = parseJsonSafe(moduleRow.data);
   const urgencia = data.urgencia === 'alta' || data.urgencia === 'baja' ? data.urgencia : 'media';
 
@@ -311,6 +312,10 @@ export async function renderMotivoConsulta(host, moduleRow) {
           </select>
           <p class="form-hint" id="motivo-urgencia-hint">${escapeHtml(URGENCIA_HINT[urgencia])}</p>
         </div>
+        <div class="anamnesis-case-study-action">
+          <button type="button" class="btn btn-secondary btn-block" data-autocomplete-case-study>Autocompletar ejes del caso con IA</button>
+          <p class="form-hint">Usa esta anamnesis y los registros iniciales para proponer elementos con evidencia textual.</p>
+        </div>
       </form>
     </div>`;
 
@@ -343,6 +348,31 @@ export async function renderMotivoConsulta(host, moduleRow) {
   };
 
   host.addEventListener('click', async (e) => {
+    const caseStudyBtn = e.target.closest('[data-autocomplete-case-study]');
+    if (caseStudyBtn && host.contains(caseStudyBtn)) {
+      e.preventDefault();
+      if (caseStudyBtn.disabled) return;
+      const original = caseStudyBtn.textContent;
+      try {
+        caseStudyBtn.disabled = true;
+        caseStudyBtn.textContent = 'Guardando y analizando…';
+        await persist();
+        const { autoCompleteCaseStudyWithAi } = await import('../case-study-ai.js');
+        const treatmentId = ctx.treatment?.id;
+        if (!treatmentId) throw new Error('No se encontró el tratamiento para completar los ejes.');
+        const result = await autoCompleteCaseStudyWithAi(treatmentId);
+        toast(`${result.changed} ${result.changed === 1 ? 'eje actualizado' : 'ejes actualizados'} con evidencia de anamnesis.`);
+        dispatchWorkspaceIndexMode('estudio');
+      } catch (err) {
+        if (!/cancelado/i.test(err?.message || '')) toast(err?.message || 'No se pudieron completar los ejes.');
+      } finally {
+        if (caseStudyBtn.isConnected) {
+          caseStudyBtn.disabled = false;
+          caseStudyBtn.textContent = original;
+        }
+      }
+      return;
+    }
     const btn = e.target.closest('[data-reorder-anamnesis]');
     if (!btn || !host.contains(btn) || btn.disabled) return;
     e.preventDefault();

@@ -31,7 +31,8 @@ const TOOL_ICONS = {
   supervision: SETTINGS_ICONS.supervision,
 };
 
-export function toolsItemsHtml() {
+export function toolsItemsHtml({ compact = false } = {}) {
+  const detail = (text) => (compact ? '' : `<small>${text}</small>`);
   return `
     <ul class="workspace-tools-tab__list">
       <li>
@@ -39,7 +40,7 @@ export function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
             <strong>Exportar programa PDF</strong>
-            <small>Resumen del tratamiento para el paciente o supervisión</small>
+            ${detail('Resumen del tratamiento para el paciente o supervisión')}
           </span>
         </button>
       </li>
@@ -48,7 +49,7 @@ export function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
           <span class="workspace-tools-tab__text">
             <strong>Presentación de caso</strong>
-            <small>PDF anonimizado para supervisión — sin nombre ni RUT</small>
+            ${detail('PDF anonimizado para supervisión — sin nombre ni RUT')}
           </span>
         </button>
       </li>
@@ -57,7 +58,7 @@ export function toolsItemsHtml() {
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.reference}</span>
           <span class="workspace-tools-tab__text">
             <strong>Documentos de referencia</strong>
-            <small>Adjuntar guías, protocolos o material clínico</small>
+            ${detail('Adjuntar guías, protocolos o material clínico')}
           </span>
         </button>
       </li>

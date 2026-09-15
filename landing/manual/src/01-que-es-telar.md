@@ -38,12 +38,12 @@ El catálogo público de módulos está en [Módulos clínicos](https://telarapp
 
 | | Demo | Pro |
 |--|------|-----|
-| Precio | $0 CLP | $19.990 CLP/mes |
+| Precio | $0 CLP | $11.990 CLP/mes o $129.990 CLP/año |
 | Pacientes activos | Hasta 3 | Ilimitados |
 | Módulos y escalas | Sí | Sí |
 | NF en vivo | Sí | Sí |
 | Grabar / analizar / exportar NF | Limitado | Completo |
-| PDF del tratamiento | — | Sí |
+| PDF del tratamiento | Sí | Sí |
 | Respaldo encriptado a carpeta | — | Sí |
 | Curso NF + mentoría | — | Incluido |
 

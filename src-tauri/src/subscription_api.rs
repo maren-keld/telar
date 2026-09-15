@@ -235,6 +235,7 @@ pub fn subscription_checkout(
     email: String,
     access_token: String,
     api_base: String,
+    plan: Option<String>,
 ) -> Result<Value, String> {
     let base = validated_api_base(&api_base)?;
     let url = format!("{base}/api/subscriptions/checkout");
@@ -243,7 +244,8 @@ pub fn subscription_checkout(
         .set("Content-Type", "application/json")
         .send_json(serde_json::json!({
             "email": email,
-            "access_token": access_token
+            "access_token": access_token,
+            "plan": plan.unwrap_or_else(|| "monthly".to_string())
         }));
     handle_response(result, &base, "No se pudo iniciar el pago")
 }

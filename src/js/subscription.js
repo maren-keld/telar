@@ -190,18 +190,19 @@ export async function fetchSubscriptionHealth() {
   throw lastErr;
 }
 
-export async function createProCheckout(email) {
+export async function createProCheckout(email, plan = 'monthly') {
   const base = getSubscriptionApiBase();
 
   if (shouldUseFetchForBase(base)) {
     return subscriptionFetch(base, '/api/subscriptions/checkout', {
       method: 'POST',
-      body: { email, access_token: subscriptionAccessToken() },
+      body: { email, plan, access_token: subscriptionAccessToken() },
     });
   }
 
   return getInvoke()('subscription_checkout', {
     email,
+    plan,
     accessToken: subscriptionAccessToken(),
     apiBase: base,
   });
@@ -430,13 +431,13 @@ export async function maybeSyncProFromServer() {
   return result;
 }
 
-export async function startProSubscription() {
+export async function startProSubscription(plan = 'monthly') {
   const profile = loadProfile();
   const email = (profile.email || '').trim();
   if (!email) {
     throw new Error('Configura tu email en Ajustes antes de suscribirte.');
   }
-  const data = await createProCheckout(email);
+  const data = await createProCheckout(email, plan);
   saveSubscriptionCheckoutMeta(data);
   const url = checkoutUrlFromResponse(data);
   if (!url) throw new Error('Mercado Pago no devolvió enlace de pago');
@@ -478,9 +479,9 @@ export async function syncProFromServer() {
   }
 }
 
-export async function tryActivatePro({ onActivated } = {}) {
+export async function tryActivatePro({ onActivated, plan = 'monthly' } = {}) {
   try {
-    await startProSubscription();
+    await startProSubscription(plan);
     startCheckoutWatch({ onActivated });
     toast('Completa el pago en Mercado Pago. Telar se activará solo al volver.');
   } catch (e) {

@@ -14,7 +14,7 @@ summary: Comparativa Demo vs Pro, cupo de pacientes y suscripción.
 - Sin tarjeta y sin fecha de vencimiento automática
 - Ideal para probar el flujo completo en consulta
 
-## Pro ($19.990 CLP/mes)
+## Pro ($11.990 CLP/mes o $129.990 CLP/año)
 
 - Pacientes **ilimitados**
 - Todo lo del Demo

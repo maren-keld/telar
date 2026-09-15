@@ -213,8 +213,8 @@
 .estudio-axis-matrix__head,
 .estudio-axis-matrix__row {
   display: grid;
-  grid-template-columns: minmax(180px, 0.82fr) minmax(0, 1.18fr);
-  gap: 14px;
+  grid-template-columns: minmax(150px, 0.78fr) minmax(0, 1.22fr);
+  gap: 12px;
   align-items: center;
 }
 
@@ -228,9 +228,10 @@
 }
 
 .estudio-axis-matrix__row {
-  min-height: 48px;
-  padding: 9px 0;
+  min-height: 40px;
+  padding: 7px 0;
   border-top: 1px solid var(--border);
+  font-size: 0.88rem;
 }
 
 .estudio-axis-matrix__row > div:first-child,
@@ -242,7 +243,8 @@
 }
 
 .estudio-axis-matrix__row > div:first-child { font-weight: 600; }
-.estudio-axis-matrix__recommendation { color: var(--text-muted); font-size: 0.8rem; }
+.estudio-axis-matrix .estudio-summary-chip { min-height: 24px; padding: 3px 7px; font-size: 0.72rem; }
+.estudio-axis-matrix__recommendation { color: var(--text-muted); font-size: 0.74rem; line-height: 1.25; }
 
 .estudio-summary-card {
   padding: 14px 16px;

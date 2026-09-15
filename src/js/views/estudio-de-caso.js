@@ -243,7 +243,9 @@ function axisNavHtml(caseStudy, selectedNav, sessions) {
             .join('')
         : axisEls
             .map((el) => {
-              const tone = summaryDotsForAxis({ elements: [el] }, item.id)[0]?.tone || 'muted';
+              const tone = el.kind === SUPPORT_NETWORK_KIND
+                ? 'green'
+                : summaryDotsForAxis({ elements: [el] }, item.id)[0]?.tone || 'muted';
               const status = el.status || 'unknown';
               const statusLabel = statusLabelFor(item.id, status);
               const suicidePulse = item.id === 'problem' && /suicid/i.test(el.title || '') ? ' estudio-score-dot--suicidality' : '';
@@ -396,6 +398,7 @@ function summaryHtml(caseStudy, sessions, vital) {
           <p class="estudio-case__eyebrow">Estudio de caso</p>
           <h2 class="estudio-case__title">Resumen</h2>
         </div>
+        <button type="button" class="btn btn-secondary" data-autocomplete-case-study>Autocompletar ejes con IA</button>
       </header>
       <div class="estudio-summary__top">
         ${sessionsCardHtml(sessions)}
@@ -701,6 +704,28 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         e.preventDefault();
         await selectNav(btn.dataset.nav);
       });
+    });
+    centerHost.querySelector('[data-autocomplete-case-study]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      if (button.disabled) return;
+      const original = button.textContent;
+      try {
+        button.disabled = true;
+        button.textContent = 'Analizando anamnesis…';
+        const { autoCompleteCaseStudyWithAi } = await import('../case-study-ai.js');
+        const result = await autoCompleteCaseStudyWithAi(treatmentId);
+        caseStudy = result.saved;
+        sessions = result.sessions;
+        toast(`${result.changed} ${result.changed === 1 ? 'eje actualizado' : 'ejes actualizados'} con evidencia de anamnesis.`);
+        await paint();
+      } catch (err) {
+        if (!/cancelado/i.test(err?.message || '')) toast(err?.message || 'No se pudieron completar los ejes.');
+      } finally {
+        if (button.isConnected) {
+          button.disabled = false;
+          button.textContent = original;
+        }
+      }
     });
   };
 

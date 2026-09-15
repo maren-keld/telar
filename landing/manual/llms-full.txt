@@ -42,12 +42,12 @@ El catálogo público de módulos está en [Módulos clínicos](https://telarapp
 
 | | Demo | Pro |
 |--|------|-----|
-| Precio | $0 CLP | $19.990 CLP/mes |
+| Precio | $0 CLP | $11.990 CLP/mes o $129.990 CLP/año |
 | Pacientes activos | Hasta 3 | Ilimitados |
 | Módulos y escalas | Sí | Sí |
 | NF en vivo | Sí | Sí |
 | Grabar / analizar / exportar NF | Limitado | Completo |
-| PDF del tratamiento | — | Sí |
+| PDF del tratamiento | Sí | Sí |
 | Respaldo encriptado a carpeta | — | Sí |
 | Curso NF + mentoría | — | Incluido |
 
@@ -443,9 +443,9 @@ Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** pa
 2. Usá la acción de exportar / PDF del módulo
 3. Guardá el archivo donde corresponda (carpeta del paciente, impresora, etc.)
 
-## PDF del tratamiento (Pro)
+## PDF del tratamiento
 
-En Plan Pro podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso). En Demo esa exportación está restringida.
+En cualquier plan podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso).
 
 ## Presentación / otros
 
@@ -513,7 +513,7 @@ Comparativa Demo vs Pro, cupo de pacientes y suscripción.
 - Sin tarjeta y sin fecha de vencimiento automática
 - Ideal para probar el flujo completo en consulta
 
-## Pro ($19.990 CLP/mes)
+## Pro ($11.990 CLP/mes o $129.990 CLP/año)
 
 - Pacientes **ilimitados**
 - Todo lo del Demo

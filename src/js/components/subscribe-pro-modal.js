@@ -1,6 +1,7 @@
 import { isProUser, loadProfile } from '../profile.js';
 import {
   FREE_ACTIVE_PATIENT_LIMIT,
+  SUBSCRIPTION_ANNUAL_PRICE_CLP,
   SUBSCRIPTION_PRICE_CLP,
   formatSubscriptionPriceCLP,
 } from '../subscription-config.js';
@@ -61,9 +62,14 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           Activar Pro (solo desarrollo, sin pago)
         </button>`
       : `
-        <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn">
-          Suscribirse — ${formatSubscriptionPriceCLP(SUBSCRIPTION_PRICE_CLP)}
-        </button>
+        <div class="subscribe-pro-modal__plans" role="group" aria-label="Elegir modalidad de pago">
+          <button type="button" class="btn btn-primary btn-block subscribe-pro-modal__cta" id="subscribe-pro-btn" data-plan="monthly">
+            Mensual — ${formatSubscriptionPriceCLP(SUBSCRIPTION_PRICE_CLP)}/mes
+          </button>
+          <button type="button" class="btn btn-secondary btn-block subscribe-pro-modal__cta" id="subscribe-pro-annual-btn" data-plan="annual">
+            Anual — ${formatSubscriptionPriceCLP(SUBSCRIPTION_ANNUAL_PRICE_CLP)}/año
+          </button>
+        </div>
         <button type="button" class="btn btn-ghost btn-block" id="subscribe-pro-dev" style="margin-top:8px" hidden>
           Activar Pro (solo desarrollo, sin pago)
         </button>
@@ -74,7 +80,7 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
           Tras pagar en Mercado Pago, vuelve a Telar: el plan se activará en unos segundos.
         </p>
         <p class="subscribe-pro-modal__fine">
-          Pago seguro con Mercado Pago. Se cobra mensualmente; puedes cancelar desde tu cuenta MP.
+          Pago seguro con Mercado Pago. Elige cobro mensual o anual; puedes gestionar o cancelar desde tu cuenta MP.
         </p>`;
 
   overlay.innerHTML = `
@@ -203,16 +209,18 @@ export function openSubscribeProModal({ onSubscribed } = {}) {
     }
   }
 
-  overlay.querySelector('#subscribe-pro-btn')?.addEventListener('click', async () => {
+  const beginCheckout = async (plan) => {
     const onActivated = () => {
       close();
       onSubscribed?.();
     };
     window.addEventListener('telar:subscription-activated', onActivated, { once: true });
-    await tryActivatePro({ onActivated });
+    await tryActivatePro({ onActivated, plan });
     overlay.querySelector('#subscribe-pro-pending')?.removeAttribute('hidden');
     overlay.querySelector('#subscribe-pro-verify')?.removeAttribute('hidden');
-  });
+  };
+  overlay.querySelector('#subscribe-pro-btn')?.addEventListener('click', () => beginCheckout('monthly'));
+  overlay.querySelector('#subscribe-pro-annual-btn')?.addEventListener('click', () => beginCheckout('annual'));
 
   overlay.querySelector('#subscribe-pro-dev')?.addEventListener('click', async () => {
     try {

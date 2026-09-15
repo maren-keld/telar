@@ -27,6 +27,11 @@ import {
   summaryDotsForAxis,
 } from '../../src/js/case-study-catalog.js';
 import { elementLibraryHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
+import {
+  caseStudyAiSourceText,
+  mergeCaseStudyAiElements,
+  parseCaseStudyAiResult,
+} from '../../src/js/case-study-ai.js';
 import { previewHtml } from '../../src/js/components/module-selector.js';
 import {
   isEstudioWorkspaceMode,
@@ -349,4 +354,27 @@ test('FAIL-3: hints M/I/O/E, placeholder por eje, PDF y librería módulos', () 
   assert.match(preview, /En Estudio de caso/);
   assert.match(preview, /Problemas/);
   assert.match(preview, /Ansiedad alta/);
+});
+
+test('autocompletar ejes usa solo anamnesis y registro inicial, sin pisar notas clínicas', () => {
+  const source = caseStudyAiSourceText([
+    {
+      number: 1,
+      modules: [
+        { module_type: 'registro_inicial', data: JSON.stringify({ ocupaciones: 'Estudiante' }) },
+        { module_type: 'motivo_consulta', data: JSON.stringify({ motivo: 'Refiere insomnio y ansiedad nocturna.' }) },
+        { module_type: 'nota_sesion', data: JSON.stringify({ notes: 'No debe entrar.' }) },
+      ],
+    },
+  ]);
+  assert.match(source, /Registro inicial/);
+  assert.match(source, /Anamnesis/);
+  assert.doesNotMatch(source, /No debe entrar/);
+
+  const rows = parseCaseStudyAiResult('```json\n{"elements":[{"axis":"problem","title":"Insomnio","status":"present","manifestations":["Refiere insomnio"],"indicators":["Ansiedad nocturna"]}]}\n```');
+  const merged = mergeCaseStudyAiElements({ elements: [{ axis: 'problem', title: 'Insomnio', notes: 'Nota clínica propia.' }] }, rows);
+  assert.equal(merged.changed, 1);
+  assert.equal(merged.added, 0);
+  assert.equal(merged.caseStudy.elements[0].notes, 'Nota clínica propia.');
+  assert.equal(merged.caseStudy.elements[0].manifestations[0].text, 'Refiere insomnio');
 });

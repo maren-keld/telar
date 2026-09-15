@@ -40,9 +40,12 @@ MP_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5001").rstrip("/")
 FRONTEND_RETURN_URL = os.environ.get("FRONTEND_RETURN_URL", f"{BACKEND_URL}/gracias")
 MP_PUBLIC_BACK_URL = os.environ.get("MP_PUBLIC_BACK_URL", "").strip()
-PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "19990"))
-PLAN_REASON = os.environ.get("MP_PLAN_REASON", "Plan Profesional — Telar")
+PLAN_AMOUNT = int(os.environ.get("PLAN_AMOUNT_CLP", "11990"))
+PLAN_ANNUAL_AMOUNT = int(os.environ.get("PLAN_ANNUAL_AMOUNT_CLP", "129990"))
+PLAN_REASON = os.environ.get("MP_PLAN_REASON", "Plan Pro mensual — Telar")
+PLAN_ANNUAL_REASON = os.environ.get("MP_PLAN_ANNUAL_REASON", "Plan Pro anual — Telar")
 MP_PREAPPROVAL_PLAN_ID = os.environ.get("MP_PREAPPROVAL_PLAN_ID", "").strip()
+MP_ANNUAL_PREAPPROVAL_PLAN_ID = os.environ.get("MP_ANNUAL_PREAPPROVAL_PLAN_ID", "").strip()
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "") or os.environ.get("MP_WEBHOOK_SECRET", "")
 DEV_PRO_EMAIL = os.environ.get("DEV_PRO_EMAIL", "").strip().lower()
 DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "subscriptions.db"))
@@ -59,7 +62,27 @@ PANEL_COOKIE = "telar_panel"
 ONLINE_WINDOW_MIN = int(os.environ.get("PANEL_ONLINE_WINDOW_MIN", "3"))
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
-_plan_cache: dict | None = None
+_plan_cache: dict[str, dict] = {}
+
+
+def subscription_plan_config(plan_key: str = "monthly") -> dict:
+    if plan_key == "annual":
+        return {
+            "key": "annual",
+            "amount": PLAN_ANNUAL_AMOUNT,
+            "reason": PLAN_ANNUAL_REASON,
+            "plan_id": MP_ANNUAL_PREAPPROVAL_PLAN_ID,
+            "frequency": 12,
+            "frequency_type": "months",
+        }
+    return {
+        "key": "monthly",
+        "amount": PLAN_AMOUNT,
+        "reason": PLAN_REASON,
+        "plan_id": MP_PREAPPROVAL_PLAN_ID,
+        "frequency": 1,
+        "frequency_type": "months",
+    }
 
 # --- Analítica del landing (agregada, sin cookies ni identificadores) -------
 # Solo se guarda un contador por (día, nombre de evento). Nunca IP, user-agent
@@ -498,7 +521,7 @@ def subscription_sandbox_status() -> dict:
         hint = (
             "Suscripciones: el token TEST de la app usa tu cuenta real como vendedor. "
             "Con comprador test, MP puede rechazar el pago. "
-            "Opciones: (1) credenciales de producción + pago real $19.990, o "
+            "Opciones: (1) credenciales de producción + pago real, o "
             "(2) comprador test + ventana privada e intentar igual."
         )
     return {
@@ -513,26 +536,32 @@ def plan_init_point(plan_body: dict) -> str | None:
     return plan_body.get("init_point") or plan_body.get("sandbox_init_point")
 
 
-def resolve_mp_plan(sdk, back_url: str) -> tuple[dict | None, str | None]:
+def resolve_mp_plan(sdk, back_url: str, plan_key: str = "monthly") -> tuple[dict | None, str | None]:
     """Obtiene o crea el plan MP. Sin plan, /preapproval devuelve 500 en sandbox CL."""
     global _plan_cache  # noqa: PLW0603
+    config = subscription_plan_config(plan_key)
     me = fetch_mp_me()
     collector_id = me.get("id")
 
-    if _plan_cache and collector_id and _plan_cache.get("collector_id") == collector_id:
-        return _plan_cache, None
-    _plan_cache = None
+    cached = _plan_cache.get(config["key"])
+    if cached and collector_id and cached.get("collector_id") == collector_id:
+        return cached, None
+    _plan_cache.pop(config["key"], None)
 
-    if MP_PREAPPROVAL_PLAN_ID:
-        res = sdk.plan().get(MP_PREAPPROVAL_PLAN_ID)
+    if config["plan_id"]:
+        res = sdk.plan().get(config["plan_id"])
         if res.get("status") == 200:
             plan = res["response"]
             recurring = plan.get("auto_recurring") or {}
-            amount_ok = int(recurring.get("transaction_amount") or 0) == PLAN_AMOUNT
+            amount_ok = (
+                int(recurring.get("transaction_amount") or 0) == config["amount"]
+                and int(recurring.get("frequency") or 0) == config["frequency"]
+                and recurring.get("frequency_type") == config["frequency_type"]
+            )
             if amount_ok and (not collector_id or plan.get("collector_id") == collector_id):
-                _plan_cache = plan
-                return _plan_cache, None
-        # Plan configurado con monto distinto o inválido — buscar/crear uno de $PLAN_AMOUNT CLP
+                _plan_cache[config["key"]] = plan
+                return plan, None
+        # Plan configurado con monto o frecuencia distinta — buscar/crear el correcto.
 
     res = sdk.plan().search({"limit": 30})
     for item in (res.get("response") or {}).get("results") or []:
@@ -540,20 +569,24 @@ def resolve_mp_plan(sdk, back_url: str) -> tuple[dict | None, str | None]:
             continue
         if collector_id and item.get("collector_id") != collector_id:
             continue
-        if item.get("reason") != PLAN_REASON:
+        if item.get("reason") != config["reason"]:
             continue
         recurring = item.get("auto_recurring") or {}
-        if int(recurring.get("transaction_amount") or 0) != PLAN_AMOUNT:
+        if (
+            int(recurring.get("transaction_amount") or 0) != config["amount"]
+            or int(recurring.get("frequency") or 0) != config["frequency"]
+            or recurring.get("frequency_type") != config["frequency_type"]
+        ):
             continue
-        _plan_cache = item
-        return _plan_cache, None
+        _plan_cache[config["key"]] = item
+        return item, None
 
     create_res = sdk.plan().create({
-        "reason": PLAN_REASON,
+        "reason": config["reason"],
         "auto_recurring": {
-            "frequency": 1,
-            "frequency_type": "months",
-            "transaction_amount": PLAN_AMOUNT,
+            "frequency": config["frequency"],
+            "frequency_type": config["frequency_type"],
+            "transaction_amount": config["amount"],
             "currency_id": "CLP",
             "billing_day": 1,
             "billing_day_proportional": True,
@@ -565,8 +598,8 @@ def resolve_mp_plan(sdk, back_url: str) -> tuple[dict | None, str | None]:
         msg = body.get("message") or body.get("error") or "Error al crear plan en Mercado Pago"
         return None, msg
 
-    _plan_cache = create_res["response"]
-    return _plan_cache, None
+    _plan_cache[config["key"]] = create_res["response"]
+    return _plan_cache[config["key"]], None
 
 
 def checkout_back_url() -> str | None:
@@ -648,19 +681,20 @@ def find_mp_preapproval_by_email(email: str):
     return None
 
 
-def create_user_preapproval(sdk, email: str, back_url: str):
+def create_user_preapproval(sdk, email: str, back_url: str, plan_key: str = "monthly"):
     """Preapproval por usuario con external_reference=email — única forma fiable de
     conciliar pagos, porque MP ya no devuelve payer_email en la API."""
+    config = subscription_plan_config(plan_key)
     try:
         res = sdk.preapproval().create({
-            "reason": PLAN_REASON,
+            "reason": config["reason"],
             "external_reference": email,
             "payer_email": email,
             "back_url": back_url,
             "auto_recurring": {
-                "frequency": 1,
-                "frequency_type": "months",
-                "transaction_amount": PLAN_AMOUNT,
+                "frequency": config["frequency"],
+                "frequency_type": config["frequency_type"],
+                "transaction_amount": config["amount"],
                 "currency_id": "CLP",
             },
             "status": "pending",
@@ -1407,6 +1441,10 @@ def checkout():
     if not is_valid_payer_email(raw_email):
         return jsonify({"error": "Email inválido"}), 400
     email = normalize_payer_email(raw_email)
+    plan_key = (data.get("plan") or "monthly").strip().lower()
+    if plan_key not in {"monthly", "annual"}:
+        return jsonify({"error": "Plan inválido"}), 400
+    plan_config = subscription_plan_config(plan_key)
     if not MP_TOKEN:
         return jsonify({"error": "Mercado Pago no configurado en el servidor"}), 503
 
@@ -1423,16 +1461,25 @@ def checkout():
 
     # Producción: preapproval por usuario (external_reference=email) para conciliar el pago.
     if not MP_TOKEN.startswith("TEST-"):
-        init_point, preapproval_id = create_user_preapproval(sdk, email, back_url)
+        if plan_key == "monthly":
+            # Mantiene compatible cualquier integración interna que reemplace esta
+            # función con la firma histórica de tres argumentos.
+            init_point, preapproval_id = create_user_preapproval(sdk, email, back_url)
+        else:
+            init_point, preapproval_id = create_user_preapproval(sdk, email, back_url, plan_key)
         if init_point and preapproval_id:
             upsert_subscription(email, preapproval_id, "pending")
             return jsonify({
                 "checkout_url": init_point,
                 "preapproval_id": preapproval_id,
-                "amount_clp": PLAN_AMOUNT,
+                "amount_clp": plan_config["amount"],
+                "plan": plan_key,
             })
 
-    plan_body, plan_err = resolve_mp_plan(sdk, back_url)
+    if plan_key == "monthly":
+        plan_body, plan_err = resolve_mp_plan(sdk, back_url)
+    else:
+        plan_body, plan_err = resolve_mp_plan(sdk, back_url, plan_key)
     if not plan_body:
         return jsonify({"error": plan_err or "No se pudo resolver el plan de suscripción"}), 502
 
@@ -1451,7 +1498,8 @@ def checkout():
     return jsonify({
         "checkout_url": checkout_url,
         "preapproval_plan_id": plan_body.get("id"),
-        "amount_clp": PLAN_AMOUNT,
+        "amount_clp": plan_config["amount"],
+        "plan": plan_key,
     })
 
 
@@ -1593,6 +1641,63 @@ def admin_link_subscription():
     except Exception as exc:
         return jsonify({"error": f"No se pudo guardar la suscripción: {exc}"}), 500
     return jsonify({"ok": True, "email": email, "status": mp_status, "active": mp_status in ACTIVE_STATUSES})
+
+
+@APP.post("/api/admin/migrate-monthly-price")
+def admin_migrate_monthly_price():
+    """Previsualiza o baja suscripciones mensuales antiguas a $11.990.
+
+    Requiere confirm=true para ejecutar el PUT en Mercado Pago. No toca planes
+    anuales ni suscripciones que ya tengan el monto nuevo.
+    """
+    if not WEBHOOK_SECRET or request.args.get("secret", "") != WEBHOOK_SECRET:
+        return jsonify({"error": "No autorizado"}), 401
+    if not MP_TOKEN:
+        return jsonify({"error": "Mercado Pago no configurado"}), 503
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT email, mp_preapproval_id, status FROM subscriptions "
+            "WHERE mp_preapproval_id IS NOT NULL AND status IN ('authorized', 'active')"
+        ).fetchall()
+    sdk = mp_sdk()
+    candidates = []
+    errors = []
+    for row in rows:
+        preapproval_id = row["mp_preapproval_id"]
+        try:
+            body = fetch_mp_preapproval(preapproval_id)
+            recurring = (body or {}).get("auto_recurring") or {}
+            if (
+                (body or {}).get("status") in ACTIVE_STATUSES
+                and int(recurring.get("frequency") or 0) == 1
+                and recurring.get("frequency_type") == "months"
+                and int(recurring.get("transaction_amount") or 0) != PLAN_AMOUNT
+            ):
+                candidates.append({
+                    "email": row["email"],
+                    "preapproval_id": preapproval_id,
+                    "current_amount_clp": recurring.get("transaction_amount"),
+                    "new_amount_clp": PLAN_AMOUNT,
+                })
+        except Exception as exc:
+            errors.append({"preapproval_id": preapproval_id, "error": str(exc)})
+
+    if request.args.get("confirm", "").lower() != "true":
+        return jsonify({"ok": True, "dry_run": True, "candidates": candidates, "errors": errors})
+
+    updated = []
+    for item in candidates:
+        try:
+            result = sdk.preapproval().update(item["preapproval_id"], {
+                "auto_recurring": {"transaction_amount": PLAN_AMOUNT, "currency_id": "CLP"},
+            })
+            if result.get("status") in (200, 201):
+                updated.append(item)
+            else:
+                errors.append({"preapproval_id": item["preapproval_id"], "error": result.get("response")})
+        except Exception as exc:
+            errors.append({"preapproval_id": item["preapproval_id"], "error": str(exc)})
+    return jsonify({"ok": not errors, "dry_run": False, "updated": updated, "errors": errors})
 
 
 @APP.route("/api/webhooks/mercadopago", methods=["GET", "POST"])

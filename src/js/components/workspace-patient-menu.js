@@ -96,7 +96,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
 
         <div class="patient-menu-divider"></div>
         <label class="dropdown-label">Documentación</label>
-        <div class="patient-menu-tools">${toolsItemsHtml()}</div>
+        <div class="patient-menu-tools">${toolsItemsHtml({ compact: true })}</div>
 
         <div class="patient-menu-divider"></div>
         <label class="dropdown-label">Vista</label>

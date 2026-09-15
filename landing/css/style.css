@@ -2141,6 +2141,29 @@ section {
   height: 100%;
 }
 
+.value-card__visual--case-study {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #3a0d12;
+  background-image: url('../assets/estudio-caso-gradient.png');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.value-card__visual--case-study img {
+  display: block;
+  width: auto;
+  height: calc(100% - 0.5rem);
+  max-width: 88%;
+  object-fit: contain;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 0.75rem;
+  box-shadow: 0 1rem 2rem rgba(10, 0, 0, 0.32);
+}
+
 .value-card__copy {
   padding: 1.5rem 1.65rem 1.65rem;
 }

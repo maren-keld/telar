@@ -3,7 +3,7 @@
  *
  * Demo: hasta FREE_ACTIVE_PATIENT_LIMIT pacientes distintos con ≥1 tratamiento
  *        en estado "en_tratamiento" (archivados, completados o en pausa no cuentan).
- * Pro: pacientes ilimitados; grabación/export NF y export PDF de programa (otros gates).
+ * Pro: pacientes ilimitados; grabación/export NF y respaldo en nube (otros gates).
  */
 import { openSubscribeProModal } from './components/subscribe-pro-modal.js';
 import { query } from './db.js';

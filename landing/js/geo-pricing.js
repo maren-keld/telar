@@ -2,7 +2,7 @@
  * Precio Plan Pro, honorario de referencia NF y costo Muse 2 según país (Geo IP).
  *
  * El monto de fondo del Pro es USD 20/mes. Lo que se muestra es el equivalente
- * local redondeado. Chile mantiene $19.990 CLP (precio publicado).
+ * local redondeado. Chile mantiene $11.990 CLP/mes (precio publicado).
  * Fallback: Chile. Detección por IP en idle + sessionStorage (no bloquea LCP).
  */
 const PLAN_USD_MONTHLY = 20;
@@ -12,9 +12,9 @@ const GEO_PRICING = {
     country: 'Chile',
     sessionFee: '$50.000',
     museCost: '$320.000',
-    planPrice: '$19.990',
+    planPrice: '$11.990',
     planPeriod: ' CLP/mes',
-    planFull: '$19.990 CLP/mes',
+    planFull: '$11.990 CLP/mes',
   },
   AR: {
     country: 'Argentina',

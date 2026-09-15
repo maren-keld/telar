@@ -17,9 +17,9 @@ Muchos módulos de habilidades/tareas y narrativa permiten **exportar a PDF** pa
 2. Usá la acción de exportar / PDF del módulo
 3. Guardá el archivo donde corresponda (carpeta del paciente, impresora, etc.)
 
-## PDF del tratamiento (Pro)
+## PDF del tratamiento
 
-En Plan Pro podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso). En Demo esa exportación está restringida.
+En cualquier plan podés exportar un **PDF del programa/tratamiento** (visión de conjunto del caso).
 
 ## Presentación / otros
 

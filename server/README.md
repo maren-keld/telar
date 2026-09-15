@@ -1,6 +1,6 @@
 # API de suscripciones — Plan Profesional
 
-Backend mínimo para cobrar **$19.990 CLP/mes** con **Mercado Pago** (Chile).
+Backend mínimo para cobrar **$11.990 CLP/mes** o **$129.990 CLP/año** con **Mercado Pago** (Chile).
 
 ## Qué necesitas de Mercado Pago
 
@@ -184,4 +184,17 @@ se omite en vez de fallar.
 - [ ] `BACKEND_URL` y webhook HTTPS configurados
 - [ ] Probar un pago de prueba con tarjetas de test MP
 - [ ] Política de cancelación visible en la landing
-- [ ] Actualizar precio en modal si cambia (hoy: 19.990 CLP)
+- [x] Modal con Plan Pro mensual ($11.990) y anual ($129.990)
+- [ ] Crear/verificar ambos planes en Mercado Pago y migrar suscripciones existentes
+
+Para migrar clientes mensuales existentes, primero ejecuta el endpoint en modo
+previsualización y revisa la lista. Solo después confirma el cambio:
+
+```bash
+curl -X POST 'https://TU-BACKEND/api/admin/migrate-monthly-price?secret=TU_WEBHOOK_SECRET'
+curl -X POST 'https://TU-BACKEND/api/admin/migrate-monthly-price?secret=TU_WEBHOOK_SECRET&confirm=true'
+```
+
+El endpoint solo actualiza suscripciones activas mensuales que aún tengan otro
+monto; no crea una segunda suscripción. Conviene avisar a los clientes antes de
+la ejecución.

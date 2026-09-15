@@ -80,6 +80,28 @@ test('checkout opens Mercado Pago URL', async () => {
   assert.equal(status.active, true);
 });
 
+test('annual checkout sends the annual plan to Mercado Pago', async () => {
+  globalThis.localStorage = browserStorage();
+  globalThis.window = {
+    location: { hostname: '127.0.0.1', port: '1420' },
+    open: () => {},
+  };
+  let checkoutBody = null;
+  globalThis.fetch = async (url, options = {}) => {
+    if (url.includes('/checkout')) {
+      checkoutBody = JSON.parse(options.body);
+      return new Response(JSON.stringify({ checkout_url: 'https://www.mercadopago.cl/checkout' }), { status: 200 });
+    }
+    return new Response('not found', { status: 404 });
+  };
+
+  const { createProCheckout } = await import(
+    `../../src/js/subscription.js?annual=${Date.now()}`
+  );
+  await createProCheckout('person@example.com', 'annual');
+  assert.equal(checkoutBody.plan, 'annual');
+});
+
 test('getSubscriptionApiBase ignores stale localhost cache on packaged app', async () => {
   globalThis.localStorage = browserStorage();
   globalThis.sessionStorage = browserStorage();

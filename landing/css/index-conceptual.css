@@ -385,6 +385,15 @@
   background-image: url('../assets/index2-botanical.png');
 }
 
+.telar-conceptual .value-card__visual--case-study {
+  background-color: #3a0d12;
+  background-image: url('../assets/estudio-caso-gradient.png') !important;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  padding: 1rem;
+}
+
 .telar-conceptual .value-card__visual canvas {
   opacity: 0.88;
 }
