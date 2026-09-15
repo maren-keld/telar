@@ -1,22 +1,10 @@
-name: Keepalive API
+name: Diagnóstico manual de API
 
-# Render free duerme el servicio tras 15 min sin trafico y despertarlo puede
-# tardar mas de dos minutos. Eso da igual para el ping de uso —el latido
-# siguiente lo recupera— pero es fatal en el checkout: las primeras
-# suscripciones van a llegar de a una y espaciadas, o sea justo cuando el
-# servidor esta dormido.
-#
-# No se mantiene despierto 24/7 a proposito: el plan free da 750 horas de
-# instancia al mes y un servicio despierto todo el mes consume ~744. Quedaria
-# al borde, y cualquier segundo servicio te dejaria sin cuota. Cubrir solo el
-# horario en que alguien puede estar mirando son ~520 horas: holgado.
-#
-# Las horas van en UTC. 11:00-03:00 UTC cubre de 07:00/08:00 a 23:00/00:00 en
-# Chile, tanto en horario de invierno (UTC-4) como de verano (UTC-3), sin
-# tener que tocar nada dos veces al año.
+# UptimeRobot es el único monitor periódico. Se quitó el cron de GitHub porque
+# junto con el autosuspend de Neon (5 min) mantenía el compute despierto y
+# duplicaba tráfico sin aportar cobertura adicional. Este workflow queda para
+# diagnóstico manual si el servicio parece caído.
 on:
-  schedule:
-    - cron: '*/5 11-23,0-3 * * *'
   workflow_dispatch:
 
 permissions:
