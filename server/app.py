@@ -4,11 +4,14 @@ Mercado Pago (Chile) · preapproval mensual en CLP.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import os
 import re
+import secrets
 import sqlite3
+import struct
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -59,6 +62,11 @@ USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 # Panel privado /panel — sin esta variable el panel queda apagado (falla cerrado).
 PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
 PANEL_COOKIE = "telar_panel"
+PANEL_SESSION_SECONDS = int(os.environ.get("PANEL_SESSION_SECONDS", str(12 * 60 * 60)))
+PANEL_LOGIN_MAX_ATTEMPTS = 8
+PANEL_LOGIN_WINDOW_SECONDS = 15 * 60
+# MFA opcional: secret base32 de TOTP (Google Authenticator). Si está vacío, solo password.
+PANEL_TOTP_SECRET = os.environ.get("PANEL_TOTP_SECRET", "").strip()
 ONLINE_WINDOW_MIN = int(os.environ.get("PANEL_ONLINE_WINDOW_MIN", "3"))
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
@@ -352,6 +360,22 @@ def _create_schema():
         from ai_keys import ensure_schema as ensure_ai_keys_schema
 
         ensure_ai_keys_schema(conn, autoincrement)
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS panel_sessions (
+                token_hash TEXT PRIMARY KEY,
+                password_fp TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS panel_login_hits (
+                ip_hash TEXT NOT NULL,
+                window_id TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (ip_hash, window_id)
+            )"""
+        )
 
 
 def mp_sdk():
@@ -795,23 +819,140 @@ def usage_ping():
     return jsonify({"ok": True})
 
 
-def panel_token() -> str:
-    """Token derivado de la contraseña — nunca viaja la contraseña en la cookie."""
+def _panel_password_fingerprint() -> str:
     if not PANEL_PASSWORD:
         return ""
-    return hmac.new(PANEL_PASSWORD.encode(), b"telar-panel-v1", hashlib.sha256).hexdigest()
+    return hashlib.sha256(f"telar-panel-pw:{PANEL_PASSWORD}".encode()).hexdigest()
+
+
+def _panel_token_hash(token: str) -> str:
+    return hashlib.sha256(f"telar-panel-sess:{token}".encode()).hexdigest()
+
+
+def _panel_password_ok(provided: str) -> bool:
+    if not PANEL_PASSWORD:
+        return False
+    got = hashlib.sha256((provided or "").encode()).digest()
+    expected = hashlib.sha256(PANEL_PASSWORD.encode()).digest()
+    return hmac.compare_digest(got, expected)
+
+
+def verify_totp(secret: str, code: str, now: int | None = None) -> bool:
+    """RFC 6238 TOTP (SHA-1, 30 s, 6 dígitos) con ventana ±1."""
+    raw = (code or "").strip().replace(" ", "")
+    if not raw.isdigit() or len(raw) != 6:
+        return False
+    try:
+        key = base64.b32decode(secret.strip().replace(" ", "").upper(), casefold=True)
+    except Exception:
+        return False
+    if not key:
+        return False
+    counter = int((now if now is not None else time.time()) // 30)
+    for delta in (-1, 0, 1):
+        msg = struct.pack(">Q", counter + delta)
+        digest = hmac.new(key, msg, hashlib.sha1).digest()
+        offset = digest[-1] & 0x0F
+        number = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+        otp = f"{number % 1_000_000:06d}"
+        if hmac.compare_digest(otp, raw):
+            return True
+    return False
+
+
+def _panel_totp_ok(code: str) -> bool:
+    if not PANEL_TOTP_SECRET:
+        return True
+    return verify_totp(PANEL_TOTP_SECRET, code)
+
+
+def _panel_login_window_id() -> str:
+    return str(int(time.time()) // PANEL_LOGIN_WINDOW_SECONDS)
+
+
+def _panel_login_ip_hash() -> str:
+    ip = client_ip() or "unknown"
+    return hashlib.sha256(f"telar-panel-ip:{ip}".encode()).hexdigest()
+
+
+def _panel_login_limited() -> bool:
+    iph = _panel_login_ip_hash()
+    window = _panel_login_window_id()
+    with db() as conn:
+        row = conn.execute(
+            "SELECT count FROM panel_login_hits WHERE ip_hash = ? AND window_id = ?",
+            (iph, window),
+        ).fetchone()
+    return bool(row) and int(row["count"] or 0) >= PANEL_LOGIN_MAX_ATTEMPTS
+
+
+def _bump_panel_login_failure() -> None:
+    iph = _panel_login_ip_hash()
+    window = _panel_login_window_id()
+    with db() as conn:
+        conn.execute(
+            """INSERT INTO panel_login_hits (ip_hash, window_id, count) VALUES (?, ?, 1)
+               ON CONFLICT (ip_hash, window_id) DO UPDATE SET
+                 count = panel_login_hits.count + 1""",
+            (iph, window),
+        )
+
+
+def _issue_panel_session() -> str:
+    token = secrets.token_urlsafe(32)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(seconds=PANEL_SESSION_SECONDS)
+    with db() as conn:
+        conn.execute(
+            """INSERT INTO panel_sessions (token_hash, password_fp, created_at, expires_at)
+               VALUES (?, ?, ?, ?)""",
+            (_panel_token_hash(token), _panel_password_fingerprint(), now.isoformat(), expires.isoformat()),
+        )
+    return token
+
+
+def _revoke_panel_session(token: str) -> None:
+    if not token:
+        return
+    with db() as conn:
+        conn.execute(
+            "DELETE FROM panel_sessions WHERE token_hash = ?",
+            (_panel_token_hash(token),),
+        )
 
 
 def panel_authorized() -> bool:
-    expected = panel_token()
-    if not expected:
+    """Solo cookie de sesión aleatoria. Ignora ?token= y ?secret= (F-007)."""
+    if not PANEL_PASSWORD:
         return False
-    provided = request.cookies.get(PANEL_COOKIE, "") or request.args.get("token", "")
-    if provided and hmac.compare_digest(provided, expected):
-        return True
-    # Atajo para curl: ?secret=<contraseña>
-    secret = request.args.get("secret", "")
-    return bool(secret) and hmac.compare_digest(secret, PANEL_PASSWORD)
+    token = request.cookies.get(PANEL_COOKIE, "")
+    if not token:
+        return False
+    now = datetime.now(timezone.utc)
+    fp = _panel_password_fingerprint()
+    token_hash = _panel_token_hash(token)
+    with db() as conn:
+        row = conn.execute(
+            "SELECT password_fp, expires_at FROM panel_sessions WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        if not row:
+            return False
+        stored_fp = str(row["password_fp"] or "")
+        if not hmac.compare_digest(stored_fp, fp):
+            conn.execute("DELETE FROM panel_sessions WHERE token_hash = ?", (token_hash,))
+            return False
+        try:
+            expires = datetime.fromisoformat(str(row["expires_at"]).replace("Z", "+00:00"))
+        except ValueError:
+            conn.execute("DELETE FROM panel_sessions WHERE token_hash = ?", (token_hash,))
+            return False
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if now > expires:
+            conn.execute("DELETE FROM panel_sessions WHERE token_hash = ?", (token_hash,))
+            return False
+    return True
 
 
 @APP.get("/api/admin/usage")
@@ -1187,6 +1328,8 @@ def panel_login_page(error: str = "") -> str:
   <p class="sub">Uso en vivo. Acceso privado.</p>
   {msg}
   <input type="password" name="password" placeholder="Contraseña" autofocus required>
+  <input type="text" name="totp" inputmode="numeric" autocomplete="one-time-code"
+    placeholder="Código de la app (si aplica)" maxlength="8">
   <button type="submit">Entrar</button>
 </form></body></html>"""
 
@@ -1204,6 +1347,9 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
         <button type="button" data-tab="uso">Uso</button>
       </nav>
       <p class="sub" id="live-hint" hidden>Se actualiza solo cada 20 s</p>
+      <form method="post" action="/panel/logout" style="display:inline;margin:0">
+        <button type="submit" class="ghost">Salir</button>
+      </form>
     </div>
   </div>
   __CRM__
@@ -1383,19 +1529,42 @@ __CRM_JS__
 </script></body></html>""".replace("__CSS__", PANEL_CSS).replace("__CRM__", CRM_MARKUP).replace("__CRM_JS__", CRM_SCRIPT)
 
 
+def _panel_set_session_cookie(resp, token: str) -> None:
+    https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+    resp.set_cookie(
+        PANEL_COOKIE,
+        token,
+        max_age=PANEL_SESSION_SECONDS,
+        httponly=True,
+        secure=https,
+        samesite="Strict",
+        path="/",
+    )
+
+
 @APP.post("/panel/login")
 def panel_login():
     if not PANEL_PASSWORD:
         return "Panel deshabilitado: falta PANEL_PASSWORD en el servidor.", 503
-    if not hmac.compare_digest(request.form.get("password", ""), PANEL_PASSWORD):
-        return panel_login_page("Contraseña incorrecta."), 401
+    if _panel_login_limited():
+        return panel_login_page("Demasiados intentos. Espera unos minutos."), 429
+    password = request.form.get("password", "")
+    totp = request.form.get("totp", "")
+    if not _panel_password_ok(password) or not _panel_totp_ok(totp):
+        _bump_panel_login_failure()
+        return panel_login_page("Contraseña o código incorrectos."), 401
     resp = APP.make_response(("", 302))
     resp.headers["Location"] = "/panel"
-    https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
-    resp.set_cookie(
-        PANEL_COOKIE, panel_token(),
-        max_age=60 * 60 * 24 * 30, httponly=True, secure=https, samesite="Lax",
-    )
+    _panel_set_session_cookie(resp, _issue_panel_session())
+    return resp
+
+
+@APP.post("/panel/logout")
+def panel_logout():
+    _revoke_panel_session(request.cookies.get(PANEL_COOKIE, ""))
+    resp = APP.make_response(("", 302))
+    resp.headers["Location"] = "/panel"
+    resp.delete_cookie(PANEL_COOKIE, path="/")
     return resp
 
 
@@ -1406,6 +1575,15 @@ def panel():
     if not panel_authorized():
         return panel_login_page(), 401
     return PANEL_HTML
+
+
+@APP.after_request
+def _no_store_panel(resp):
+    path = request.path or ""
+    if path.startswith("/panel") or path.startswith("/api/admin/"):
+        resp.headers["Cache-Control"] = "no-store"
+        resp.headers["Pragma"] = "no-cache"
+    return resp
 
 
 @APP.get("/gracias")
