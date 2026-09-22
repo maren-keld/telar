@@ -137,11 +137,46 @@ async function fillConceptualizationModules(sessions) {
         dx_notes:
           'Caso ficticio de demostración Telar. Perfil compatible con TDAH en adultez + ansiedad situacional.',
       },
-      problems: [
-        { text: 'Déficit atencional y organización', assigned: true, checked: true },
-        { text: 'Procrastinación crónica', assigned: true, checked: true },
-        { text: 'Ansiedad anticipatoria', assigned: true, checked: false },
-      ],
+      custom_diagnosis: 'TDAH en adultez (hipótesis de trabajo) con ansiedad anticipatoria situacional.',
+      formulation: {
+        version: 1,
+        selectedAxis: 'problem',
+        elements: [
+          {
+            id: 'demo-problem-1',
+            axis: 'problem',
+            title: 'Déficit atencional y organización',
+            status: 'active',
+            manifestations: [{ text: 'Olvida compromisos y pierde el hilo de tareas largas', checked: false }],
+            indicators: [{ text: 'Planifica la semana y completa tareas prioritarias', checked: false }],
+            objectives: [{ text: 'Sostener una rutina de planificación viable', checked: false }],
+            evidence: [{ text: 'Relato de procrastinación crónica y olvidos desde adolescencia', checked: false }],
+            notes: '',
+          },
+          {
+            id: 'demo-problem-2',
+            axis: 'problem',
+            title: 'Ansiedad anticipatoria',
+            status: 'in_progress',
+            manifestations: [{ text: 'Sube la ansiedad frente a plazos laborales', checked: false }],
+            indicators: [{ text: 'Disminuye evitación de tareas con fecha límite', checked: false }],
+            objectives: [{ text: 'Regular ansiedad ante entregas y evaluaciones', checked: false }],
+            evidence: [],
+            notes: '',
+          },
+          {
+            id: 'demo-resource-1',
+            axis: 'resource',
+            title: 'Insight y motivación al cambio',
+            status: 'active',
+            manifestations: [],
+            indicators: [{ text: 'Usa herramientas entre sesiones', checked: false }],
+            objectives: [{ text: 'Apoyarse en recursos ya presentes', checked: false }],
+            evidence: [{ text: 'Consulta buscando estrategias concretas y sostenibles', checked: false }],
+            notes: '',
+          },
+        ],
+      },
     });
   }
 }

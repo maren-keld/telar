@@ -52,6 +52,25 @@ test('hecho por nota, subjetiva, NF y BLS', () => {
   assert.equal(isContentComplete('bilateral_stimulation', { speed_hz: 1 }), false);
 });
 
+test('formulación queda hecha si algún eje tiene contenido', () => {
+  assert.equal(
+    isContentComplete('diagnostico', {
+      formulation: {
+        elements: [{ axis: 'problem', title: 'Absentismo escolar', indicators: [], objectives: [] }],
+      },
+    }),
+    true,
+  );
+  assert.equal(
+    isContentComplete('diagnostico', {
+      formulation: {
+        elements: [{ axis: 'resource', title: '', indicators: [], objectives: [], notes: '' }],
+      },
+    }),
+    false,
+  );
+});
+
 test('el override manual gana sobre el contenido', () => {
   const full = { answers: [0, 1, 2, 3, 1, 0, 2] };
   assert.equal(isModuleDone('gad7', { ...full, done_override: false }), false);

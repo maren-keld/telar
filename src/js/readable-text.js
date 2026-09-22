@@ -119,6 +119,7 @@ function formatDxItems(items) {
 }
 
 function formatDiagnostico(d) {
+  const formulation = d.formulation || {};
   const structured = d.structured || {};
   const structLines = linesFromObject(structured, [
     { key: 'hipotesis', label: 'Hipótesis' },
@@ -129,7 +130,41 @@ function formatDiagnostico(d) {
     { key: 'medication', label: 'Medicación psicotrópica' },
     { key: 'dx_notes', label: 'Notas clínicas estructuradas' },
   ]);
-  const custom = d.custom_diagnosis?.trim();
+  const custom = (formulation.nominalDiagnosis || d.custom_diagnosis || '').trim();
+  const summary = (formulation.caseSummary || '').trim();
+  const axisLabels = {
+    problem: 'Problemas',
+    resource: 'Recursos y factores protectores',
+    defense: 'Defensas psíquicas',
+    risk: 'Vulnerabilidades / riesgo clínico',
+  };
+  const statusLabels = {
+    active: 'Activo',
+    in_progress: 'En curso',
+    graduated: 'Graduado',
+    restratified: 'Reestratificado',
+  };
+  const formulationText = (Array.isArray(formulation.elements) ? formulation.elements : [])
+    .filter((element) => element?.title)
+    .map((element) => {
+      const manifestations = formatDxItems(element.manifestations);
+      const indicators = formatDxItems(element.indicators);
+      const objectives = formatDxItems(element.objectives);
+      const evidence = formatDxItems(element.evidence);
+      const notes = String(element.notes || '').trim();
+      return [
+        `${axisLabels[element.axis] || 'Eje'} · ${element.title}`,
+        element.status ? `Estado: ${statusLabels[element.status] || element.status}` : null,
+        manifestations ? `Manifestaciones: ${manifestations}` : null,
+        indicators ? `Indicadores: ${indicators}` : null,
+        objectives ? `Objetivos: ${objectives}` : null,
+        evidence ? `Evidencia: ${evidence}` : null,
+        notes ? `Notas: ${notes}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    })
+    .join('\n\n');
   const problems = (d.problems || []).filter((p) => p.assigned && p.name);
   const problemText = problems
     .map((p) => {
@@ -140,7 +175,14 @@ function formatDiagnostico(d) {
         .join('\n');
     })
     .join('\n\n');
-  return [custom ? `Diagnóstico personalizado:\n${custom}` : null, structLines, problemText]
+  return [
+    custom ? `Hipótesis diagnóstica nominal:
+${custom}` : null,
+    summary ? `Síntesis clínica:
+${summary}` : null,
+    structLines,
+    formulationText || problemText,
+  ]
     .filter(Boolean)
     .join('\n\n');
 }

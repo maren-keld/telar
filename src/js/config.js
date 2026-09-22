@@ -30,9 +30,9 @@ export const CORE_MODULE_DEFS = {
     description: 'Mapa de personas, tipo de vínculo y áreas de apoyo.',
   },
   diagnostico: {
-    label: 'Diagnósticos',
+    label: 'Formulación',
     category: 'conceptualizacion',
-    description: 'Problemas, indicadores y objetivos por tratamiento.',
+    description: 'Tablero clínico por 4 ejes: problemas, recursos, defensas y riesgo.',
   },
   nota_sesion: {
     label: 'Nota de sesión',
