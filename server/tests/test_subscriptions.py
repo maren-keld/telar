@@ -61,6 +61,31 @@ def test_health_without_token_says_mp_is_not_configured(api, monkeypatch):
     assert "mp_collector_id" not in body
 
 
+def test_health_returns_503_when_database_is_unavailable(api, monkeypatch):
+    def unavailable_db():
+        raise api_module.DatabaseUnavailable("base desconectada")
+
+    monkeypatch.setattr(api_module, "db", unavailable_db)
+
+    response = api.get("/api/health")
+
+    assert response.status_code == 503
+    assert response.json == {
+        "ok": False,
+        "database_ready": False,
+        "error": "Base de datos temporalmente no disponible",
+    }
+
+
+def test_startup_does_not_crash_when_database_is_unavailable(api, monkeypatch):
+    def unavailable_schema():
+        raise api_module.DatabaseUnavailable("base desconectada")
+
+    monkeypatch.setattr(api_module, "_create_schema", unavailable_schema)
+
+    assert api_module.init_db(attempts=1, delay=0) is False
+
+
 def test_health_sandbox_flags_omit_seller_pii(api, monkeypatch):
     """QA-001: keepalive público no debe filtrar email/collector del vendedor MP."""
     monkeypatch.setattr(api_module, "MP_TOKEN", "TEST-token-sandbox")

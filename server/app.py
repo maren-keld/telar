@@ -55,6 +55,8 @@ DB_PATH = Path(os.environ.get("SUBSCRIPTION_DB_PATH", Path(__file__).parent / "s
 # contadores se pierden en cada reinicio.
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "8"))
+DB_INITIALIZATION_ERROR: Exception | None = None
 
 # Panel privado /panel — sin esta variable el panel queda apagado (falla cerrado).
 PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
@@ -255,33 +257,58 @@ class _Conn:
         return False
 
 
+class DatabaseUnavailable(RuntimeError):
+    """La base persistente no está disponible para atender una petición."""
+
+
 def db():
+    global DB_INITIALIZATION_ERROR
+
     if USE_POSTGRES:
         import psycopg
         from psycopg.rows import dict_row
 
-        return _Conn(psycopg.connect(DATABASE_URL, row_factory=dict_row), True)
+        try:
+            raw = psycopg.connect(
+                DATABASE_URL,
+                row_factory=dict_row,
+                connect_timeout=DB_CONNECT_TIMEOUT_SECONDS,
+            )
+        except psycopg.OperationalError as exc:
+            raise DatabaseUnavailable("Postgres no está disponible") from exc
+        DB_INITIALIZATION_ERROR = None
+        return _Conn(raw, True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    DB_INITIALIZATION_ERROR = None
     return _Conn(conn, False)
 
 
-def init_db(attempts: int = 3, delay: float = 2.0):
-    """Crea el esquema, reintentando si la base aún no responde.
+def init_db(attempts: int = 3, delay: float = 2.0) -> bool:
+    """Crea el esquema y deja la API disponible aunque Postgres esté caído.
 
-    Se llama al importar el módulo, así que una excepción acá mata al worker de
-    gunicorn y el servicio entra en bucle de reinicio. Neon suspende el cómputo
-    cuando no hay tráfico y la primera conexión después de dormir puede fallar,
-    de modo que un reintento corto evita caídas por algo que se resuelve solo.
+    El esquema se intenta al importar el módulo. Si el proveedor rechaza una
+    conexión temporalmente, matar Gunicorn deja el servicio en un crash loop y
+    oculta la causa real. En ese caso la API sigue arriba y responde 503 hasta
+    que la base vuelva a aceptar conexiones; no se degrada a SQLite, para no
+    perder datos de producción silenciosamente.
     """
+    global DB_INITIALIZATION_ERROR
+
+    last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             _create_schema()
-            return
-        except Exception:
+            DB_INITIALIZATION_ERROR = None
+            return True
+        except Exception as exc:
+            last_error = exc
             if attempt == attempts:
-                raise
+                break
             time.sleep(delay * attempt)
+    DB_INITIALIZATION_ERROR = last_error
+    APP.logger.error("La base de datos no estuvo disponible al iniciar", exc_info=last_error)
+    return False
 
 
 def _create_schema():
@@ -724,14 +751,22 @@ def _xai_provision_ready() -> bool:
 @APP.get("/api/health")
 def health():
     sandbox = subscription_sandbox_status()
-    usage_total = 0
-    with db() as conn:
-        row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
-        if row:
-            usage_total = row["total"]
+    try:
+        with db() as conn:
+            row = conn.execute("SELECT total FROM usage_opens WHERE id = 1").fetchone()
+            usage_total = row["total"] if row else 0
+    except DatabaseUnavailable:
+        # No exponemos el proveedor ni la causa interna; Render y el cliente
+        # reciben una señal inequívoca de indisponibilidad recuperable.
+        return jsonify({
+            "ok": False,
+            "database_ready": False,
+            "error": "Base de datos temporalmente no disponible",
+        }), 503
     # Campos explícitos: no **sandbox (evita filtrar PII si el helper crece).
     return jsonify({
         "ok": True,
+        "database_ready": True,
         "mp_configured": bool(MP_TOKEN),
         "mp_test_mode": MP_TOKEN.startswith("TEST-"),
         "plan_amount_clp": PLAN_AMOUNT,
@@ -747,6 +782,12 @@ def health():
         "mp_sandbox_ready": sandbox.get("mp_sandbox_ready"),
         "mp_sandbox_hint": sandbox.get("mp_sandbox_hint"),
     })
+
+
+@APP.errorhandler(DatabaseUnavailable)
+def database_unavailable(_error):
+    """Evita 500 cuando Neon o cualquier Postgres rechaza conexiones."""
+    return jsonify({"error": "Base de datos temporalmente no disponible"}), 503
 
 
 @APP.post("/api/usage/ping")
