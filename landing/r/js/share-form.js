@@ -438,6 +438,16 @@ async function main() {
     );
   }
 
+  if (payload.kind === 'report') {
+    document.title = `${payload.title || 'Informe del tratamiento'} — Telar`;
+    el('loading').hidden = true;
+    el('bar').hidden = true;
+    el('form-host').hidden = false;
+    el('form-host').innerHTML = `<section class="card"><h1>${escapeHtml(payload.title || 'Informe del tratamiento')}</h1><p class="sub">Documento privado compartido por tu profesional.</p></section><article class="card report-content"></article>`;
+    el('form-host').querySelector('.report-content').textContent = String(payload.content || '');
+    return;
+  }
+
   const submit = async (answerPayload) => {
     const button = el('send');
     button.disabled = true;

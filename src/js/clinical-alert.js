@@ -4,8 +4,8 @@ import { parseJsonSafe } from './utils.js';
 export const VITAL_RISK_LABELS = [
   'Ideación suicida',
   'Plan suicida',
-  'Intentos previos',
-  'Acceso a medios de autosión',
+  'Intentos previos de suicidio',
+  'Acceso a medios de autolesión',
   'Autolesiones',
 ];
 

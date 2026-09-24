@@ -11,6 +11,8 @@ import {
   normalizeCaseStudyElement,
   profileLiteFromCaseStudy,
   PROFILE_AXIS_MAP,
+  recommendedModulesForElement,
+  reorderCaseStudyElements,
   STATUS_LABELS,
   statusLabelFor,
   SUPPORT_NETWORK_KIND,
@@ -182,6 +184,14 @@ test('leftSidebar Estudio: Resumen, ejes, Evolución y Bots/Agentes', () => {
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'other').label, 'Bots/Agentes');
 });
 
+test('Regulación afectiva muestra sus intervenciones sugeridas', async () => {
+  const { recommendedModulesForElement } = await import('../../src/js/case-study-model.js');
+  assert.deepEqual(
+    recommendedModulesForElement('resource', 'Regulación afectiva').intervention,
+    ['tcc_estres', 'dbt_diary_card', 'dbt_regulacion_emocional'],
+  );
+});
+
 test('Actividades sugieren módulos por eje; red de apoyo es Personas', () => {
   assert.ok(suggestedModulesForAxis('problem').includes('gad7'));
   const study = normalizeCaseStudyData({});
@@ -220,7 +230,7 @@ test('estados del elemento son presente / en desarrollo / desconocido (default d
   assert.equal(statusLabelFor('risk', 'present'), 'Gestionado');
   assert.equal(statusLabelFor('resource', 'present'), 'Presente');
   assert.equal(STATUS_LABELS.developing, 'En desarrollo');
-  assert.equal(STATUS_LABELS.unknown, 'Desconocido');
+  assert.equal(STATUS_LABELS.unknown, 'Explorando');
   assert.equal(normalizeCaseStudyElement({ axis: 'problem', title: 'X', status: 'active' }).status, 'present');
   assert.equal(normalizeCaseStudyElement({ axis: 'risk', title: 'Y', status: 'in_progress' }).status, 'developing');
   const html = statusToggleHtml('unknown');
@@ -229,9 +239,94 @@ test('estados del elemento son presente / en desarrollo / desconocido (default d
   assert.match(html, /data-status-set="unknown"/);
   assert.doesNotMatch(html, /<select/);
   assert.match(html, /En desarrollo/);
-  assert.match(html, /Desconocido/);
+  assert.match(html, /Explorando/);
   assert.doesNotMatch(html, /A desarrollar/);
   assert.doesNotMatch(html, /Desconocidos/);
+});
+
+test('recomendaciones separan evaluación de intervención y evitan escalas genéricas para insomnio', () => {
+  const insomnia = recommendedModulesForElement('problem', 'Insomnio');
+  assert.deepEqual(insomnia.evaluation, []);
+  assert.deepEqual(insomnia.intervention, []);
+  const thoughts = recommendedModulesForElement('problem', 'Pensamientos recurrentes');
+  assert.deepEqual(thoughts.evaluation, []);
+  assert.ok(thoughts.intervention.includes('tcc_socratico'));
+  assert.ok(!thoughts.intervention.includes('gad7'));
+});
+
+test('red de apoyo es el único elemento bundled de red y las tarjetas separan sugeridos de en uso', () => {
+  assert.ok(libraryItemsForAxis('resource').some((item) => item.title === 'Red de apoyo') === false);
+  assert.ok(!libraryItemsForAxis('resource').some((item) => item.title === 'Vínculos seguros'));
+  const normalized = normalizeCaseStudyData({ elements: [{ axis: 'resource', title: 'Vínculos seguros', bundled: true }] });
+  assert.ok(!normalized.elements.some((element) => element.title === 'Vínculos seguros'));
+  const network = normalized.elements.find((element) => element.kind === SUPPORT_NETWORK_KIND);
+  assert.equal(network?.title, SUPPORT_NETWORK_TITLE);
+  assert.equal(network?.bundled, true);
+
+  const root = dirname(fileURLToPath(import.meta.url));
+  const view = readFileSync(join(root, '../../src/js/views/estudio-de-caso.js'), 'utf8');
+  assert.match(view, /Evaluación cuantitativa/);
+  assert.match(view, /Evaluación cualitativa/);
+  assert.match(view, /data-add-quantitative/);
+  assert.match(view, /estudio-element__subheading">Sugeridos/);
+  assert.match(view, /estudio-element__subheading">En uso/);
+  assert.doesNotMatch(view, /Sin módulos asociados aún/);
+});
+
+test('selector muestra Recomendado solo cuando el módulo aún no está en uso', () => {
+  const html = selectorListInnerHtml({
+    recommendedTypes: new Set(['cssrs', 'gad7']),
+    inTreatment: new Set(['cssrs']),
+  });
+  const cssrsRow = html.match(/<button[^>]*data-type="cssrs"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
+  const gadRow = html.match(/<button[^>]*data-type="gad7"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
+  assert.match(cssrsRow, /En uso/);
+  assert.doesNotMatch(cssrsRow, /Recomendado/);
+  assert.match(gadRow, /Recomendado/);
+});
+
+test('las recomendaciones son específicas por elemento y no heredan módulos genéricos del eje', () => {
+  assert.deepEqual(recommendedModulesForElement('resource', 'Vínculos seguros'), { evaluation: [], intervention: [] });
+  assert.deepEqual(recommendedModulesForElement('problem', 'Fobia específica').evaluation, []);
+  assert.deepEqual(recommendedModulesForElement('problem', 'Fobia específica').intervention, ['tcc_exposicion', 'tcc_experimento']);
+  assert.deepEqual(recommendedModulesForElement('risk', 'Intentos previos'), { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] });
+  assert.deepEqual(recommendedModulesForElement('problem', 'Elemento personalizado'), { evaluation: [], intervention: [] });
+});
+
+test('el reordenamiento lateral mueve elementos dentro del eje sin alterar el resto', () => {
+  const elements = [
+    { id: 'p1', axis: 'problem' },
+    { id: 'r1', axis: 'resource' },
+    { id: 'p2', axis: 'problem' },
+    { id: 'r2', axis: 'resource' },
+  ];
+  assert.deepEqual(reorderCaseStudyElements(elements, 'problem', 'p1', 'p2', true).map((el) => el.id), ['r1', 'p2', 'p1', 'r2']);
+  assert.deepEqual(reorderCaseStudyElements(elements, 'resource', 'r1', 'p2', false).map((el) => el.id), ['p1', 'r1', 'p2', 'r2']);
+});
+
+test('Resumen separa evaluación cuantitativa e intervención en bloques', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const view = readFileSync(join(root, '../../src/js/views/estudio-de-caso.js'), 'utf8');
+  const analysis = readFileSync(join(root, '../../src/js/case-study-analysis.js'), 'utf8');
+  assert.match(view, /analysisCategoriesForElement/);
+  assert.match(analysis, /Evaluación cuantitativa/);
+  assert.match(analysis, /Evaluación cualitativa/);
+  assert.match(analysis, /Intervención/);
+  assert.doesNotMatch(view, /En programa:/);
+  assert.doesNotMatch(view, /Para evaluar<\/span>/);
+  assert.doesNotMatch(view, /Para intervención<\/span>/);
+});
+
+test('evidencia cualitativa tiene fecha por defecto y conserva fecha y módulo cuantitativo', () => {
+  const normalized = normalizeCaseStudyElement({
+    axis: 'problem',
+    title: 'Insomnio',
+    qualitativeEvidence: [{ text: 'Durmió mejor' }],
+    quantitativeEvidence: [{ moduleType: 'gad7', sessionId: '12' }],
+  });
+  assert.match(normalized.qualitativeEvidence[0].date, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(normalized.qualitativeEvidence[0].text, 'Durmió mejor');
+  assert.deepEqual(normalized.quantitativeEvidence, [{ moduleType: 'gad7', sessionId: '12' }]);
 });
 
 test('+ Añadir elemento abre librería del eje, no session_modules', () => {
@@ -426,6 +521,7 @@ Utiliza la escritura y el dibujo para expresar tristeza.`);
   assert.ok(rows.some((row) => row.title === 'Dificultades de organización y atención'));
   assert.ok(rows.some((row) => row.title === 'Ansiedad y ánimo bajo'));
   assert.ok(rows.some((row) => row.title === 'Dificultades de asistencia escolar'));
-  assert.ok(rows.some((row) => row.title === 'Riesgo suicida'));
+  assert.ok(rows.some((row) => row.title === 'Autolesiones'));
+  assert.ok(!rows.some((row) => row.title === 'Riesgo suicida'));
   assert.ok(rows.some((row) => row.title === 'Capacidad de expresión emocional'));
 });

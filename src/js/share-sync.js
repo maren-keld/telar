@@ -23,7 +23,9 @@ export { shareAnsweredAt };
 /** Dominio que sirve la página del paciente (landing/r). */
 export const SHARE_PUBLIC_BASE = 'https://telarapp.cl';
 
-const POLL_MS = 20_000;
+// Mantiene más de 5 min entre consultas para que Neon Free pueda suspender
+// el cómputo inactivo y no agote la cuota mensual mientras espera respuestas.
+const POLL_MS = 6 * 60_000;
 
 /** Solo enlaces vivos: `share_answered_at` no debe disparar el poll. */
 export const PENDING_SHARE_SQL = `json_extract(sm.data, '$.share.token') IS NOT NULL`;
@@ -168,6 +170,20 @@ async function shareAckRequest(token, secret) {
 /** Enlace que se le manda al paciente: la llave nunca sale del fragmento. */
 export function shareUrl({ token, key }) {
   return `${SHARE_PUBLIC_BASE}/r/${token}#${key}`;
+}
+
+/** Crea un enlace de lectura para el informe del tratamiento, cifrado de extremo a extremo. */
+export async function createTreatmentReportLink(treatmentId) {
+  const email = String(loadProfile().email || '').trim();
+  if (!email) throw new Error('Agrega tu correo en Ajustes para poder compartir el informe.');
+  await flushPendingAutoSaves();
+  const { buildCaseContextText } = await import('./export-case-context.js');
+  const content = await buildCaseContextText(treatmentId);
+  if (!content?.trim()) throw new Error('Este tratamiento todavía no tiene contenido para compartir.');
+  const key = generateShareKey();
+  const payload_ct = await encryptShare(key, { kind: 'report', title: 'Informe del tratamiento', content });
+  const { token, expires_at } = await shareCreateRequest(email, payload_ct);
+  return { url: shareUrl({ token, key }), expiresAt: expires_at };
 }
 
 /** Estado del envío guardado en el módulo, si hay alguno. */

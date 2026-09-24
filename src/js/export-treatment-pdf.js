@@ -3,11 +3,12 @@ import { TREATMENT_STATUS, patientGenderLabel } from './config.js';
 import { moduleLabelFor } from './custom-modules.js';
 import { getSessionsWithModules, getTreatment } from './db.js';
 import { buildPsychometricSummaryBlock } from './psychometric-summary.js';
-import { buildReadableText, relacionIaReadable } from './readable-text.js';
+import { buildReadableText } from './readable-text.js';
 import { loadProfile } from './profile.js';
 import {
   dxItemTexts,
   ensurePdfSpace,
+  PDF_FONT_FAMILY,
   PDF_MARGIN as MARGIN,
   PDF_MAX_W as MAX_W,
   pdfText,
@@ -17,7 +18,7 @@ import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { formatDate, parseJsonSafe } from './utils.js';
 import { appendCaseStudyPdf } from './export-case-study-pdf.js';
 
-const MODULES_NAME_ONLY = new Set(['motivo_consulta', 'diagnostico']);
+const MODULES_NAME_ONLY = new Set(['diagnostico']);
 
 function stripMarkdownHeaders(text) {
   return String(text || '')
@@ -78,6 +79,66 @@ function patientFromSessions(sessions) {
     if (reg) return parseJsonSafe(reg.data, {});
   }
   return {};
+}
+
+const MOTIVO_PDF_FIELDS = [
+  ['motivo', 'Motivo principal'],
+  ['expectativas', 'Expectativas del tratamiento'],
+  ['antecedentes', 'Antecedentes relevantes'],
+  ['tratamientos_previos', 'Tratamientos previos'],
+  ['medicacion', 'Medicación'],
+  ['psiquiatra', 'Psiquiatra / médico tratante'],
+  ['consumo', 'Consumo de sustancias'],
+  ['relacion_ia', 'Relación con la IA'],
+  ['urgencia', 'Urgencia'],
+];
+
+function motivoIaValue(data) {
+  const direct = String(data.relacion_ia || '').trim();
+  if (direct) return direct;
+  const prompts = [
+    ['¿Qué preguntaste?', data.ia_pregunto],
+    ['¿Qué compartiste?', data.ia_compartio],
+    ['¿Qué te respondió?', data.ia_respondio],
+    ['¿Qué hiciste con eso?', data.ia_hizo],
+    ['¿Qué lugar ocupa ahora?', data.ia_lugar],
+  ];
+  return prompts
+    .filter(([, value]) => String(value || '').trim())
+    .map(([label, value]) => `${label}\n${String(value).trim()}`)
+    .join('\n\n');
+}
+
+export function motivoPdfFields(data = {}) {
+  return MOTIVO_PDF_FIELDS
+    .map(([key, label]) => [label, key === 'relacion_ia' ? motivoIaValue(data) : data[key]])
+    .map(([label, value]) => [label, String(value || '').trim()])
+    .filter(([, value]) => value);
+}
+
+function motivoFromSessions(sessions) {
+  for (const session of sessions) {
+    const module = session.modules.find((item) => item.module_type === 'motivo_consulta');
+    if (module) return parseJsonSafe(module.data, {});
+  }
+  return {};
+}
+
+function renderMotivoBlock(doc, y, data) {
+  const fields = motivoPdfFields(data);
+  if (!fields.length) return y;
+
+  y += 8;
+  y = ensurePdfSpace(doc, y, 24);
+  y = pdfText(doc, 'Información clínica inicial', MARGIN, y, { size: 12, style: 'bold' });
+  y += 3;
+  for (const [label, value] of fields) {
+    y = ensurePdfSpace(doc, y, 16);
+    y = pdfText(doc, label, MARGIN, y, { size: 9, style: 'bold' });
+    y = pdfText(doc, value, MARGIN + 4, y, { size: 9, maxWidth: MAX_W - 4 });
+    y += 2;
+  }
+  return y;
 }
 
 function renderDiagnosticoBlock(doc, y, data) {
@@ -161,7 +222,7 @@ export async function exportTreatmentPdf(treatmentId) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   let y = MARGIN;
 
-  y = pdfText(doc, 'Programa de tratamiento — Telar', MARGIN, y, { size: 14, style: 'bold' });
+  y = pdfText(doc, 'Programa de tratamiento', MARGIN, y, { size: 14, style: 'bold' });
   y += 4;
   y = pdfText(doc, `Generado: ${formatDate(new Date().toISOString())}`, MARGIN, y, { size: 9 });
   if (profile.name) y = pdfText(doc, `Profesional: ${profile.name}`, MARGIN, y, { size: 9 });
@@ -189,30 +250,8 @@ export async function exportTreatmentPdf(treatmentId) {
     .join('\n');
   y = pdfText(doc, patientLines || treatment.patient_name, MARGIN, y);
 
-  const motivo = sessions
-    .flatMap((s) => s.modules)
-    .find((m) => m.module_type === 'motivo_consulta');
-  if (motivo) {
-    const md = parseJsonSafe(motivo.data, {});
-    const blocks = [
-      ['Motivo principal', md.motivo],
-      ['Expectativas del tratamiento', md.expectativas],
-      ['Antecedentes relevantes', md.antecedentes],
-      ['Tratamientos previos', md.tratamientos_previos],
-      ['Medicación', md.medicacion],
-      ['Psiquiatra / médico tratante', md.psiquiatra],
-      ['Consumo', md.consumo],
-      ['Salud física / factores orgánicos', md.salud_fisica],
-      ['Relación con la IA', relacionIaReadable(md)],
-    ].filter(([, v]) => String(v || '').trim());
-    for (const [title, body] of blocks) {
-      y += 6;
-      y = ensurePdfSpace(doc, y, 20);
-      y = pdfText(doc, title, MARGIN, y, { size: 12, style: 'bold' });
-      y += 2;
-      y = pdfText(doc, String(body).trim(), MARGIN, y);
-    }
-  }
+  // El contexto clínico debe preceder al diagnóstico y al análisis por ejes.
+  y = renderMotivoBlock(doc, y, motivoFromSessions(sessions));
 
   const dxEntries = [];
   for (const session of sessions) {
@@ -237,7 +276,7 @@ export async function exportTreatmentPdf(treatmentId) {
     }
   }
 
-  y = await appendCaseStudyPdf(doc, y, treatmentId);
+  y = await appendCaseStudyPdf(doc, y, treatmentId, sessions);
 
   const psychBlock = buildPsychometricSummaryBlock(sessions);
   if (psychBlock) {
@@ -260,10 +299,9 @@ export async function exportTreatmentPdf(treatmentId) {
 
     const mods = session.modules.filter(
       (m) =>
-        m.module_type !== 'selector_modulo' &&
-        m.module_type !== 'registro_inicial' &&
-        m.module_type !== 'motivo_consulta' &&
-        m.module_type !== 'diagnostico',
+        !['selector_modulo', 'diagnostico', 'registro_inicial', 'motivo_consulta'].includes(
+          m.module_type,
+        ),
     );
     if (!mods.length) {
       y = pdfText(doc, 'Sin módulos registrados.', MARGIN + 4, y, { size: 9 });

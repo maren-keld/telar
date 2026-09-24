@@ -33,7 +33,7 @@ const LEGACY_TCC_HANDOUT_DEFS = {
   },
   tcc_plan_seguridad: {
     title: 'Plan de seguridad vital',
-    category: 'conceptualizacion',
+    category: 'tcc',
     intro:
       'Herramienta de apoyo clínico para identificar y gestionar situaciones de crisis y mantener un entorno seguro. La evaluación de riesgo vital es responsabilidad del profesional.',
     sections: [

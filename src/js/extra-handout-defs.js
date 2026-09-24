@@ -1,5 +1,180 @@
 /** 12 módulos de trabajo clínico (TCC de práctica + significado). */
 export const EXTRA_HANDOUT_DEFS = {
+  dbt_diary_card: {
+    title: 'Registro Diario (DBT)',
+    subtitle: 'Habilidades DBT Telar — elaboración propia',
+    category: 'tcc',
+    oncePerTreatment: false,
+    intro:
+      'Registro breve de una semana para detectar patrones entre emociones, impulsos, conductas objetivo y habilidades utilizadas. No busca perfección: una anotación aproximada es más útil que dejar el día en blanco.',
+    warning:
+      'Si aparecen conductas de riesgo vital o autolesiones, use el plan de seguridad acordado y contacte al profesional o servicio de urgencia correspondiente. Este registro no reemplaza una evaluación de riesgo.',
+    activityGroups: [
+      {
+        title: 'Cómo usarlo',
+        items: [
+          'Anote intensidad de emociones o impulsos de 0 a 5 (0 = ausente; 5 = extrema).',
+          'Registre hechos observables: qué ocurrió, qué conducta apareció y qué habilidad intentó.',
+          'Lleve el registro a sesión para revisar patrones, no para evaluarse o juzgarse.',
+        ],
+      },
+    ],
+    sections: [
+      {
+        key: 'semana',
+        title: 'Semana (fechas)',
+        hint: 'Por ejemplo: 21–27 de septiembre.',
+        rows: 1,
+      },
+      {
+        key: 'conductas_objetivo',
+        title: 'Conductas o impulsos a monitorear',
+        hint: 'P. ej. autolesión, consumo, evitación, crisis de ira, atracón, aislamiento. Use 0–5 si corresponde.',
+        rows: 2,
+      },
+      { key: 'lunes', title: 'Lunes', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'martes', title: 'Martes', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'miercoles', title: 'Miércoles', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'jueves', title: 'Jueves', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'viernes', title: 'Viernes', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'sabado', title: 'Sábado', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      { key: 'domingo', title: 'Domingo', hint: 'Emoción/impulso 0–5 · situación · conducta · habilidad usada.', rows: 3 },
+      {
+        key: 'patron',
+        title: 'Patrón que observa',
+        hint: '¿Qué situaciones, vulnerabilidades o momentos precedieron los días más difíciles? ¿Qué ayudó?',
+        rows: 3,
+      },
+    ],
+    variables: ['Autorregistro semanal', 'Conductas objetivo', 'Regulación emocional', 'Uso de habilidades'],
+    searchTags: ['dbt', 'diary card', 'tarjeta diaria', 'registro semanal', 'impulsos', 'autolesión', 'habilidades'],
+  },
+
+  dbt_camino_del_medio: {
+    title: 'Camino del Medio',
+    subtitle: 'Habilidades DBT Telar — elaboración propia',
+    category: 'tcc',
+    oncePerTreatment: false,
+    intro:
+      'Ejercicio dialéctico para salir del “todo o nada”. Reconoce qué parte de cada extremo tiene sentido y permite elegir una respuesta más equilibrada, sin negar el malestar ni renunciar a los propios límites.',
+    activityGroups: [
+      {
+        title: 'Pistas para encontrar el punto medio',
+        items: [
+          'Dos cosas aparentemente opuestas pueden ser verdaderas a la vez.',
+          'Validar una experiencia no obliga a aprobar una conducta dañina.',
+          'El camino medio es una acción concreta y verificable, no una solución perfecta.',
+        ],
+      },
+    ],
+    sections: [
+      {
+        key: 'situacion',
+        title: 'Situación concreta',
+        hint: '¿Qué pasó? Describa hechos observables y quiénes participaron.',
+        rows: 3,
+      },
+      {
+        key: 'extremo_a',
+        title: 'Extremo A',
+        hint: 'La respuesta rígida, impulsiva o de “todo”. ¿Qué pienso, siento o quiero hacer?',
+        rows: 3,
+      },
+      {
+        key: 'extremo_b',
+        title: 'Extremo B',
+        hint: 'El otro extremo: ceder por completo, evitar, desconectarse o irse al “nada”.',
+        rows: 3,
+      },
+      {
+        key: 'valido_a',
+        title: 'Qué es válido o comprensible en el extremo A',
+        rows: 2,
+      },
+      {
+        key: 'valido_b',
+        title: 'Qué es válido o comprensible en el extremo B',
+        rows: 2,
+      },
+      {
+        key: 'camino_medio',
+        title: 'Camino del Medio',
+        hint: 'Una frase o postura que incluya ambas verdades.',
+        rows: 3,
+      },
+      {
+        key: 'accion',
+        title: 'Acción equilibrada que probaré',
+        hint: 'Qué haré, cuándo y cómo sabré que lo intenté.',
+        rows: 3,
+      },
+      { key: 'resultado', title: 'Qué ocurrió y qué aprendí', rows: 3 },
+    ],
+    variables: ['Pensamiento dialéctico', 'Flexibilidad cognitiva', 'Validación', 'Habilidades interpersonales'],
+    searchTags: ['dbt', 'camino del medio', 'dialéctica', 'todo o nada', 'rigidez', 'validación', 'límites'],
+  },
+
+  dbt_regulacion_emocional: {
+    title: 'Módulo de regulación emocional',
+    subtitle: 'Habilidades DBT Telar — elaboración propia',
+    category: 'tcc',
+    oncePerTreatment: false,
+    intro:
+      'Guía para observar una emoción intensa, reducir vulnerabilidades y elegir una respuesta eficaz. La meta no es eliminar la emoción, sino comprender su función y responder con mayor margen de elección.',
+    sections: [
+      {
+        key: 'emocion',
+        title: 'Emoción principal e intensidad (0–100)',
+        hint: 'Nombre la emoción con precisión: rabia, miedo, vergüenza, tristeza, culpa, etc.',
+        rows: 2,
+      },
+      {
+        key: 'evento',
+        title: 'Evento que la activó',
+        hint: 'Qué ocurrió justo antes. Diferencie hechos de interpretaciones.',
+        rows: 3,
+      },
+      {
+        key: 'interpretaciones',
+        title: 'Interpretaciones y señales del cuerpo',
+        hint: 'Qué pensé, qué noté en el cuerpo y qué recuerdos o significados aparecieron.',
+        rows: 3,
+      },
+      {
+        key: 'impulso',
+        title: 'Impulso de acción',
+        hint: 'Qué tuve ganas de hacer o evitar.',
+        rows: 2,
+      },
+      {
+        key: 'vulnerabilidades',
+        title: 'Vulnerabilidades presentes',
+        hint: 'Sueño, alimentación, dolor, consumo, estrés acumulado, conflicto, aislamiento u otros factores.',
+        rows: 3,
+      },
+      {
+        key: 'hechos',
+        title: 'Revisar los hechos',
+        hint: '¿La intensidad encaja con los hechos? ¿Qué información falta o qué alternativa existe?',
+        rows: 3,
+      },
+      {
+        key: 'habilidad',
+        title: 'Habilidad elegida',
+        hint: 'P. ej. pausa, respiración, autocuidado, acción opuesta, pedir apoyo, resolver un problema.',
+        rows: 3,
+      },
+      {
+        key: 'resultado',
+        title: 'Resultado e intensidad después (0–100)',
+        hint: 'Qué cambió y qué habilidad conviene repetir o ajustar.',
+        rows: 3,
+      },
+    ],
+    variables: ['Identificación emocional', 'Regulación emocional', 'Vulnerabilidades', 'Acción eficaz'],
+    searchTags: ['dbt', 'regulación emocional', 'emociones', 'acción opuesta', 'vulnerabilidad', 'impulsividad', 'habilidades'],
+  },
+
   tcc_registro_pensamientos: {
     title: 'Registro de pensamientos',
     subtitle: 'Material TCC Telar — elaboración propia',
@@ -73,6 +248,8 @@ export const EXTRA_HANDOUT_DEFS = {
     title: 'Jerarquía de exposición',
     subtitle: 'Habilidades y tareas Telar — elaboración propia',
     category: 'tcc',
+    oncePerTreatment: false,
+    allowMultipleInSession: true,
     intro:
       'Esta es una escalera, no una lista suelta. Arriba: lo más fácil de enfrentar. Abajo: lo más temido. En cada peldaño escriban una situación concreta y el malestar que anticipa (SUDS 0–100). El primer paso acordado suele estar entre 30 y 50: desafiante y todavía posible.',
     warning:

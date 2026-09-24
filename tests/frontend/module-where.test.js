@@ -82,7 +82,7 @@ test('el índice por categoría agrupa por función clínica, no por En sesión 
   assert.doesNotMatch(html, /Ficha/);
   assert.doesNotMatch(html, /selector_modulo/);
   assert.match(html, /Conceptualización/);
-  assert.match(html, /Pruebas psicométricas/);
+  assert.match(html, /Evaluación/);
   assert.match(html, /Habilidades y tareas/);
   assert.match(html, /Intervención en sesión/);
 
@@ -92,14 +92,14 @@ test('el índice por categoría agrupa por función clínica, no por En sesión 
   const intervencion = catHtml(html, 'intervencion');
 
   assert.match(conceptualizacion, /registro_inicial/);
-  assert.match(conceptualizacion, /tcc_plan_seguridad/);
+  assert.doesNotMatch(conceptualizacion, /tcc_plan_seguridad/);
   assert.doesNotMatch(conceptualizacion, /gad7/);
 
   assert.match(pruebas, /gad7/);
   assert.doesNotMatch(pruebas, /tcc_activacion/);
 
   assert.match(tcc, /tcc_activacion/);
-  assert.doesNotMatch(tcc, /tcc_plan_seguridad/);
+  assert.match(tcc, /tcc_plan_seguridad/);
 
   assert.match(intervencion, /neurofeedback/);
   assert.doesNotMatch(intervencion, /gad7/);

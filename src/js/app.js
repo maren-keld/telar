@@ -7,7 +7,7 @@ import { renderSettings } from './views/settings.js';
 import { renderModulesLibrary } from './views/modules-library.js';
 import { renderModuleEditor } from './views/module-editor.js';
 import { renderUnlock } from './views/unlock.js';
-import { renderWorkspace } from './views/workspace.js';
+import { invalidateWorkspaceRender, renderWorkspace } from './views/workspace.js';
 import { openTreatmentWorkspace } from './navigate.js';
 import { initThemeFromProfile } from './profile.js';
 import { ensureCustomModulesLoaded } from './custom-modules.js';
@@ -29,6 +29,7 @@ import { ensureGlobalShareSync } from './share-sync.js';
 const app = document.getElementById('app');
 let lastRenderedView = '';
 let lastWorkspaceHash = '';
+let appRenderRequest = 0;
 
 function parseRoute() {
   const hash = location.hash.slice(1) || '/treatments';
@@ -65,6 +66,7 @@ function navigate(patch) {
 }
 
 async function render() {
+  const renderRequest = ++appRenderRequest;
   const { parts, params } = parseRoute();
   let view = parts[0] || 'treatments';
   // Redirigir búsqueda heredada de la antigua vista agenda → treatments
@@ -78,8 +80,10 @@ async function render() {
   const leavingWorkspace = previousView === 'workspace' && view !== 'workspace';
 
   if (leavingWorkspace) {
+    invalidateWorkspaceRender();
     try {
       await flushPendingAutoSaves();
+      if (renderRequest !== appRenderRequest) return;
     } catch {
       notifySaveError();
       if (lastWorkspaceHash && location.hash !== lastWorkspaceHash) {
@@ -119,6 +123,7 @@ async function render() {
       }
       window.__telarStage = `render:custom_modules(${view})`;
       await ensureCustomModulesLoaded();
+      if (renderRequest !== appRenderRequest) return;
     } else if (view === 'unlock') {
       window.__telarDbUnlocked = false;
     }
@@ -127,6 +132,7 @@ async function render() {
     if (view !== 'unlock' && view !== 'settings' && window.__telarPacksReady) {
       window.__telarStage = `render:await_packs(${view})`;
       await window.__telarPacksReady;
+      if (renderRequest !== appRenderRequest) return;
     }
 
     switch (view) {
@@ -191,6 +197,8 @@ async function render() {
       default:
         location.hash = '/treatments';
     }
+
+    if (renderRequest !== appRenderRequest) return;
 
     if (view !== 'unlock' && needsPractitionerOnboarding()) {
       openPractitionerOnboardingModal();

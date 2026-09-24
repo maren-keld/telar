@@ -209,7 +209,7 @@ CÓMO ARMAR UN PROGRAMA
 - registro_inicial y motivo_consulta son de la sesión 1, una sola vez por tratamiento. Nunca los pongas en sesión 2 o posteriores. Si ya están en el contexto del caso, no los vuelvas a citar.
 - nota_sesion es registro libre de una hora de seguimiento o acompañamiento (conceptualización). Puede ir en cualquier sesión, una vez por sesión. No sustituye escalas ni formulación. No es tarea entre sesiones.
 - No recomiendes OASIS ni ODSIS: no están disponibles en el catálogo clínico de este tratamiento.
-- Los ids tcc_* son habilidades y tareas entre sesiones. Asigna cada uno como máximo UNA vez, salvo registros reiterables: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades. Excepciones: tcc_plan_seguridad es encuadre de riesgo (conceptualización, no tarea ni psicoeducación); tcc_autoconceptos es trabajo de identidad EN sesión, no handout TCC.
+- Los ids tcc_* y dbt_* son habilidades y tareas entre sesiones. Asigna cada uno como máximo UNA vez, salvo registros reiterables: tcc_registro_pensamientos, tcc_experimento, tcc_monitoreo_actividades, dbt_diary_card, dbt_camino_del_medio y dbt_regulacion_emocional. Excepciones: tcc_plan_seguridad es encuadre de riesgo (conceptualización, no tarea ni psicoeducación); tcc_autoconceptos es trabajo de identidad EN sesión, no handout TCC.
 - Los ids sig_* y tcc_autoconceptos se trabajan EN sesión (categoría Narrativa). No los trates como handout TCC. sig_felt_sense sí puede repetirse; el resto de narrativa, una vez y se reabre.
 - Si un handout ya está en el caso (aparece en el contexto), no lo vuelvas a proponer salvo los reiterables.
 

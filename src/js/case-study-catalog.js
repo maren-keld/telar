@@ -204,7 +204,7 @@ export function summaryDotTone(element) {
 
 export function summaryDotsForAxis(caseStudy, axis) {
   return (caseStudy?.elements || [])
-    .filter((el) => el.axis === axis && el.title && el.kind !== SUPPORT_NETWORK_KIND)
+    .filter((el) => el.axis === axis && el.title)
     .map((el) => ({
       title: el.title,
       tone: summaryDotTone(el),
@@ -233,7 +233,11 @@ const MODULE_ESTUDIO_LINKS = {
   tcc_abc: { axis: 'problem', element: 'Pensamientos recurrentes' },
   tcc_exposicion: { axis: 'problem', element: 'Fobia específica' },
   tcc_plan_seguridad: { axis: 'risk', element: 'Suicidalidad' },
+  cssrs: { axis: 'risk', element: 'Suicidalidad' },
   tcc_estres: { axis: 'problem', element: 'Estrés alto' },
+  dbt_diary_card: { axis: 'problem', element: 'Estrés alto' },
+  dbt_camino_del_medio: { axis: 'problem', element: 'Dificultades relacionales' },
+  dbt_regulacion_emocional: { axis: 'problem', element: 'Estrés alto' },
   eed: { axis: 'defense', element: '' },
   ades: { axis: 'defense', element: 'Disociación profunda' },
   rosenberg: { axis: 'resource', element: 'Autocuidado' },

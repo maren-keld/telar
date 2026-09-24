@@ -1,8 +1,11 @@
 import { getModuleDef } from '../config.js';
 import { resolveModuleDef } from '../custom-modules.js';
-import { getSessionsWithModules, treatmentHasModuleType } from '../db.js';
+import { getModule, getSessionsWithModules, saveModuleData, treatmentHasModuleType } from '../db.js';
 import { t } from '../i18n.js';
 import { psychometricsFor } from '../module-psychometrics.js';
+import { CATEGORIES } from '../module-categories.js';
+import { recommendedModuleTypesForElements } from '../case-study-model.js';
+import { readCaseStudySnapshot } from '../case-study-store.js';
 import { escapeHtml, toast } from '../utils.js';
 import {
   insertModuleAtSession,
@@ -40,10 +43,19 @@ export function openAddModuleSessionModal({
   presetType = '',
   preferredSessionId = null,
   onAdded = null,
+  allowedCategoryIds = null,
+  allowCustomModules = false,
+  associatedElementId = '',
 } = {}) {
   return new Promise((resolve) => {
     const root = document.getElementById('modal-root');
-    const options = listAddableModuleOptions();
+    const allowedTypes = allowedCategoryIds?.length
+      ? new Set(CATEGORIES.filter((category) => allowedCategoryIds.includes(category.id)).flatMap((category) => category.types))
+      : null;
+    const options = listAddableModuleOptions().filter((option) => {
+      if (allowCustomModules && option.type.startsWith('custom_')) return true;
+      return !allowedTypes || allowedTypes.has(option.type);
+    });
     const allowed = new Set(options.map((o) => o.type));
     const categoryFirst = categoryId ? listAddableModuleOptions(categoryId)[0]?.type : '';
     const initialType =
@@ -186,7 +198,16 @@ export function openAddModuleSessionModal({
           moduleType,
           sessionId: sessionVal,
         });
-        const result = { ...added, moduleType };
+        if (associatedElementId) {
+          const module = await getModule(added.moduleId);
+          const data = JSON.parse(module?.data || '{}');
+          await saveModuleData(
+            added.moduleId,
+            { ...data, elementIds: [...new Set([...(data.elementIds || []), String(associatedElementId)])] },
+            module?.status || 'pendiente',
+          );
+        }
+        const result = { ...added, moduleType, elementId: associatedElementId || '' };
         if (onAdded) await onAdded(result);
         close(result);
       } catch (err) {
@@ -206,11 +227,20 @@ export function openAddModuleSessionModal({
         const def = getModuleDef(opt.type) || resolveModuleDef(opt.type);
         if (def?.oncePerTreatment && used) onceBlocked[opt.type] = true;
       }
+      let recommendedTypes = new Set();
+      try {
+        const caseStudy = await readCaseStudySnapshot(treatmentId);
+        recommendedTypes = recommendedModuleTypesForElements(caseStudy?.elements || []);
+        inTreatment.forEach((type) => recommendedTypes.delete(type));
+      } catch {
+        // Keep the module picker available if the case-study snapshot is unavailable.
+      }
       listEl.innerHTML =
         selectorListInnerHtml({
           inTreatment,
           inSession: new Set(),
           onceBlocked,
+          recommendedTypes,
         }) || `<p class="text-muted">No hay módulos disponibles.</p>`;
 
       listEl.querySelectorAll('.mod-selector-item').forEach((btn) => {

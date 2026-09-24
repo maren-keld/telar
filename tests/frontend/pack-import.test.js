@@ -99,7 +99,7 @@ test('las experiencias interactivas avisan de librerías de internet', () => {
   assert.ok(warnings.some((w) => w.includes('cdn.example')));
 });
 
-test('importar pack no exige suscripción Pro', () => {
+test('acciones de módulos no exigen suscripción Pro', () => {
   const src = readFileSync(
     join(dirname(fileURLToPath(import.meta.url)), '../../src/js/views/modules-library.js'),
     'utf8',
@@ -111,7 +111,8 @@ test('importar pack no exige suscripción Pro', () => {
   assert.equal(match[1].includes('requireProOrSubscribe'), false);
   assert.ok(match[1].includes('installPackFromPath'));
   assert.ok(src.includes("querySelector('#btn-create-module-lib')"));
-  assert.match(src, /#btn-create-module-lib[\s\S]*?requireProOrSubscribe/);
+  assert.ok(src.includes("querySelector('#btn-buy-modules')"));
+  assert.doesNotMatch(src, /requireProOrSubscribe/);
 });
 
 test('un pack sin ningún módulo aprovechable falla con mensaje', () => {

@@ -62,6 +62,40 @@ const NOTES_EMPTY_HTML = `<div class="notes-empty-state">
   <p class="notes-empty">También puedes seleccionar texto en un módulo para crear una anotación.</p>
 </div>`;
 
+const NOTES_FILTERS = [
+  { id: 'all', label: 'Todo' },
+  { id: 'answers', label: 'Respuestas' },
+  { id: 'notes', label: 'Notas' },
+  { id: 'highlights', label: 'Resaltado' },
+  { id: 'pinned', label: 'Fijado' },
+];
+
+function notesForFilter(notes, filter) {
+  switch (filter) {
+    case 'answers':
+      return notes.filter((note) => note.kind === 'ia_answer');
+    case 'notes':
+      return notes.filter((note) => (note.kind || 'comment') === 'comment');
+    case 'highlights':
+      return notes.filter((note) => note.kind === 'annotation');
+    case 'pinned':
+      return notes.filter((note) => Boolean(note.starred));
+    default:
+      return notes;
+  }
+}
+
+function notesEmptyHtml(filter) {
+  if (filter === 'all') return NOTES_EMPTY_HTML;
+  const labels = {
+    answers: 'respuestas de la IA',
+    notes: 'notas',
+    highlights: 'resaltados',
+    pinned: 'elementos fijados',
+  };
+  return `<div class="notes-empty-state"><p class="notes-empty">No hay ${labels[filter] || 'contenido'} todavía.</p></div>`;
+}
+
 function readPerfilOnlySelected(treatmentId) {
   try {
     return localStorage.getItem(PERFIL_ONLY_SELECTED_KEY(treatmentId)) === '1';
@@ -137,12 +171,18 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
   let refreshList = async () => {};
   const activeTab = 'notas';
+  let activeFilter = 'all';
   const profile = loadProfile();
   const defaultInitials = practitionerInitials(profile.name);
   let showAllNotes = false;
 
   container.innerHTML = `
-    <div class="space-tools" data-active-tab="notas">
+    <div class="space-tools" data-active-tab="notas" data-notes-filter="all">
+      <nav class="space-tools__tabs2" aria-label="Filtrar contenido del panel derecho">
+        ${NOTES_FILTERS.map(
+          ({ id, label }) => `<button type="button" class="space-tab2${id === 'all' ? ' active' : ''}" data-notes-filter="${id}" role="tab" aria-selected="${id === 'all' ? 'true' : 'false'}">${label}</button>`,
+        ).join('')}
+      </nav>
       <div class="space-tools__content">
         <div class="notes-scroll notes-scroll--prejump" id="notes-list"></div>
       </div>
@@ -190,11 +230,13 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   };
 
   let stopNotesEmptyOrb = () => {};
-  const paintNotesEmpty = () => {
+  const paintNotesEmpty = (filter = activeFilter) => {
     stopNotesEmptyOrb();
     stopNotesEmptyOrb = () => {};
-    listEl.innerHTML = NOTES_EMPTY_HTML;
-    stopNotesEmptyOrb = mountDitherOrb(listEl.querySelector('#notes-empty-orb'), { size: 92 });
+    listEl.innerHTML = notesEmptyHtml(filter);
+    if (filter === 'all') {
+      stopNotesEmptyOrb = mountDitherOrb(listEl.querySelector('#notes-empty-orb'), { size: 92 });
+    }
   };
 
   refreshList = async ({
@@ -232,7 +274,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       const sorted = [...all].sort((a, b) =>
         String(a.created_at || '').localeCompare(String(b.created_at || '')),
       );
-      if (!sorted.length) {
+      const filtered = notesForFilter(sorted, activeFilter);
+      if (!filtered.length) {
         paintNotesEmpty();
         revealNotes();
         return;
@@ -250,7 +293,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       }
 
       if (appendNoteId != null && listEl.querySelector('.kindle-note')) {
-        const note = sorted.find((n) => String(n.id) === String(appendNoteId));
+        const note = filtered.find((n) => String(n.id) === String(appendNoteId));
         if (note) {
           listEl.querySelector('.notes-empty-state')?.remove();
           stopNotesEmptyOrb();
@@ -271,7 +314,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       const savedScroll = listEl.scrollTop;
       stopNotesEmptyOrb();
       stopNotesEmptyOrb = () => {};
-      const { notes, hiddenCount } = visibleNotesWindow(sorted, { showAll: showAllNotes });
+      const { notes, hiddenCount } = visibleNotesWindow(filtered, { showAll: showAllNotes });
       const older =
         hiddenCount > 0
           ? `<button type="button" class="btn btn-ghost btn-block notes-older" id="notes-older">Ver ${hiddenCount} anteriores</button>`
@@ -321,7 +364,27 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     }
   };
 
+  const setNotesFilter = async (filter, { scrollBottom = false } = {}) => {
+    if (!NOTES_FILTERS.some((item) => item.id === filter)) return;
+    activeFilter = filter;
+    showAllNotes = false;
+    const tools = container.querySelector('.space-tools');
+    if (tools) tools.dataset.notesFilter = filter;
+    container.querySelectorAll('.space-tab2[data-notes-filter]').forEach((button) => {
+      const on = button.dataset.notesFilter === filter;
+      button.classList.toggle('active', on);
+      button.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    listEl.classList.add('notes-scroll--prejump');
+    await refreshList({ scrollBottom });
+  };
+
+  container.querySelectorAll('.space-tab2[data-notes-filter]').forEach((button) => {
+    button.addEventListener('click', () => void setNotesFilter(button.dataset.notesFilter));
+  });
+
   container.querySelector('#btn-add-note')?.addEventListener('click', async () => {
+    await setNotesFilter('notes', { scrollBottom: true });
     const id = await addClinicalNote(treatmentId, {
       kind: 'comment',
       color: 'yellow',
@@ -516,6 +579,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       }
       lastAiQuestion = q;
       resetInput();
+      await setNotesFilter('answers', { scrollBottom: true });
       aiSend.dataset.busy = '1';
       const request = createAiRequest();
       aiRequest = request;
@@ -619,15 +683,9 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   const focusNotasTab = async () => {
     const tools = container.querySelector('.space-tools');
     if (tools) tools.dataset.activeTab = 'notas';
-    container.querySelectorAll('.space-tab2').forEach((b) => {
-      const on = b.dataset.tab === 'notas';
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
     const fab = container.querySelector('#btn-add-note');
     if (fab) fab.hidden = false;
-    listEl.classList.add('notes-scroll--prejump');
-    await refreshList({ scrollBottom: true });
+    await setNotesFilter('notes', { scrollBottom: true });
   };
 
   document.addEventListener(
@@ -673,8 +731,8 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   return {
     refresh: refreshList,
     focusNotasTab,
-    setTab() {
-      return refreshList();
+    setTab(filter = 'all') {
+      return setNotesFilter(filter);
     },
   };
 }
@@ -966,8 +1024,8 @@ function defaultsFor(tab) {
     return [
       'Ideación suicida',
       'Plan suicida',
-      'Intentos previos',
-      'Acceso a medios de autosión',
+      'Intentos previos de suicidio',
+      'Acceso a medios de autolesión',
       'Desesperanza o inutilidad expresada',
       'Consumo de sustancias',
       'Aislamiento social',
@@ -1127,6 +1185,7 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
       const f = readFields();
       f.starred = next;
       await updateClinicalNote(id, f);
+      await rerender();
     });
 
     card.querySelector('.note-delete')?.addEventListener('click', async () => {

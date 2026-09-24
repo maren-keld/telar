@@ -1,4 +1,4 @@
-import { customModuleHandoutPayload, getCustomModuleByType, moduleLabelFor } from '../custom-modules.js';
+import { customModuleHandoutPayload, getCustomModuleByType, moduleDisplayLabel, moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
 import { captureNotesScroll, restoreNotesScroll } from '../notes-window.js';
@@ -25,6 +25,8 @@ import {
 } from '../db.js';
 import { doneToastMessage, isModuleDone, toggleDoneOverride } from '../module-done.js';
 import { syncModuleReadableText } from '../readable-text.js';
+import { loadCaseStudy } from '../case-study-store.js';
+import { axisAssignmentRows } from '../workspace-axis-assignment.js';
 import { renderModule, teardownBilateralStimulation, teardownInteractiveHtml } from '../modules/index.js';
 import { NF_HELP_MESSAGE, teardownNeurofeedback } from '../modules/neurofeedback.js';
 import { exportTreatmentPdf } from '../export-treatment-pdf.js';
@@ -38,7 +40,7 @@ import { ICON_DOWNLOAD, ICON_LINK, ICON_MORE_VERT, ICON_SWAP } from '../icons.js
 import { openShareModuleModal } from '../components/share-module-modal.js';
 import { shareableContentFor } from '../share-content.js';
 import { shareCompletedByLinkLabel } from '../module-editor-model.js';
-import { shareAnsweredAt, shareInfo } from '../share-sync.js';
+import { createTreatmentReportLink, shareAnsweredAt, shareInfo } from '../share-sync.js';
 import { formatShareAnsweredAt } from '../share-notify.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
 import {
@@ -65,6 +67,12 @@ import {
   scheduleRestoreModuleViewportOffset,
   snapshotModuleCardHeights,
 } from '../workspace-center-scroll.js';
+
+let workspaceRenderRequest = 0;
+
+export function invalidateWorkspaceRender() {
+  workspaceRenderRequest += 1;
+}
 
 /** Un solo listener de índice; se reasigna en cada render para no filtrar. */
 let workspaceIndexModeListener = null;
@@ -93,8 +101,21 @@ const collapsedSessionsByTreatment = new Map();
 let pendingCenterScrollRestore = null;
 
 
-export function moduleLabel(type) {
-  return moduleLabelFor(type);
+export function moduleLabel(typeOrModule) {
+  if (typeof typeOrModule === 'object' && typeOrModule) {
+    return moduleDisplayLabel(typeOrModule.module_type, parseJsonSafe(typeOrModule.data, {}));
+  }
+  return moduleLabelFor(typeOrModule);
+}
+
+function moduleLabelHtml(module) {
+  const label = moduleLabel(module);
+  if (!['medicion_cualitativa', 'medicion_cuantitativa'].includes(module.module_type)) {
+    return escapeHtml(label);
+  }
+  const separator = label.indexOf(' - ');
+  if (separator < 0) return escapeHtml(label);
+  return `${escapeHtml(label.slice(0, separator))}<span class="module-link__label-detail">${escapeHtml(label.slice(separator))}</span>`;
 }
 
 async function printModulePdf(mod, patientName) {
@@ -143,6 +164,7 @@ export async function renderWorkspace(
     expandSessionId = null,
   },
 ) {
+  const renderRequest = ++workspaceRenderRequest;
   if (
     !forceFullRender &&
     moduleId &&
@@ -152,25 +174,28 @@ export async function renderWorkspace(
     const card = container.querySelector(`#module-${moduleId}`);
     const moduleType = card?.dataset.moduleType || '';
     const indexType = indexMode === 'category' ? getWorkspaceIndexType() || moduleType : '';
-    if (
-      await tryFastModuleNavigation(container, {
+    const fastNavigated = await tryFastModuleNavigation(container, {
         treatmentId,
         sessionId,
         moduleId,
         activeModule: card ? { id: moduleId, module_type: moduleType } : null,
         indexMode,
         indexType,
-      })
-    ) {
+      });
+    if (renderRequest !== workspaceRenderRequest) return;
+    if (fastNavigated) {
       return;
     }
   }
 
   const alreadyOpen = Boolean(container.querySelector('#workspace-layout'));
   if (alreadyOpen && !(await flushWorkspaceSaves())) return;
+  if (renderRequest !== workspaceRenderRequest) return;
 
   const treatment = await getTreatment(treatmentId);
+  if (renderRequest !== workspaceRenderRequest) return;
   const sessions = await getSessionsWithModules(treatmentId);
+  if (renderRequest !== workspaceRenderRequest) return;
   const activeModuleId = moduleId ? String(moduleId) : null;
 
   let activeModule = null;
@@ -225,22 +250,21 @@ export async function renderWorkspace(
     }
   }
 
-  if (
-    !estudioMode &&
-    !forceFullRender &&
-    await tryFastModuleNavigation(container, {
+  const didFastNavigate = !estudioMode && !forceFullRender && await tryFastModuleNavigation(container, {
       treatmentId,
       sessionId: activeSessionId,
       moduleId: activeModule?.id,
       activeModule,
       indexMode,
       indexType,
-    })
-  ) {
+    });
+  if (renderRequest !== workspaceRenderRequest) return;
+  if (didFastNavigate) {
     return;
   }
 
   if (!(await flushWorkspaceSaves())) return;
+  if (renderRequest !== workspaceRenderRequest) return;
 
   const prevModuleId = container.dataset.workspaceModuleId;
   const prevScrollRoot = container.querySelector('#workspace-center-scroll');
@@ -256,10 +280,7 @@ export async function renderWorkspace(
   const savedNotesTab = container.querySelector('.space-tools')?.dataset?.activeTab ?? 'notas';
   const preserveCenterScroll =
     pendingCenterScrollRestore != null || (sameTreatment && forceFullRender);
-  const keepNotes =
-    sameTreatment && container.dataset.workspaceIndexMode === indexMode
-      ? container.querySelector('#rightsidebar')
-      : null;
+  const keepNotes = sameTreatment ? container.querySelector('#rightsidebar') : null;
   if (keepNotes) keepNotes.remove();
 
   container._unmountHighlight?.();
@@ -415,6 +436,7 @@ export async function renderWorkspace(
       onDelete: (deletedId) => container._workspaceData.onDelete(deletedId),
     });
   }
+  if (renderRequest !== workspaceRenderRequest) return;
   if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
 
   if (
@@ -564,6 +586,16 @@ export async function renderWorkspace(
     onExportWord: async () => {
       const filename = await exportTreatmentWord(treatmentId);
       toast(`${filename} — documento editable guardado en el Escritorio`);
+    },
+    onExportOnline: async () => {
+      const { url } = await createTreatmentReportLink(treatmentId);
+      if (navigator.share) await navigator.share({ title: 'Informe del tratamiento', url });
+      else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast('Enlace privado del informe copiado. Vence en 30 días.');
+      } else {
+        window.prompt('Copia el enlace privado del informe (vence en 30 días):', url);
+      }
     },
     onExportCasePresentation: async () => {
       const filename = await exportCasePresentationPdf(treatmentId);
@@ -916,12 +948,12 @@ function centerBotoneraOpts(mod, session, treatment, wrap, ctx) {
     isNf,
     shareState: shareable ? (shareInfo(mod.data) ? 'pending' : 'ready') : null,
     shareAnswered: shareable ? shareAnsweredAt(mod.data) : null,
-    moduleLabelText: moduleLabel(mod.module_type),
+    moduleLabelText: moduleLabel(mod),
     onSwap: () => ctx.onSwap(mod.id, session.id),
     onPrint: () => printModulePdf(mod, treatment.patient_name),
     onShare: () =>
       openShareModuleModal(mod, {
-        label: moduleLabel(mod.module_type),
+        label: moduleLabel(mod),
         ...shareable,
         onChange: () => ctx.refreshWorkspace?.(),
       }),
@@ -1309,6 +1341,132 @@ function createBotoneraEl({ isActive }) {
   return actions;
 }
 
+const MODULE_AXIS_CHIP_EXCLUDED_TYPES = new Set([
+  'selector_modulo',
+  'registro_inicial',
+  'motivo_consulta',
+]);
+
+function axisChipLabel(rows, selectedIds) {
+  const ids = (Array.isArray(selectedIds) ? selectedIds : [selectedIds]).map(String).filter(Boolean);
+  if (ids.length > 1) return `${ids.length} elementos asignados`;
+  return rows.find((element) => String(element.id) === ids[0])?.title || 'Asignar elemento';
+}
+
+function closeAxisAssignmentMenu(chip) {
+  chip?.classList.remove('module-axis-chip--open');
+  chip?.querySelector('.module-axis-chip__menu')?.removeAttribute('style');
+  chip?.querySelector('.module-axis-chip__trigger')?.setAttribute('aria-expanded', 'false');
+  chip?.closest('.center-module-card')?.classList.remove('center-module-card--axis-menu-open');
+}
+
+function placeAxisAssignmentMenu(chip) {
+  const trigger = chip?.querySelector('.module-axis-chip__trigger');
+  const menu = chip?.querySelector('.module-axis-chip__menu');
+  if (!trigger || !menu) return;
+  const rect = trigger.getBoundingClientRect();
+  const width = Math.min(420, window.innerWidth - 32);
+  const left = Math.max(16, Math.min(rect.left, window.innerWidth - width - 16));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 80)}px`;
+  menu.style.width = `${width}px`;
+}
+
+function attachModuleAxisChip(wrap, moduleRow, treatmentId) {
+  if (MODULE_AXIS_CHIP_EXCLUDED_TYPES.has(moduleRow.module_type) || !treatmentId) return;
+  const title = wrap.querySelector('.module-title');
+  if (!title || wrap.querySelector('.module-axis-chip')) return;
+
+  void loadCaseStudy(treatmentId)
+    .then((caseStudy) => {
+      if (!wrap.isConnected || wrap.querySelector('.module-axis-chip')) return;
+      const rows = axisAssignmentRows(caseStudy?.elements || [], moduleRow.module_type);
+      const data = parseJsonSafe(moduleRow.data, {});
+      let selectedIds = (data.elementIds || []).map(String);
+      const chip = document.createElement('div');
+      chip.className = 'module-axis-chip';
+      chip.innerHTML = `
+        <button type="button" class="module-axis-chip__trigger" aria-expanded="false" aria-haspopup="listbox" title="Asignar módulo a uno o más elementos del estudio de caso">
+          <span class="module-axis-chip__label">${escapeHtml(axisChipLabel(rows, selectedIds))}</span>
+          <span class="module-axis-chip__chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="module-axis-chip__menu" role="listbox" aria-multiselectable="true" aria-label="Asignar a elementos del estudio de caso">
+          <button type="button" class="module-axis-chip__option module-axis-chip__option--clear" role="option" aria-selected="${selectedIds.length ? 'false' : 'true'}" data-element-id="">
+            <span>Quitar todas las asignaciones</span><span class="module-axis-chip__status">—</span>
+          </button>
+          ${rows
+            .map(
+              (element) => {
+                const selected = selectedIds.includes(String(element.id));
+                return `
+                <button type="button" class="module-axis-chip__option" role="option" aria-selected="${selected}" data-element-id="${escapeHtml(String(element.id))}">
+                  <span class="module-axis-chip__option-label">${escapeHtml(element.title)}</span>
+                  <span class="module-axis-chip__status${element.recommended ? ' module-axis-chip__status--recommended' : ''}">${selected ? '✓ ' : ''}${element.recommended ? 'Recomendado' : 'No recomendado'}</span>
+                </button>`;
+              },
+            )
+            .join('') || '<p class="module-axis-chip__empty">Añade elementos en Estudio de caso para poder asignar este módulo.</p>'}
+        </div>`;
+
+      const titleRow = document.createElement('div');
+      titleRow.className = 'module-axis-chip__title-row';
+      title.parentNode.insertBefore(titleRow, title);
+      titleRow.append(title, chip);
+
+      const trigger = chip.querySelector('.module-axis-chip__trigger');
+      trigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const open = !chip.classList.contains('module-axis-chip--open');
+        document.querySelectorAll('.module-axis-chip--open').forEach((other) => closeAxisAssignmentMenu(other));
+        chip.classList.toggle('module-axis-chip--open', open);
+        wrap.classList.toggle('center-module-card--axis-menu-open', open);
+        if (open) placeAxisAssignmentMenu(chip);
+        trigger.setAttribute('aria-expanded', String(open));
+      });
+      chip.querySelectorAll('[data-element-id]').forEach((option) => {
+          option.addEventListener('click', async () => {
+          const elementId = String(option.dataset.elementId || '');
+          const nextIds = !elementId
+            ? []
+            : selectedIds.includes(elementId)
+              ? selectedIds.filter((id) => id !== elementId)
+              : [...selectedIds, elementId];
+          const next = { ...parseJsonSafe(moduleRow.data, {}), elementIds: nextIds };
+          try {
+            await syncModuleReadableText(moduleRow, next, moduleRow.status || 'completado');
+            moduleRow.data = JSON.stringify(next);
+            selectedIds = nextIds;
+            const label = chip.querySelector('.module-axis-chip__label');
+            if (label) label.textContent = axisChipLabel(rows, selectedIds);
+            chip.querySelectorAll('[role="option"]').forEach((row) => {
+              const id = String(row.dataset.elementId || '');
+              const selected = id ? selectedIds.includes(id) : !selectedIds.length;
+              row.setAttribute('aria-selected', String(selected));
+              if (id) {
+                const element = rows.find((candidate) => String(candidate.id) === id);
+                const status = row.querySelector('.module-axis-chip__status');
+                if (status) status.textContent = `${selected ? '✓ ' : ''}${element?.recommended ? 'Recomendado' : 'No recomendado'}`;
+              }
+            });
+          } catch (err) {
+            toast(err?.message || 'No se pudo asignar el elemento del eje.');
+          }
+        });
+      });
+      const closeOnOutsideClick = (event) => {
+        if (!chip.isConnected) {
+          document.removeEventListener('click', closeOnOutsideClick);
+          return;
+        }
+        if (!chip.contains(event.target)) closeAxisAssignmentMenu(chip);
+      };
+      document.addEventListener('click', closeOnOutsideClick);
+    })
+    .catch(() => {
+      // El módulo permanece operativo si el estudio todavía no se puede cargar.
+    });
+}
+
 function appendBotoneraCore(actions, { swappable, handout, deletable, isNf, shareState, shareAnswered, moduleLabelText, onSwap, onPrint, onDelete, onShare }) {
   // Derecha → izquierda: cerrar, cambiar, imprimir, enviar, ayuda.
   if (shareAnswered) {
@@ -1593,6 +1751,7 @@ async function renderAllCenterModules(host, sessions, treatment, activeModule, c
           onNavigate: ctx.onNavigate,
           refreshWorkspace: ctx.refreshWorkspace,
         });
+        attachModuleAxisChip(item.wrap, item.mod, treatment.id);
         attachBotonera(item.wrap, actions);
         item.wrap.style.minHeight = '';
         item.wrap.dataset.hydrated = '1';
@@ -1686,7 +1845,7 @@ function moduleDoneDotHtml(mod) {
   if (!mod || mod.module_type === 'selector_modulo') {
     return '<span class="module-done-dot module-done-dot--spacer" aria-hidden="true"></span>';
   }
-  const label = moduleLabel(mod.module_type);
+  const label = moduleLabel(mod);
   const done = isModuleDone(mod.module_type, mod.data);
   const title = doneDotTitle(label, done);
   return `<button type="button" class="module-done-dot${done ? ' is-done' : ''}" data-done-toggle data-module-id="${mod.id}" aria-pressed="${done ? 'true' : 'false'}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"></button>`;
@@ -1721,7 +1880,7 @@ function bindDoneDots(container) {
       const patch = toggleDoneOverride(row.module_type, data);
       await syncModuleReadableText(row, patch, row.status);
       const done = isModuleDone(row.module_type, { ...data, ...patch });
-      const label = moduleLabel(row.module_type);
+      const label = moduleLabel(row);
       container.querySelectorAll(`[data-done-toggle][data-module-id="${row.id}"]`).forEach((el) => {
         applyDoneDotState(el, done, label);
       });
@@ -1782,8 +1941,7 @@ function sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionI
         m.module_type !== 'registro_inicial' &&
         m.module_type !== 'motivo_consulta' &&
         m.module_type !== 'selector_modulo';
-      const label = moduleLabel(m.module_type);
-      return `<div class="module-row">${moduleDoneDotHtml(m)}<a href="#" class="module-link${active ? ' active' : ''}" data-session-id="${session.id}" data-module-id="${m.id}" data-module-type="${escapeHtml(m.module_type)}" data-draggable="${draggable ? 'true' : 'false'}"><span class="module-link__label">${escapeHtml(label)}</span></a></div>`;
+      return `<div class="module-row">${moduleDoneDotHtml(m)}<a href="#" class="module-link${active ? ' active' : ''}" data-session-id="${session.id}" data-module-id="${m.id}" data-module-type="${escapeHtml(m.module_type)}" data-draggable="${draggable ? 'true' : 'false'}"><span class="module-link__label">${moduleLabelHtml(m)}</span></a></div>`;
     })
     .join('');
 

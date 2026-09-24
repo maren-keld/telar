@@ -16,7 +16,7 @@
   min-width: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0;
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
@@ -252,6 +252,7 @@
   border-radius: 1px var(--radius-lg) var(--radius-lg) 1px;
   overflow: visible;
   box-shadow: var(--shadow-card);
+  margin-bottom: 8px;
 }
 
 .kindle-note--starred {
@@ -329,6 +330,12 @@
 
 .kindle-note--ia .kindle-note__body {
   border-left: 3px solid var(--accent);
+}
+
+/* Fijar una respuesta solo cambia su estado, no debe convertirla en negrita. */
+.kindle-note--starred .kindle-note__ai-answer,
+.kindle-note--starred .kindle-note__ai-answer strong {
+  font-weight: 400;
 }
 
 .kindle-note--pending {

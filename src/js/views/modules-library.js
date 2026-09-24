@@ -2,7 +2,6 @@ import { getModuleDefs } from '../config.js';
 import { isLicensePendingModule } from '../license-pending-modules.js';
 import { CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL } from '../module-categories.js';
 import { renderAppSidebar, bindAppSidebar } from '../components/app-sidebar.js';
-import { requireProOrSubscribe } from '../components/subscribe-pro-modal.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import {
   deleteCustomModule,
@@ -10,6 +9,7 @@ import {
   getCustomModule,
   listCustomModulePacks,
   listCustomModules,
+  moduleLabelFor,
   parseCustomModuleType,
   resolveModuleDef,
 } from '../custom-modules.js';
@@ -27,25 +27,22 @@ function moduleTile(type, def, { kind = '', deletable = false } = {}) {
       : isCustom
         ? '<span class="badge badge--info">Personalizado</span>'
         : '';
-  const parts = (def.label || '').split(' — ');
-  const displayName = parts[0];
-  const categoryTag = parts[1]
-    ? `<span class="badge badge--subtle">${escapeHtml(parts[1])}</span>`
-    : '';
+  const displayName = isCustom ? def.label : moduleLabelFor(type);
   const del = customId
     ? `<button type="button" class="module-tile__delete" data-delete-custom="${escapeHtml(customId)}" aria-label="Quitar de la librería" title="Quitar de la librería">×</button>`
     : '';
   return `
     <article class="module-tile${isCustom ? ' module-tile--custom' : ''}${customId ? ' module-tile--deletable' : ''}" data-type="${escapeHtml(type)}">
       ${del}
-      <h3 class="module-tile__title">${escapeHtml(displayName)} ${categoryTag}</h3>
+      <h3 class="module-tile__title">${escapeHtml(displayName)}</h3>
       <p class="module-tile__desc">${escapeHtml(def.description || 'Módulo clínico.')}</p>
       ${badge}
     </article>`;
 }
 
 function customTiles(mods, { deletable = false } = {}) {
-  return mods
+  return [...mods]
+    .sort((a, b) => String(a.title || a.label || '').localeCompare(String(b.title || b.label || ''), 'es'))
     .map((cm) => {
       const type = `custom_${cm.id}`;
       const def = resolveModuleDef(type) || { label: cm.title, description: cm.instructions || '' };
@@ -60,9 +57,9 @@ export async function renderModulesLibrary(container, { onNavigate }) {
   const allCustom = listCustomModules();
   const ownMods = allCustom.filter((cm) => !cm.packId && cm.exportable !== false);
   const packs = listCustomModulePacks();
-  const builtins = Object.entries(getModuleDefs()).filter(
-    ([t]) => t !== 'selector_modulo' && !isLicensePendingModule(t),
-  );
+  const builtins = Object.entries(getModuleDefs())
+    .filter(([t]) => t !== 'selector_modulo' && !isLicensePendingModule(t))
+    .sort(([typeA], [typeB]) => moduleLabelFor(typeA).localeCompare(moduleLabelFor(typeB), 'es'));
 
   const rerender = () => renderModulesLibrary(container, { onNavigate });
 
@@ -142,23 +139,18 @@ export async function renderModulesLibrary(container, { onNavigate }) {
   }
 
   container.querySelector('#btn-create-module-lib')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: () =>
-        onNavigate({
-          view: 'module-editor',
-          customModuleId: '',
-          returnView: 'modules',
-          treatmentId: '',
-          sessionId: '',
-          moduleId: '',
-        }),
+    onNavigate({
+      view: 'module-editor',
+      customModuleId: '',
+      returnView: 'modules',
+      treatmentId: '',
+      sessionId: '',
+      moduleId: '',
     });
   });
 
   container.querySelector('#btn-buy-modules')?.addEventListener('click', () => {
-    requireProOrSubscribe({
-      onAllowed: () => openExternalUrl('https://telarapp.cl/modules'),
-    });
+    openExternalUrl('https://telarapp.cl/modules');
   });
 
   container.querySelector('#btn-import-pack')?.addEventListener('click', async () => {

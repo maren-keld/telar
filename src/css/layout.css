@@ -482,9 +482,7 @@
 }
 
 .module-card-head__sub {
-  margin: 6px 0 0;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  display: none;
 }
 
 .module-card-head__badge {
@@ -546,6 +544,151 @@
 .module-card-head > div:first-child {
   flex: 1;
   min-width: 0;
+}
+
+/* Asignación del módulo a un elemento del Estudio de caso. */
+.module-axis-chip__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.module-axis-chip__title-row .module-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.module-axis-chip {
+  position: relative;
+  flex: 0 1 190px;
+  min-width: 128px;
+}
+
+.module-axis-chip__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.module-axis-chip__trigger:hover,
+.module-axis-chip--open .module-axis-chip__trigger {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.module-axis-chip__label,
+.module-axis-chip__option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-axis-chip__chevron {
+  flex: 0 0 auto;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.module-axis-chip__menu {
+  position: fixed;
+  z-index: 10000;
+  top: calc(100% + 6px);
+  left: var(--axis-menu-left, 0px);
+  right: auto;
+  display: none;
+  width: min(420px, calc(100vw - 48px));
+  max-height: 300px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.tcc-intro,
+.module-title-hint {
+  display: none;
+}
+
+.module-axis-chip--open .module-axis-chip__menu {
+  display: block;
+}
+
+.module-axis-chip__option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.module-axis-chip__option:hover,
+.module-axis-chip__option[aria-selected='true'] {
+  background: var(--accent-soft);
+}
+
+.module-axis-chip__option--clear {
+  color: var(--text-secondary);
+}
+
+.module-axis-chip__status {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.module-axis-chip__status--recommended {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.module-axis-chip__empty {
+  margin: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .module-axis-chip__title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .module-axis-chip {
+    width: 100%;
+    max-width: none;
+  }
+
+  .module-axis-chip__menu {
+    left: 0;
+    right: auto;
+  }
 }
 
 

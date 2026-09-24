@@ -1,6 +1,8 @@
 import { getTreatmentTemplate } from './treatment-templates.js';
 import { isCustomModuleType, resolveModuleDef } from './custom-modules.js';
 import { clinicalAlertReasonsFromModules, VITAL_RISK_LABELS } from './clinical-alert.js';
+import { defaultElementIdsForModule } from './case-study-model.js';
+import { ensureCaseStudyElementsForModule } from './case-study-store.js';
 import { parseJsonSafe } from './utils.js';
 import { getInvoke, isTauriApp, loadSqlDatabase } from './tauri-bridge.js';
 
@@ -592,6 +594,11 @@ export async function updateTreatmentStatus(treatmentId, status) {
   await execute(`UPDATE treatments SET status = ? WHERE id = ?`, [status, treatmentId]);
 }
 
+/** Borra un tratamiento y su contenido asociado (las claves foráneas hacen cascade). */
+export async function deleteTreatment(treatmentId) {
+  await execute(`DELETE FROM treatments WHERE id = ?`, [treatmentId]);
+}
+
 export async function updateTreatmentTags(treatmentId, tags) {
   const tagList = [...new Set(tags)];
   const derivado = tagList.includes('derivado') ? 1 : 0;
@@ -737,14 +744,25 @@ export async function addModuleToSession(sessionId, moduleType, treatmentId = nu
       throw new Error(`Este tratamiento ya tiene «${def.label}».`);
     }
   }
+  let tid = treatmentId;
+  if (!tid) {
+    const [session] = await query(`SELECT treatment_id FROM sessions WHERE id = ?`, [sessionId]);
+    tid = session?.treatment_id;
+  }
+  const caseData = tid
+    ? await ensureCaseStudyElementsForModule(tid, moduleType)
+    : {};
+  const elementIds = defaultElementIdsForModule(moduleType, caseData?.elements || []);
+  const initialData = elementIds.length ? JSON.stringify({ elementIds }) : '{}';
+
   const [{ maxo }] = await query(
     `SELECT COALESCE(MAX(sort_order), -1) + 1 AS maxo FROM session_modules WHERE session_id = ?`,
     [sessionId],
   );
   const result = await execute(
     `INSERT INTO session_modules (session_id, module_type, sort_order, status, data)
-     VALUES (?, ?, ?, 'pendiente', '{}')`,
-    [sessionId, moduleType, maxo],
+     VALUES (?, ?, ?, 'pendiente', ?)`,
+    [sessionId, moduleType, maxo, initialData],
   );
   return result.lastInsertId;
 }
@@ -781,9 +799,14 @@ export async function replaceSelectorWithModule(selectorModuleId, moduleType, tr
       throw new Error(`Este tratamiento ya tiene «${def.label}».`);
     }
   }
+  const caseData = treatmentId
+    ? await ensureCaseStudyElementsForModule(treatmentId, moduleType)
+    : {};
+  const elementIds = defaultElementIdsForModule(moduleType, caseData?.elements || []);
+  const initialData = elementIds.length ? JSON.stringify({ elementIds }) : '{}';
   await execute(
-    `UPDATE session_modules SET module_type = ?, data = '{}', status = 'pendiente', updated_at = datetime('now') WHERE id = ?`,
-    [moduleType, selectorModuleId],
+    `UPDATE session_modules SET module_type = ?, data = ?, status = 'pendiente', updated_at = datetime('now') WHERE id = ?`,
+    [moduleType, initialData, selectorModuleId],
   );
   return selectorModuleId;
 }

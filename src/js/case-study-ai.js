@@ -105,7 +105,6 @@ export function mergeCaseStudyAiElements(caseStudy, rows = []) {
 }
 
 const FALLBACK_RULES = [
-  { axis: 'risk', title: 'Riesgo suicida', pattern: /suicid|quitarme la vida|matarme|no quiero vivir/iu },
   { axis: 'risk', title: 'Autolesiones', pattern: /autolesi[oó]n|hacerse da[nñ]o|cortarse/iu },
   { axis: 'risk', title: 'Consumo de cannabis', pattern: /marihu|cannabis|fumar(?:me)? un pito|adicci[oó]n/iu },
   { axis: 'risk', title: 'Agresividad e impulsividad', pattern: /agresiv|ira|exploto|explosiv|violencia|golpear/iu },

@@ -4,11 +4,15 @@
  */
 import {
   applyProfileCheckToCaseStudy,
+  CASE_STUDY_AXES,
+  emptyCaseStudyElement,
   normalizeCaseStudyData,
   profileLiteFromCaseStudy,
   profileSeedsFromChecks,
   PROFILE_AXIS_MAP,
+  recommendedModulesForElement,
 } from './case-study-model.js';
+import { estudioRelationForModule, libraryItemsForAxis } from './case-study-catalog.js';
 import { execute, getSpaceChecks, getTreatmentModules, query, setSpaceCheck } from './db.js';
 import { parseJsonSafe } from './utils.js';
 
@@ -64,6 +68,12 @@ async function readCaseStudyRow(treatmentId) {
   return row?.data ? parseJsonSafe(row.data, null) : null;
 }
 
+/** Snapshot del estudio guardado para sugerencias de la librería, sin inicializar ni escribir datos. */
+export async function readCaseStudySnapshot(treatmentId) {
+  const stored = await readCaseStudyRow(treatmentId);
+  return stored ? normalizeCaseStudyData(stored) : null;
+}
+
 /** Espejo lite → space_checks para PDF / alertas / UI Perfil existente. */
 async function mirrorProfileLite(treatmentId, caseStudy) {
   const lite = profileLiteFromCaseStudy(caseStudy);
@@ -88,6 +98,35 @@ async function mirrorProfileLite(treatmentId, caseStudy) {
   }
 }
 
+function moduleMatchesCaseStudyElement(moduleType, element) {
+  const recommendation = recommendedModulesForElement(element.axis, element.title);
+  if (recommendation.evaluation.includes(moduleType) || recommendation.intervention.includes(moduleType)) {
+    return true;
+  }
+  const relation = estudioRelationForModule(moduleType);
+  return relation?.axis === element.axis && relation?.element === element.title;
+}
+
+/** Repara asociaciones faltantes al incorporar un elemento después de su módulo. */
+async function reconcileModuleElementLinks(treatmentId, elements = []) {
+  const modules = await getTreatmentModules(treatmentId);
+  await Promise.all(
+    (modules || []).map(async (module) => {
+      const data = parseJsonSafe(module.data, {});
+      const elementIds = Array.isArray(data.elementIds) ? data.elementIds.map(String) : [];
+      const missingIds = (elements || [])
+        .filter((element) => element?.id && !elementIds.includes(String(element.id)))
+        .filter((element) => moduleMatchesCaseStudyElement(module.module_type, element))
+        .map((element) => String(element.id));
+      if (!missingIds.length) return;
+      await execute(
+        `UPDATE session_modules SET data = ?, updated_at = datetime('now') WHERE id = ?`,
+        [JSON.stringify({ ...data, elementIds: [...elementIds, ...missingIds] }), module.id],
+      );
+    }),
+  );
+}
+
 export async function loadCaseStudy(treatmentId) {
   const stored = await readCaseStudyRow(treatmentId);
   const profileMap = await loadProfileCheckMap(treatmentId);
@@ -100,6 +139,7 @@ export async function loadCaseStudy(treatmentId) {
   if (!stored) {
     await saveCaseStudy(treatmentId, caseStudy, { skipEvent: true, skipMirror: false });
   }
+  await reconcileModuleElementLinks(treatmentId, caseStudy.elements);
   return caseStudy;
 }
 
@@ -118,6 +158,45 @@ export async function saveCaseStudy(treatmentId, caseStudy, { skipEvent = false,
   }
   if (!skipEvent) dispatchCaseStudyChanged(treatmentId);
   return normalized;
+}
+
+/** Elementos de la librería que una incorporación de módulo debe asegurar. */
+export function missingCaseStudyElementsForModule(moduleType, elements = []) {
+  const existing = new Set(
+    (elements || []).map((element) => `${element.axis}:${String(element.title || '').trim().toLocaleLowerCase()}`),
+  );
+  const candidates = CASE_STUDY_AXES
+    .filter((axis) => axis.id !== 'other')
+    .flatMap((axis) =>
+      libraryItemsForAxis(axis.id).map((item) => ({ axis: axis.id, title: item.title })),
+    );
+  const relation = estudioRelationForModule(moduleType);
+  if (relation?.element) candidates.push({ axis: relation.axis, title: relation.element });
+
+  const seen = new Set();
+  return candidates.filter(({ axis, title }) => {
+    const key = `${axis}:${String(title || '').trim().toLocaleLowerCase()}`;
+    if (!title || seen.has(key) || existing.has(key)) return false;
+    seen.add(key);
+    const recommendation = recommendedModulesForElement(axis, title);
+    return recommendation.evaluation.includes(moduleType) ||
+      recommendation.intervention.includes(moduleType) ||
+      (relation?.axis === axis && relation?.element === title);
+  });
+}
+
+/** Crea los elementos clínicos faltantes y los deja listos para enlazar al nuevo módulo. */
+export async function ensureCaseStudyElementsForModule(treatmentId, moduleType) {
+  const current = await loadCaseStudy(treatmentId);
+  const missing = missingCaseStudyElementsForModule(moduleType, current.elements);
+  if (!missing.length) return current;
+  const next = {
+    ...current,
+    elements: [...current.elements, ...missing.map(({ axis, title }) => emptyCaseStudyElement(axis, title))],
+  };
+  const saved = await saveCaseStudy(treatmentId, next);
+  await reconcileModuleElementLinks(treatmentId, saved.elements);
+  return saved;
 }
 
 /**

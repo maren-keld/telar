@@ -42,10 +42,22 @@ export const CORE_MODULE_DEFS = {
     oncePerTreatment: false,
     allowMultipleInSession: false,
   },
+  medicion_cuantitativa: {
+    label: 'Medición cuantitativa',
+    category: 'pruebas',
+    description: 'Registro numérico o porcentual asociado obligatoriamente a un elemento del caso.',
+    allowMultipleInSession: true,
+  },
+  medicion_cualitativa: {
+    label: 'Medición cualitativa',
+    category: 'pruebas',
+    description: 'Registro fechado de una observación clínica asociado obligatoriamente a un elemento del caso.',
+    allowMultipleInSession: true,
+  },
   // Fallback de catálogo: el pack clínico aporta los mismos metadatos, pero el
   // selector debe seguir mostrando C-SSRS si el pack aún está cargando o falla.
   cssrs: {
-    label: 'C-SSRS Screener — Riesgo suicida',
+    label: 'C-SSRS',
     category: 'pruebas',
     description: 'Tamizaje de ideación y conducta suicida con triage clínico.',
     allowMultipleInSession: false,

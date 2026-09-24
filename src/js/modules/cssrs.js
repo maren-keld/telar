@@ -187,16 +187,9 @@ export async function renderCssrs(host, moduleRow) {
       <div class="psych-module__head">
         <div class="module-card-head">
           <div>
-            <h2 class="module-title">${escapeHtml(t('cssrs.title', 'C-SSRS Screener'))}</h2>
-            <p class="module-card-head__sub">${escapeHtml(
-              t(
-                'cssrs.subtitle',
-                'Columbia-Suicide Severity Rating Scale · Versión screening — reciente (último mes).',
-              ),
-            )}</p>
+            <h2 class="module-title">${escapeHtml(t('cssrs.title', 'C-SSRS'))}</h2>
           </div>
-          <div class="psych-score-pill ${band0.cls}" id="cssrs-pill">
-            <span class="psych-score-pill__label">${escapeHtml(t('cssrs.triage', 'Triage'))}</span>
+          <div class="psych-score-pill ${band0.cls}" id="cssrs-pill" aria-label="Banda de riesgo actual">
             <strong id="cssrs-band">${escapeHtml(bandLabel(band0))}</strong>
           </div>
         </div>

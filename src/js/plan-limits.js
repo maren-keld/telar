@@ -1,8 +1,8 @@
 /**
  * Límites del plan Demo vs Pro.
  *
- * Demo: hasta FREE_ACTIVE_PATIENT_LIMIT pacientes distintos con ≥1 tratamiento
- *        en estado "en_tratamiento" (archivados, completados o en pausa no cuentan).
+ * Demo: hasta FREE_ACTIVE_PATIENT_LIMIT pacientes distintos registrados con tratamiento.
+ *        El estado del tratamiento (incluido archivado) no libera cupo.
  * Pro: pacientes ilimitados; grabación/export NF y respaldo en nube (otros gates).
  */
 import { openSubscribeProModal } from './components/subscribe-pro-modal.js';
@@ -15,7 +15,7 @@ export { FREE_ACTIVE_PATIENT_LIMIT };
 
 export async function countActivePatients() {
   const [row] = await query(
-    `SELECT COUNT(DISTINCT patient_id) AS n FROM treatments WHERE status = 'en_tratamiento'`,
+    `SELECT COUNT(DISTINCT patient_id) AS n FROM treatments`,
   );
   return Number(row?.n || 0);
 }
@@ -23,7 +23,7 @@ export async function countActivePatients() {
 export async function patientHasActiveTreatment(patientId) {
   if (patientId == null) return false;
   const [row] = await query(
-    `SELECT COUNT(*) AS n FROM treatments WHERE patient_id = ? AND status = 'en_tratamiento'`,
+    `SELECT COUNT(*) AS n FROM treatments WHERE patient_id = ?`,
     [patientId],
   );
   return Number(row?.n || 0) > 0;
@@ -41,8 +41,8 @@ export async function getActivePatientUsage() {
 }
 
 /**
- * ¿Crear / reactivar un paciente activo supera el tope Demo?
- * @param {{ patientId?: number|null }} opts - Si el paciente ya está activo, no consume cupo nuevo.
+ * ¿Crear / reactivar un tratamiento supera el tope Demo?
+ * Un paciente existente no vuelve a consumir cupo al iniciar otro tratamiento.
  */
 export async function wouldExceedActivePatientLimit({ patientId = null } = {}) {
   if (isProUser()) return false;

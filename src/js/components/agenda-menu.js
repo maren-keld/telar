@@ -2,6 +2,7 @@ import { TREATMENT_STATUS } from '../config.js';
 import {
   copyModuleDataBetweenTreatments,
   createTreatment,
+  deleteTreatment,
   listConvenios,
   updateTreatmentConvenio,
   updateTreatmentStatus,
@@ -9,6 +10,7 @@ import {
 import { openTreatmentWorkspace } from '../navigate.js';
 import { requireActivePatientSlot } from '../plan-limits.js';
 import { escapeHtml, toast } from '../utils.js';
+import { openConfirmModal } from './confirm-modal.js';
 
 function menuCheckItem({ checked, label, attrs, glyph = '' }) {
   return `
@@ -59,6 +61,10 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
 
         <button type="button" class="btn btn-ghost btn-block patient-menu-new-treatment" id="agenda-menu-new-treatment">
           + Añadir tratamiento
+        </button>
+
+        <button type="button" class="btn btn-ghost btn-block patient-menu-delete-treatment" id="agenda-menu-delete-treatment">
+          Eliminar tratamiento
         </button>
 
         <div class="patient-menu-divider"></div>
@@ -123,6 +129,24 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
       else onUpdated?.({ status: 'en_tratamiento' });
     } catch (err) {
       toast(err.message || 'No se pudo crear el tratamiento');
+    }
+  });
+
+  root.querySelector('#agenda-menu-delete-treatment')?.addEventListener('click', async () => {
+    const confirmed = await openConfirmModal({
+      title: '¿Eliminar este tratamiento?',
+      message: 'Se eliminará este tratamiento y todo su contenido clínico. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar tratamiento',
+      danger: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteTreatment(row.treatment_id);
+      close();
+      toast('Tratamiento eliminado');
+      onUpdated?.({ deleted: true });
+    } catch (err) {
+      toast(err.message || 'No se pudo eliminar el tratamiento');
     }
   });
 }

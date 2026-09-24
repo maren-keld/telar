@@ -67,7 +67,7 @@ const STATUS_OPTIONS = {
 export const STATUS_LABELS = {
   present: 'Presente',
   developing: 'En desarrollo',
-  unknown: 'Desconocido',
+  unknown: 'Explorando',
 };
 
 const AXIS_PRESENT_LABEL = {
@@ -132,13 +132,20 @@ export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
     title:
       kind === SUPPORT_NETWORK_KIND
         ? SUPPORT_NETWORK_TITLE
-        : String(raw.title || raw.name || '').trim(),
-    bundled: Boolean(raw.bundled),
+        : ({
+            'intentos previos': 'Intentos previos de suicidio',
+            'acceso a medios de autosión': 'Acceso a medios de autolesión',
+          }[String(raw.title || raw.name || '').trim().toLocaleLowerCase()] || String(raw.title || raw.name || '').trim()),
+    bundled: kind === SUPPORT_NETWORK_KIND || Boolean(raw.bundled),
     status: normalizeStatus(kind === SUPPORT_NETWORK_KIND ? 'resource' : axis, raw.status),
     manifestations: normalizeItems(raw.manifestations, { checkable: false }),
     indicators: normalizeItems(raw.indicators),
     objectives: normalizeItems(raw.objectives),
     evidence: normalizeItems(raw.evidence || raw.evidenceRefs, { checkable: false }),
+    qualitativeEvidence: normalizeEvidenceRows(raw.qualitativeEvidence || raw.evidence || raw.evidenceRefs),
+    quantitativeEvidence: (Array.isArray(raw.quantitativeEvidence) ? raw.quantitativeEvidence : [])
+      .map((row) => ({ moduleType: String(row.moduleType || '').trim(), sessionId: String(row.sessionId || ''), ...(row.moduleId ? { moduleId: String(row.moduleId) } : {}) }))
+      .filter((row) => row.moduleType),
     notes: String(raw.notes || '').trim(),
     people: (Array.isArray(raw.people) ? raw.people : []).map(normalizeSupportPerson),
     activities: (Array.isArray(raw.activities) ? raw.activities : [])
@@ -235,7 +242,7 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
 
   let nextElements = uniqueByAxisTitle(
     hasNative ? raw.elements.map((el) => normalizeCaseStudyElement(el)) : legacyElements,
-  );
+  ).filter((element) => !(element.bundled && String(element.title).trim().toLocaleLowerCase() === 'vínculos seguros'));
   if (!nextElements.some((el) => el.kind === SUPPORT_NETWORK_KIND)) {
     nextElements = [
       ...nextElements,
@@ -243,6 +250,7 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
         axis: 'resource',
         kind: SUPPORT_NETWORK_KIND,
         title: SUPPORT_NETWORK_TITLE,
+        bundled: true,
         people: supportPeople,
         status: 'active',
       }),
@@ -341,21 +349,102 @@ export function statusesForAxis(axis) {
 }
 
 export const AXIS_MODULE_HINTS = {
-  problem: ['gad7', 'dass21', 'tcc_abc', 'tcc_preocupaciones', 'tcc_registro_pensamientos'],
+  problem: ['gad7', 'dass21', 'tcc_abc', 'tcc_preocupaciones', 'tcc_registro_pensamientos', 'dbt_diary_card', 'dbt_regulacion_emocional'],
   resource: ['tcc_gratitud', 'tcc_activacion', 'rosenberg', 'tcc_autoconceptos'],
-  defense: ['eed', 'tcc_sesgos', 'tcc_socratico', 'tcc_flexibilidad'],
+  defense: ['eed', 'tcc_sesgos', 'tcc_socratico', 'tcc_flexibilidad', 'dbt_camino_del_medio'],
   risk: ['tcc_plan_seguridad', 'tcc_estres', 'pcl5', 'tcc_exposicion'],
   other: ['nota_sesion', 'tcc_prevencion_recaida'],
 };
 
-const ELEMENT_MODULE_HINTS = {
-  'indisciplina en el hogar': ['tcc_abc', 'tcc_monitoreo_actividades', 'nota_sesion'],
-  'conflictos de pareja': ['tcc_abc', 'tcc_socratico', 'nota_sesion'],
-  'dificultades relacionales': ['tcc_abc', 'tcc_socratico', 'nota_sesion'],
-  'uso problemático de sustancias': ['tcc_prevencion_recaida', 'tcc_estres', 'nota_sesion'],
-  'consumo de cannabis': ['tcc_prevencion_recaida', 'tcc_estres', 'nota_sesion'],
-  'alteraciones del sueño': ['tcc_monitoreo_actividades', 'tcc_estres', 'nota_sesion'],
+const ELEMENT_RECOMMENDATIONS = {
+  'ansiedad alta': { evaluation: ['gad7', 'dass21'], intervention: ['tcc_preocupaciones', 'tcc_probabilidades', 'tcc_socratico', 'tcc_estres'] },
+  'estado de ánimo bajo': { evaluation: ['dass21'], intervention: ['tcc_activacion', 'tcc_gratitud', 'tcc_monitoreo_actividades'] },
+  'tdah en adultos': { evaluation: ['asrs'], intervention: ['tcc_monitoreo_actividades'] },
+  'estrés alto': { evaluation: ['dass21'], intervention: ['tcc_estres', 'dbt_diary_card', 'dbt_regulacion_emocional', 'tcc_flexibilidad'] },
+  'estrés postraumático': { evaluation: ['pcl5', 'sprint_ecl'], intervention: [] },
+  'pensamientos recurrentes': { evaluation: [], intervention: ['tcc_registro_pensamientos', 'tcc_socratico', 'tcc_flexibilidad', 'tcc_probabilidades', 'tcc_sesgos', 'tcc_abc'] },
+  'fobia específica': { evaluation: [], intervention: ['tcc_exposicion', 'tcc_experimento'] },
+  'duelo extendido': { evaluation: [], intervention: ['sig_linea_vida'] },
+  'toma de decisiones': { evaluation: [], intervention: ['tcc_probabilidades', 'tcc_flexibilidad', 'dbt_camino_del_medio', 'tcc_socratico'] },
+  suicidalidad: { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  insomnio: { evaluation: [], intervention: [] },
+  'uso problemático de sustancias': { evaluation: [], intervention: ['tcc_prevencion_recaida'] },
+  'conflictos de pareja': { evaluation: [], intervention: ['tcc_socratico', 'dbt_camino_del_medio', 'tcc_abc'] },
+  'dificultades relacionales': { evaluation: [], intervention: ['tcc_socratico', 'dbt_camino_del_medio', 'tcc_abc'] },
+  adaptabilidad: { evaluation: [], intervention: ['tcc_flexibilidad', 'dbt_camino_del_medio'] },
+  autocuidado: { evaluation: ['qols'], intervention: ['tcc_autoconceptos'] },
+  'capacidad de estar solo sin aislarse': { evaluation: [], intervention: [] },
+  'capacidad de reparación': { evaluation: [], intervention: [] },
+  'capacidad de disfrute': { evaluation: [], intervention: ['tcc_gratitud'] },
+  'capacidad de pedir ayuda': { evaluation: [], intervention: [] },
+  creatividad: { evaluation: [], intervention: [] },
+  empatía: { evaluation: [], intervention: [] },
+  'estructura diaria / disciplina': { evaluation: [], intervention: ['tcc_activacion', 'tcc_monitoreo_actividades'] },
+  'flexibilidad cognitiva': { evaluation: [], intervention: ['tcc_flexibilidad'] },
+  insight: { evaluation: [], intervention: [] },
+  'participación en comunidad': { evaluation: [], intervention: [] },
+  'propósito o sentido espiritual': { evaluation: [], intervention: [] },
+  'regulación afectiva': { evaluation: [], intervention: ['tcc_estres', 'dbt_diary_card', 'dbt_regulacion_emocional'] },
+  'tolerancia a la frustración': { evaluation: [], intervention: ['tcc_flexibilidad', 'dbt_camino_del_medio', 'tcc_abc', 'dbt_regulacion_emocional'] },
+  'vínculos seguros': { evaluation: [], intervention: [] },
+  'actividad física': { evaluation: [], intervention: ['tcc_activacion', 'tcc_monitoreo_actividades'] },
+  anticipación: { evaluation: ['eed'], intervention: [] },
+  sublimación: { evaluation: ['eed'], intervention: [] },
+  altruismo: { evaluation: ['eed'], intervention: [] },
+  humor: { evaluation: ['eed'], intervention: [] },
+  supresión: { evaluation: ['eed'], intervention: [] },
+  'asertividad emocional': { evaluation: ['eed'], intervention: [] },
+  'auto-observación': { evaluation: ['eed'], intervention: [] },
+  'función reactiva funcional': { evaluation: ['eed'], intervention: [] },
+  'actividad imaginativa': { evaluation: ['eed'], intervention: [] },
+  'pseudo-altruismo': { evaluation: ['eed'], intervention: [] },
+  'formación reactiva': { evaluation: ['eed'], intervention: [] },
+  desplazamiento: { evaluation: ['eed'], intervention: [] },
+  'aislamiento del afecto': { evaluation: ['eed'], intervention: [] },
+  racionalización: { evaluation: ['eed'], intervention: ['tcc_sesgos'] },
+  intelectualización: { evaluation: ['eed'], intervention: ['tcc_socratico'] },
+  'negación parcial': { evaluation: ['eed'], intervention: [] },
+  'represión parcial': { evaluation: ['eed'], intervention: [] },
+  'disociación leve': { evaluation: ['eed'], intervention: [] },
+  somatización: { evaluation: ['eed'], intervention: [] },
+  proyección: { evaluation: ['eed'], intervention: [] },
+  'identificación proyectiva': { evaluation: ['eed'], intervention: [] },
+  'splitting (escisión)': { evaluation: ['eed'], intervention: [] },
+  'pasivo-agresividad': { evaluation: ['eed'], intervention: ['tcc_abc', 'dbt_camino_del_medio'] },
+  idealización: { evaluation: ['eed'], intervention: [] },
+  'acting out': { evaluation: ['eed'], intervention: ['tcc_abc'] },
+  negación: { evaluation: ['eed'], intervention: [] },
+  'fantasía evasiva': { evaluation: ['eed'], intervention: [] },
+  'disociación profunda': { evaluation: ['ades'], intervention: [] },
+  regresión: { evaluation: ['eed'], intervention: [] },
+  'ideación suicida': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'plan suicida': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'intentos previos de suicidio': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'intentos previos': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'acceso a medios de autolesión': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'acceso a medios de autosión': { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'desesperanza o inutilidad expresada': { evaluation: [], intervention: ['tcc_plan_seguridad', 'dbt_camino_del_medio', 'tcc_estres'] },
+  'consumo de sustancias': { evaluation: [], intervention: ['tcc_prevencion_recaida'] },
+  'aislamiento social': { evaluation: [], intervention: ['redes_apoyo'] },
+  autolesiones: { evaluation: ['cssrs'], intervention: ['tcc_plan_seguridad'] },
+  'violencia / impulsividad': { evaluation: [], intervention: ['tcc_abc'] },
+  'agitación o ansiedad elevada': { evaluation: ['gad7'], intervention: ['tcc_estres'] },
+  'factores psicosociales de vulnerabilidad': { evaluation: [], intervention: [] },
 };
+
+function normalizeEvidenceRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  const today = localTodayISO();
+  return rows.map((row) => ({
+    text: String(itemText(row) ?? '').trim(),
+    date: String(row?.date || today).slice(0, 10),
+  }));
+}
+
+function localTodayISO() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 export function suggestedModulesForAxis(axis) {
   return AXIS_MODULE_HINTS[normalizeAxis(axis)] || AXIS_MODULE_HINTS.other;
@@ -363,7 +452,55 @@ export function suggestedModulesForAxis(axis) {
 
 export function suggestedModulesForElement(axis, title = '') {
   const key = String(title).trim().toLocaleLowerCase();
-  return ELEMENT_MODULE_HINTS[key] || suggestedModulesForAxis(axis);
+  const recommendation = ELEMENT_RECOMMENDATIONS[key];
+  return recommendation ? [...recommendation.evaluation, ...recommendation.intervention] : [];
+}
+
+/** Sugerencias separadas para no mostrar escalas como intervenciones. */
+export function recommendedModulesForElement(axis, title = '') {
+  const key = String(title).trim().toLocaleLowerCase();
+  const result = ELEMENT_RECOMMENDATIONS[key];
+  return result ? { evaluation: [...result.evaluation], intervention: [...result.intervention] } : { evaluation: [], intervention: [] };
+}
+
+export function recommendedModuleTypesForElements(elements = []) {
+  const types = new Set();
+  for (const element of elements) {
+    const recommendations = recommendedModulesForElement(element.axis, element.title);
+    recommendations.evaluation.concat(recommendations.intervention).forEach((type) => types.add(type));
+  }
+  return types;
+}
+
+/**
+ * Elementos del caso que un módulo debe enlazar al incorporarse al programa.
+ * Se deriva de la misma matriz que alimenta las recomendaciones del Estudio de
+ * caso: así DASS-21 queda, por ejemplo, asociado a ánimo bajo, ansiedad y
+ * estrés cuando esos elementos ya existen en el caso.
+ */
+export function defaultElementIdsForModule(moduleType, elements = []) {
+  const wanted = new Set();
+  for (const [title, recommendation] of Object.entries(ELEMENT_RECOMMENDATIONS)) {
+    if (recommendation.evaluation.includes(moduleType) || recommendation.intervention.includes(moduleType)) {
+      wanted.add(title);
+    }
+  }
+  return (elements || [])
+    .filter((element) => wanted.has(String(element?.title || '').trim().toLocaleLowerCase()))
+    .map((element) => String(element.id))
+    .filter(Boolean);
+}
+
+export function reorderCaseStudyElements(elements, axis, sourceId, targetId, insertAfter = false) {
+  const rows = [...(elements || [])];
+  const sourceIndex = rows.findIndex((el) => el.axis === axis && el.id === sourceId);
+  const targetIndex = rows.findIndex((el) => el.axis === axis && el.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceId === targetId) return rows;
+  const [source] = rows.splice(sourceIndex, 1);
+  let nextTargetIndex = rows.findIndex((el) => el.axis === axis && el.id === targetId);
+  if (insertAfter) nextTargetIndex += 1;
+  rows.splice(nextTargetIndex, 0, source);
+  return rows;
 }
 
 const FIELD_HINTS = {

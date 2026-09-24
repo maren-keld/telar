@@ -32,8 +32,6 @@ export const SPACE_CHECK_DESCRIPTIONS = {
       'Habilidad para modular la intensidad de las emociones, equilibrando expresión y contención.',
     'Tolerancia a la frustración':
       'Capacidad de soportar demoras, errores o pérdidas sin desorganizarse emocionalmente ni abandonar objetivos.',
-    'Vínculos seguros':
-      'Relaciones basadas en confianza, respeto y apoyo mutuo que ofrecen base emocional estable.',
     'Actividad física':
       'Práctica regular de movimiento o deporte que contribuye a la autorregulación, autoestima y vitalidad general.',
   },
@@ -82,8 +80,8 @@ export const SPACE_CHECK_DESCRIPTIONS = {
     'Ideación suicida':
       'Pensamientos sobre quitarse la vida; factor vital que requiere evaluación clínica urgente.',
     'Plan suicida': 'Indicadores de intención o método; riesgo vital elevado.',
-    'Intentos previos': 'Antecedente de intento; factor de riesgo significativo.',
-    'Acceso a medios de autosión':
+    'Intentos previos de suicidio': 'Antecedente de intento; factor de riesgo significativo.',
+    'Acceso a medios de autolesión':
       'Disponibilidad de medios para dañarse; requiere plan de seguridad inmediato.',
     'Desesperanza o inutilidad expresada':
       'Expresiones verbales que indican pérdida de sentido o futuro.',

@@ -11,10 +11,12 @@ import {
   fieldHintFor,
   normalizeCaseStudyData,
   normalizeCaseStudyElement,
+  reorderCaseStudyElements,
   STATUS_LABELS,
   statusLabelFor,
-  suggestedModulesForElement,
+  recommendedModulesForElement,
 } from '../case-study-model.js';
+import { analysisCategoriesForElement } from '../case-study-analysis.js';
 import {
   elementInAxis,
   libraryItemsForAxis,
@@ -24,17 +26,27 @@ import {
   summaryDotsForAxis,
 } from '../case-study-catalog.js';
 import { loadCaseStudy, onCaseStudyChanged, saveCaseStudy } from '../case-study-store.js';
-import { getSessionsWithModules, isSessionDone } from '../db.js';
-import { escapeHtml, toast } from '../utils.js';
+import { getModule, getSessionsWithModules, isSessionDone, saveModuleData } from '../db.js';
+import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
 import { notifySaveError } from '../save-status.js';
 import { queuedPersist } from '../autobind.js';
-import { moduleLabelFor } from '../custom-modules.js';
+import { moduleDisplayLabel, moduleLabelFor } from '../custom-modules.js';
 import { renderWorkspaceScores, usedScoreTests } from '../components/workspace-scores.js';
 import { computeVitalRisk, vitalRiskOrbHtml } from '../vital-risk.js';
 import { applyModuleSearch } from '../components/module-selector.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
-import { estudioRelationForModule } from '../case-study-catalog.js';
 import { AFFILIATIONS, DOMAINS, genogramHtml } from '../modules/redes-apoyo.js';
+import { CATEGORIES } from '../module-categories.js';
+
+const INTERVENTION_MODULE_TYPES = new Set(
+  CATEGORIES.filter((category) => ['tcc', 'significado', 'intervencion'].includes(category.id))
+    .flatMap((category) => category.types),
+);
+const QUANTITATIVE_MODULE_TYPES = new Set(
+  (CATEGORIES.find((category) => category.id === 'pruebas')?.types || []).filter(
+    (type) => type !== 'medicion_cualitativa',
+  ),
+);
 
 const LIST_FIELDS = [
   {
@@ -45,7 +57,6 @@ const LIST_FIELDS = [
   },
   { key: 'indicators', label: 'Indicadores', checkable: true, placeholder: 'Indicador observable…' },
   { key: 'objectives', label: 'Objetivos', checkable: true, placeholder: 'Objetivo terapéutico…' },
-  { key: 'evidence', label: 'Evidencia', checkable: false, placeholder: 'Evidencia o fuente…' },
 ];
 
 const STATUS_ICONS = {
@@ -53,6 +64,11 @@ const STATUS_ICONS = {
   developing: '<path d="M12 20V10"/><path d="M12 10c2-3 4-4 6-4-1 3-3 5-6 6"/><path d="M12 10c-2-3-4-4-6-4 1 3 3 5 6 6"/>',
   unknown: '<circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.8.8-1.5 1.2-1.5 2.5"/><path d="M12 17h.01"/>',
 };
+
+function localTodayISO() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 function iconSvg(paths, className = 'estudio-status__glyph') {
   return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -101,19 +117,53 @@ function itemRowHtml(listKey, item, index, { checkable, placeholder }) {
             </label>`
           : ''
       }
-      <input type="text" class="estudio-item-text" data-list="${listKey}" data-index="${index}" data-field="text"
-        value="${text}" placeholder="${escapeHtml(placeholder)}" />
+      <textarea rows="1" class="estudio-item-text" data-list="${listKey}" data-index="${index}" data-field="text"
+        placeholder="${escapeHtml(placeholder)}">${text}</textarea>
       <button type="button" class="btn btn-ghost estudio-item-remove" data-remove-item data-list="${listKey}" data-index="${index}" title="Quitar" aria-label="Quitar">×</button>
     </div>`;
 }
 
 function activityRowHtml(activity, index, sessions) {
   const session = (sessions || []).find((row) => String(row.id) === String(activity.sessionId));
+  const module = session?.modules?.find((row) => String(row.id) === String(activity.moduleId))
+    || session?.modules?.find((row) => row.module_type === activity.moduleType);
+  const label = module
+    ? moduleDisplayLabel(module.module_type, JSON.parse(module.data || '{}'))
+    : moduleLabelFor(activity.moduleType);
   return `
-    <div class="estudio-activity-row" data-activity-index="${index}" data-module-type="${escapeHtml(activity.moduleType || '')}" data-session-id="${escapeHtml(activity.sessionId || '')}">
-      <span class="estudio-module-link"><strong>${escapeHtml(moduleLabelFor(activity.moduleType))}</strong>${session ? ` · Sesión ${session.number}` : ''}</span>
-      <button type="button" class="btn btn-ghost" data-remove-activity title="Quitar">×</button>
+    <div class="estudio-activity-row" data-activity-index="${index}" data-module-id="${escapeHtml(activity.moduleId || module?.id || '')}" data-module-type="${escapeHtml(activity.moduleType || '')}" data-session-id="${escapeHtml(activity.sessionId || '')}" ${activity.directAssignment ? 'data-direct-assignment' : ''}>
+      <span class="estudio-module-link"><strong>${escapeHtml(label)}</strong>${session ? `<span class="estudio-module-link__session">· Sesión ${session.number}</span>` : ''}</span>
+      <button type="button" class="btn btn-ghost" ${activity.directAssignment ? 'data-remove-assignment' : 'data-remove-activity'} title="Quitar">×</button>
     </div>`;
+}
+
+function linkedModuleRows(element, sessions, allowedTypes) {
+  return (sessions || []).flatMap((session) =>
+    (session.modules || [])
+      .filter((module) => {
+        if (!allowedTypes.has(module.module_type)) return false;
+        const data = parseJsonSafe(module.data, {});
+        return (data.elementIds || []).map(String).includes(String(element.id));
+      })
+      .map((module) => ({
+        moduleType: module.module_type,
+        moduleId: String(module.id),
+        sessionId: String(session.id),
+        directAssignment: true,
+      })),
+  );
+}
+
+function uniqueModuleRows(rows) {
+  const seen = new Set();
+  return (rows || []).filter((row) => {
+    // Una intervención añadida desde aquí queda también enlazada por elementIds.
+    // La identidad clínica es sesión + tipo: no la renderizamos dos veces.
+    const key = `${row.sessionId || ''}:${row.moduleType || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function elementRowHtml(element, axis, sessions) {
@@ -122,7 +172,12 @@ function elementRowHtml(element, axis, sessions) {
   const bundled = Boolean(element.bundled || catalog);
   const catalogDesc = catalog?.description || '';
   const hasNotes = Boolean((element.notes || '').trim());
-  const suggestions = suggestedModulesForElement(axis, element.title);
+  const suggested = recommendedModulesForElement(axis, element.title);
+  const inTreatmentTypes = new Set((sessions || []).flatMap((session) => (session.modules || []).map((mod) => mod.module_type)));
+  const suggestions = {
+    evaluation: suggested.evaluation.filter((type) => !inTreatmentTypes.has(type)),
+    intervention: suggested.intervention.filter((type) => !inTreatmentTypes.has(type)),
+  };
 
   const lists = isNetwork
     ? ''
@@ -158,21 +213,63 @@ function elementRowHtml(element, axis, sessions) {
       </section>`
     : '';
 
-  const activities = element.activities || [];
+  const directQuantitative = linkedModuleRows(element, sessions, QUANTITATIVE_MODULE_TYPES);
+  const directInterventions = linkedModuleRows(element, sessions, INTERVENTION_MODULE_TYPES);
+  const activities = uniqueModuleRows([
+    ...(element.activities || []).filter((row) => INTERVENTION_MODULE_TYPES.has(row.moduleType)),
+    ...directInterventions,
+  ]);
+  // Conserva lecturas cualitativas heredadas y las notas ya guardadas en el caso.
+  const qualitativeRows = element.qualitativeEvidence || [];
+  const evidenceBlock = isNetwork ? '' : `
+    <section class="estudio-element__field" data-field-block="evidence">
+      <header class="estudio-element__field-head">
+        <h4 class="estudio-element__field-title">Evaluación cualitativa</h4>
+        <div class="estudio-element__field-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-add-qualitative data-element-id="${escapeHtml(element.id)}">+ Añadir</button>
+        </div>
+      </header>
+      <div class="estudio-element__evidence-list" data-list-host="qualitativeEvidence">
+        <p class="estudio-element__subheading">En uso</p>
+        ${sessions.flatMap((session) => (session.modules || []).filter((module) => module.module_type === 'medicion_cualitativa' && (JSON.parse(module.data || '{}').elementIds || []).includes(element.id)).map((module, index) => activityRowHtml({ moduleType: module.module_type, moduleId: module.id, sessionId: session.id }, index, sessions).replace('data-activity-index', 'data-qualitative-index').replace('data-remove-activity', 'data-remove-qualitative'))).join('') || '<p class="estudio-element__empty">Aún no hay evaluaciones cualitativas en uso.</p>'}
+      </div>
+    </section>`;
+  const quantitativeEvidence = uniqueModuleRows([
+    ...(element.quantitativeEvidence || []),
+    ...directQuantitative,
+  ]);
+  const quantitativeBlock = isNetwork ? '' : `
+      <section class="estudio-element__field" data-field-block="quantitative">
+      <header class="estudio-element__field-head">
+        <h4 class="estudio-element__field-title">Evaluación cuantitativa</h4>
+        <button type="button" class="btn btn-ghost btn-sm" data-add-quantitative data-element-id="${escapeHtml(element.id)}">+ Añadir</button>
+      </header>
+      <div class="estudio-element__module-group">
+        <p class="estudio-element__subheading">Sugeridos</p>
+        ${suggestions.evaluation.length ? `<div class="estudio-suggested-modules">${suggestions.evaluation.map((type) => `<span class="estudio-module-link">${escapeHtml(moduleLabelFor(type))}</span>`).join('')}</div>` : '<p class="estudio-element__empty">Sin sugerencias específicas para este elemento.</p>'}
+      </div>
+      <div class="estudio-element__module-group">
+        <p class="estudio-element__subheading">En uso</p>
+        <div class="estudio-quantitative-list">${quantitativeEvidence.map((row, i) => activityRowHtml(row, i, sessions).replace('data-activity-index', 'data-quantitative-index').replace('data-remove-activity', 'data-remove-quantitative')).join('') || '<p class="estudio-element__empty">Aún no hay evaluaciones cuantitativas en uso.</p>'}</div>
+      </div>
+    </section>`;
   const activityBlock = isNetwork
     ? ''
     : `
       <section class="estudio-element__field">
         <header class="estudio-element__field-head">
-          <h4 class="estudio-element__field-title">Módulos${hintButton(fieldHintFor(axis, 'activities'))}</h4>
-          <button type="button" class="btn btn-ghost btn-sm" data-add-activity data-element-id="${escapeHtml(element.id)}">+ Añadir módulo</button>
+        <h4 class="estudio-element__field-title">Intervenciones${hintButton(fieldHintFor(axis, 'activities'))}</h4>
+        <button type="button" class="btn btn-ghost btn-sm" data-add-activity data-element-id="${escapeHtml(element.id)}">+ Añadir</button>
         </header>
-        <p class="estudio-element__hint">Módulos relacionados: ${suggestions.map((t) => escapeHtml(moduleLabelFor(t))).join(' · ')}</p>
-        <div class="estudio-activity-list">
-          ${
-            activities.map((row, i) => activityRowHtml(row, i, sessions)).join('') ||
-            '<p class="estudio-element__empty">Sin módulos asociados aún.</p>'
-          }
+        <div class="estudio-element__module-group">
+          <p class="estudio-element__subheading">Sugeridos</p>
+          ${suggestions.intervention.length ? `<div class="estudio-suggested-modules">${suggestions.intervention.map((type) => `<span class="estudio-module-link">${escapeHtml(moduleLabelFor(type))}</span>`).join('')}</div>` : '<p class="estudio-element__empty">Sin sugerencias específicas para este elemento.</p>'}
+        </div>
+        <div class="estudio-element__module-group">
+          <p class="estudio-element__subheading">En uso</p>
+          <div class="estudio-activity-list">
+            ${activities.map((row, i) => activityRowHtml(row, i, sessions)).join('') || '<p class="estudio-element__empty">Aún no hay intervenciones en uso.</p>'}
+          </div>
         </div>
       </section>`;
 
@@ -196,7 +293,16 @@ function elementRowHtml(element, axis, sessions) {
       <div class="estudio-element__stacks">
         ${peopleBlock}
         ${lists}
+        ${quantitativeBlock}
+        ${evidenceBlock}
         ${activityBlock}
+        ${isNetwork ? '' : `<section class="estudio-element__field estudio-element__evolution">
+          <header class="estudio-element__field-head"><h4 class="estudio-element__field-title">Evolución</h4>
+            <div class="estudio-evolution-chips"><button type="button" class="estudio-evolution-chip is-active" data-evolution-tab="quantitative">Cuantitativa</button><button type="button" class="estudio-evolution-chip" data-evolution-tab="qualitative">Cualitativa</button></div>
+          </header>
+          <div data-evolution-content="quantitative">${(element.quantitativeEvidence || []).length ? 'Cargando gráficos cuantitativos…' : '<p class="estudio-element__empty">Selecciona pruebas de Telar como evidencia cuantitativa.</p>'}</div>
+          <div data-evolution-content="qualitative" hidden>${qualitativeRows.filter((row) => row.text).map((row) => `<p class="estudio-evolution-note"><time>${escapeHtml(row.date)}</time>${escapeHtml(row.text)}</p>`).join('') || '<p class="estudio-element__empty">Agrega evidencia cualitativa con fecha.</p>'}</div>
+        </section>`}
       </div>
     </article>`;
 }
@@ -222,7 +328,7 @@ function supportPersonHtml(person, index) {
     </div>`;
 }
 
-function axisNavHtml(caseStudy, selectedNav, sessions) {
+function axisNavHtml(caseStudy, selectedNav, sessions, selectedElementId = '') {
   const tests = usedScoreTests(sessions);
   return ESTUDIO_NAV.map((item) => {
     const axisEls =
@@ -250,7 +356,7 @@ function axisNavHtml(caseStudy, selectedNav, sessions) {
               const statusLabel = statusLabelFor(item.id, status);
               const suicidePulse = item.id === 'problem' && /suicid/i.test(el.title || '') ? ' estudio-score-dot--suicidality' : '';
               return `
-          <button type="button" class="estudio-axis-nav__child" data-nav="${item.id}" data-focus-element="${escapeHtml(el.id)}">
+          <button type="button" class="estudio-axis-nav__child${item.id === selectedNav && el.id === selectedElementId ? ' is-active' : ''}" data-nav="${item.id}" data-focus-element="${escapeHtml(el.id)}" title="Arrastrar para reordenar">
             <span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)} estudio-score-dot--${escapeHtml(status)}${suicidePulse}" aria-hidden="true"></span>
             <span class="estudio-axis-nav__child-label">${escapeHtml(el.title)}</span>
             <span class="estudio-axis-nav__child-status" title="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}">
@@ -355,40 +461,29 @@ function scoreTabsHtml() {
   return `
     <article class="estudio-summary-card card estudio-summary-card--scores">
       <h3 class="estudio-summary-card__title">Evolución</h3>
+      <div class="estudio-evolution-chips"><button type="button" class="estudio-evolution-chip is-active" data-summary-evolution="quantitative">Cuantitativa</button><button type="button" class="estudio-evolution-chip" data-summary-evolution="qualitative">Cualitativa</button></div>
       <div class="estudio-resumen-scores" id="estudio-resumen-scores"></div>
     </article>`;
-}
-
-function linkedModulesForElement(element, sessions) {
-  const explicit = (element.activities || []).map((row) => row.moduleType).filter(Boolean);
-  const fromProgram = (sessions || [])
-    .flatMap((session) => session.modules || [])
-    .filter((mod) => {
-      const relation = estudioRelationForModule(mod.module_type);
-      return relation && relation.axis === element.axis && (!relation.element || relation.element === element.title);
-    })
-    .map((mod) => mod.module_type);
-  return [...new Set([...explicit, ...fromProgram])];
 }
 
 function summaryHtml(caseStudy, sessions, vital) {
   const people = namedSupportPeople(caseStudy);
   const axisCards = CASE_STUDY_AXES.filter((axis) => axis.id !== 'other').map((axis) => {
     const els = (caseStudy.elements || []).filter(
-      (el) => el.axis === axis.id && el.title && el.kind !== SUPPORT_NETWORK_KIND,
+      (el) => el.axis === axis.id && el.title,
     );
     return `<section class="estudio-axis-matrix card">
       <h3 class="estudio-summary-card__title">${escapeHtml(axis.label)}</h3>
-      <div class="estudio-axis-matrix__head"><span>Elemento</span><span>Módulos del programa</span></div>
+      <div class="estudio-axis-matrix__head"><span>Elemento</span><span>Análisis por categoría</span></div>
       ${els.map((el) => {
-        const linked = linkedModulesForElement(el, sessions);
-        const recommended = suggestedModulesForElement(axis.id, el.title).slice(0, 2);
+        const categories = analysisCategoriesForElement(el, sessions);
         const tone = summaryDotsForAxis({ elements: [el] }, axis.id)[0]?.tone || 'muted';
+        const status = statusLabelFor(el.axis, el.status);
         return `<div class="estudio-axis-matrix__row">
-          <div><span class="estudio-axis-matrix__element"><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span><span>${escapeHtml(el.title)}</span></span></div>
-          <div>${linked.length
-            ? linked.map((type) => `<span class="estudio-summary-chip">${escapeHtml(moduleLabelFor(type))}</span>`).join('')
-            : `<span class="estudio-axis-matrix__recommendation">Sugeridos: ${recommended.map((type) => escapeHtml(moduleLabelFor(type))).join(' · ')}</span>`}</div>
+          <div><span class="estudio-axis-matrix__element"><span class="estudio-score-dot estudio-score-dot--${escapeHtml(tone)}"></span><span><span>${escapeHtml(el.title)}</span><small class="estudio-element-status estudio-element-status--${escapeHtml(el.status || 'unknown')}">${iconSvg(STATUS_ICONS[el.status] || STATUS_ICONS.unknown, 'estudio-element-status__glyph')}${escapeHtml(status)}</small></span></span></div>
+          <div class="estudio-axis-matrix__recommendations">
+            ${categories.map((category) => `<section class="estudio-axis-matrix__group"><strong>${escapeHtml(category.label)}</strong><div>${category.values.map((value) => `<span class="estudio-summary-chip">${escapeHtml(category.kind === 'text' ? value : moduleLabelFor(value) || value)}</span>`).join('')}</div></section>`).join('')}
+          </div>
         </div>`;
       }).join('') || '<p class="estudio-element__empty">Sin elementos seleccionados.</p>'}
     </section>`;
@@ -445,6 +540,11 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           };
         });
       }
+      const qualitativeEvidence = [...article.querySelectorAll('.estudio-evidence-row')].map((row) => ({
+        date: row.querySelector('[data-evidence-date]')?.value || localTodayISO(),
+        text: row.querySelector('[data-evidence-text]')?.value || '',
+      }));
+      const quantitativeEvidence = prev.quantitativeEvidence || [];
       const people = [...article.querySelectorAll('.estudio-support-person')].map((block) => ({
         name: block.querySelector('[data-support-field="name"]')?.value || '',
         gender: '',
@@ -452,10 +552,11 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         domain: block.querySelector('[data-support-field="domain"]')?.value || 'Armonía',
         notes: block.querySelector('[data-support-field="notes"]')?.value || '',
       }));
-      const activities = [...article.querySelectorAll('.estudio-activity-row')].map((row) => ({
+      const hiddenLegacyActivities = (prev.activities || []).filter((row) => !INTERVENTION_MODULE_TYPES.has(row.moduleType));
+      const activities = [...hiddenLegacyActivities, ...[...article.querySelectorAll('.estudio-activity-row:not([data-direct-assignment])')].map((row) => ({
         moduleType: row.dataset.moduleType || '',
         sessionId: row.dataset.sessionId || '',
-      }));
+      }))];
       axisElements.push(
         normalizeCaseStudyElement({
           ...prev,
@@ -468,6 +569,8 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
           notes: article.querySelector('[data-field="notes"]')?.value || '',
           people,
           activities,
+          qualitativeEvidence,
+          quantitativeEvidence,
           ...lists,
         }),
       );
@@ -482,7 +585,9 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       ...caseStudy,
       selectedAxis: navMeta?.kind === 'axis' ? selectedNav : caseStudy.selectedAxis,
       selectedNav,
-      selectedElementId: axisElements[0]?.id || caseStudy.selectedElementId,
+      selectedElementId: axisElements.some((el) => el.id === caseStudy.selectedElementId)
+        ? caseStudy.selectedElementId
+        : axisElements[0]?.id || caseStudy.selectedElementId,
       elements: merged,
       supportPeople: network?.people || caseStudy.supportPeople,
     });
@@ -544,13 +649,14 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
   let bindCenter;
   let bindSummaryNav;
   let selectNav;
+  let navAbortController;
 
   const navHost = () => leftHost.querySelector('#estudio-axis-nav') || leftHost;
 
   const refreshAxisNav = () => {
     navHost().innerHTML = `
       <div class="estudio-axis-nav" role="navigation" aria-label="Estudio de caso">
-        ${axisNavHtml(caseStudy, selectedNav, sessions)}
+        ${axisNavHtml(caseStudy, selectedNav, sessions, caseStudy.selectedElementId)}
       </div>`;
   };
 
@@ -668,31 +774,44 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       </div>`;
 
     bindCenter();
+    centerHost.querySelectorAll('.estudio-element').forEach((article) => {
+      const element = caseStudy.elements.find((row) => row.id === article.dataset.elementId);
+      const host = article.querySelector('[data-evolution-content="quantitative"]');
+      const types = (element?.quantitativeEvidence || []).map((row) => row.moduleType);
+      if (host && types.length) {
+        void renderWorkspaceScores(host, treatmentId, types, { expandAll: true }).catch((err) => {
+          host.textContent = err?.message || 'No se pudieron cargar los gráficos.';
+        });
+      }
+    });
   };
 
   selectNav = async (nextNav, { focusElementId = '' } = {}) => {
     if (!nextNav) return;
     const sameNav = nextNav === selectedNav;
-    if (!sameNav) {
-      if (centerHost.querySelector('.estudio-element')) {
-        caseStudy = collectLive();
-      }
-      selectedNav = nextNav;
-      pickerOpen = false;
-      caseStudy.selectedNav = selectedNav;
-      const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
-      if (meta?.kind === 'axis') caseStudy.selectedAxis = selectedNav;
-      if (focusElementId) caseStudy.selectedElementId = focusElementId;
-      suppressRemotePaint = true;
-      try {
-        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
-      } finally {
-        suppressRemotePaint = false;
-      }
-      await paint();
+    if (centerHost.querySelector('.estudio-element')) caseStudy = collectLive();
+    selectedNav = nextNav;
+    pickerOpen = false;
+    caseStudy.selectedNav = selectedNav;
+    const meta = ESTUDIO_NAV.find((n) => n.id === selectedNav);
+    if (meta?.kind === 'axis') {
+      caseStudy.selectedAxis = selectedNav;
+      const axisElements = caseStudy.elements.filter((el) => el.axis === selectedNav);
+      caseStudy.selectedElementId = focusElementId ||
+        (axisElements.some((el) => el.id === caseStudy.selectedElementId)
+          ? caseStudy.selectedElementId
+          : axisElements[0]?.id || '');
     } else if (focusElementId) {
       caseStudy.selectedElementId = focusElementId;
     }
+    suppressRemotePaint = true;
+    try {
+      caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+    } finally {
+      suppressRemotePaint = false;
+    }
+    if (sameNav) refreshAxisNav();
+    else await paint();
     if (focusElementId) {
       requestAnimationFrame(() => scrollToElement(focusElementId));
     } else {
@@ -710,6 +829,20 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
         await selectNav(btn.dataset.nav);
+      });
+    });
+    centerHost.querySelectorAll('[data-summary-evolution]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        centerHost.querySelectorAll('[data-summary-evolution]').forEach((tab) => tab.classList.toggle('is-active', tab === btn));
+        const host = centerHost.querySelector('#estudio-resumen-scores');
+        if (!host) return;
+        if (btn.dataset.summaryEvolution === 'qualitative') {
+          const notes = (caseStudy.elements || []).flatMap((element) => (element.qualitativeEvidence || []).filter((row) => row.text).map((row) => ({ title: element.title, ...row })));
+          host.innerHTML = notes.length ? notes.map((row) => `<p class="estudio-evolution-note"><time>${escapeHtml(row.date)}</time><strong>${escapeHtml(row.title)}:</strong> ${escapeHtml(row.text)}</p>`).join('') : '<p class="estudio-element__empty">Aún no hay evidencia cualitativa.</p>';
+        } else {
+          const types = [...new Set(sessions.flatMap((s) => (s.modules || []).map((m) => m.module_type)))];
+          void renderWorkspaceScores(host, treatmentId, types, { expandAll: true, tabbed: true });
+        }
       });
     });
     centerHost.querySelector('[data-autocomplete-case-study]')?.addEventListener('click', async (event) => {
@@ -738,13 +871,84 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
   if (!leftHost.dataset.estudioNavBound) {
     leftHost.dataset.estudioNavBound = '1';
+    navAbortController = new AbortController();
+    const { signal } = navAbortController;
+    let elementDrag = null;
+    let justDraggedAt = 0;
     leftHost.addEventListener('click', async (e) => {
+      if (Date.now() - justDraggedAt < 400) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       const btn = e.target.closest('[data-nav]');
       if (!btn || !leftHost.contains(btn)) return;
       e.preventDefault();
       const focusId = btn.dataset.focusElement || '';
       await selectNav(btn.dataset.nav, { focusElementId: focusId });
-    });
+    }, { signal });
+    leftHost.addEventListener('pointerdown', (e) => {
+      const row = e.target.closest('.estudio-axis-nav__child[data-focus-element]');
+      if (!row || e.button !== 0) return;
+      elementDrag = { row, startX: e.clientX, startY: e.clientY, active: false, target: null };
+    }, { signal });
+    document.addEventListener('pointermove', (e) => {
+      if (!elementDrag) return;
+      if (!elementDrag.active) {
+        if (Math.abs(e.clientX - elementDrag.startX) + Math.abs(e.clientY - elementDrag.startY) < 5) return;
+        elementDrag.active = true;
+        elementDrag.row.classList.add('is-reordering');
+        document.body.classList.add('is-dragging-module');
+      }
+      e.preventDefault();
+      const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.estudio-axis-nav__child[data-focus-element]');
+      leftHost.querySelectorAll('.estudio-axis-nav__child.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
+      if (target && target.dataset.nav === elementDrag.row.dataset.nav && target !== elementDrag.row) {
+        target.classList.add('is-drop-target');
+        elementDrag.target = target;
+      } else {
+        elementDrag.target = null;
+      }
+    }, { signal });
+    document.addEventListener('pointerup', async (e) => {
+      if (!elementDrag) return;
+      const { row, active, target } = elementDrag;
+      elementDrag = null;
+      row.classList.remove('is-reordering');
+      leftHost.querySelectorAll('.estudio-axis-nav__child.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
+      document.body.classList.remove('is-dragging-module');
+      if (!active || !target) return;
+      e.preventDefault();
+      justDraggedAt = Date.now();
+      const rect = target.getBoundingClientRect();
+      caseStudy = collectLive();
+      caseStudy.elements = reorderCaseStudyElements(caseStudy.elements, row.dataset.nav, row.dataset.focusElement, target.dataset.focusElement, e.clientY >= rect.top + rect.height / 2);
+      suppressRemotePaint = true;
+      try {
+        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+      } finally {
+        suppressRemotePaint = false;
+      }
+      await paint();
+    }, { signal });
+    document.addEventListener('pointercancel', () => {
+      elementDrag?.row.classList.remove('is-reordering');
+      elementDrag = null;
+      document.body.classList.remove('is-dragging-module');
+    }, { signal });
+    const centerScroll = centerHost.closest('#workspace-center-scroll');
+    centerScroll?.addEventListener('scroll', () => {
+      const articles = [...centerHost.querySelectorAll('.estudio-element[data-element-id]')];
+      if (!articles.length) return;
+      const top = centerScroll.getBoundingClientRect().top + 80;
+      const current = [...articles].reverse().find((article) => article.getBoundingClientRect().top <= top) || articles[0];
+      const id = current.dataset.elementId;
+      if (caseStudy.selectedElementId === id) return;
+      caseStudy.selectedElementId = id;
+      navHost().querySelectorAll('.estudio-axis-nav__child[data-focus-element]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.focusElement === id);
+      });
+    }, { signal, passive: true });
   }
 
   bindCenter = () => {
@@ -846,6 +1050,70 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
       });
     });
 
+    centerHost.querySelectorAll('[data-remove-evidence]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        caseStudy = collectLive();
+        const article = btn.closest('.estudio-element');
+        const el = caseStudy.elements.find((row) => row.id === article?.dataset.elementId);
+        if (!el) return;
+        const index = Number(btn.closest('[data-evidence-index]')?.dataset.evidenceIndex);
+        el.qualitativeEvidence = (el.qualitativeEvidence || []).filter((_, i) => i !== index);
+        caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-remove-quantitative]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        caseStudy = collectLive();
+        const article = btn.closest('.estudio-element');
+        const el = caseStudy.elements.find((row) => row.id === article?.dataset.elementId);
+        const index = Number(btn.closest('[data-quantitative-index]')?.dataset.quantitativeIndex);
+        if (!el || !Number.isInteger(index)) return;
+        el.quantitativeEvidence = (el.quantitativeEvidence || []).filter((_, i) => i !== index);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-remove-qualitative]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const article = btn.closest('.estudio-element');
+        const elementId = article?.dataset.elementId;
+        const moduleId = btn.closest('[data-qualitative-index]')?.dataset.moduleId;
+        if (!elementId || !moduleId) return;
+        const module = await getModule(moduleId);
+        if (!module) return;
+        const data = JSON.parse(module.data || '{}');
+        await saveModuleData(moduleId, {
+          ...data,
+          elementIds: (data.elementIds || []).filter((id) => String(id) !== String(elementId)),
+        }, module.status || 'pendiente');
+        sessions = await getSessionsWithModules(treatmentId);
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-evolution-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const section = btn.closest('.estudio-evolution');
+        section?.querySelectorAll('[data-evolution-tab]').forEach((tab) => tab.classList.toggle('is-active', tab === btn));
+        section?.querySelectorAll('[data-evolution-content]').forEach((panel) => { panel.hidden = panel.dataset.evolutionContent !== btn.dataset.evolutionTab; });
+        if (btn.dataset.evolutionTab === 'quantitative') {
+          const article = btn.closest('.estudio-element');
+          const host = article?.querySelector('[data-evolution-content="quantitative"]');
+          const element = caseStudy.elements.find((row) => row.id === article?.dataset.elementId);
+          const types = (element?.quantitativeEvidence || []).map((row) => row.moduleType);
+          if (host && types.length) void renderWorkspaceScores(host, treatmentId, types, { expandAll: true });
+        }
+      });
+    });
+
     centerHost.querySelectorAll('[data-delete-element]').forEach((btn) => {
       btn.addEventListener('click', async () => {
         caseStudy = collectLive();
@@ -863,16 +1131,65 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
 
     centerHost.querySelectorAll('[data-add-activity]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const added = await openAddModuleSessionModal({ treatmentId });
+        const added = await openAddModuleSessionModal({
+          treatmentId,
+          allowedCategoryIds: ['tcc', 'significado', 'intervencion'],
+          presetType: recommendedModulesForElement(selectedNav, caseStudy.elements.find((el) => el.id === btn.dataset.elementId)?.title || '').intervention[0] || '',
+        });
         if (!added?.moduleType) return;
         caseStudy = collectLive();
         const el = caseStudy.elements.find((row) => row.id === btn.dataset.elementId);
         if (!el) return;
-        el.activities = [
-          ...(el.activities || []),
-          { moduleType: added.moduleType, sessionId: String(added.sessionId || '') },
-        ];
+        // La asignación vive en elementIds del módulo; no duplicamos una segunda
+        // referencia en activities.
+        const attachedModule = await getModule(added.moduleId);
+        const attachedData = JSON.parse(attachedModule?.data || '{}');
+        await saveModuleData(added.moduleId, { ...attachedData, elementIds: [...new Set([...(attachedData.elementIds || []), el.id])] }, attachedModule?.status || 'pendiente');
         el.status = 'developing';
+        sessions = await getSessionsWithModules(treatmentId);
+        suppressRemotePaint = true;
+        try {
+          caseStudy = await saveCaseStudy(treatmentId, caseStudy);
+        } finally {
+          suppressRemotePaint = false;
+        }
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-add-qualitative]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const element = caseStudy.elements.find((el) => el.id === btn.dataset.elementId);
+        const added = await openAddModuleSessionModal({ treatmentId, allowedCategoryIds: ['pruebas'], presetType: 'medicion_cualitativa', associatedElementId: element?.id || '' });
+        if (!added?.moduleId || added.moduleType !== 'medicion_cualitativa' || !element) return;
+        const module = await getModule(added.moduleId);
+        const data = JSON.parse(module?.data || '{}');
+        await saveModuleData(added.moduleId, { ...data, elementIds: [...new Set([...(data.elementIds || []), element.id])] }, module?.status || 'pendiente');
+        sessions = await getSessionsWithModules(treatmentId);
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-add-quantitative]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const element = caseStudy.elements.find((el) => el.id === btn.dataset.elementId);
+        const added = await openAddModuleSessionModal({
+          treatmentId,
+          allowedCategoryIds: ['pruebas'],
+          allowCustomModules: true,
+          presetType: recommendedModulesForElement(selectedNav, element?.title || '').evaluation[0] || '',
+          associatedElementId: element?.id || '',
+        });
+        if (!added?.moduleType) return;
+        caseStudy = collectLive();
+        const el = caseStudy.elements.find((row) => row.id === btn.dataset.elementId);
+        if (!el) return;
+        if (!(el.quantitativeEvidence || []).some((row) => row.moduleType === added.moduleType && String(row.sessionId) === String(added.sessionId || ''))) {
+          el.quantitativeEvidence = [...(el.quantitativeEvidence || []), { moduleType: added.moduleType, sessionId: String(added.sessionId || ''), moduleId: String(added.moduleId || '') }];
+        }
+        const attachedModule = await getModule(added.moduleId);
+        const attachedData = JSON.parse(attachedModule?.data || '{}');
+        await saveModuleData(added.moduleId, { ...attachedData, elementIds: [...new Set([...(attachedData.elementIds || []), el.id])] }, attachedModule?.status || 'pendiente');
         sessions = await getSessionsWithModules(treatmentId);
         suppressRemotePaint = true;
         try {
@@ -898,6 +1215,24 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
         } finally {
           suppressRemotePaint = false;
         }
+        await paint();
+      });
+    });
+
+    centerHost.querySelectorAll('[data-remove-assignment]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('.estudio-activity-row');
+        const moduleId = row?.dataset.moduleId;
+        const elementId = btn.closest('.estudio-element')?.dataset.elementId;
+        if (!moduleId || !elementId) return;
+        const module = await getModule(moduleId);
+        const data = parseJsonSafe(module?.data, {});
+        await saveModuleData(
+          moduleId,
+          { ...data, elementIds: (data.elementIds || []).filter((id) => String(id) !== String(elementId)) },
+          module?.status || 'pendiente',
+        );
+        sessions = await getSessionsWithModules(treatmentId);
         await paint();
       });
     });
@@ -967,6 +1302,7 @@ export async function mountEstudioDeCaso({ leftHost, centerHost, treatmentId, to
   return {
     unmount() {
       stop();
+      navAbortController?.abort();
       delete leftHost.dataset.estudioNavBound;
       leftHost.innerHTML = '';
       centerHost.innerHTML = '';

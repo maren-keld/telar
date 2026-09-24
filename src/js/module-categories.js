@@ -4,7 +4,7 @@
  */
 export const CATEGORY_LABELS = {
   conceptualizacion: 'Conceptualización',
-  pruebas: 'Pruebas psicométricas',
+  pruebas: 'Evaluación',
   tcc: 'Habilidades y tareas',
   significado: 'Narrativa',
   intervencion: 'Intervención en sesión',
@@ -32,7 +32,7 @@ export const CATEGORIES = [
     id: 'conceptualizacion',
     label: CATEGORY_LABELS.conceptualizacion,
     blurb: CATEGORY_BLURBS.conceptualizacion,
-    types: ['registro_inicial', 'motivo_consulta', 'nota_sesion', 'tcc_plan_seguridad'],
+    types: ['registro_inicial', 'motivo_consulta', 'nota_sesion'],
   },
   {
     id: 'pruebas',
@@ -52,6 +52,8 @@ export const CATEGORIES = [
       'escala_animo',
       'escala_ansiedad',
       'escala_fer',
+      'medicion_cuantitativa',
+      'medicion_cualitativa',
     ],
   },
   {
@@ -68,6 +70,10 @@ export const CATEGORIES = [
       'tcc_gratitud',
       'tcc_estres',
       'tcc_activacion',
+      'tcc_plan_seguridad',
+      'dbt_diary_card',
+      'dbt_camino_del_medio',
+      'dbt_regulacion_emocional',
       'tcc_registro_pensamientos',
       'tcc_monitoreo_actividades',
       'tcc_exposicion',

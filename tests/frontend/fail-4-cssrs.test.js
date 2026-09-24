@@ -18,8 +18,11 @@ test('C-SSRS: Q2=no omite 3–5; conducta 3 meses es alto', () => {
 
 test('C-SSRS aparece como módulo renderizable, no solo como metadato', () => {
   const registry = readFileSync(join(root, '../../src/js/modules/index.js'), 'utf8');
+  const view = readFileSync(join(root, '../../src/js/modules/cssrs.js'), 'utf8');
   assert.match(registry, /import \{ renderCssrs \} from '\.\/cssrs\.js'/);
   assert.match(registry, /cssrs: renderCssrs/);
+  assert.doesNotMatch(view, /Columbia-Suicide Severity Rating Scale · Versión screening/);
+  assert.doesNotMatch(view, /cssrs\.triage/);
 });
 
 test('FAIL-4: chips Programa|Estudio, sin icono footer de estudio', () => {

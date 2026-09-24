@@ -156,5 +156,9 @@ test('FAIL-5: C-SSRS CSS sin cajas dual feas; regla válida', () => {
   assert.match(css, /\.cssrs-module \.likert-row\.cssrs-row\s*\{[^}]*border-left:\s*3px solid/s);
   assert.doesNotMatch(css, /\.cssrs-tf--lifetime\s*\{[^}]*background:\s*#fde8c8/s);
   assert.doesNotMatch(css, /\.cssrs-tf--recent\s*\{[^}]*background:\s*#f8d7da/s);
+  assert.match(css, /\.cssrs-module \.cssrs-yn\s*\{[^}]*grid-template-columns:\s*repeat\(2, 28px\)/s);
+  assert.match(css, /\.psych-module__scroll \.cssrs-head\s*\{[^}]*position:\s*static/s);
+  assert.match(css, /\.cssrs-high-tag\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /\.cssrs-row--split \.cssrs-dual\s*\{[^}]*grid-row:\s*1/s);
   assert.doesNotMatch(css, /\{\s*[^}]*border-bottom:\s*0;\s*\}\s*gap:/s);
 });

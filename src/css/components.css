@@ -976,6 +976,14 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
 
 .patient-menu-tools .workspace-tools-tab__item {
   padding: 9px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.patient-menu-tools .workspace-tools-tab__item:hover {
+  border: 0;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
 }
 
 .patient-menu-tools .workspace-tools-tab__icon {

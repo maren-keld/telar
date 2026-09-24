@@ -6,6 +6,9 @@ import { handoutPdfFilename } from '../../src/js/export-handout-pdf.js';
 import { formatTccHandoutReadable, tccHandoutDef } from '../../src/js/tcc-handout-defs.js';
 
 const NEW_IDS = [
+  'dbt_diary_card',
+  'dbt_camino_del_medio',
+  'dbt_regulacion_emocional',
   'tcc_registro_pensamientos',
   'tcc_exposicion',
   'tcc_experimento',
@@ -20,8 +23,8 @@ const NEW_IDS = [
   'sig_pregunta_milagro',
 ];
 
-test('los 12 módulos nuevos tienen definición, renderer y PDF', () => {
-  assert.equal(Object.keys(EXTRA_HANDOUT_DEFS).length, 12);
+test('los 15 módulos adicionales tienen definición, renderer y PDF', () => {
+  assert.equal(Object.keys(EXTRA_HANDOUT_DEFS).length, 15);
   for (const id of NEW_IDS) {
     const def = tccHandoutDef(id);
     assert.ok(def?.title, id);
@@ -66,16 +69,19 @@ test('las categorías agrupan por función en la hora, no por escuela', async ()
   assert.equal(CATEGORY_LABELS.tcc, 'Habilidades y tareas');
   assert.equal(CATEGORY_LABELS.significado, 'Narrativa');
   assert.equal(CATEGORY_LABELS.intervencion, 'Intervención en sesión');
-  assert.ok(byId.conceptualizacion.types.includes('tcc_plan_seguridad'));
+  assert.ok(!byId.conceptualizacion.types.includes('tcc_plan_seguridad'));
   assert.ok(byId.conceptualizacion.types.includes('nota_sesion'));
   assert.ok(byId.significado.types.includes('tcc_autoconceptos'));
   assert.ok(byId.significado.types.includes('sig_felt_sense'));
   assert.ok(byId.tcc.types.includes('tcc_exposicion'));
   assert.ok(byId.tcc.types.includes('tcc_experimento'));
+  assert.ok(byId.tcc.types.includes('tcc_plan_seguridad'));
+  assert.ok(byId.tcc.types.includes('dbt_diary_card'));
+  assert.ok(byId.tcc.types.includes('dbt_camino_del_medio'));
+  assert.ok(byId.tcc.types.includes('dbt_regulacion_emocional'));
   assert.ok(!byId.pruebas.types.includes('iesr'));
   assert.ok(byId.pruebas.types.includes('sprint_ecl'));
   assert.ok(!byId.intervencion.types.includes('tcc_exposicion'));
-  assert.ok(!byId.tcc.types.includes('tcc_plan_seguridad'));
   assert.ok(!byId.tcc.types.includes('tcc_autoconceptos'));
   assert.equal(byId.conceptualizacion.blurb, 'Encuadre y formulación del caso');
   assert.equal(

@@ -12,7 +12,7 @@ STAMP_FILE="$ROOT/dist/.build-stamp"
 
 echo "→ Sidecar Python…"
 
-if [[ -f "$ROOT/app-icon.png" ]]; then
+if [[ -f "$ROOT/app-icon.png" && "${SKIP_ICON_GENERATION:-0}" != "1" ]]; then
   echo "→ Iconos…"
   (cd "$ROOT/src-tauri" && cargo tauri icon "$ROOT/app-icon.png") 2>/dev/null || true
 fi

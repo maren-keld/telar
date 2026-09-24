@@ -401,6 +401,13 @@ export function buildReadableText(moduleType, data) {
       return formatSubjectiveScore(d, 'mood_score', 'Ánimo subjetivo');
     case 'escala_ansiedad':
       return formatSubjectiveScore(d, 'anxiety_score', 'Ansiedad subjetiva');
+    case 'medicion_cuantitativa': {
+      const label = String(d.measurement_title || 'Medición cuantitativa').trim();
+      const value = d.value === '' || d.value == null ? '' : `: ${d.value}${d.unit === '%' ? '%' : d.unit ? ` ${d.unit}` : ''}`;
+      return `${label}${value}${d.date ? `\nFecha: ${d.date}` : ''}`;
+    }
+    case 'medicion_cualitativa':
+      return [d.measurement_title || 'Medición cualitativa', d.date ? `Fecha: ${d.date}` : '', d.note || ''].filter(Boolean).join('\n');
     default:
       if (tccHandoutDef(moduleType)) return formatTccHandoutReadable(moduleType, d);
       if (isCustomModuleType(moduleType)) return formatCustomModule(moduleType, d);

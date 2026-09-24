@@ -34,6 +34,7 @@ import { renderTccPlanSeguridad } from './tcc-plan-seguridad.js';
 import { renderTccActivacion } from './tcc-activacion.js';
 import { renderTccGeneric } from './tcc-generic.js';
 import { renderSelectorModulo } from './selector-modulo.js';
+import { renderMeasurement } from './measurement.js';
 
 const LEGACY_RENDERERS = {
   selector_modulo: renderSelectorModulo,
@@ -52,6 +53,9 @@ const LEGACY_RENDERERS = {
   tcc_preocupaciones: renderTccGeneric,
   tcc_gratitud: renderTccGeneric,
   tcc_estres: renderTccGeneric,
+  dbt_diary_card: renderTccGeneric,
+  dbt_camino_del_medio: renderTccGeneric,
+  dbt_regulacion_emocional: renderTccGeneric,
   tcc_registro_pensamientos: renderTccGeneric,
   tcc_exposicion: renderTccGeneric,
   tcc_experimento: renderTccGeneric,
@@ -81,6 +85,8 @@ const LEGACY_RENDERERS = {
   redes_apoyo: renderRedesApoyo,
   diagnostico: renderDiagnostico,
   nota_sesion: renderNotaSesion,
+  medicion_cuantitativa: renderMeasurement,
+  medicion_cualitativa: renderMeasurement,
 };
 
 function resolveRenderer(moduleType) {

@@ -186,7 +186,16 @@ export function moduleLabelFor(type) {
   const def = resolveModuleDef(type);
   if (!def) return type;
   if (def.custom) return def.label;
-  return moduleLabelI18n(type, def.label);
+  const label = moduleLabelI18n(type, def.label);
+  return def.category === 'pruebas' ? label.replace(/\s+—\s+.+$/u, '') : label;
+}
+
+/** Nombre visible de una instancia. Las mediciones incluyen su indicador clínico. */
+export function moduleDisplayLabel(type, data = {}) {
+  const base = moduleLabelFor(type);
+  if (type !== 'medicion_cuantitativa' && type !== 'medicion_cualitativa') return base;
+  const measurementTitle = String(data?.measurement_title || '').trim();
+  return measurementTitle ? `${base} - ${measurementTitle}` : base;
 }
 
 export function newCustomModuleId() {

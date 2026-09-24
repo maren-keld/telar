@@ -214,6 +214,27 @@ const LEGACY_MODULE_PSYCHOMETRICS = {
     validity: 'Estrategias corto y largo plazo; consultar médico para suplementos.',
     learnMore: 'Incluye técnicas de respiración y activación física.',
   },
+  dbt_diary_card: {
+    authors: 'Telar — elaboración propia (basado en práctica DBT)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Autorregistro clínico semanal; no es instrumento estandarizado.',
+    validity: 'Apoya seguimiento de conductas objetivo y uso de habilidades; no reemplaza evaluación de riesgo.',
+    learnMore: 'Una tarjeta por semana para identificar patrones antes de revisarlos en sesión.',
+  },
+  dbt_camino_del_medio: {
+    authors: 'Telar — elaboración propia (basado en práctica DBT)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Ejercicio clínico dialéctico; no es instrumento psicométrico.',
+    validity: 'Apoya flexibilidad cognitiva y respuesta interpersonal equilibrada.',
+    learnMore: 'Explora ambos extremos, valida lo comprensible y define una acción intermedia.',
+  },
+  dbt_regulacion_emocional: {
+    authors: 'Telar — elaboración propia (basado en práctica DBT)',
+    ageRange: 'Adolescentes y adultos',
+    reliability: 'Guía de habilidades de regulación emocional; no es instrumento estandarizado.',
+    validity: 'Facilita análisis de emoción, vulnerabilidades y respuesta eficaz; no sustituye formulación clínica.',
+    learnMore: 'Puede repetirse ante emociones intensas o como revisión semanal de habilidades.',
+  },
   tcc_registro_pensamientos: {
     authors: 'Telar — elaboración propia',
     ageRange: 'Adolescentes y adultos',

@@ -43,6 +43,18 @@ export function toolsItemsHtml({ compact = false } = {}) {
         </button>
       </li>
       <li>
+        <button type="button" class="workspace-tools-tab__item" data-action="export-word">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
+          <span class="workspace-tools-tab__text"><span>Exportar programa Word (.docx)</span>${detail('Documento editable del programa de tratamiento')}</span>
+        </button>
+      </li>
+      <li>
+        <button type="button" class="workspace-tools-tab__item" data-action="export-online">
+          <span class="workspace-tools-tab__icon" aria-hidden="true">${SETTINGS_ICONS.supervision}</span>
+          <span class="workspace-tools-tab__text"><span>Enviar informe en línea</span>${detail('Enlace privado con vencimiento')}</span>
+        </button>
+      </li>
+      <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-case">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
           <span class="workspace-tools-tab__text">
@@ -51,19 +63,10 @@ export function toolsItemsHtml({ compact = false } = {}) {
           </span>
         </button>
       </li>
-      <li>
-        <button type="button" class="workspace-tools-tab__item" data-action="export-word">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
-          <span class="workspace-tools-tab__text">
-            <span>Exportar programa Word (.docx)</span>
-            ${detail('Documento editable del programa de tratamiento')}
-          </span>
-        </button>
-      </li>
     </ul>`;
 }
 
-export function bindToolsActions(root, { onExportPdf, onExportWord, onExportCasePresentation }) {
+export function bindToolsActions(root, { onExportPdf, onExportWord, onExportCasePresentation, onExportOnline }) {
   // PDF de programa: gratis (mismo criterio que presentación de caso — canal de adopción).
   root.querySelector('[data-action="export-pdf"]')?.addEventListener('click', async () => {
     try {
@@ -88,6 +91,14 @@ export function bindToolsActions(root, { onExportPdf, onExportWord, onExportCase
       await onExportWord();
     } catch (e) {
       toast(e.message || 'No se pudo exportar el documento Word');
+    }
+  });
+
+  root.querySelector('[data-action="export-online"]')?.addEventListener('click', async () => {
+    try {
+      await onExportOnline();
+    } catch (e) {
+      toast(e.message || 'No se pudo crear el enlace del informe');
     }
   });
 }
@@ -171,6 +182,7 @@ export function openWorkspaceToolsMenu(opts) {
         <ul class="workspace-tools-menu__list">
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>Exportar programa PDF</span><small>Resumen del tratamiento</small></span></button></li>
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>Exportar programa Word (.docx)</span><small>Documento editable del tratamiento</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-online"><span class="workspace-tools-menu__text"><span>Enviar informe en línea</span><small>Enlace privado con vencimiento</small></span></button></li>
         </ul>
       </div>
     </div>`;

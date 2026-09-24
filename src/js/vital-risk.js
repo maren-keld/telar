@@ -59,7 +59,8 @@ function textHaystack(sessions, caseStudy, marital) {
 export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' } = {}) {
   const reasons = [];
   const findings = [];
-  let score = 0.12;
+  // Un tratamiento nuevo no tiene hallazgos todavía: no se le asigna riesgo basal artificial.
+  let score = 0;
   const maritalStatus = marital || maritalFromSessions(sessions);
 
   const cssrsHit = latestModule(sessions, 'cssrs');
@@ -68,7 +69,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     const data = parseJsonSafe(cssrsHit.mod.data, {});
     cssrsKey = data.triage || cssrsRiskBand(data.answers || {}).key;
     const bandScore = cssrsBandScore(cssrsKey);
-    score = [0.12, 0.28, 0.55, 0.88][bandScore] ?? 0.12;
+    score = [0, 0.28, 0.55, 0.88][bandScore] ?? 0;
     const cssrsFinding = `C-SSRS: ${cssrsKey === 'none' ? 'sin señales registradas' : cssrsKey}`;
     findings.push(cssrsFinding);
     if (cssrsKey !== 'none') reasons.push(`C-SSRS ${cssrsKey}`);

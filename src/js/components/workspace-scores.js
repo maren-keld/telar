@@ -491,7 +491,7 @@ export async function renderWorkspaceScores(listEl, treatmentId, moduleTypes, { 
     sections.push(
       accordionHtml(
         'chart-cssrs',
-        'C-SSRS Screener',
+        'C-SSRS',
         'Triage por sesión (0 sin indicadores · 1 bajo · 2 moderado · 3 alto)',
         series.length
           ? lineChartHtml('chart-cssrs', 3)

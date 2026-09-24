@@ -1,5 +1,5 @@
 import { getModuleDefs } from '../config.js';
-import { listCustomModules, resolveModuleDef } from '../custom-modules.js';
+import { listCustomModules, moduleLabelFor, resolveModuleDef } from '../custom-modules.js';
 import { takePendingCustomModuleType } from '../module-editor-model.js';
 import { requireProOrSubscribe } from './subscribe-pro-modal.js';
 import { isLicensePendingModule } from '../license-pending-modules.js';
@@ -19,6 +19,8 @@ import { CATEGORIES, CUSTOM_CATEGORY_BLURB, CUSTOM_CATEGORY_LABEL, LIBRARY_HIDDE
 import { whereFor, whereLabel } from '../module-where.js';
 import { clinicCountryCode, localizeValidityText, validityHeading } from '../clinic-country.js';
 import { estudioRelationForModule } from '../case-study-catalog.js';
+import { recommendedModuleTypesForElements } from '../case-study-model.js';
+import { readCaseStudySnapshot } from '../case-study-store.js';
 import {
   moduleViewportOffset,
   scheduleRestoreModuleViewportOffset,
@@ -124,7 +126,7 @@ export function previewHtml(type, def, psych, { actionLabel = 'Seleccionar', sho
 
   return `
     <div class="mod-info">
-      <h3 class="mod-info__title">${escapeHtml(def.label)}</h3>
+      <h3 class="mod-info__title">${escapeHtml(moduleLabelFor(type))}</h3>
       ${whereLine}
       ${estudioLine}
       ${rows}
@@ -219,6 +221,7 @@ export function selectorListInnerHtml({
   inTreatment = new Set(),
   inSession = new Set(),
   onceBlocked = {},
+  recommendedTypes = new Set(),
 } = {}) {
   const cats = filterCategoryId
     ? CATEGORIES.filter((c) => c.id === filterCategoryId)
@@ -227,7 +230,8 @@ export function selectorListInnerHtml({
   const customMods = includeCustom ? listCustomModules() : [];
 
   const customItemsHtml = (mods) =>
-    mods
+    [...mods]
+      .sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''), 'es'))
       .map((cm) => {
         const type = `custom_${cm.id}`;
         const inUse = inTreatment.has(type) || inSession.has(type);
@@ -242,6 +246,7 @@ export function selectorListInnerHtml({
           <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}">
             <span>${escapeHtml(cm.title)}</span>
             ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
+            ${recommendedTypes.has(type) && !inUse ? '<span class="badge badge--success">Recomendado</span>' : ''}
           </button>`;
       })
       .join('');
@@ -276,9 +281,9 @@ export function selectorListInnerHtml({
   const catsHtml = cats
     .map((cat) => {
       const available = getModuleDefs();
-      const types = cat.types.filter(
-        (type) => available[type] && !isLicensePendingModule(type) && !LIBRARY_HIDDEN_TYPES.has(type),
-      );
+      const types = cat.types
+        .filter((type) => available[type] && !isLicensePendingModule(type) && !LIBRARY_HIDDEN_TYPES.has(type))
+        .sort((a, b) => moduleLabelFor(a).localeCompare(moduleLabelFor(b), 'es'));
       if (!types.length) return '';
       const items = types
         .map((type) => {
@@ -289,8 +294,9 @@ export function selectorListInnerHtml({
           const search = searchTextForType(type, def, psych);
           return `
           <button type="button" class="mod-selector-item" data-type="${type}" data-search="${escapeHtml(search)}" ${blocked ? 'disabled' : ''}>
-            <span>${escapeHtml(def.label)}</span>
+            <span>${escapeHtml(moduleLabelFor(type))}</span>
             ${inUse ? '<span class="badge badge--info">En uso</span>' : ''}
+            ${recommendedTypes.has(type) && !inUse ? '<span class="badge badge--success">Recomendado</span>' : ''}
           </button>`;
         })
         .join('');
@@ -324,10 +330,20 @@ async function loadSelectorList(ctx) {
   let selectedType = null;
   let selecting = false;
 
+  let recommendedTypes = new Set();
+  try {
+    const caseStudy = await readCaseStudySnapshot(ctx.treatmentId);
+    recommendedTypes = recommendedModuleTypesForElements(caseStudy?.elements || []);
+    inTreatment.forEach((type) => recommendedTypes.delete(type));
+  } catch {
+    // La librería sigue disponible aunque falte la ficha del estudio.
+  }
+
   listEl.innerHTML = selectorListInnerHtml({
     inTreatment,
     inSession,
     onceBlocked: oncePerTreatmentBlocked,
+    recommendedTypes,
   });
 
   if (searchInput?.value) {
@@ -374,7 +390,7 @@ async function loadSelectorList(ctx) {
       const existingInSession = sessionModsNow.find(
         (m) => m.module_type === type && String(m.id) !== String(ctx.selectorModuleId),
       );
-      if (existingInSession) {
+      if (existingInSession && !def.allowMultipleInSession) {
         await removeSelectorIfAllowed();
         await finishNavigation(ctx.sessionId, existingInSession.id);
         return;

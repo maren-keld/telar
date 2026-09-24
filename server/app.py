@@ -1244,7 +1244,7 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
         <button type="button" data-tab="crm" aria-pressed="true">CRM</button>
         <button type="button" data-tab="uso">Uso</button>
       </nav>
-      <p class="sub" id="live-hint" hidden>Se actualiza solo cada 20 s</p>
+      <p class="sub" id="live-hint" hidden>Se actualiza solo cada 6 min</p>
     </div>
   </div>
   __CRM__
@@ -1419,7 +1419,7 @@ $('range').addEventListener('click', (event) => {
 function load() { loadLive(); loadLanding(); }
 renderRange();
 load();
-setInterval(load, 20000);
+setInterval(load, 6 * 60 * 1000);
 __CRM_JS__
 </script></body></html>""".replace("__CSS__", PANEL_CSS).replace("__CRM__", CRM_MARKUP).replace("__CRM_JS__", CRM_SCRIPT)
 

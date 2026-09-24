@@ -226,12 +226,16 @@ export function tooltipRelatedStaysInHost(host, related, tip) {
 }
 
 function initTooltips() {
-  if (document.getElementById('telar-tooltip')) return;
-  const tip = document.createElement('span');
-  tip.id = 'telar-tooltip';
-  tip.className = 't-tt t-tt--fixed';
-  tip.setAttribute('role', 'tooltip');
-  document.body.appendChild(tip);
+  if (document.documentElement.dataset.telarTooltipsBound === '1') return;
+  document.documentElement.dataset.telarTooltipsBound = '1';
+  let tip = document.getElementById('telar-tooltip');
+  if (!tip) {
+    tip = document.createElement('span');
+    tip.id = 'telar-tooltip';
+    tip.className = 't-tt t-tt--fixed';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+  }
 
   let hideTimer = 0;
   let showTimer = 0;
@@ -331,6 +335,24 @@ function initTooltips() {
     true,
   );
 
+  document.addEventListener('focusin', (e) => {
+    const el = e.target.closest?.('[title], [data-tooltip]');
+    if (!el || el === tip || el.closest('textarea, select, option')) return;
+    const text = (el.getAttribute('data-tooltip') || el.getAttribute('title') || '').trim();
+    if (!text) return;
+    if (el.hasAttribute('title')) {
+      el.setAttribute('data-tooltip', text);
+      el.removeAttribute('title');
+    }
+    clearTimeout(hideTimer);
+    clearTimeout(showTimer);
+    showTimer = window.setTimeout(() => show(el, text), 100);
+  });
+
+  document.addEventListener('focusout', (e) => {
+    if (active === e.target || active?.contains?.(e.target)) hideTimer = window.setTimeout(hide, 80);
+  });
+
   document.addEventListener(
     'pointerout',
     (e) => {
@@ -382,5 +404,6 @@ export function initMotion() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     if (dismissTopModal()) e.preventDefault();
+    else if (location.hash.startsWith('#/workspace')) location.hash = '/treatments';
   });
 }

@@ -1,8 +1,13 @@
-/** Utilidades compartidas para exportación PDF (jsPDF + Helvetica). */
+/** Utilidades compartidas para exportación PDF (jsPDF + Arial-compatible). */
 
 export const PDF_MARGIN = 18;
 export const PDF_PAGE_W = 210;
 export const PDF_MAX_W = PDF_PAGE_W - PDF_MARGIN * 2;
+
+// jsPDF no trae Arial como fuente estándar de PDF: Helvetica es su sustituta
+// métrica-compatible. La dejamos centralizada para que todo el documento,
+// incluidos gráficos y tarjetas, use exactamente la misma familia.
+export const PDF_FONT_FAMILY = 'helvetica';
 
 export function pdfSafeText(text) {
   return String(text || '')
@@ -35,7 +40,7 @@ export function dxItemTexts(items) {
 
 export function pdfText(doc, text, x, y, { maxWidth = PDF_MAX_W, size = 10, style = 'normal' } = {}) {
   doc.setFontSize(size);
-  doc.setFont('helvetica', style);
+  doc.setFont(PDF_FONT_FAMILY, style);
   const lines = doc.splitTextToSize(pdfSafeText(text), maxWidth);
   const lineHeight = size * 0.42;
   // jsPDF no pagina automáticamente un bloque de texto. Escribimos línea por
@@ -45,7 +50,7 @@ export function pdfText(doc, text, x, y, { maxWidth = PDF_MAX_W, size = 10, styl
       doc.addPage();
       y = PDF_MARGIN + 8;
       doc.setFontSize(size);
-      doc.setFont('helvetica', style);
+      doc.setFont(PDF_FONT_FAMILY, style);
     }
     doc.text(line, x, y);
     y += lineHeight;
@@ -99,7 +104,7 @@ export function drawSeriesChart(doc, x, y, w, h, serie) {
   });
 
   doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_FONT_FAMILY, 'normal');
   doc.setTextColor(130, 134, 142);
   doc.text(String(points[0].label), x, y + h + 3);
   if (points.length > 1) {
