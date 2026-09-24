@@ -23,9 +23,10 @@ export { shareAnsweredAt };
 /** Dominio que sirve la página del paciente (landing/r). */
 export const SHARE_PUBLIC_BASE = 'https://telarapp.cl';
 
-// Revisa enlaces pendientes cada cuatro minutos mientras la app está visible;
-// en segundo plano las consultas se pausan y se reanudan al volver a la app.
-const POLL_MS = 4 * 60_000;
+// Revisa enlaces pendientes cada dos horas mientras la app está visible. El
+// chequeo inmediato al abrir/volver a la app mantiene las respuestas accesibles
+// sin mantener activo el compute de Neon durante toda la jornada.
+const POLL_MS = 2 * 60 * 60_000;
 
 /** Solo enlaces vivos: `share_answered_at` no debe disparar el poll. */
 export const PENDING_SHARE_SQL = `json_extract(sm.data, '$.share.token') IS NOT NULL`;

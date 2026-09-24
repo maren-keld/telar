@@ -61,7 +61,7 @@ DB_INITIALIZATION_ERROR: Exception | None = None
 # Panel privado /panel — sin esta variable el panel queda apagado (falla cerrado).
 PANEL_PASSWORD = os.environ.get("PANEL_PASSWORD", "").strip()
 PANEL_COOKIE = "telar_panel"
-ONLINE_WINDOW_MIN = int(os.environ.get("PANEL_ONLINE_WINDOW_MIN", "7"))
+ONLINE_WINDOW_MIN = int(os.environ.get("PANEL_ONLINE_WINDOW_MIN", "130"))
 
 ACTIVE_STATUSES = frozenset({"authorized", "active"})
 _plan_cache: dict[str, dict] = {}
