@@ -332,9 +332,9 @@
   border-left: 3px solid var(--accent);
 }
 
-/* Fijar una respuesta solo cambia su estado, no debe convertirla en negrita. */
-.kindle-note--starred .kindle-note__ai-answer,
-.kindle-note--starred .kindle-note__ai-answer strong {
+/* La respuesta de IA se lee en peso normal, también si trae Markdown en negrita. */
+.kindle-note--ia .kindle-note__ai-answer,
+.kindle-note--ia .kindle-note__ai-answer strong {
   font-weight: 400;
 }
 

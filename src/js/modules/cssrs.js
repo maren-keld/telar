@@ -152,8 +152,7 @@ function rowHtml(q, answers) {
     <div class="likert-row cssrs-row cssrs-row--${tint}${q.follow ? ' cssrs-row--follow' : ''}" data-cssrs-q="${q.id}">
       <div class="likert-row__q">
         <span class="likert-row__n">${n}.</span>
-        <span>${escapeHtml(qText(q))}</span>
-        ${q.high ? `<span class="cssrs-high-tag">${escapeHtml(useEnglish() ? 'High risk' : 'Riesgo alto')}</span>` : ''}
+        <span class="cssrs-row__question">${escapeHtml(qText(q))}${q.high ? ` <span class="cssrs-high-tag">${escapeHtml(useEnglish() ? 'High risk' : 'Riesgo alto')}</span>` : ''}</span>
       </div>
       ${hint ? `<p class="cssrs-row__hint text-muted">${escapeHtml(hint)}</p>` : ''}
       ${
@@ -189,7 +188,7 @@ export async function renderCssrs(host, moduleRow) {
           <div>
             <h2 class="module-title">${escapeHtml(t('cssrs.title', 'C-SSRS'))}</h2>
           </div>
-          <div class="psych-score-pill ${band0.cls}" id="cssrs-pill" aria-label="Banda de riesgo actual">
+          <div class="psych-score-pill ${band0.cls}" id="cssrs-pill" aria-label="${escapeHtml(useEnglish() ? 'Current risk level' : 'Banda de riesgo actual')}">
             <strong id="cssrs-band">${escapeHtml(bandLabel(band0))}</strong>
           </div>
         </div>

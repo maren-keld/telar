@@ -40,7 +40,7 @@ import { ICON_DOWNLOAD, ICON_LINK, ICON_MORE_VERT, ICON_SWAP } from '../icons.js
 import { openShareModuleModal } from '../components/share-module-modal.js';
 import { shareableContentFor } from '../share-content.js';
 import { shareCompletedByLinkLabel } from '../module-editor-model.js';
-import { createTreatmentReportLink, shareAnsweredAt, shareInfo } from '../share-sync.js';
+import { shareAnsweredAt, shareInfo } from '../share-sync.js';
 import { formatShareAnsweredAt } from '../share-notify.js';
 import { openAddModuleSessionModal } from '../components/add-module-session-modal.js';
 import {
@@ -72,10 +72,21 @@ let workspaceRenderRequest = 0;
 
 export function invalidateWorkspaceRender() {
   workspaceRenderRequest += 1;
+  if (workspaceIndexModeListener) {
+    document.removeEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
+    workspaceIndexModeListener = null;
+  }
 }
 
 /** Un solo listener de índice; se reasigna en cada render para no filtrar. */
 let workspaceIndexModeListener = null;
+
+function isCurrentWorkspaceRoute(treatmentId) {
+  const hash = globalThis.location?.hash?.slice(1) || '';
+  if (!hash) return true;
+  const [path, query] = hash.split('?');
+  return path === '/workspace' && new URLSearchParams(query || '').get('t') === String(treatmentId);
+}
 
 async function flushWorkspaceSaves() {
   try {
@@ -164,7 +175,13 @@ export async function renderWorkspace(
     expandSessionId = null,
   },
 ) {
+  if (!isCurrentWorkspaceRoute(treatmentId)) return;
   const renderRequest = ++workspaceRenderRequest;
+  const isCurrent = () => renderRequest === workspaceRenderRequest && isCurrentWorkspaceRoute(treatmentId);
+  if (container.dataset.workspaceTreatmentId !== String(treatmentId) && workspaceIndexModeListener) {
+    document.removeEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
+    workspaceIndexModeListener = null;
+  }
   if (
     !forceFullRender &&
     moduleId &&
@@ -182,7 +199,7 @@ export async function renderWorkspace(
         indexMode,
         indexType,
       });
-    if (renderRequest !== workspaceRenderRequest) return;
+    if (!isCurrent()) return;
     if (fastNavigated) {
       return;
     }
@@ -190,12 +207,12 @@ export async function renderWorkspace(
 
   const alreadyOpen = Boolean(container.querySelector('#workspace-layout'));
   if (alreadyOpen && !(await flushWorkspaceSaves())) return;
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
 
   const treatment = await getTreatment(treatmentId);
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
   const sessions = await getSessionsWithModules(treatmentId);
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
   const activeModuleId = moduleId ? String(moduleId) : null;
 
   let activeModule = null;
@@ -258,13 +275,13 @@ export async function renderWorkspace(
       indexMode,
       indexType,
     });
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
   if (didFastNavigate) {
     return;
   }
 
   if (!(await flushWorkspaceSaves())) return;
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
 
   const prevModuleId = container.dataset.workspaceModuleId;
   const prevScrollRoot = container.querySelector('#workspace-center-scroll');
@@ -436,7 +453,7 @@ export async function renderWorkspace(
       onDelete: (deletedId) => container._workspaceData.onDelete(deletedId),
     });
   }
-  if (renderRequest !== workspaceRenderRequest) return;
+  if (!isCurrent()) return;
   if (keepNotes) restoreNotesScroll(container, savedNotesScroll);
 
   if (
@@ -587,16 +604,6 @@ export async function renderWorkspace(
       const filename = await exportTreatmentWord(treatmentId);
       toast(`${filename} — documento editable guardado en el Escritorio`);
     },
-    onExportOnline: async () => {
-      const { url } = await createTreatmentReportLink(treatmentId);
-      if (navigator.share) await navigator.share({ title: 'Informe del tratamiento', url });
-      else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        toast('Enlace privado del informe copiado. Vence en 30 días.');
-      } else {
-        window.prompt('Copia el enlace privado del informe (vence en 30 días):', url);
-      }
-    },
     onExportCasePresentation: async () => {
       const filename = await exportCasePresentationPdf(treatmentId);
       toast(`${filename} — guardado en el Escritorio, anonimizado y listo para supervisión`);
@@ -621,6 +628,10 @@ export async function renderWorkspace(
       treatmentId,
       toolsOpts,
     });
+    if (!isCurrent()) {
+      estudioApi?.unmount?.();
+      return;
+    }
     container._unmountEstudio = () => estudioApi?.unmount?.();
     container._flushEstudio = () => estudioApi?.flush?.();
   }
@@ -656,6 +667,7 @@ export async function renderWorkspace(
       ...toolsOpts,
       initialNotesScroll: savedNotesScroll,
     });
+    if (!isCurrent()) return;
     container._notesApi = notesApi;
     if (savedNotesTab && savedNotesTab !== 'notas') {
       const tabBtn = container.querySelector(`.space-tab2[data-tab="${savedNotesTab}"]`);
@@ -691,7 +703,7 @@ export async function renderWorkspace(
     document.removeEventListener('telar:workspace-index-mode', workspaceIndexModeListener);
   }
   workspaceIndexModeListener = () => {
-    if (!container.isConnected) return;
+    if (!container.isConnected || !isCurrentWorkspaceRoute(treatmentId)) return;
     renderWorkspace(container, {
       treatmentId,
       sessionId: activeSessionId,

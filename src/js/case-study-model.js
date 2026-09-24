@@ -120,7 +120,10 @@ function normalizeStatus(axis, status) {
 }
 
 export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
-  const axis = normalizeAxis(raw.axis || fallbackAxis);
+  const title = String(raw.title || raw.name || '').trim();
+  const axis = title.toLocaleLowerCase() === 'suicidalidad'
+    ? 'problem'
+    : normalizeAxis(raw.axis || fallbackAxis);
   const kind =
     raw.kind === SUPPORT_NETWORK_KIND || isSupportNetworkTitle(raw.title || raw.name)
       ? SUPPORT_NETWORK_KIND
@@ -230,6 +233,7 @@ export function normalizeCaseStudyData(data = {}, profileSeeds = {}, legacy = {}
     ...(profileSeeds.resource || []),
     ...(profileSeeds.defense || []),
     ...(profileSeeds.risk || []),
+    ...(profileSeeds.problem || []),
   ];
 
   const supportPeople = (
@@ -286,13 +290,17 @@ export function emptyCaseStudyElement(axis = 'problem', title = '') {
 }
 
 export function profileSeedsFromChecks(checksByCategory = {}) {
-  const seeds = { resource: [], defense: [], risk: [] };
+  const seeds = { resource: [], defense: [], risk: [], problem: [] };
   for (const [category, axis] of Object.entries(PROFILE_AXIS_MAP)) {
     const rows = checksByCategory[category] || [];
     seeds[axis] = rows
       .filter((row) => Number(row.checked) === 1)
+      .filter((row) => !(axis === 'risk' && String(row.label || '').trim().toLocaleLowerCase() === 'suicidalidad'))
       .map((row) => emptyCaseStudyElement(axis, row.label));
   }
+  seeds.problem = (checksByCategory.riesgos || [])
+    .filter((row) => Number(row.checked) === 1 && String(row.label || '').trim().toLocaleLowerCase() === 'suicidalidad')
+    .map((row) => emptyCaseStudyElement('problem', row.label));
   return seeds;
 }
 

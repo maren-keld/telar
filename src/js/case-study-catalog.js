@@ -160,7 +160,7 @@ export function libraryItemsForAxis(axis) {
       description: SPACE_CHECK_DESCRIPTIONS.defensas[title] || '',
     }));
   } else if (axis === 'risk') {
-    base = titlesFromDescriptions('riesgos').map((title) => ({
+    base = titlesFromDescriptions('riesgos').filter((title) => title.toLocaleLowerCase() !== 'suicidalidad').map((title) => ({
       title,
       description: SPACE_CHECK_DESCRIPTIONS.riesgos[title] || '',
     }));
@@ -170,7 +170,7 @@ export function libraryItemsForAxis(axis) {
   const seen = new Set(base.map((item) => item.title.toLowerCase()));
   const customs = customLibraryItemsForAxis(axis).filter((item) => {
     const key = item.title.toLowerCase();
-    if (seen.has(key) || isSupportNetworkTitle(item.title)) return false;
+    if (seen.has(key) || isSupportNetworkTitle(item.title) || (axis === 'risk' && key === 'suicidalidad')) return false;
     seen.add(key);
     return true;
   });
@@ -232,8 +232,8 @@ const MODULE_ESTUDIO_LINKS = {
   tcc_registro_pensamientos: { axis: 'problem', element: 'Pensamientos recurrentes' },
   tcc_abc: { axis: 'problem', element: 'Pensamientos recurrentes' },
   tcc_exposicion: { axis: 'problem', element: 'Fobia específica' },
-  tcc_plan_seguridad: { axis: 'risk', element: 'Suicidalidad' },
-  cssrs: { axis: 'risk', element: 'Suicidalidad' },
+  tcc_plan_seguridad: { axis: 'problem', element: 'Suicidalidad' },
+  cssrs: { axis: 'problem', element: 'Suicidalidad' },
   tcc_estres: { axis: 'problem', element: 'Estrés alto' },
   dbt_diary_card: { axis: 'problem', element: 'Estrés alto' },
   dbt_camino_del_medio: { axis: 'problem', element: 'Dificultades relacionales' },

@@ -71,19 +71,18 @@ function band(total, answers) {
 }
 
 function scorePillHtml(total, { label, cls }) {
+  const interpretation = interpretationHtml(total, label);
   return `
     <div class="psych-score-pill rsb-score-pill ${cls}" id="rsb-pill">
       <span class="psych-score-pill__label">Puntuación total</span>
       <strong id="rsb-score">${total === null ? '—' : total}</strong>
       <span id="rsb-label">${escapeHtml(label)}</span>
     </div>
-    <div class="rsb-interpretation" id="rsb-interp">
-      ${interpretationHtml(total, label)}
-    </div>`;
+    <div class="rsb-interpretation" id="rsb-interp" ${interpretation ? '' : 'hidden'}>${interpretation}</div>`;
 }
 
 function interpretationHtml(total, label) {
-  if (total === null) return '';
+  if (total === null || label === 'Parcial') return '';
   const map = {
     'Autoestima baja':
       'Presencia de malestar significativo con la autovaloración. Se recomienda explorar áreas de autocrítica, historia de logros y vínculos protectores.',
@@ -92,7 +91,7 @@ function interpretationHtml(total, label) {
     'Autoestima alta':
       'Autovaloración positiva y estable. Constituye un factor protector relevante para el proceso terapéutico.',
   };
-  return `<p class="rsb-interp-text">${escapeHtml(map[label] || '')}</p>`;
+  return map[label] ? `<p class="rsb-interp-text">${escapeHtml(map[label])}</p>` : '';
 }
 
 function itemRowHtml(idx, item, selected) {
@@ -195,7 +194,11 @@ export async function renderRosenberg(host, moduleRow) {
     if (scoreEl) scoreEl.textContent = t === null ? '—' : String(t);
     if (labelEl) labelEl.textContent = bNext.label;
     if (pill) pill.className = `psych-score-pill rsb-score-pill ${bNext.cls}`;
-    if (interpEl) interpEl.innerHTML = interpretationHtml(t, bNext.label);
+    if (interpEl) {
+      const interpretation = interpretationHtml(t, bNext.label);
+      interpEl.innerHTML = interpretation;
+      interpEl.hidden = !interpretation;
+    }
   };
 
   form.addEventListener('change', recomputeLive);

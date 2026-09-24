@@ -2637,6 +2637,10 @@ body.is-dragging-module .session-block__title {
   grid-column: 1;
 }
 
+.cssrs-row__question {
+  min-width: 0;
+}
+
 .cssrs-row__hint {
   grid-column: 1 / -1;
   margin: 0;
@@ -2665,9 +2669,7 @@ body.is-dragging-module .session-block__title {
 
 .cssrs-high-tag {
   display: inline-block;
-  flex: 0 0 auto;
-  align-self: center;
-  margin-left: 8px;
+  margin-left: 4px;
   padding: 1px 6px;
   border-radius: 999px;
   background: #c0392b;
@@ -2681,8 +2683,8 @@ body.is-dragging-module .session-block__title {
 
 .cssrs-module .cssrs-yn {
   display: grid;
-  grid-template-columns: repeat(2, 28px);
-  gap: 8px;
+  grid-template-columns: repeat(2, 32px);
+  gap: 12px;
   justify-content: end;
 }
 
@@ -2705,9 +2707,9 @@ body.is-dragging-module .session-block__title {
 .cssrs-dual {
   grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(2, 64px);
+  grid-template-columns: repeat(2, 76px);
   gap: 20px;
-  width: 148px;
+  width: 172px;
   justify-content: end;
   align-items: start;
 }
@@ -2733,9 +2735,9 @@ body.is-dragging-module .session-block__title {
 
 .cssrs-head__opts {
   display: grid;
-  grid-template-columns: repeat(2, 28px);
-  gap: 8px;
-  width: 64px;
+  grid-template-columns: repeat(2, 32px);
+  gap: 12px;
+  width: 76px;
   text-align: center;
   font-size: 0.72rem;
   font-weight: 600;
@@ -2756,9 +2758,9 @@ body.is-dragging-module .session-block__title {
 
 .cssrs-head__dual {
   display: grid;
-  grid-template-columns: repeat(2, 64px);
+  grid-template-columns: repeat(2, 76px);
   gap: 20px;
-  width: 148px;
+  width: 172px;
   min-width: 0;
   font-size: 0.72rem;
   font-weight: 600;
@@ -2767,8 +2769,8 @@ body.is-dragging-module .session-block__title {
 
 .cssrs-head__dual-col {
   display: grid;
-  grid-template-columns: 28px 28px;
-  gap: 8px;
+  grid-template-columns: 32px 32px;
+  gap: 12px;
   justify-items: center;
 }
 
@@ -4786,6 +4788,10 @@ body.is-reordering {
   flex: 1;
   min-width: 200px;
   align-self: center;
+}
+
+.rsb-interpretation:empty {
+  display: none;
 }
 
 .rsb-interp-text {
