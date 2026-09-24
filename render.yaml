@@ -11,7 +11,7 @@ services:
     buildCommand: pip install -r requirements.txt && ./fetch-geoip.sh
     startCommand: gunicorn app:APP --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     plan: free
-    healthCheckPath: /api/health
+    healthCheckPath: /api/live
     envVars:
       - key: MP_ACCESS_TOKEN
         sync: false

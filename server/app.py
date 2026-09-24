@@ -784,6 +784,12 @@ def health():
     })
 
 
+@APP.get("/api/live")
+def live():
+    """Liveness probe: confirms the API process responds without waking Neon."""
+    return jsonify({"ok": True}), 200
+
+
 @APP.errorhandler(DatabaseUnavailable)
 def database_unavailable(_error):
     """Evita 500 cuando Neon o cualquier Postgres rechaza conexiones."""
