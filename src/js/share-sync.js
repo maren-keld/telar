@@ -23,9 +23,9 @@ export { shareAnsweredAt };
 /** Dominio que sirve la página del paciente (landing/r). */
 export const SHARE_PUBLIC_BASE = 'https://telarapp.cl';
 
-// Mantiene más de 5 min entre consultas para que Neon Free pueda suspender
-// el cómputo inactivo y no agote la cuota mensual mientras espera respuestas.
-const POLL_MS = 6 * 60_000;
+// Revisa enlaces pendientes cada cuatro minutos mientras la app está visible;
+// en segundo plano las consultas se pausan y se reanudan al volver a la app.
+const POLL_MS = 4 * 60_000;
 
 /** Solo enlaces vivos: `share_answered_at` no debe disparar el poll. */
 export const PENDING_SHARE_SQL = `json_extract(sm.data, '$.share.token') IS NOT NULL`;
@@ -470,6 +470,7 @@ export function startShareAutoSync(onApplied) {
 
   const tick = async () => {
     if (stopped || running || isShareSyncSuspended()) return;
+    if (globalThis.document?.visibilityState === 'hidden') return;
     running = true;
     try {
       const applied = await syncPendingShares();

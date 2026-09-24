@@ -12,8 +12,8 @@ import { loadProfile } from './profile.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 
 const DEVICE_ID_KEY = 'telar.deviceId';
-/** El panel considera «en línea» un dispositivo visto hace menos de 3 min. */
-const HEARTBEAT_MS = 60_000;
+/** El panel considera «en línea» un dispositivo visto hace menos de 7 min. */
+const HEARTBEAT_MS = 5 * 60_000;
 
 let heartbeatTimer = null;
 let started = false;
