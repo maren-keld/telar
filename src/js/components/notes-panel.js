@@ -40,6 +40,7 @@ import { ICON_COPY, ICON_PALETTE } from '../icons.js';
 import { mountThinkingOrb } from '../thinking-orb.js';
 import { ditherOrbMarkup, mountDitherOrb } from '../dither-orb.js';
 import { visibleNotesWindow } from '../notes-window.js';
+import { getLocale, t } from '../i18n.js';
 
 const AI_SEND_ARROW = `<svg class="ai-dock__arrow" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
   <path d="M8 12.5V3.5M8 3.5 3.5 8M8 3.5 12.5 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
@@ -56,18 +57,23 @@ function notesKbd(key, title) {
   return `<kbd class="notes-kbd" title="${escapeHtml(title)}">${NOTES_MOD_KBD}${escapeHtml(key)}</kbd>`;
 }
 
-const NOTES_EMPTY_HTML = `<div class="notes-empty-state">
-  ${ditherOrbMarkup({ coreId: 'notes-empty-orb', title: 'Pregunta a la IA sobre el caso' })}
-  <p class="notes-empty">${notesKbd('N', 'Añadir una nota')} Pulsa + Nota para añadir un comentario. ${notesKbd('I', 'Consultar a la IA sobre el caso')} Consulta a la IA sobre el caso.</p>
-  <p class="notes-empty">También puedes seleccionar texto en un módulo para crear una anotación.</p>
-</div>`;
+function notesAllEmptyHtml() {
+  const en = getLocale() === 'en';
+  const addTitle = t('notes.addTitle', 'Añadir una nota');
+  const askTitle = t('notes.askTitle', 'Consultar a la IA sobre el caso');
+  return `<div class="notes-empty-state">
+    ${ditherOrbMarkup({ coreId: 'notes-empty-orb', title: t('notes.ask', 'Pregunta a la IA sobre el caso') })}
+    <p class="notes-empty">${notesKbd('N', addTitle)} ${en ? 'Press + Note to add a comment.' : 'Pulsa + Nota para añadir un comentario.'} ${notesKbd('I', askTitle)} ${t('notes.ask', 'Consulta a la IA sobre el caso')}.</p>
+    <p class="notes-empty">${en ? 'You can also select text in a module to create a highlight.' : 'También puedes seleccionar texto en un módulo para crear una anotación.'}</p>
+  </div>`;
+}
 
 const NOTES_FILTERS = [
-  { id: 'all', label: 'Todo' },
-  { id: 'answers', label: 'Respuestas' },
-  { id: 'notes', label: 'Notas' },
-  { id: 'highlights', label: 'Resaltado' },
-  { id: 'pinned', label: 'Fijado' },
+  { id: 'all', key: 'notes.filter.all', label: 'Todo' },
+  { id: 'answers', key: 'notes.filter.answers', label: 'Respuestas' },
+  { id: 'notes', key: 'notes.filter.notes', label: 'Notas' },
+  { id: 'highlights', key: 'notes.filter.highlights', label: 'Resaltado' },
+  { id: 'pinned', key: 'notes.filter.pinned', label: 'Fijado' },
 ];
 
 function notesForFilter(notes, filter) {
@@ -86,14 +92,15 @@ function notesForFilter(notes, filter) {
 }
 
 function notesEmptyHtml(filter) {
-  if (filter === 'all') return NOTES_EMPTY_HTML;
+  if (filter === 'all') return notesAllEmptyHtml();
   const labels = {
-    answers: 'respuestas de la IA',
-    notes: 'notas',
-    highlights: 'resaltados',
-    pinned: 'elementos fijados',
+    answers: getLocale() === 'en' ? 'AI answers' : 'respuestas de la IA',
+    notes: getLocale() === 'en' ? 'notes' : 'notas',
+    highlights: getLocale() === 'en' ? 'highlights' : 'resaltados',
+    pinned: getLocale() === 'en' ? 'pinned items' : 'elementos fijados',
   };
-  return `<div class="notes-empty-state"><p class="notes-empty">No hay ${labels[filter] || 'contenido'} todavía.</p></div>`;
+  const message = getLocale() === 'en' ? `No ${labels[filter] || 'content'} yet.` : `No hay ${labels[filter] || 'contenido'} todavía.`;
+  return `<div class="notes-empty-state"><p class="notes-empty">${message}</p></div>`;
 }
 
 function readPerfilOnlySelected(treatmentId) {
@@ -178,31 +185,33 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
   container.innerHTML = `
     <div class="space-tools" data-active-tab="notas" data-notes-filter="all">
-      <nav class="space-tools__tabs2" aria-label="Filtrar contenido del panel derecho">
+      <nav class="space-tools__tabs2" aria-label="${t('notes.filterAria', 'Filtrar contenido del panel derecho')}">
         ${NOTES_FILTERS.map(
-          ({ id, label }) => `<button type="button" class="space-tab2${id === 'all' ? ' active' : ''}" data-notes-filter="${id}" role="tab" aria-selected="${id === 'all' ? 'true' : 'false'}">${label}</button>`,
+          ({ id, key, label }) => `<button type="button" class="space-tab2${id === 'all' ? ' active' : ''}" data-notes-filter="${id}" role="tab" aria-selected="${id === 'all' ? 'true' : 'false'}">${t(key, label)}</button>`,
         ).join('')}
       </nav>
       <div class="space-tools__content">
         <div class="notes-scroll notes-scroll--prejump" id="notes-list"></div>
       </div>
       <div class="space-tools__fab">
-        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="Añadir nota clínica (${NOTES_MOD_KBD}N)">+ Nota</button>
+        <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="${t('notes.addTitle', 'Añadir nota clínica')} (${NOTES_MOD_KBD}N)">${t('notes.add', '+ Nota')}</button>
       </div>
-      <aside class="ai-dock" aria-label="Asistente IA">
+      <aside class="ai-dock" aria-label="${t('notes.assistant', 'Asistente IA')}">
         <div class="ai-dock__chips" id="ai-dock-chips">
-          ${AI_QUICK_PROMPTS.map(
-            (p) =>
-              `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" data-tooltip="${escapeHtml(p.hint || p.label)}" aria-label="${escapeHtml(p.label)}. ${escapeHtml(p.hint || '')}">${escapeHtml(p.label)}</button>`,
-          ).join('')}
+          ${AI_QUICK_PROMPTS.map((p) => {
+            const key = { analisis: 'analysis', programa: 'treatment' }[p.id] || p.id;
+            const label = t(`ai.quick.${key}`, p.label);
+            const hint = t(`ai.quick.${key}Hint`, p.hint || p.label);
+            return `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" data-tooltip="${escapeHtml(hint)}" aria-label="${escapeHtml(label)}. ${escapeHtml(hint)}">${escapeHtml(label)}</button>`;
+          }).join('')}
         </div>
         <div class="ai-dock__input-row">
-          <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="Pregunta a la IA sobre el caso" title="Consulta a la IA (${NOTES_MOD_KBD}I)" rows="1"></textarea>
+          <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="${t('notes.ask', 'Pregunta a la IA sobre el caso')}" title="${t('notes.askTitle', 'Consulta a la IA sobre el caso')} (${NOTES_MOD_KBD}I)" rows="1"></textarea>
           <p class="ai-dock__thinking" id="ai-dock-thinking" hidden aria-live="polite">
             <span class="ai-dock__thinking-orb" id="ai-dock-thinking-orb"></span>
-            <span class="ai-dock__thinking-label t-shimmer" id="ai-dock-thinking-label" data-text="Pensando...">Pensando...</span>
+            <span class="ai-dock__thinking-label t-shimmer" id="ai-dock-thinking-label" data-text="${t('notes.thinking', 'Pensando...')}">${t('notes.thinking', 'Pensando...')}</span>
           </p>
-          <button type="button" class="ai-dock__send" id="ai-dock-send" title="Enviar" aria-label="Enviar">
+          <button type="button" class="ai-dock__send" id="ai-dock-send" title="${t('notes.send', 'Enviar')}" aria-label="${t('notes.send', 'Enviar')}">
             <span class="ai-dock__arrow-wrap">${AI_SEND_ARROW}</span>
             <span class="ai-dock__stop-wrap" hidden aria-hidden="true">
               <span class="ai-dock__stop"></span>
@@ -317,7 +326,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       const { notes, hiddenCount } = visibleNotesWindow(filtered, { showAll: showAllNotes });
       const older =
         hiddenCount > 0
-          ? `<button type="button" class="btn btn-ghost btn-block notes-older" id="notes-older">Ver ${hiddenCount} anteriores</button>`
+          ? `<button type="button" class="btn btn-ghost btn-block notes-older" id="notes-older">${t('notes.older', 'Ver {count} anteriores').replace('{count}', hiddenCount)}</button>`
           : '';
       listEl.innerHTML = `${older}${notes.map((n) => kindleNoteHtml(n, defaultInitials)).join('')}`;
       bindNoteCards(listEl, refreshList, bindOpts);
@@ -478,6 +487,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
     const thinkingCopy = (seconds, tick) => {
       const dots = '.'.repeat((tick % 3) + 1);
+      if (getLocale() === 'en') {
+        if (seconds < 1) return `Thinking${dots}`;
+        return seconds === 1 ? `Thinking for 1 second${dots}` : `Thinking for ${seconds} seconds${dots}`;
+      }
       if (seconds < 1) return `Pensando${dots}`;
       return seconds === 1 ? `Pensando por 1 segundo${dots}` : `Pensando por ${seconds} segundos${dots}`;
     };
@@ -488,7 +501,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       if (arrow) arrow.hidden = mode === 'stop';
       if (stop) stop.hidden = mode !== 'stop';
       aiSend.classList.toggle('ai-dock__send--stop', mode === 'stop');
-      const label = mode === 'stop' ? 'Detener' : 'Enviar';
+      const label = t(mode === 'stop' ? 'notes.stop' : 'notes.send', mode === 'stop' ? 'Detener' : 'Enviar');
       aiSend.title = label;
       aiSend.setAttribute('aria-label', label);
       aiSend.disabled = mode === 'send' && aiInput.value.trim() === '';
@@ -559,7 +572,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         `<article class="kindle-note kindle-note--teal kindle-note--ia kindle-note--pending" data-pending-ai="1">
           <div class="kindle-note__body">
             <p class="kindle-note__source kindle-note__source--question">${escapeHtml(question)}</p>
-            <p class="kindle-note__ai-answer">Pensando…</p>
+          <p class="kindle-note__ai-answer">${t('notes.thinking', 'Pensando...')}</p>
           </div>
           <div class="kindle-note__rail">
             <span class="kindle-note__rail-btn kindle-note__author" title="Respuesta IA">IA</span>
@@ -612,9 +625,10 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
           request,
         });
         if (request.aborted) throw new Error('cancelado');
-        if (!text.trim()) {
+        const visibleResponse = parseAiActions(normalizeAiDisplayText(text));
+        if (!visibleResponse.text.trim() && !visibleResponse.actions.length) {
           throw new Error(
-            'La IA devolvió una respuesta vacía. Con modelos locales pequeños suele ayudar reformular la pregunta o usar un modelo mayor.',
+            t('notes.noVisibleAnswer', 'La IA devolvió una respuesta vacía. Inténtalo de nuevo; si vuelve a pasar, revisa Ajustes → Asistente IA.'),
           );
         }
         const noteId = await addClinicalNote(treatmentId, {
@@ -1102,14 +1116,14 @@ function kindleNoteHtml(note, fallbackInitials) {
   const bodyContent = isAi
     ? `
         ${source ? `<p class="kindle-note__source kindle-note__source--question">${escapeHtml(source)}</p>` : ''}
-        <div class="kindle-note__ai-answer kindle-note__ai-answer--clamp">${renderMarkdown(ai.text)}</div>
-        <button type="button" class="kindle-note__ai-more" hidden>Ver más</button>
+        <div class="kindle-note__ai-answer kindle-note__ai-answer--clamp">${renderMarkdown(ai.text || (!ai.actions.length ? t('notes.noVisibleAnswer', 'No llegó una respuesta visible.') : ''))}</div>
+        <button type="button" class="kindle-note__ai-more" hidden>${t('notes.more', 'Ver más')}</button>
         ${aiActionsHtml(ai.actions, note.id)}`
     : `
         ${source ? `<p class="kindle-note__source">${escapeHtml(source)}</p>` : ''}
         ${showQuote ? `<blockquote class="kindle-note__quote"><span class="kindle-note__quote-mark">"</span>${escapeHtml(quote)}</blockquote>` : ''}
         ${showQuote ? '<hr class="kindle-note__rule" />' : ''}
-        <textarea class="kindle-note__comment" data-note-id="${note.id}" placeholder="${showQuote ? 'Tu comentario sobre la cita…' : 'Escribe un comentario…'}">${escapeHtml(note.content || '')}</textarea>`;
+        <textarea class="kindle-note__comment" data-note-id="${note.id}" placeholder="${showQuote ? t('notes.commentQuote', 'Tu comentario sobre la cita…') : t('notes.comment', 'Escribe un comentario…')}">${escapeHtml(note.content || '')}</textarea>`;
 
   return `
     <article class="kindle-note kindle-note--${escapeHtml(color)}${starred ? ' kindle-note--starred' : ''}${isAi ? ' kindle-note--ia' : ''}" data-id="${note.id}" data-color="${escapeHtml(color)}" data-kind="${kind}" data-content-encoded="${encodeURIComponent(note.content || '')}">
@@ -1117,12 +1131,12 @@ function kindleNoteHtml(note, fallbackInitials) {
         ${bodyContent}
       </div>
       <div class="kindle-note__rail">
-        <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? 'Respuesta IA' : 'Autor/a de la nota'}">${escapeHtml(initials)}</span>
-        ${isAi ? `<button type="button" class="kindle-note__rail-btn kindle-note__copy" title="Copiar respuesta" aria-label="Copiar respuesta">${ICON_COPY}</button>` : ''}
-        <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="Destacar nota" aria-pressed="${starred}">★</button>
-        <button type="button" class="kindle-note__rail-btn note-palette" title="Cambiar color de la nota" aria-haspopup="true">${ICON_PALETTE}</button>
-        <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="Color de la nota">${paletteDots}</div>
-        <button type="button" class="kindle-note__rail-btn note-delete" title="Eliminar nota">×</button>
+        <span class="kindle-note__rail-btn kindle-note__author" title="${isAi ? t('notes.aiReply', 'Respuesta IA') : t('notes.noteAuthor', 'Autor/a de la nota')}">${escapeHtml(initials)}</span>
+        ${isAi ? `<button type="button" class="kindle-note__rail-btn kindle-note__copy" title="${t('notes.copy', 'Copiar respuesta')}" aria-label="${t('notes.copy', 'Copiar respuesta')}">${ICON_COPY}</button>` : ''}
+        <button type="button" class="kindle-note__rail-btn note-star${starred ? ' active' : ''}" title="${t('notes.star', 'Destacar nota')}" aria-pressed="${starred}">★</button>
+        <button type="button" class="kindle-note__rail-btn note-palette" title="${t('notes.color', 'Cambiar color de la nota')}" aria-haspopup="true">${ICON_PALETTE}</button>
+        <div class="kindle-note__palette-pop" hidden role="radiogroup" aria-label="${t('notes.color', 'Color de la nota')}">${paletteDots}</div>
+        <button type="button" class="kindle-note__rail-btn note-delete" title="${t('notes.delete', 'Eliminar nota')}">×</button>
       </div>
     </article>`;
 }

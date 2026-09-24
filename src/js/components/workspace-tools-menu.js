@@ -2,6 +2,7 @@ import { loadProfile, saveProfile } from '../profile.js';
 import { SETTINGS_ICONS } from '../icons.js';
 import { toast } from '../utils.js';
 import { setToggle } from '../transitions.js';
+import { t } from '../i18n.js';
 import {
   dispatchWorkspaceIndexMode,
   getWorkspaceIndexMode,
@@ -37,23 +38,23 @@ export function toolsItemsHtml({ compact = false } = {}) {
         <button type="button" class="workspace-tools-tab__item" data-action="export-pdf">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
-            <span>Exportar programa PDF</span>
-            ${detail('Resumen del tratamiento para el paciente o supervisión')}
+            <span>${t('tools.pdf', 'Exportar programa PDF')}</span>
+            ${detail(t('tools.pdfHint', 'Resumen del tratamiento para el paciente o supervisión'))}
           </span>
         </button>
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-word">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
-          <span class="workspace-tools-tab__text"><span>Exportar programa Word (.docx)</span>${detail('Documento editable del programa de tratamiento')}</span>
+          <span class="workspace-tools-tab__text"><span>${t('tools.word', 'Exportar programa Word (.docx)')}</span>${detail(t('tools.wordHint', 'Documento editable del programa de tratamiento'))}</span>
         </button>
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-case">
           <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
           <span class="workspace-tools-tab__text">
-            <span>Presentación de caso</span>
-            ${detail('PDF anonimizado para supervisión — sin nombre ni RUT')}
+            <span>${t('tools.case', 'Presentación de caso')}</span>
+            ${detail(t('tools.caseHint', 'PDF anonimizado para supervisión — sin nombre ni RUT'))}
           </span>
         </button>
       </li>
@@ -100,27 +101,27 @@ export function mountWorkspaceToolsTab(host, opts) {
 
   host.innerHTML = `
     <div class="workspace-tools-tab">
-      <p class="tools-section-label">Vista</p>
+      <p class="tools-section-label">${t('tools.view', 'Vista')}</p>
       <div class="tools-mode-row">
-        <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">Foco</button>
-        <button type="button" class="tools-mode-btn${currentMode === 'full' ? ' tools-mode-btn--active' : ''}" data-mode="full">Completo</button>
+        <button type="button" class="tools-mode-btn${currentMode === 'focus' ? ' tools-mode-btn--active' : ''}" data-mode="focus">${t('tools.focus', 'Foco')}</button>
+        <button type="button" class="tools-mode-btn${currentMode === 'full' ? ' tools-mode-btn--active' : ''}" data-mode="full">${t('tools.full', 'Completo')}</button>
       </div>
 
       ${
         chrome.showIndex
           ? `<div class="tools-section-divider"></div>
-      <p class="tools-section-label">Índice</p>
+      <p class="tools-section-label">${t('tools.index', 'Índice')}</p>
       <div class="tools-mode-row">
-        <button type="button" class="tools-mode-btn${chrome.categoryActive ? ' tools-mode-btn--active' : ''}" data-index-mode="category">Categoría</button>
-        <button type="button" class="tools-mode-btn${chrome.chronoActive ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono">Sesiones</button>
+        <button type="button" class="tools-mode-btn${chrome.categoryActive ? ' tools-mode-btn--active' : ''}" data-index-mode="category">${t('tools.category', 'Categoría')}</button>
+        <button type="button" class="tools-mode-btn${chrome.chronoActive ? ' tools-mode-btn--active' : ''}" data-index-mode="chrono">${t('tools.sessions', 'Sesiones')}</button>
       </div>`
           : ''
       }
 
       <div class="tools-section-divider"></div>
       <div class="tools-toggle-row" id="tools-dark-toggle">
-        <span class="tools-toggle-label">Modo oscuro</span>
-        <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="Modo oscuro">
+        <span class="tools-toggle-label">${t('tools.dark', 'Modo oscuro')}</span>
+        <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="${t('tools.dark', 'Modo oscuro')}">
           <span class="t-toggle-thumb"></span>
         </button>
       </div>
@@ -161,14 +162,14 @@ export function openWorkspaceToolsMenu(opts) {
   const root = document.getElementById('modal-root');
   root.innerHTML = `
     <div class="modal-backdrop workspace-tools-backdrop" data-close>
-      <div class="workspace-tools-menu" role="menu" aria-label="Herramientas del tratamiento">
+      <div class="workspace-tools-menu" role="menu" aria-label="${t('tools.menu', 'Herramientas')} del tratamiento">
         <header class="workspace-tools-menu__head">
-          <h2 class="workspace-tools-menu__title">Herramientas</h2>
-          <button type="button" class="modal-close" data-dismiss aria-label="Cerrar">×</button>
+          <h2 class="workspace-tools-menu__title">${t('tools.menu', 'Herramientas')}</h2>
+          <button type="button" class="modal-close" data-dismiss aria-label="${t('tools.close', 'Cerrar')}">×</button>
         </header>
         <ul class="workspace-tools-menu__list">
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>Exportar programa PDF</span><small>Resumen del tratamiento</small></span></button></li>
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>Exportar programa Word (.docx)</span><small>Documento editable del tratamiento</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>${t('tools.pdf', 'Exportar programa PDF')}</span><small>${t('tools.pdfHint', 'Resumen del tratamiento')}</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>${t('tools.word', 'Exportar programa Word (.docx)')}</span><small>${t('tools.wordHint', 'Documento editable del programa de tratamiento')}</small></span></button></li>
         </ul>
       </div>
     </div>`;

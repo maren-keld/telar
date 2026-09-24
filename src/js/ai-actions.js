@@ -564,7 +564,9 @@ export function parseAiActions(rawContent = '') {
 
   text = text
     .replace(/```[ \t]*(?:json[ \t]+)?telar-(?:plan|module)[\s\S]*?(?:```|$)/gi, '')
-    .replace(/```[\s\S]*$/g, '')
+    // Preserve ordinary fenced text (e.g. an email wrapped in ```text); only
+    // Telar action blocks above are hidden from the readable answer.
+    .replace(/^```[^\n]*\n?|```$/gm, '')
     .replace(/^\s*Programa ajustado\s*\(JSON\)\s*:?\s*$/gim, '')
     .replace(/`{1,3}/g, '')
     .replace(/\n{3,}/g, '\n\n')
