@@ -1,6 +1,6 @@
 /**
  * Mistral de Telar: la clave no va en el instalador.
- * La primera vez se pide al servidor y se guarda solo en este computador.
+ * La primera vez se pide al servidor (con prueba de correo) y se guarda solo aquí.
  */
 import { loadProfile, saveProfile } from './profile.js';
 import { getSubscriptionApiBase } from './subscription.js';
@@ -44,6 +44,13 @@ function migrateLegacyProfileKey(profile = loadProfile()) {
   return leftover;
 }
 
+function askEmailCode(email) {
+  const raw = window.prompt(
+    `Te enviamos un código a ${email}.\nEscríbelo aquí para activar la IA de Telar:`,
+  );
+  return String(raw || '').trim();
+}
+
 async function requestProvisionedKey(profile = loadProfile()) {
   const email = String(profile.email || '').trim();
   const deviceId = getTelarDeviceId();
@@ -57,9 +64,24 @@ async function requestProvisionedKey(profile = loadProfile()) {
     throw new Error('La IA en la nube se activa desde la app de escritorio.');
   }
   const apiBase = getSubscriptionApiBase();
-  const data = await getInvoke()('mistral_provision', {
+  const invoke = getInvoke();
+
+  const challenge = await invoke('ai_email_challenge', {
     email,
     deviceId,
+    product: 'mistral',
+    apiBase,
+  });
+  const debugCode = String(challenge?.debug_code || '').trim();
+  const emailCode = debugCode || askEmailCode(email);
+  if (!emailCode) {
+    throw new Error('Necesitamos el código del correo para activar la IA.');
+  }
+
+  const data = await invoke('mistral_provision', {
+    email,
+    deviceId,
+    emailCode,
     apiBase,
   });
   const key = String(data?.api_key || '').trim();

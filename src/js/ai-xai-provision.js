@@ -1,6 +1,6 @@
 /**
  * Grok (xAI) de Telar para experiencias interactivas.
- * La clave no va en el instalador: el servidor la entrega y queda en este computador.
+ * La clave no va en el instalador: el servidor la entrega tras probar el correo.
  */
 import { normalizeXaiApiKey } from './ai-config.js';
 import { loadProfile } from './profile.js';
@@ -35,6 +35,13 @@ async function storeKey(key) {
   await getInvoke()('ai_xai_key_store', { key: normalized });
 }
 
+function askEmailCode(email) {
+  const raw = window.prompt(
+    `Te enviamos un código a ${email}.\nEscríbelo aquí para activar Grok:`,
+  );
+  return String(raw || '').trim();
+}
+
 async function requestProvisionedKey(profile = loadProfile()) {
   const email = String(profile.email || '').trim();
   const deviceId = getTelarDeviceId();
@@ -48,9 +55,24 @@ async function requestProvisionedKey(profile = loadProfile()) {
     throw new Error('Grok se activa desde la app de escritorio.');
   }
   const apiBase = getSubscriptionApiBase();
-  const data = await getInvoke()('xai_provision', {
+  const invoke = getInvoke();
+
+  const challenge = await invoke('ai_email_challenge', {
     email,
     deviceId,
+    product: 'xai',
+    apiBase,
+  });
+  const debugCode = String(challenge?.debug_code || '').trim();
+  const emailCode = debugCode || askEmailCode(email);
+  if (!emailCode) {
+    throw new Error('Necesitamos el código del correo para activar Grok.');
+  }
+
+  const data = await invoke('xai_provision', {
+    email,
+    deviceId,
+    emailCode,
     apiBase,
   });
   const key = normalizeXaiApiKey(data?.api_key);

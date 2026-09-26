@@ -1,17 +1,23 @@
-"""Entrega de clave Mistral por instalación.
+"""Entrega de clave Mistral/xAI por instalación (SEC-001).
 
 La clave maestra vive solo en el servidor (env). El instalador de Telar no la
 lleva. Al activar la IA, la app pide una clave y la guarda en el Mac.
 
-Si hay Admin API de Mistral, se crea una clave distinta por correo (se puede
-revocar). Si no, se entrega la clave de inferencia compartida, con tope de
-pedidos por correo y por IP. El caso clínico no pasa por este endpoint.
+Reglas de seguridad:
+- Hace falta suscripción Pro activa (o bypass de dev) para el email.
+- Hace falta prueba de control del correo: código de un solo uso enviado al
+  email (challenge → provision con email_code).
+- El modo shared (devolver MISTRAL_API_KEY / XAI_API_KEY) está OFF salvo
+  AI_ALLOW_SHARED_KEYS=1 (solo local/dev).
+- El grant queda atado al device_id con bind CAS atómico (sin claim libre
+  sobre device_hash vacío).
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import secrets
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -23,6 +29,10 @@ MAX_ISSUES_PER_IP_DAY = 30
 ADMIN_KEY_DAYS = 90
 DEVICE_ID_MIN = 8
 DEVICE_ID_MAX = 64
+CHALLENGE_TTL_SECONDS = 600
+MAX_CHALLENGE_ATTEMPTS = 5
+MAX_CHALLENGES_PER_EMAIL_DAY = 10
+MAX_CHALLENGES_PER_IP_DAY = 30
 
 
 def _api():
@@ -39,9 +49,14 @@ def ensure_schema(conn, autoincrement: str) -> None:
             source TEXT NOT NULL,
             created_at TEXT NOT NULL,
             last_issued_at TEXT NOT NULL,
-            issue_count INTEGER NOT NULL DEFAULT 0
+            issue_count INTEGER NOT NULL DEFAULT 0,
+            device_hash TEXT
         )"""
     )
+    try:
+        conn.execute("ALTER TABLE ai_mistral_grants ADD COLUMN device_hash TEXT")
+    except Exception:
+        pass
     conn.execute(
         """CREATE TABLE IF NOT EXISTS ai_mistral_ip_hits (
             ip_hash TEXT NOT NULL,
@@ -50,16 +65,55 @@ def ensure_schema(conn, autoincrement: str) -> None:
             PRIMARY KEY (ip_hash, day)
         )"""
     )
-    # autoincrement queda por si más adelante hay filas con id; el esquema actual no lo usa.
-    _ = autoincrement
+    conn.execute(
+        f"""CREATE TABLE IF NOT EXISTS ai_email_challenges (
+            id {autoincrement},
+            email_hash TEXT NOT NULL,
+            device_hash TEXT NOT NULL,
+            product TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )"""
+    )
+    conn.execute(
+        """CREATE INDEX IF NOT EXISTS idx_ai_email_challenges_lookup
+           ON ai_email_challenges (email_hash, device_hash, product)"""
+    )
 
 
 def provision_configured() -> bool:
-    return bool(_inference_key() or _admin_key())
+    if _admin_key() and _admin_workspace() and _admin_user():
+        return True
+    return bool(_inference_key() and _shared_keys_allowed())
 
 
 def xai_provision_configured() -> bool:
-    return bool(_xai_inference_key())
+    return bool(_xai_inference_key() and _shared_keys_allowed())
+
+
+def _shared_keys_allowed() -> bool:
+    """Shared/env keys are opt-in only (local/dev). Never default-on in prod."""
+    return (os.environ.get("AI_ALLOW_SHARED_KEYS") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _challenge_debug_enabled() -> bool:
+    """Expose debug_code only in tests/dev — never as a prod default."""
+    if (os.environ.get("AI_EMAIL_CHALLENGE_DEBUG") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        return True
+    api = _api()
+    return bool(getattr(api, "APP", None) and api.APP.config.get("TESTING"))
 
 
 def _inference_key() -> str:
@@ -90,8 +144,20 @@ def _email_hash(email: str) -> str:
     return hashlib.sha256(f"{_salt()}:mistral:{email}".encode()).hexdigest()
 
 
+def _xai_email_hash(email: str) -> str:
+    return hashlib.sha256(f"{_salt()}:xai:{email}".encode()).hexdigest()
+
+
 def _ip_hash(ip: str) -> str:
     return hashlib.sha256(f"{_salt()}:ip:{ip}".encode()).hexdigest()
+
+
+def _device_hash(device_id: str) -> str:
+    return hashlib.sha256(f"{_salt()}:device:{device_id}".encode()).hexdigest()
+
+
+def _code_hash(code: str) -> str:
+    return hashlib.sha256(f"{_salt()}:email-code:{code}".encode()).hexdigest()
 
 
 def _parse_iso(raw: str) -> datetime | None:
@@ -117,21 +183,237 @@ def _email_limited(row) -> bool:
     return int(row["issue_count"] or 0) >= MAX_ISSUES_PER_EMAIL_DAY
 
 
-def _bump_email(conn, email_hash: str, key_id: str | None, source: str) -> None:
+def _require_active_subscription(conn, email: str):
+    """Provision is a Pro entitlement: require an active subscription row."""
+    api = _api()
+    email_n = api.normalize_payer_email(email)
+    if not email_n:
+        return jsonify({"error": "Necesitamos el correo del profesional para activar la IA."}), 400
+    if api.dev_bypass_allows(email_n):
+        return None
+    row = conn.execute(
+        "SELECT status FROM subscriptions WHERE email = ? ORDER BY id DESC LIMIT 1",
+        (email_n,),
+    ).fetchone()
+    status = ""
+    if row:
+        status = api.clean_field(row["status"] if hasattr(row, "keys") else row[0], 64).lower()
+    if status not in api.ACTIVE_STATUSES:
+        return jsonify({
+            "error": "La IA en la nube requiere una suscripción Pro activa.",
+        }), 403
+    return None
+
+
+def _send_challenge_email(to_email: str, code: str, product: str) -> bool:
+    key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not key:
+        return False
+    label = "Mistral" if product == "mistral" else "Grok"
+    subject = f"Telar: código para activar {label}"
+    text = (
+        f"Tu código para activar {label} en Telar es: {code}\n\n"
+        f"Válido por {CHALLENGE_TTL_SECONDS // 60} minutos. "
+        "Si no pediste esto, ignora el mensaje."
+    )
+    payload = json.dumps(
+        {
+            "from": os.environ.get("SHARE_NOTIFY_FROM", "Telar <noreply@telarapp.cl>"),
+            "to": [to_email],
+            "subject": subject,
+            "text": text,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            return 200 <= int(resp.status) < 300
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
+def _challenge_counts_today(conn, email_hash: str, ip_hash: str) -> tuple[int, int]:
+    api = _api()
+    day_start = f"{api.today_utc()}T00:00:00"
+    email_row = conn.execute(
+        """SELECT COUNT(*) AS c FROM ai_email_challenges
+           WHERE email_hash = ? AND created_at >= ?""",
+        (email_hash, day_start),
+    ).fetchone()
+    # IP challenges tracked via ai_mistral_ip_hits with a distinct day key prefix? 
+    # Use challenge rows joined isn't possible without ip. Separate counter table reuse:
+    ip_row = conn.execute(
+        "SELECT count FROM ai_mistral_ip_hits WHERE ip_hash = ? AND day = ?",
+        (f"chal:{ip_hash}", api.today_utc()),
+    ).fetchone()
+    email_count = int(email_row["c"] if email_row else 0)
+    ip_count = int(ip_row["count"] if ip_row else 0)
+    return email_count, ip_count
+
+
+def _bump_challenge_ip(conn, ip: str) -> int:
+    api = _api()
+    day = api.today_utc()
+    iph = f"chal:{_ip_hash(ip or 'unknown')}"
+    conn.execute(
+        """INSERT INTO ai_mistral_ip_hits (ip_hash, day, count) VALUES (?, ?, 1)
+           ON CONFLICT (ip_hash, day) DO UPDATE SET count = ai_mistral_ip_hits.count + 1""",
+        (iph, day),
+    )
+    row = conn.execute(
+        "SELECT count FROM ai_mistral_ip_hits WHERE ip_hash = ? AND day = ?",
+        (iph, day),
+    ).fetchone()
+    return int(row["count"] if row else 1)
+
+
+def _create_email_challenge(conn, email: str, email_hash: str, device_hash: str, product: str):
+    """Create OTP challenge proving inbox control. Returns (body, status)."""
+    api = _api()
+    ip = api.client_ip()
+    email_count, _ = _challenge_counts_today(conn, email_hash, _ip_hash(ip or "unknown"))
+    if email_count >= MAX_CHALLENGES_PER_EMAIL_DAY:
+        return jsonify({
+            "error": "Demasiados códigos pedidos hoy para este correo. Prueba mañana.",
+        }), 429
+    ip_count = _bump_challenge_ip(conn, ip)
+    if ip_count > MAX_CHALLENGES_PER_IP_DAY:
+        return jsonify({
+            "error": "Demasiados códigos pedidos desde esta red. Prueba más tarde.",
+        }), 429
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(seconds=CHALLENGE_TTL_SECONDS)
+    # Invalidate prior open challenges for this email+device+product.
+    conn.execute(
+        """DELETE FROM ai_email_challenges
+           WHERE email_hash = ? AND device_hash = ? AND product = ?""",
+        (email_hash, device_hash, product),
+    )
+    conn.execute(
+        """INSERT INTO ai_email_challenges
+           (email_hash, device_hash, product, code_hash, expires_at, attempts, created_at)
+           VALUES (?, ?, ?, ?, ?, 0, ?)""",
+        (
+            email_hash,
+            device_hash,
+            product,
+            _code_hash(code),
+            expires.isoformat(),
+            now.isoformat(),
+        ),
+    )
+
+    sent = _send_challenge_email(email, code, product)
+    debug = _challenge_debug_enabled()
+    if not sent and not debug:
+        return jsonify({
+            "error": "No se pudo enviar el código al correo. Inténtalo de nuevo en un minuto.",
+        }), 503
+
+    body = {
+        "ok": True,
+        "expires_in": CHALLENGE_TTL_SECONDS,
+        "email_sent": bool(sent),
+    }
+    if debug:
+        body["debug_code"] = code
+    return jsonify(body), 200
+
+
+def _consume_email_challenge(conn, email_hash: str, device_hash: str, product: str, code: str):
+    """Verify + consume OTP. Returns error tuple or None on success."""
+    code = (code or "").strip()
+    if len(code) < 4 or len(code) > 12:
+        return jsonify({
+            "error": "Falta el código que enviamos a tu correo. Pide uno nuevo si expiró.",
+        }), 401
+
+    row = conn.execute(
+        """SELECT id, code_hash, expires_at, attempts FROM ai_email_challenges
+           WHERE email_hash = ? AND device_hash = ? AND product = ?
+           ORDER BY id DESC LIMIT 1""",
+        (email_hash, device_hash, product),
+    ).fetchone()
+    if not row:
+        return jsonify({
+            "error": "Primero pide un código a tu correo para demostrar que lo controlas.",
+        }), 401
+
+    attempts = int(row["attempts"] or 0)
+    if attempts >= MAX_CHALLENGE_ATTEMPTS:
+        conn.execute("DELETE FROM ai_email_challenges WHERE id = ?", (row["id"],))
+        return jsonify({
+            "error": "Demasiados intentos con el código. Pide uno nuevo.",
+        }), 401
+
+    expires = _parse_iso(row["expires_at"])
+    now = datetime.now(timezone.utc)
+    if expires is None or (expires.tzinfo is None and expires.replace(tzinfo=timezone.utc) < now) or (
+        expires.tzinfo is not None and expires < now
+    ):
+        conn.execute("DELETE FROM ai_email_challenges WHERE id = ?", (row["id"],))
+        return jsonify({
+            "error": "El código expiró. Pide uno nuevo a tu correo.",
+        }), 401
+
+    if not secrets.compare_digest(str(row["code_hash"]), _code_hash(code)):
+        conn.execute(
+            "UPDATE ai_email_challenges SET attempts = attempts + 1 WHERE id = ?",
+            (row["id"],),
+        )
+        return jsonify({
+            "error": "El código no es correcto. Revisa el correo e inténtalo de nuevo.",
+        }), 401
+
+    conn.execute("DELETE FROM ai_email_challenges WHERE id = ?", (row["id"],))
+    return None
+
+
+def _claim_device_and_bump(
+    conn,
+    email_hash: str,
+    key_id: str | None,
+    source: str,
+    device_hash: str,
+):
+    """Atomically bind device (CAS) and bump counters. Returns error tuple or None."""
     api = _api()
     now = api.now_iso()
     row = conn.execute(
-        "SELECT issue_count, last_issued_at FROM ai_mistral_grants WHERE email_hash = ?",
+        "SELECT issue_count, last_issued_at, device_hash FROM ai_mistral_grants WHERE email_hash = ?",
         (email_hash,),
     ).fetchone()
+
     if not row:
         conn.execute(
             """INSERT INTO ai_mistral_grants
-               (email_hash, key_id, source, created_at, last_issued_at, issue_count)
-               VALUES (?, ?, ?, ?, ?, 1)""",
-            (email_hash, key_id or "", source, now, now),
+               (email_hash, key_id, source, created_at, last_issued_at, issue_count, device_hash)
+               VALUES (?, ?, ?, ?, ?, 1, ?)""",
+            (email_hash, key_id or "", source, now, now, device_hash),
         )
-        return
+        return None
+
+    stored = ""
+    try:
+        stored = str(row["device_hash"] or "").strip()
+    except Exception:
+        stored = ""
+
+    if stored and stored != device_hash:
+        return jsonify({
+            "error": "Esta instalación no coincide con la que activó la IA. Escribe a contacto@telarapp.cl si cambiaste de equipo.",
+        }), 403
+
     last = _parse_iso(row["last_issued_at"])
     reset = True
     if last:
@@ -139,12 +421,29 @@ def _bump_email(conn, email_hash: str, key_id: str | None, source: str) -> None:
             last = last.replace(tzinfo=timezone.utc)
         reset = datetime.now(timezone.utc) - last > timedelta(hours=24)
     count = 1 if reset else int(row["issue_count"] or 0) + 1
-    conn.execute(
-        """UPDATE ai_mistral_grants
-           SET key_id = ?, source = ?, last_issued_at = ?, issue_count = ?
-           WHERE email_hash = ?""",
-        (key_id or "", source, now, count, email_hash),
-    )
+
+    if stored:
+        cur = conn.execute(
+            """UPDATE ai_mistral_grants
+               SET key_id = ?, source = ?, last_issued_at = ?, issue_count = ?
+               WHERE email_hash = ? AND device_hash = ?""",
+            (key_id or "", source, now, count, email_hash, device_hash),
+        )
+    else:
+        # Legacy unbound row: CAS bind — only one concurrent winner.
+        cur = conn.execute(
+            """UPDATE ai_mistral_grants
+               SET key_id = ?, source = ?, last_issued_at = ?, issue_count = ?, device_hash = ?
+               WHERE email_hash = ? AND (device_hash IS NULL OR device_hash = '')""",
+            (key_id or "", source, now, count, device_hash, email_hash),
+        )
+
+    changed = cur.rowcount if hasattr(cur, "rowcount") else None
+    if changed == 0:
+        return jsonify({
+            "error": "Esta instalación no pudo vincularse (otra instalación ganó el enlace). Escribe a contacto@telarapp.cl.",
+        }), 403
+    return None
 
 
 def _bump_ip(conn, ip: str) -> int:
@@ -190,7 +489,7 @@ def create_admin_workspace_key(name: str) -> tuple[str, str]:
         with urllib.request.urlopen(req, timeout=20) as resp:
             body = json.loads(resp.read().decode() or "{}")
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode()[:200] if exc.fp else ""
+        detail = exc.read().decode()[:200] if getattr(exc, "fp", None) else ""
         raise RuntimeError(f"admin_http_{exc.code}:{detail}") from exc
     key = (body.get("key") or body.get("api_key") or "").strip()
     key_id = str(body.get("key_id") or body.get("id") or "")
@@ -200,18 +499,115 @@ def create_admin_workspace_key(name: str) -> tuple[str, str]:
 
 
 def _issue_key(email_hash: str) -> tuple[str, str, str]:
-    """Devuelve (api_key, key_id, source)."""
+    """Devuelve (api_key, key_id, source). Shared path only if explicitly allowed."""
     if _admin_key() and _admin_workspace() and _admin_user():
         short = email_hash[:10]
         key, key_id = create_admin_workspace_key(f"telar-{short}")
         return key, key_id, "admin"
     shared = _inference_key()
-    if shared:
+    if shared and _shared_keys_allowed():
         return shared, "", "shared"
+    if shared and not _shared_keys_allowed():
+        raise RuntimeError("shared_disabled")
     raise RuntimeError("unconfigured")
 
 
+def _parse_identity(email: str, device_id: str, *, product: str):
+    api = _api()
+    email = api.normalize_payer_email(email or "")
+    device_id = api.clean_field(device_id, DEVICE_ID_MAX)
+    if not api.is_valid_payer_email(email):
+        label = "la IA" if product == "mistral" else "Grok"
+        return None, jsonify({"error": f"Necesitamos el correo del profesional para activar {label}."}), 400
+    if len(device_id) < DEVICE_ID_MIN:
+        return None, jsonify({"error": "Falta el identificador de esta instalación."}), 400
+    email_hash = _email_hash(email) if product == "mistral" else _xai_email_hash(email)
+    device_hash = _device_hash(device_id)
+    return (email, email_hash, device_hash), None, None
+
+
+def _provision_common_gate(email: str, device_id: str, email_code: str, *, product: str):
+    """Validate identity, Pro, email OTP, rate limits. Returns (ctx, err_body, err_code)."""
+    parsed, err_body, err_code = _parse_identity(email, device_id, product=product)
+    if err_body is not None:
+        return None, err_body, err_code
+    email, email_hash, device_hash = parsed
+    api = _api()
+
+    with api.db() as conn:
+        denied = _require_active_subscription(conn, email)
+        if denied is not None:
+            return None, denied[0], denied[1]
+
+        challenge_err = _consume_email_challenge(
+            conn, email_hash, device_hash, product, email_code
+        )
+        if challenge_err is not None:
+            return None, challenge_err[0], challenge_err[1]
+
+        row = conn.execute(
+            "SELECT issue_count, last_issued_at, device_hash FROM ai_mistral_grants WHERE email_hash = ?",
+            (email_hash,),
+        ).fetchone()
+        if _email_limited(row):
+            label = "la IA" if product == "mistral" else "Grok"
+            return None, jsonify({
+                "error": f"Demasiados intentos de activar {label} hoy. Prueba mañana o escribe a contacto@telarapp.cl.",
+            }), 429
+
+        stored = ""
+        if row:
+            try:
+                stored = str(row["device_hash"] or "").strip()
+            except Exception:
+                stored = ""
+        if stored and stored != device_hash:
+            return None, jsonify({
+                "error": "Esta instalación no coincide con la que activó la IA. Escribe a contacto@telarapp.cl si cambiaste de equipo.",
+            }), 403
+
+        ip_count = _bump_ip(conn, api.client_ip())
+        if ip_count > MAX_ISSUES_PER_IP_DAY:
+            return None, jsonify({
+                "error": "Demasiados intentos desde esta red. Prueba más tarde.",
+            }), 429
+
+    return (email, email_hash, device_hash), None, None
+
+
 def register_routes(app) -> None:
+    @app.post("/api/ai/email-challenge")
+    def email_challenge():
+        api = _api()
+        data = request.get_json(silent=True) or {}
+        product = (data.get("product") or "mistral").strip().lower()
+        if product not in ("mistral", "xai"):
+            return jsonify({"error": "Producto de IA no reconocido."}), 400
+
+        if product == "mistral" and not provision_configured():
+            return jsonify({
+                "error": "La IA en la nube aún no está habilitada en el servidor.",
+            }), 503
+        if product == "xai" and not xai_provision_configured():
+            return jsonify({
+                "error": "Grok para experiencias aún no está habilitado en el servidor.",
+            }), 503
+
+        parsed, err_body, err_code = _parse_identity(
+            data.get("email") or "",
+            data.get("device_id") or "",
+            product=product,
+        )
+        if err_body is not None:
+            return err_body, err_code
+        email, email_hash, device_hash = parsed
+
+        with api.db() as conn:
+            denied = _require_active_subscription(conn, email)
+            if denied is not None:
+                return denied
+            return _create_email_challenge(conn, email, email_hash, device_hash, product)
+
     @app.post("/api/ai/mistral-provision")
     def mistral_provision():
         api = _api()
@@ -221,40 +617,29 @@ def register_routes(app) -> None:
             }), 503
 
         data = request.get_json(silent=True) or {}
-        email = api.normalize_payer_email(data.get("email") or "")
-        device_id = api.clean_field(data.get("device_id"), DEVICE_ID_MAX)
-        if not api.is_valid_payer_email(email):
-            return jsonify({"error": "Necesitamos el correo del profesional para activar la IA."}), 400
-        if len(device_id) < DEVICE_ID_MIN:
-            return jsonify({"error": "Falta el identificador de esta instalación."}), 400
-
-        email_hash = _email_hash(email)
-        with api.db() as conn:
-            row = conn.execute(
-                "SELECT issue_count, last_issued_at FROM ai_mistral_grants WHERE email_hash = ?",
-                (email_hash,),
-            ).fetchone()
-            if _email_limited(row):
-                return jsonify({
-                    "error": "Demasiados intentos de activar la IA hoy. Prueba mañana o escribe a contacto@telarapp.cl.",
-                }), 429
-            ip_count = _bump_ip(conn, api.client_ip())
-            if ip_count > MAX_ISSUES_PER_IP_DAY:
-                return jsonify({
-                    "error": "Demasiados intentos desde esta red. Prueba más tarde.",
-                }), 429
+        ctx, err_body, err_code = _provision_common_gate(
+            data.get("email") or "",
+            data.get("device_id") or "",
+            data.get("email_code") or "",
+            product="mistral",
+        )
+        if err_body is not None:
+            return err_body, err_code
+        email, email_hash, device_hash = ctx
 
         try:
             api_key, key_id, source = _issue_key(email_hash)
         except RuntimeError as exc:
-            if str(exc) == "unconfigured":
+            if str(exc) in ("unconfigured", "shared_disabled"):
                 return jsonify({"error": "La IA en la nube aún no está habilitada en el servidor."}), 503
             return jsonify({
                 "error": "No se pudo crear la clave de Mistral. Inténtalo de nuevo en un minuto.",
             }), 502
 
         with api.db() as conn:
-            _bump_email(conn, email_hash, key_id, source)
+            claim_err = _claim_device_and_bump(conn, email_hash, key_id, source, device_hash)
+            if claim_err is not None:
+                return claim_err
 
         return jsonify({
             "ok": True,
@@ -272,35 +657,24 @@ def register_routes(app) -> None:
             }), 503
 
         data = request.get_json(silent=True) or {}
-        email = api.normalize_payer_email(data.get("email") or "")
-        device_id = api.clean_field(data.get("device_id"), DEVICE_ID_MAX)
-        if not api.is_valid_payer_email(email):
-            return jsonify({"error": "Necesitamos el correo del profesional para activar Grok."}), 400
-        if len(device_id) < DEVICE_ID_MIN:
-            return jsonify({"error": "Falta el identificador de esta instalación."}), 400
-
-        email_hash = hashlib.sha256(f"{_salt()}:xai:{email}".encode()).hexdigest()
-        with api.db() as conn:
-            row = conn.execute(
-                "SELECT issue_count, last_issued_at FROM ai_mistral_grants WHERE email_hash = ?",
-                (email_hash,),
-            ).fetchone()
-            if _email_limited(row):
-                return jsonify({
-                    "error": "Demasiados intentos de activar Grok hoy. Prueba mañana o escribe a contacto@telarapp.cl.",
-                }), 429
-            ip_count = _bump_ip(conn, api.client_ip())
-            if ip_count > MAX_ISSUES_PER_IP_DAY:
-                return jsonify({
-                    "error": "Demasiados intentos desde esta red. Prueba más tarde.",
-                }), 429
+        ctx, err_body, err_code = _provision_common_gate(
+            data.get("email") or "",
+            data.get("device_id") or "",
+            data.get("email_code") or "",
+            product="xai",
+        )
+        if err_body is not None:
+            return err_body, err_code
+        email, email_hash, device_hash = ctx
 
         shared = _xai_inference_key()
-        if not shared:
+        if not shared or not _shared_keys_allowed():
             return jsonify({"error": "Grok para experiencias aún no está habilitado en el servidor."}), 503
 
         with api.db() as conn:
-            _bump_email(conn, email_hash, "", "shared")
+            claim_err = _claim_device_and_bump(conn, email_hash, "", "shared", device_hash)
+            if claim_err is not None:
+                return claim_err
 
         return jsonify({
             "ok": True,
