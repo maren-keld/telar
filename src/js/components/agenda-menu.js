@@ -63,7 +63,7 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
           + Añadir tratamiento
         </button>
 
-        <button type="button" class="btn btn-ghost btn-block patient-menu-delete-treatment" id="agenda-menu-delete-treatment">
+        <button type="button" class="btn btn-ghost btn-block patient-menu-new-treatment" id="agenda-menu-delete-treatment">
           Eliminar tratamiento
         </button>
 
@@ -101,6 +101,7 @@ export async function openAgendaCardMenu(anchorEl, row, { onUpdated, onNavigate 
       paintChecks(root, '[data-status]', 'status', status);
       await updateTreatmentStatus(row.treatment_id, status);
       onUpdated?.({ status });
+      close();
     });
   });
 

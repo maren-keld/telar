@@ -12,7 +12,7 @@ function displayPatientName(raw) {
 }
 
 /** Recuadro vacío para responder a mano al imprimir. */
-function drawAnswerBox(doc, x, y, w, h = 28) {
+function drawAnswerBox(doc, x, y, w, h = 42) {
   doc.setDrawColor(40);
   doc.setLineWidth(0.4);
   doc.rect(x, y, w, h);
@@ -68,7 +68,7 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
   for (const section of def.sections || []) {
     const raw = d[section.key];
     const text = raw == null || raw === '' ? null : String(raw).trim();
-    const boxH = Math.max(28, (section.rows || 3) * 7);
+    const boxH = Math.max(42, ((section.rows || 5) + 1) * 7);
     y = ensurePdfSpace(doc, y, 18 + (text ? 12 : boxH));
     y = pdfText(doc, section.title, MARGIN, y, { size: 11, style: 'bold' });
     if (section.hint) {
@@ -109,7 +109,7 @@ export function renderHandoutPdf(doc, { def, data, patientName, startY = 20 } = 
       y = pdfText(doc, `${qi + 1}. ${q.prompt}`, MARGIN, y, { size: 9, maxWidth: maxW });
       y += 4;
       if (v == null || v === '') {
-        y = drawAnswerBox(doc, MARGIN, y, maxW, 22);
+        y = drawAnswerBox(doc, MARGIN, y, maxW, 42);
         y += 10;
         return;
       }
