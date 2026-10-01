@@ -53,9 +53,24 @@
     opacity var(--dropdown-close-dur) var(--dropdown-ease);
 }
 
+.t-menu-item-blink {
+  animation: t-menu-item-blink 180ms ease-in-out;
+}
+@keyframes t-menu-item-blink {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(0.72);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .t-dropdown {
+  .t-dropdown,
+  .t-menu-item-blink {
     transition: none !important;
+    animation: none !important;
   }
 }
 

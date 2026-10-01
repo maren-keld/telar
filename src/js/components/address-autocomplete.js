@@ -1,5 +1,5 @@
 import { nominatimCountryCode } from '../clinic-country.js';
-import { suggestAddresses } from '../chile-map.js';
+import { suggestCities } from '../city-suggestions.js';
 import { escapeHtml } from '../utils.js';
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
@@ -13,6 +13,8 @@ async function fetchNominatim(query, countryCode) {
     format: 'json',
     addressdetails: '1',
     limit: '8',
+    featureType: 'settlement',
+    'accept-language': 'es',
   });
   if (countryCode) params.set('countrycodes', countryCode);
   try {
@@ -21,13 +23,15 @@ async function fetchNominatim(query, countryCode) {
     });
     if (!res.ok) return [];
     const rows = await res.json();
-    return (rows || []).map((r) => r.display_name).filter(Boolean);
+    return (rows || [])
+      .filter((row) => !countryCode || row.address?.country_code?.toLowerCase() === countryCode)
+      .map((r) => r.display_name).filter(Boolean);
   } catch {
     return [];
   }
 }
 
-/** Autocompletado de direcciones (Nominatim/OSM + comunas locales en Chile).
+/** Autocompletado de localidades por país (Nominatim/OSM + sugerencias sin conexión).
  *  El dropdown se monta como portal en <body> con position:fixed para evitar que
  *  cualquier overflow:hidden de los ancestros lo recorte. */
 export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
@@ -55,28 +59,25 @@ export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
   };
 
   const hide = () => {
+    clearTimeout(timer);
+    reqId += 1;
     list.hidden = true;
   };
 
   const render = async () => {
-    if (suppressSuggest) return;
+    if (suppressSuggest || !input.isConnected || document.activeElement !== input) return;
     const q = input.value.trim();
-    if (q.length < 2) {
-      hide();
-      return;
-    }
-
-    const local = countryCode === 'cl' ? suggestAddresses(q) : [];
+    const local = suggestCities(q, countryCode);
     const id = ++reqId;
     let remote = [];
     if (q.length >= 3) {
       remote = await fetchNominatim(q, countryCode);
     }
-    if (id !== reqId || suppressSuggest) return;
+    if (id !== reqId || suppressSuggest || document.activeElement !== input || !input.isConnected) return;
 
     const seen = new Set();
     items = [];
-    for (const label of [...remote, ...local]) {
+    for (const label of [...local, ...remote]) {
       if (seen.has(label)) continue;
       seen.add(label);
       items.push(label);
@@ -111,7 +112,7 @@ export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
   });
   input.addEventListener('focus', () => {
     if (suppressSuggest) return;
-    if (input.value.trim().length >= 2) schedule();
+    schedule();
   });
 
   list.addEventListener('mousedown', (e) => {
@@ -129,7 +130,7 @@ export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
   });
 
   input.addEventListener('blur', () => {
-    setTimeout(hide, 120);
+    hide();
   });
 
   input.addEventListener('keydown', (e) => {
@@ -139,6 +140,7 @@ export function bindAddressAutocomplete(input, { onSelect, country } = {}) {
   // Limpiar el portal cuando el input se elimina del DOM
   const observer = new MutationObserver(() => {
     if (!document.contains(input)) {
+      hide();
       list.remove();
       observer.disconnect();
     }

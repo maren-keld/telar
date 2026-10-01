@@ -897,12 +897,22 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
 }
 
 .patient-menu-new-treatment {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  box-sizing: border-box;
   font-size: 0.84rem;
-  padding: 8px 6px;
+  padding: 8px;
+  height: auto;
+  min-height: 38px;
   text-align: left;
-  justify-content: flex-start;
+  justify-content: stretch;
+  color: var(--text-primary);
+  white-space: nowrap;
   margin-top: 4px;
 }
+.patient-menu-status-add-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; font-size: 1.1rem; line-height: 1; color: var(--text-secondary); }
 
 .patient-menu-sibling-list {
   display: flex;
@@ -974,14 +984,16 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
   gap: 6px;
 }
 
-.patient-menu-tools .workspace-tools-tab__item {
+.patient-menu-tools .workspace-tools-tab__item,
+.patient-menu-customize.workspace-tools-tab__item {
   padding: 9px 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
 }
 
-.patient-menu-tools .workspace-tools-tab__item:hover {
+.patient-menu-tools .workspace-tools-tab__item:hover,
+.patient-menu-customize.workspace-tools-tab__item:hover {
   border: 0;
   background: var(--bg-hover, rgba(0, 0, 0, 0.04));
 }
@@ -1037,6 +1049,8 @@ html[data-theme='dark'] .patient-menu-status-item[data-tag='alerta'] {
   cursor: pointer;
   user-select: none;
 }
+.patient-menu-toggle-row { box-sizing: border-box; width: 100%; padding: 6px 8px; }
+.patient-menu-toggle-row .t-toggle { margin-left: auto; flex: 0 0 36px; }
 
 .patient-menu-toggle-label,
 .tools-toggle-label {
@@ -3023,3 +3037,5 @@ html[data-presentation='on'] .genogram-node__name::after {
   line-height: 1;
   padding: 4px 8px;
 }
+
+.patient-menu-customize.workspace-tools-tab__item { font-size: 0.85rem; font-weight: 400; }

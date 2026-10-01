@@ -20,7 +20,7 @@ export const AFFILIATIONS = [
   'Amigo/a',
   'Otro',
 ];
-export const DOMAINS = ['Armonía', 'Conflicto', 'Apoyo emocional', 'Apoyo práctico', 'Contacto limitado'];
+export const DOMAINS = ['Armonía', 'Conflicto', 'Apoyo emocional', 'Apoyo práctico', 'Contacto limitado', 'Fallecido'];
 
 export async function renderRedesApoyo(host, moduleRow) {
   const data = parseJsonSafe(moduleRow.data, {});

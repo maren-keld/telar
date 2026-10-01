@@ -99,6 +99,7 @@ async function mirrorProfileLite(treatmentId, caseStudy) {
 }
 
 function moduleMatchesCaseStudyElement(moduleType, element) {
+  if (element.axis === 'development') return false;
   const recommendation = recommendedModulesForElement(element.axis, element.title);
   if (recommendation.evaluation.includes(moduleType) || recommendation.intervention.includes(moduleType)) {
     return true;
@@ -114,8 +115,9 @@ async function reconcileModuleElementLinks(treatmentId, elements = []) {
     (modules || []).map(async (module) => {
       const data = parseJsonSafe(module.data, {});
       const elementIds = Array.isArray(data.elementIds) ? data.elementIds.map(String) : [];
+      const excludedIds = Array.isArray(data.excludedElementIds) ? data.excludedElementIds.map(String) : [];
       const missingIds = (elements || [])
-        .filter((element) => element?.id && !elementIds.includes(String(element.id)))
+        .filter((element) => element?.id && !elementIds.includes(String(element.id)) && !excludedIds.includes(String(element.id)))
         .filter((element) => moduleMatchesCaseStudyElement(module.module_type, element))
         .map((element) => String(element.id));
       if (!missingIds.length) return;
@@ -165,13 +167,10 @@ export function missingCaseStudyElementsForModule(moduleType, elements = []) {
   const existing = new Set(
     (elements || []).map((element) => `${element.axis}:${String(element.title || '').trim().toLocaleLowerCase()}`),
   );
-  const candidates = CASE_STUDY_AXES
-    .filter((axis) => axis.id !== 'other')
-    .flatMap((axis) =>
-      libraryItemsForAxis(axis.id).map((item) => ({ axis: axis.id, title: item.title })),
-    );
-  const relation = estudioRelationForModule(moduleType);
-  if (relation?.element) candidates.push({ axis: relation.axis, title: relation.element });
+  // Adding an assessment (e.g. ASRS) must not infer a clinical problem.
+  // Practice modules may seed only their related skills; problems/resources
+  // are always chosen and recorded by the clinician.
+  const candidates = libraryItemsForAxis('skill').map((item) => ({ axis: 'skill', title: item.title }));
 
   const seen = new Set();
   return candidates.filter(({ axis, title }) => {
@@ -179,9 +178,7 @@ export function missingCaseStudyElementsForModule(moduleType, elements = []) {
     if (!title || seen.has(key) || existing.has(key)) return false;
     seen.add(key);
     const recommendation = recommendedModulesForElement(axis, title);
-    return recommendation.evaluation.includes(moduleType) ||
-      recommendation.intervention.includes(moduleType) ||
-      (relation?.axis === axis && relation?.element === title);
+    return recommendation.intervention.includes(moduleType);
   });
 }
 

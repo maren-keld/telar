@@ -28,7 +28,7 @@ import {
   summaryDotTone,
   summaryDotsForAxis,
 } from '../../src/js/case-study-catalog.js';
-import { elementLibraryHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
+import { elementLibraryHtml, qualitativeEvolutionHtml, statusToggleHtml, summaryScorecardHtml } from '../../src/js/views/estudio-de-caso.js';
 import {
   caseStudyAiSourceText,
   fallbackCaseStudyRows,
@@ -176,7 +176,7 @@ test('Diagnósticos sale de librería, add-picker y plantillas (legacy renderer 
 test('leftSidebar Estudio: Resumen, ejes, Evolución y Bots/Agentes', () => {
   assert.deepEqual(
     ESTUDIO_NAV.map((n) => n.id),
-    ['summary', 'problem', 'resource', 'defense', 'risk', 'scores', 'other'],
+    ['summary', 'problem', 'resource', 'skill', 'development', 'defense', 'risk', 'scores', 'other'],
   );
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'resource').label, 'Factores protectores');
   assert.equal(ESTUDIO_NAV.find((n) => n.id === 'risk').label, 'Riesgos');
@@ -524,4 +524,22 @@ Utiliza la escritura y el dibujo para expresar tristeza.`);
   assert.ok(rows.some((row) => row.title === 'Autolesiones'));
   assert.ok(!rows.some((row) => row.title === 'Riesgo suicida'));
   assert.ok(rows.some((row) => row.title === 'Capacidad de expresión emocional'));
+});
+
+
+test('evolución cualitativa muestra todas las instancias vinculadas y conserva notas heredadas', () => {
+  const element = { id: '42', activities: [{ moduleId: '3' }], qualitativeEvidence: [{ date: '2026-09-28', text: 'Nota heredada' }] };
+  const sessions = [{ id: 8, number: 4, modules: [
+    { id: 1, module_type: 'medicion_cualitativa', data: JSON.stringify({ elementIds: [42], measurement_title: 'Descanso', note: 'Dormí <mejor>' }) },
+    { id: 2, module_type: 'medicion_cualitativa', data: JSON.stringify({ elementIds: ['42'], note: 'Segundo registro' }) },
+    { id: 3, module_type: 'tcc_abc', data: JSON.stringify({ activador: 'Situación', creencias: 'Creencia', consecuencias: 'Respuesta' }) },
+    { id: 4, module_type: 'medicion_cualitativa', data: JSON.stringify({ elementIds: ['otro'], note: 'No vinculado' }) },
+    { id: 5, module_type: 'medicion_cuantitativa', data: JSON.stringify({ elementIds: ['42'], value: 75 }) },
+  ] }];
+  const html = qualitativeEvolutionHtml(element, sessions);
+  assert.equal((html.match(/class="estudio-evolution-module"/g) || []).length, 3);
+  for (const text of ['Descanso', 'Dormí &lt;mejor&gt;', 'Segundo registro', 'Situación', 'Creencia', 'Respuesta', 'Nota heredada', 'Sesión 4']) assert.ok(html.includes(text), text);
+  assert.ok(!html.includes('No vinculado'));
+  assert.ok(!html.includes('data-module-id="5"'));
+  assert.ok(html.includes('data-module-id="2"'));
 });

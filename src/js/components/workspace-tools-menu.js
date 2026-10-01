@@ -1,5 +1,5 @@
+import { openWorkspaceCustomize } from './workspace-customize.js';
 import { loadProfile, saveProfile } from '../profile.js';
-import { SETTINGS_ICONS } from '../icons.js';
 import { toast } from '../utils.js';
 import { setToggle } from '../transitions.js';
 import { t } from '../i18n.js';
@@ -25,18 +25,12 @@ function dispatchWorkspaceMode(mode) {
   document.dispatchEvent(new CustomEvent('telar:workspace-mode', { detail: { mode } }));
 }
 
-const TOOL_ICONS = {
-  export: SETTINGS_ICONS.export,
-  supervision: SETTINGS_ICONS.supervision,
-};
-
 export function toolsItemsHtml({ compact = false } = {}) {
   const detail = (text) => (compact ? '' : `<small>${text}</small>`);
   return `
     <ul class="workspace-tools-tab__list">
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-pdf">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
           <span class="workspace-tools-tab__text">
             <span>${t('tools.pdf', 'Exportar programa PDF')}</span>
             ${detail(t('tools.pdfHint', 'Resumen del tratamiento para el paciente o supervisión'))}
@@ -45,13 +39,11 @@ export function toolsItemsHtml({ compact = false } = {}) {
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-word">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.export}</span>
-          <span class="workspace-tools-tab__text"><span>${t('tools.word', 'Exportar programa Word (.docx)')}</span>${detail(t('tools.wordHint', 'Documento editable del programa de tratamiento'))}</span>
+          <span class="workspace-tools-tab__text"><span>${t('tools.word', 'Exportar programa Word')}</span>${detail(t('tools.wordHint', 'Documento editable del programa de tratamiento'))}</span>
         </button>
       </li>
       <li>
         <button type="button" class="workspace-tools-tab__item" data-action="export-case">
-          <span class="workspace-tools-tab__icon" aria-hidden="true">${TOOL_ICONS.supervision}</span>
           <span class="workspace-tools-tab__text">
             <span>${t('tools.case', 'Presentación de caso')}</span>
             ${detail(t('tools.caseHint', 'PDF anonimizado para supervisión — sin nombre ni RUT'))}
@@ -119,6 +111,7 @@ export function mountWorkspaceToolsTab(host, opts) {
       }
 
       <div class="tools-section-divider"></div>
+      <button type="button" class="workspace-tools-tab__item" data-customize>Personalizar</button>
       <div class="tools-toggle-row" id="tools-dark-toggle">
         <span class="tools-toggle-label">${t('tools.dark', 'Modo oscuro')}</span>
         <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="${t('tools.dark', 'Modo oscuro')}">
@@ -127,6 +120,7 @@ export function mountWorkspaceToolsTab(host, opts) {
       </div>
     </div>`;
 
+  host.querySelector('[data-customize]')?.addEventListener('click', openWorkspaceCustomize);
   let dark = isDark;
   host.querySelector('#tools-dark-toggle')?.addEventListener('click', () => {
     dark = !dark;
@@ -169,7 +163,7 @@ export function openWorkspaceToolsMenu(opts) {
         </header>
         <ul class="workspace-tools-menu__list">
           <li><button type="button" class="workspace-tools-menu__item" data-action="export-pdf"><span class="workspace-tools-menu__text"><span>${t('tools.pdf', 'Exportar programa PDF')}</span><small>${t('tools.pdfHint', 'Resumen del tratamiento')}</small></span></button></li>
-          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>${t('tools.word', 'Exportar programa Word (.docx)')}</span><small>${t('tools.wordHint', 'Documento editable del programa de tratamiento')}</small></span></button></li>
+          <li><button type="button" class="workspace-tools-menu__item" data-action="export-word"><span class="workspace-tools-menu__text"><span>${t('tools.word', 'Exportar programa Word')}</span><small>${t('tools.wordHint', 'Documento editable del programa de tratamiento')}</small></span></button></li>
         </ul>
       </div>
     </div>`;

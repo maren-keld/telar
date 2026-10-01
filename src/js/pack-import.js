@@ -12,6 +12,7 @@ import { validateQuestionnaire } from '../lib/questionnaire-schema.js';
 import { listCustomModules, saveCustomModule } from './custom-modules.js';
 import { getInvoke } from './tauri-bridge.js';
 import { parseJsonSafe } from './utils.js';
+import { getLocale } from './i18n.js';
 
 const MODULE_KINDS = ['questionnaire', 'interactive'];
 const NON_EXPORTABLE_PACK_IDS = new Set(['autismo-danyau']);
@@ -137,7 +138,7 @@ export function parsePackContents(files, { lang = 'es' } = {}) {
 }
 
 /** Lee el archivo y guarda sus módulos. @returns {Promise<{pack, modules, warnings}>} */
-export async function installPackFromPath(path, { lang = 'es' } = {}) {
+export async function installPackFromPath(path, { lang = getLocale() } = {}) {
   const { files } = await getInvoke()('pack_read', { path });
   const result = parsePackContents(files, { lang });
   for (const mod of result.modules) {

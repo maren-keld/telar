@@ -20,6 +20,19 @@ export const CLINIC_COUNTRIES = [
   { id: 'MX', label: 'México' },
   { id: 'PE', label: 'Perú' },
   { id: 'CO', label: 'Colombia' },
+  { id: 'BO', label: 'Bolivia' },
+  { id: 'EC', label: 'Ecuador' },
+  { id: 'PY', label: 'Paraguay' },
+  { id: 'VE', label: 'Venezuela' },
+  { id: 'CR', label: 'Costa Rica' },
+  { id: 'PA', label: 'Panamá' },
+  { id: 'GT', label: 'Guatemala' },
+  { id: 'SV', label: 'El Salvador' },
+  { id: 'HN', label: 'Honduras' },
+  { id: 'NI', label: 'Nicaragua' },
+  { id: 'DO', label: 'República Dominicana' },
+  { id: 'CU', label: 'Cuba' },
+  { id: 'PR', label: 'Puerto Rico' },
   { id: 'ES', label: 'España' },
   { id: 'US', label: 'Estados Unidos' },
   { id: 'OTRO', label: 'Otro' },
@@ -44,6 +57,17 @@ export function clinicCountryCode() {
 
 export function clinicCountryLabel(code = clinicCountryCode()) {
   return CLINIC_COUNTRIES.find((c) => c.id === code)?.label || 'Chile';
+}
+
+/** Etiqueta de interfaz; conserva los códigos de país usados en la ficha. */
+export function localizedClinicCountryLabel(code, locale = 'es') {
+  if (code === 'OTRO') return locale === 'en' ? 'Other' : 'Otro';
+  if (locale === 'en') {
+    try {
+      return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || clinicCountryLabel(code);
+    } catch { /* Webviews antiguos conservan el nombre del catálogo. */ }
+  }
+  return clinicCountryLabel(code);
 }
 
 const COVERAGE = {
@@ -95,7 +119,7 @@ const COVERAGE = {
 };
 
 export function coverageFor(country = clinicCountryCode()) {
-  return COVERAGE[country] || COVERAGE.CL;
+  return COVERAGE[country] || COVERAGE.OTRO;
 }
 
 export function coverageLabel(country = clinicCountryCode()) {
@@ -173,8 +197,14 @@ export function idSpecFor(country = clinicCountryCode()) {
 }
 
 export function nominatimCountryCode(country = clinicCountryCode()) {
-  const map = { CL: 'cl', AR: 'ar', UY: 'uy', MX: 'mx', PE: 'pe', CO: 'co', ES: 'es' };
-  return map[country] || '';
+  const code = String(country || '').toUpperCase();
+  return COUNTRY_IDS.has(code) && code !== 'OTRO' ? code.toLowerCase() : '';
+}
+
+export function cityFieldSpec(country = clinicCountryCode()) {
+  const label = country === 'CL' ? 'Ciudad o comuna' : 'Ciudad o localidad';
+  const example = ({ CL: 'Santiago, Providencia', US: 'Miami, Los Angeles', AR: 'Buenos Aires, Córdoba', MX: 'Ciudad de México, Guadalajara', PE: 'Lima, Arequipa', CO: 'Bogotá, Medellín' })[country];
+  return { label, placeholder: example ? `${label} (ej. ${example})` : `${label} en ${clinicCountryLabel(country)}` };
 }
 
 function thousandDots(digits) {

@@ -1,10 +1,9 @@
 /**
  * Avisos cuando un paciente responde un test o handout por enlace.
- * El toast siempre sale. Escritorio y correo dependen de Ajustes.
+ * El toast siempre sale. Escritorio depende de Ajustes.
  */
 import { moduleLabelFor } from './custom-modules.js';
 import { loadProfile } from './profile.js';
-import { getSubscriptionApiBase, isLocalDevFrontend } from './subscription.js';
 import { getInvoke, isTauriApp } from './tauri-bridge.js';
 import { invokeErrorMessage, parseJsonSafe, toast } from './utils.js';
 
@@ -58,9 +57,6 @@ async function notifyShareChannels(item) {
   if (profile.notifyShareDesktop !== false) {
     await showDesktopNotification('Telar', text);
   }
-  if (profile.notifyShareEmail) {
-    await sendShareEmail(text);
-  }
 }
 
 async function showDesktopNotification(title, body) {
@@ -82,30 +78,5 @@ async function showDesktopNotification(title, body) {
     }
   } catch {
     /* el toast ya avisó */
-  }
-}
-
-async function sendShareEmail(text) {
-  const email = String(loadProfile().email || '').trim();
-  if (!email) return;
-  const subject = 'Telar: respondieron un formulario';
-  const base = getSubscriptionApiBase();
-  if (!isTauriApp() || isLocalDevFrontend()) {
-    try {
-      const res = await fetch(`${base}/api/share/notify-owner`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, subject, text }),
-      });
-      if (!res.ok) throw new Error('No se pudo enviar el correo');
-    } catch (err) {
-      console.warn('Correo de respuesta:', err?.message || err);
-    }
-    return;
-  }
-  try {
-    await getInvoke()('share_notify_owner', { apiBase: base, email, subject, text });
-  } catch (err) {
-    console.warn('Correo de respuesta:', invokeErrorMessage(err, err?.message || ''));
   }
 }

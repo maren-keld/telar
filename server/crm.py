@@ -1453,10 +1453,11 @@ function setTab(name) {
   sessionStorage.setItem('telar-panel-tab', name);
   $('tab-crm').hidden = name !== 'crm';
   $('tab-uso').hidden = name !== 'uso';
+  $('tab-ai').hidden = name !== 'ai';
   document.querySelectorAll('#tabs > button').forEach((btn) => {
     btn.setAttribute('aria-pressed', btn.dataset.tab === name ? 'true' : 'false');
   });
-  $('live-hint').hidden = name !== 'uso';
+  $('live-hint').hidden = name !== 'uso' && name !== 'ai';
 }
 
 function setCrmPane(name) {

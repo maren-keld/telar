@@ -6,6 +6,8 @@ import { notifySaveError, workspaceAutoSaveStatus } from '../save-status.js';
 import { ICON_STAR } from '../icons.js';
 import { dispatchWorkspaceIndexMode } from '../workspace-index-mode.js';
 import { escapeHtml, parseJsonSafe, toast } from '../utils.js';
+import { loadProfile } from '../profile.js';
+import { findMedications, medicationCountryLabel, medicationRegistry, PSYCHIATRIC_MEDICATIONS } from '../medication-catalog.js';
 
 export const IA_ANAMNESIS_PROMPTS = [
   { key: 'ia_pregunto', n: '01', q: '¿Qué preguntaste?' },
@@ -15,11 +17,11 @@ export const IA_ANAMNESIS_PROMPTS = [
   { key: 'ia_lugar', n: '05', q: '¿Qué lugar ocupa ahora?' },
 ];
 
-export const IA_ANAMNESIS_PLACEHOLDER = IA_ANAMNESIS_PROMPTS.map((p) => p.q).join('\n');
+export const IA_ANAMNESIS_PLACEHOLDER = IA_ANAMNESIS_PROMPTS.map((p) => p.q).join(', ');
 
-/** Placeholder HTML: &#10; para que WebKit respete una pregunta por línea. */
+/** Las preguntas del placeholder se muestran en una frase separada por comas. */
 export function iaAnamnesisPlaceholderAttr() {
-  return IA_ANAMNESIS_PROMPTS.map((p) => escapeHtml(p.q)).join('&#10;');
+  return escapeHtml(IA_ANAMNESIS_PLACEHOLDER);
 }
 
 /** Un solo campo; si solo hay respuestas viejas por pregunta, las junta. */
@@ -253,6 +255,16 @@ Reglas:
 export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
   const data = parseJsonSafe(moduleRow.data);
   const urgencia = data.urgencia === 'alta' || data.urgencia === 'baja' ? data.urgencia : 'media';
+  const savedMedicationTags = Array.isArray(data.medications)
+    ? data.medications.filter((item) => item && typeof item.name === 'string')
+    : [];
+  const medicationTags = savedMedicationTags.length
+    ? savedMedicationTags
+    : String(data.medicacion || '').split(/\n|;/).map((name) => name.trim()).filter(Boolean)
+      .map((name) => ({ name, use: PSYCHIATRIC_MEDICATIONS.find((item) => item.name.toLowerCase() === name.toLowerCase())?.use || 'Indicación por registrar' }));
+  const country = loadProfile().clinicCountry;
+  const countryLabel = medicationCountryLabel(country);
+  const registry = medicationRegistry(country);
 
   host.innerHTML = `
     <div class="card">
@@ -270,26 +282,30 @@ export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Expectativas del tratamiento</label>
-          <textarea name="expectativas" rows="3">${escapeHtml(data.expectativas || '')}</textarea>
+          <textarea name="expectativas" rows="3" placeholder="Qué espera lograr con el tratamiento…">${escapeHtml(data.expectativas || '')}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Antecedentes relevantes</label>
-          <textarea name="antecedentes" rows="3">${escapeHtml(data.antecedentes || '')}</textarea>
+          <textarea name="antecedentes" rows="3" placeholder="Historia y contexto relevantes para comprender el motivo de consulta…">${escapeHtml(data.antecedentes || '')}</textarea>
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label for="motivo-tratamientos">Tratamientos previos</label>
           <textarea name="tratamientos_previos" id="motivo-tratamientos" rows="3" placeholder="Terapias, hospitalizaciones; qué sirvió y qué no.">${escapeHtml(data.tratamientos_previos || '')}</textarea>
         </div>
-        <div class="anamnesis-pair">
-          <div class="form-group" style="margin-bottom:0">
+          <div class="form-group" style="margin-bottom:16px">
             <label for="motivo-medicacion">Medicación</label>
-            <textarea name="medicacion" id="motivo-medicacion" rows="2" placeholder="Fármaco, dosis, adherencia">${escapeHtml(data.medicacion || '')}</textarea>
+            <div class="medication-picker">
+              <div class="medication-picker__tags" data-medication-tags></div>
+              <input type="search" id="motivo-medicacion" autocomplete="off" placeholder="Buscar medicamento y añadir…" aria-label="Buscar medicamento" aria-controls="medication-options" aria-expanded="false" />
+              <div id="medication-options" class="medication-picker__options" role="listbox" hidden></div>
+              <input type="hidden" name="medicacion" value="" />
+              <p class="form-hint">Nombres genéricos en ${escapeHtml(countryLabel)}. ${registry ? `<a href="${registry.url}" target="_blank" rel="noopener noreferrer">Consulta productos en ${registry.label}</a>.` : 'Verifica el producto en el registro sanitario de tu país.'} Los usos son orientativos.</p>
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:0">
+          <div class="form-group" style="margin-bottom:16px">
             <label for="motivo-psiquiatra">Psiquiatra / médico tratante</label>
             <textarea name="psiquiatra" id="motivo-psiquiatra" rows="2" placeholder="Quién indica, especialidad, contacto">${escapeHtml(data.psiquiatra || '')}</textarea>
           </div>
-        </div>
         <div class="form-group" style="margin-bottom:16px">
           <label for="motivo-consumo">Consumo</label>
           <input type="text" name="consumo" id="motivo-consumo" placeholder="Alcohol, cannabis, estimulantes…" value="${escapeHtml(data.consumo || '')}" />
@@ -322,6 +338,88 @@ export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
   const form = host.querySelector('#form-motivo');
   const urgenciaHint = host.querySelector('#motivo-urgencia-hint');
   const urgenciaSelect = form.querySelector('[name="urgencia"]');
+  const medicationInput = form.querySelector('#motivo-medicacion');
+  const medicationOptions = form.querySelector('#medication-options');
+  const medicationTagsHost = form.querySelector('[data-medication-tags]');
+  const medicationHidden = form.querySelector('[name="medicacion"]');
+  const medicationPicker = medicationInput.closest('.medication-picker');
+  const hideMedicationOptions = () => {
+    medicationOptions.hidden = true;
+    medicationInput.setAttribute('aria-expanded', 'false');
+  };
+  const pickerEvents = new AbortController();
+  const pickerObserver = new MutationObserver(() => {
+    if (!form.isConnected) {
+      pickerEvents.abort();
+      pickerObserver.disconnect();
+    }
+  });
+  pickerObserver.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('pointerdown', (event) => {
+    if (!medicationPicker.contains(event.target)) hideMedicationOptions();
+  }, { signal: pickerEvents.signal });
+  medicationPicker.addEventListener('focusout', (event) => {
+    if (!medicationPicker.contains(event.relatedTarget)) hideMedicationOptions();
+  });
+  // Mantiene el input enfocado durante la selección para que el focusout no
+  // cierre el listbox antes del click (comportamiento variable entre Windows/macOS).
+  medicationOptions.addEventListener('mousedown', (event) => {
+    if (event.target.closest('[role="option"]')) event.preventDefault();
+  });
+
+  const renderMedicationTags = () => {
+    medicationHidden.value = medicationTags.map((item) => `${item.name} — ${item.use}`).join('; ');
+    medicationTagsHost.innerHTML = medicationTags.map((item, index) => `
+      <span class="medication-tag"><span><strong>${escapeHtml(item.name)}</strong><small>Uso habitual: ${escapeHtml(item.use)}</small></span>
+      <button type="button" data-remove-medication="${index}" aria-label="Quitar ${escapeHtml(item.name)}">×</button></span>`).join('');
+  };
+  const showMedicationOptions = () => {
+    const term = medicationInput.value.trim();
+    const found = findMedications(term, medicationTags).slice(0, 10);
+    medicationOptions.innerHTML = found.map((item) => `
+      <button type="button" role="option" data-medication="${escapeHtml(item.name)}"><strong>${escapeHtml(item.name)}</strong><small>Uso habitual: ${escapeHtml(item.use)}</small></button>`).join('') ||
+      (term ? `<button type="button" role="option" data-medication-custom="${escapeHtml(term)}">Añadir «${escapeHtml(term)}»</button>` : '');
+    medicationOptions.hidden = !medicationOptions.innerHTML;
+    medicationInput.setAttribute('aria-expanded', String(!medicationOptions.hidden));
+  };
+  const addMedication = (item) => {
+    if (!item || medicationTags.some((tag) => tag.name.toLowerCase() === item.name.toLowerCase())) return;
+    medicationTags.push(item);
+    medicationInput.value = '';
+    hideMedicationOptions();
+    renderMedicationTags();
+    medicationHidden.dispatchEvent(new Event('change', { bubbles: true }));
+    medicationInput.focus();
+    hideMedicationOptions();
+    void persist().catch((error) => notifySaveError(error));
+  };
+  renderMedicationTags();
+  medicationInput.addEventListener('focus', showMedicationOptions);
+  medicationInput.addEventListener('input', showMedicationOptions);
+  medicationInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') hideMedicationOptions();
+    if (event.key === 'Enter' && !medicationOptions.hidden) {
+      event.preventDefault();
+      medicationOptions.querySelector('button')?.click();
+    }
+  });
+  medicationOptions.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-medication], [data-medication-custom]');
+    if (!button || !medicationOptions.contains(button)) return;
+    const name = button.dataset.medication || button.dataset.medicationCustom;
+    addMedication(
+      PSYCHIATRIC_MEDICATIONS.find((item) => item.name === name)
+        || { name, use: 'Indicación por registrar' },
+    );
+  });
+  medicationTagsHost.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-medication]');
+    if (!button) return;
+    medicationTags.splice(Number(button.dataset.removeMedication), 1);
+    renderMedicationTags();
+    medicationHidden.dispatchEvent(new Event('change', { bubbles: true }));
+    void persist().catch((error) => notifySaveError(error));
+  });
 
   urgenciaSelect?.addEventListener('change', () => {
     const v = urgenciaSelect.value;
@@ -331,6 +429,7 @@ export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
   const persistRaw = async () => {
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
+    payload.medications = medicationTags.map((item) => ({ ...item }));
     for (const p of IA_ANAMNESIS_PROMPTS) payload[p.key] = '';
     await syncModuleReadableText(moduleRow, payload, 'completado');
   };
@@ -423,7 +522,12 @@ export async function renderMotivoConsulta(host, moduleRow, ctx = {}) {
         if (el) el.value = value;
       };
       for (const key of ANAMNESIS_REORDER_KEYS) {
-        if (key in next) setVal(key, next[key]);
+        if (key === 'medicacion' && key in next) {
+          medicationTags.splice(0, medicationTags.length,
+            ...String(next[key] || '').split(/\n|;/).map((name) => name.trim()).filter(Boolean)
+              .map((name) => ({ name, use: PSYCHIATRIC_MEDICATIONS.find((item) => item.name.toLowerCase() === name.toLowerCase())?.use || 'Indicación por registrar' })));
+          renderMedicationTags();
+        } else if (key in next) setVal(key, next[key]);
       }
       await persist();
       toast('Anamnesis reorganizada');

@@ -11,11 +11,12 @@ const DEFAULTS = {
   address: '',
   /** 'm' | 'f' | '' — género gramatical para que la IA firme emails correctamente. */
   grammaticalGender: 'f',
-  darkMode: true,
+  darkMode: false,
   useTouchId: false,
   presentationMode: false,
   usagePingOptOut: false,
-  locale: 'es',
+  // Vacío hasta detectar el idioma del sistema o elegirlo explícitamente.
+  locale: '',
   /** ISO-ish: CL, AR, UY, MX, PE, CO, ES, OTRO. Vacío = aún no eligió en onboarding. */
   clinicCountry: '',
   plan: 'free',
@@ -24,7 +25,7 @@ const DEFAULTS = {
   /** Correo al email de Ajustes cuando responden un test o handout por enlace. */
   notifyShareEmail: false,
   /** true = no mostrar la previsualización del contexto antes de cada consulta API. */
-  aiPreviewSkip: false,
+  aiPreviewSkip: true,
   customModules: [],
   customTags: [],
   customCaseStudyElements: [],
@@ -104,14 +105,13 @@ export function migrateAiMistralDefault() {
   }
 }
 
-/** Una sola vez: el producto pasa a oscuro y género femenino si no estaban definidos. */
+/** Conserva la preferencia de tema ya elegida; solo completa el género antiguo. */
 export function migrateInterfaceDefaults() {
   try {
     if (localStorage.getItem(DEFAULTS_MIGRATION_KEY)) return;
     localStorage.setItem(DEFAULTS_MIGRATION_KEY, '1');
     const p = loadProfile();
     const patch = {};
-    if (p.darkMode !== true) patch.darkMode = true;
     if (!p.grammaticalGender) patch.grammaticalGender = 'f';
     if (Object.keys(patch).length) saveProfile(patch);
   } catch {

@@ -1,3 +1,5 @@
+import { renderAiMarkdown } from '../ai-markdown.js';
+import { normalizePriorityTitles, normalizePriorityResponse, studyQuestionLabel } from '../study-ai-ui.js';
 import { NOTE_COLORS } from '../config.js';
 import {
   addClinicalNote,
@@ -19,7 +21,6 @@ import { openAiSettingsModal } from './open-ai-settings-modal.js';
 import { confirmClinicalAiSend } from '../ai-clinical-send.js';
 import { buildCaseContextText } from '../export-case-context.js';
 import {
-  AI_QUICK_PROMPTS,
   aiActionsHtml,
   userAskedForPatientEmail,
   applyAiModule,
@@ -197,14 +198,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         <button type="button" class="btn btn-secondary btn-fab" id="btn-add-note" title="${t('notes.addTitle', 'Añadir nota clínica')} (${NOTES_MOD_KBD}N)">${t('notes.add', '+ Nota')}</button>
       </div>
       <aside class="ai-dock" aria-label="${t('notes.assistant', 'Asistente IA')}">
-        <div class="ai-dock__chips" id="ai-dock-chips">
-          ${AI_QUICK_PROMPTS.map((p) => {
-            const key = { analisis: 'analysis', programa: 'treatment' }[p.id] || p.id;
-            const label = t(`ai.quick.${key}`, p.label);
-            const hint = t(`ai.quick.${key}Hint`, p.hint || p.label);
-            return `<button type="button" class="ai-dock__chip" data-quick-prompt="${p.id}" data-tooltip="${escapeHtml(hint)}" aria-label="${escapeHtml(label)}. ${escapeHtml(hint)}">${escapeHtml(label)}</button>`;
-          }).join('')}
-        </div>
         <div class="ai-dock__input-row">
           <textarea class="input ai-dock__input" id="ai-dock-input" placeholder="${t('notes.ask', 'Pregunta a la IA sobre el caso')}" title="${t('notes.askTitle', 'Consulta a la IA sobre el caso')} (${NOTES_MOD_KBD}I)" rows="1"></textarea>
           <p class="ai-dock__thinking" id="ai-dock-thinking" hidden aria-live="polite">
@@ -231,11 +224,19 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
   };
 
   const jumpNotesToEnd = () => {
-    listEl.scrollTop = listEl.scrollHeight;
-    requestAnimationFrame(() => {
+    const scroll = () => {
       listEl.scrollTop = listEl.scrollHeight;
-      revealNotes();
-    });
+    };
+    scroll();
+    // AI cards bind their clamp after two frames; that can add the “Ver más”
+    // control and increase the list after the first scroll has already run.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      scroll();
+      requestAnimationFrame(() => {
+        scroll();
+        revealNotes();
+      });
+    }));
   };
 
   let stopNotesEmptyOrb = () => {};
@@ -373,7 +374,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     }
   };
 
-  const setNotesFilter = async (filter, { scrollBottom = false } = {}) => {
+  const setNotesFilter = async (filter, { scrollBottom = true } = {}) => {
     if (!NOTES_FILTERS.some((item) => item.id === filter)) return;
     activeFilter = filter;
     showAllNotes = false;
@@ -409,12 +410,12 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     revealNotes();
   }
 
+  let queuedStudyOptions = null;
   const aiInput = container.querySelector('#ai-dock-input');
   const aiSend = container.querySelector('#ai-dock-send');
   const aiHint = container.querySelector('#ai-dock-hint');
   const aiThinking = container.querySelector('#ai-dock-thinking');
   const aiThinkingLabel = container.querySelector('#ai-dock-thinking-label');
-  const aiChips = container.querySelector('#ai-dock-chips');
 
   const syncDockHint = () => {
     const enabled = resolveAiConfig(loadProfile()).enabled;
@@ -511,7 +512,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       if (aiThinking) aiThinking.hidden = !on;
       aiInput.hidden = on;
       setSendMode(on ? 'stop' : 'send');
-      if (aiChips) aiChips.classList.toggle('ai-dock__chips--busy', on);
     };
 
     let thinkingTimer = null;
@@ -585,11 +585,14 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
     const sendAiQuestion = async () => {
       const q = aiInput.value.trim();
       if (!q || aiSend.dataset.busy === '1') return;
+      const studyOptions = queuedStudyOptions;
+      queuedStudyOptions = null;
       const ready = await ensureAiReady();
       if (!ready) {
         toast('Activa la IA (Mistral, recomendada) o acepta el aviso para consultar el caso.');
         return;
       }
+      toolsOpts.onStudyAiStarted?.();
       lastAiQuestion = q;
       resetInput();
       await setNotesFilter('answers', { scrollBottom: true });
@@ -599,8 +602,12 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       startThinking();
       showPendingAiQuestion(q);
       try {
+        await flushPendingAutoSaves();
         const context = await buildCaseContextText(treatmentId);
         if (request.aborted) throw new Error('cancelado');
+        const { loadCaseStudy } = await import('../case-study-store.js');
+        const study = studyOptions ? await loadCaseStudy(treatmentId) : null;
+        const exactProblems = study?.elements.filter((el) => el.axis === 'problem' && el.title?.trim()).map((el) => el.title) || [];
         const referenceDocs = listReferenceDocuments(treatmentId);
         const docsPrompt = formatReferenceDocsForPrompt(referenceDocs);
         await confirmClinicalAiSend({
@@ -617,15 +624,17 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
                 practitioner: loadProfile(),
                 referenceDocs,
                 email: userAskedForPatientEmail(q),
-              }),
+              }) + (studyOptions ? `\n\n${studyOptions.instructions}\nNombres exactos de problemas registrados: ${JSON.stringify(exactProblems)}` : ''),
             },
             { role: 'user', content: q },
           ],
-          maxTokens: local ? 1200 : 1600,
+          maxTokens: local ? 2048 : 4096,
+          completeResponse: true,
           request,
         });
         if (request.aborted) throw new Error('cancelado');
-        const visibleResponse = parseAiActions(normalizeAiDisplayText(text));
+        const responseText = studyOptions?.task === 'prioritize' ? normalizePriorityResponse(text, study.elements) : text;
+        const visibleResponse = parseAiActions(normalizeAiDisplayText(responseText));
         if (!visibleResponse.text.trim() && !visibleResponse.actions.length) {
           throw new Error(
             t('notes.noVisibleAnswer', 'La IA devolvió una respuesta vacía. Inténtalo de nuevo; si vuelve a pasar, revisa Ajustes → Asistente IA.'),
@@ -634,7 +643,7 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
         const noteId = await addClinicalNote(treatmentId, {
           kind: 'ia_answer',
           color: 'teal',
-          content: normalizeAiDisplayText(text),
+          content: normalizeAiDisplayText(responseText),
           authorInitials: 'IA',
           sourceLabel: q,
         });
@@ -681,17 +690,6 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
       }
     });
 
-    aiChips?.querySelectorAll('[data-quick-prompt]').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        if (aiSend.dataset.busy === '1') return;
-        const spec = AI_QUICK_PROMPTS.find((p) => p.id === chip.dataset.quickPrompt);
-        if (!spec) return;
-        aiInput.value = spec.prompt;
-        autoGrow();
-        syncSendState();
-        aiInput.focus();
-      });
-    });
   }
 
   const focusNotasTab = async () => {
@@ -744,6 +742,16 @@ export async function mountNotesPanel(container, treatmentId, toolsOpts = {}) {
 
   return {
     refresh: refreshList,
+    async ask(question, options = null) {
+      const input = container.querySelector('#ai-dock-input');
+      const send = container.querySelector('#ai-dock-send');
+      if (!input || !send || send.dataset.busy === '1') return;
+      await setNotesFilter('answers');
+      queuedStudyOptions = options;
+      input.value = question;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      send.click();
+    },
     focusNotasTab,
     setTab(filter = 'all') {
       return setNotesFilter(filter);
@@ -1053,14 +1061,11 @@ function defaultsFor(tab) {
 }
 
 function renderMarkdown(text) {
-  const html = escapeHtml(normalizeAiDisplayText(text))
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+  const html = renderAiMarkdown(normalizeAiDisplayText(text))
     // Encabezados del protocolo: dejan ver de un vistazo qué se hace en la app
     // y qué queda para la sesión presencial o material impreso.
-    .replace(/^En Telar:/gm, '<span class="ai-scope ai-scope--in">En Telar</span>')
-    .replace(/^Fuera de Telar:/gm, '<span class="ai-scope ai-scope--out">Fuera de Telar</span>')
+    .replace(/(?:^|(?<=<br>))En Telar:/g, '<span class="ai-scope ai-scope--in">En Telar</span>')
+    .replace(/(?:^|(?<=<br>))Fuera de Telar:/g, '<span class="ai-scope ai-scope--out">Fuera de Telar</span>')
     .replace(/^Bibliograf[ií]a\s*$/gim, '<span class="ai-biblio-head">Bibliografía</span>')
     .replace(/^[-•]\s+/gm, '· ')
     .replace(/\n/g, '<br>');
@@ -1102,7 +1107,7 @@ function kindleNoteHtml(note, fallbackInitials) {
   const initials = note.author_initials || fallbackInitials || '—';
   const kind = note.kind || 'comment';
   const quote = note.quote_text || '';
-  const source = note.source_label || '';
+  const source = note.kind === 'ia_answer' ? studyQuestionLabel(note.source_label) : note.source_label || '';
   const showQuote = kind === 'annotation' && quote;
   const isAi = kind === 'ia_answer';
 
@@ -1254,7 +1259,25 @@ function bindNoteCards(listEl, rerender, { treatmentId = null, onApplied = null,
         const prevLabel = applyBtn.textContent;
         applyBtn.textContent = 'Aplicando…';
         try {
-          if (action.type === 'plan') {
+          if (action.type === 'element' || action.type === 'priority') {
+            const { loadCaseStudy, saveCaseStudy } = await import('../case-study-store.js');
+            const current = await loadCaseStudy(treatmentId);
+            if (action.type === 'element') {
+              const { mergeCaseStudyAiElements } = await import('../case-study-ai.js');
+              await saveCaseStudy(treatmentId, mergeCaseStudyAiElements(current, [action.element]).caseStudy);
+            } else {
+              const problems = current.elements.filter((el) => el.axis === 'problem');
+              const titles = normalizePriorityTitles(action.titles, current.elements).map((title) => title.trim().toLocaleLowerCase());
+              problems.sort((a, b) => {
+                const rank = (el) => { const index = titles.indexOf(el.title.trim().toLocaleLowerCase()); return index < 0 ? titles.length : index; };
+                return rank(a) - rank(b);
+              });
+              let index = 0;
+              current.elements = current.elements.map((el) => el.axis === 'problem' ? problems[index++] : el);
+              await saveCaseStudy(treatmentId, current);
+            }
+            toast('Sugerencia incorporada al estudio');
+          } else if (action.type === 'plan') {
             const res = await applyAiPlan(treatmentId, action.plan);
             toast(
               `Programa aplicado: ${res.sessionsCreated} sesiones nuevas · ${res.modulesAdded} módulos añadidos${

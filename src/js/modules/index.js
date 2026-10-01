@@ -60,6 +60,7 @@ const LEGACY_RENDERERS = {
   tcc_exposicion: renderTccGeneric,
   tcc_experimento: renderTccGeneric,
   tcc_monitoreo_actividades: renderTccGeneric,
+  tcc_tdah_organizacion: renderTccGeneric,
   tcc_prevencion_recaida: renderTccGeneric,
   sig_externalizacion: renderTccGeneric,
   sig_resultados_unicos: renderTccGeneric,

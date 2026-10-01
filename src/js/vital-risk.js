@@ -91,7 +91,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += 0.1;
     reasons.push('GAD-7 severo');
   }
-  findings.push(`GAD-7: ${gadTotal == null ? 'sin registro' : `${gadTotal} puntos`}`);
+  if (gad) findings.push(`GAD-7: ${gadTotal == null ? 'sin registro' : `${gadTotal} puntos`}`);
 
   const dass = latestModule(sessions, 'dass21');
   const dassAnx = dass ? dassAnxiety(parseJsonSafe(dass.mod.data, {})) : null;
@@ -99,7 +99,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
     score += 0.08;
     reasons.push('DASS ansiedad severa');
   }
-  findings.push(`DASS-21 ansiedad: ${dassAnx == null ? 'sin registro' : `${dassAnx} puntos`}`);
+  if (dass) findings.push(`DASS-21 ansiedad: ${dassAnx == null ? 'sin registro' : `${dassAnx} puntos`}`);
 
   const riskEls = (caseStudy.elements || []).filter(
     (el) => el.axis === 'risk' && el.title && el.status !== 'unknown',
@@ -127,7 +127,7 @@ export function computeVitalRisk({ sessions = [], caseStudy = {}, marital = '' }
   score = clamp01(score);
   const label =
     score >= 0.75 ? 'Alto' : score >= 0.45 ? 'Moderado' : score >= 0.25 ? 'Leve' : 'Bajo';
-  if (findings.length < 5) findings.push('Sin elementos de riesgo registrados');
+  if (!riskEls.length) findings.push('Sin elementos de riesgo registrados');
   return { score, label, cssrsKey, reasons, findings: [...new Set(findings)].slice(0, 5) };
 }
 

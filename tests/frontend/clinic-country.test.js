@@ -45,6 +45,8 @@ test('ID se formatea según el país', () => {
 test('Nominatim usa el código del país del clínico', () => {
   assert.equal(nominatimCountryCode('CL'), 'cl');
   assert.equal(nominatimCountryCode('AR'), 'ar');
+  assert.equal(nominatimCountryCode('US'), 'us');
+  assert.equal(nominatimCountryCode('EC'), 'ec');
   assert.equal(nominatimCountryCode('OTRO'), '');
 });
 
@@ -54,12 +56,10 @@ test('educación básica/media se lee como primaria/secundaria', () => {
   assert.equal(normalizeEducationLevel('Educación universitaria completa'), 'Educación universitaria completa');
 });
 
-test('placeholder de IA: una pregunta por línea, sin líneas en blanco', () => {
-  const lines = IA_ANAMNESIS_PLACEHOLDER.split('\n');
-  assert.equal(lines.length, 5);
-  assert.ok(lines.every((line) => line.startsWith('¿') && !line.includes('\n')));
-  assert.ok(iaAnamnesisPlaceholderAttr().includes('&#10;'));
-  assert.doesNotMatch(iaAnamnesisPlaceholderAttr(), /&#10;&#10;/);
+test('placeholder de IA: preguntas separadas por comas', () => {
+  assert.equal(IA_ANAMNESIS_PLACEHOLDER.split(', ').length, 5);
+  assert.doesNotMatch(IA_ANAMNESIS_PLACEHOLDER, /\n/);
+  assert.doesNotMatch(iaAnamnesisPlaceholderAttr(), /&#10;/);
 });
 
 test('el rótulo de validez sigue el país del clínico', () => {

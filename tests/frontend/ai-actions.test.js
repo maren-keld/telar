@@ -164,6 +164,16 @@ test('userAskedForPatientEmail distingue queja de pedido', () => {
   );
   assert.equal(userAskedForPatientEmail('le comenté que podríamos hacer terapia de pareja'), false);
   assert.equal(userAskedForPatientEmail('no me des emails'), false);
+  assert.equal(userAskedForPatientEmail('Can you draft an email to the patient?'), true);
+  assert.equal(userAskedForPatientEmail('Why do you give me an email every time?'), false);
+  assert.equal(userAskedForPatientEmail("Don't write an email"), false);
+});
+
+test('el idioma inglés del perfil aplica a respuestas, emails y módulos generados', () => {
+  const prompt = buildAiSystemPrompt('CASE', { practitioner: { locale: 'en' }, email: true });
+  assert.match(prompt, /OUTPUT LANGUAGE: Respond in English/);
+  assert.match(prompt, /patient emails, greetings, sign-offs and generated module text/);
+  assert.doesNotMatch(prompt, /Español de Chile/);
 });
 
 test('el prompt incluye documentos de referencia y pide citarlos por nombre', () => {

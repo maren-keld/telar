@@ -35,6 +35,19 @@ services:
       # Grok (experiencias interactivas). Misma idea: no va en el .app.
       - key: XAI_API_KEY
         sync: false
+      # Clave de administración de xAI para consultar saldo y consumo desde /panel.
+      - key: XAI_MANAGEMENT_API_KEY
+        sync: false
+      - key: XAI_TEAM_ID
+        sync: false
+      # Clave de administrador de OpenAI para consultar costos y tokens del mes.
+      - key: OPENAI_ADMIN_API_KEY
+        sync: false
+      - key: OPENAI_ORGANIZATION_ID
+        sync: false
+      # Clave Admin API de Mistral (si ya se usa para aprovisionar claves, sirve aquí).
+      - key: MISTRAL_ADMIN_API_KEY
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
       - key: BACKEND_URL

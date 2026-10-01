@@ -1,12 +1,13 @@
+import { studyPreferences } from './components/workspace-customize.js';
 import { confirmClinicalAiSend } from './ai-clinical-send.js';
 import { chatCompletion } from './ai-client.js';
 import { emptyCaseStudyElement, normalizeCaseStudyData } from './case-study-model.js';
 import { loadCaseStudy, saveCaseStudy } from './case-study-store.js';
-import { getSessionsWithModules } from './db.js';
+import { addClinicalNote, getSessionsWithModules } from './db.js';
 import { buildReadableText } from './readable-text.js';
 import { parseJsonSafe } from './utils.js';
 
-const ALLOWED_AXES = new Set(['problem', 'resource', 'defense', 'risk']);
+const ALLOWED_AXES = new Set(['problem', 'resource', 'skill', 'development', 'defense', 'risk']);
 const SOURCE_TYPES = new Set(['registro_inicial', 'motivo_consulta']);
 
 export function caseStudyAiSourceText(sessions = []) {
@@ -47,6 +48,8 @@ const AXIS_ALIASES = new Map([
   ['problem', 'problem'], ['problems', 'problem'], ['problema', 'problem'], ['problemas', 'problem'],
   ['resource', 'resource'], ['resources', 'resource'], ['recurso', 'resource'], ['recursos', 'resource'],
   ['factor protector', 'resource'], ['factores protectores', 'resource'],
+  ['skill', 'skill'], ['habilidad', 'skill'], ['habilidades', 'skill'],
+  ['development', 'development'], ['oportunidades de desarrollo', 'development'],
   ['defense', 'defense'], ['defensa', 'defense'], ['defensas', 'defense'],
   ['risk', 'risk'], ['riesgo', 'risk'], ['riesgos', 'risk'],
 ]);
@@ -149,11 +152,13 @@ export function fallbackCaseStudyRows(sourceText) {
   return rows;
 }
 
-export async function autoCompleteCaseStudyWithAi(treatmentId) {
+export async function autoCompleteCaseStudyWithAi(treatmentId, { review = false, onReviewed } = {}) {
   const sessions = await getSessionsWithModules(treatmentId);
   const sourceText = caseStudyAiSourceText(sessions);
   if (!sourceText) throw new Error('Completa Registro inicial o Anamnesis antes de autocompletar los ejes.');
 
+  const preferences = studyPreferences();
+  const axes = ['problem', 'resource', 'skill', 'risk', ...(preferences.defense ? ['defense'] : []), ...(preferences.development ? ['development'] : [])].join('|');
   await confirmClinicalAiSend({
     contextText: sourceText,
     purpose: 'Autocompletar ejes del estudio de caso',
@@ -163,13 +168,29 @@ export async function autoCompleteCaseStudyWithAi(treatmentId) {
     messages: [
       {
         role: 'system',
-        content: `Eres un asistente clínico de apoyo. Extrae elementos para el estudio de caso SOLO desde el texto proporcionado. No diagnostiques, no inventes, no completes vacíos y no menciones OASIS ni ODSIS. Devuelve SOLO JSON válido con esta forma: {"elements":[{"axis":"problem|resource|defense|risk","title":"nombre breve","status":"present|developing|unknown","manifestations":["frase breve y fiel al texto"],"indicators":["frase breve y fiel al texto"]}]}. Incluye máximo 3 elementos por eje. Cada elemento debe tener al menos una manifestación o indicador con una frase atribuible al contexto. Si no hay evidencia suficiente, devuelve un arreglo vacío.`,
+        content: `Eres un asistente clínico de apoyo. Extrae elementos para el estudio de caso SOLO desde el texto proporcionado. No diagnostiques, no inventes, no completes vacíos y no menciones OASIS ni ODSIS. Devuelve SOLO JSON válido con esta forma: {"elements":[{"axis":"${review ? axes : 'problem|resource|defense|risk'}","title":"nombre breve","status":"present|developing|unknown","manifestations":["frase breve y fiel al texto"],"indicators":["frase breve y fiel al texto"]}]}. Incluye máximo 3 elementos por eje. Añade explanation con la justificación y los límites de cada sugerencia. Habilidades son capacidades practicables, no técnicas ni evidencia de adquisición. Oportunidades de desarrollo recoge aspiraciones explícitas. Cada elemento debe tener al menos una manifestación o indicador con una frase atribuible al contexto. Si no hay evidencia suficiente, devuelve un arreglo vacío.`,
       },
       { role: 'user', content: sourceText },
     ],
   });
   const current = await loadCaseStudy(treatmentId);
   const rows = parseCaseStudyAiResult(text);
+  if (review) {
+    const prefs = studyPreferences();
+    const proposals = (rows.length ? rows : fallbackCaseStudyRows(sourceText))
+      .map((row) => ({ ...row, axis: AXIS_ALIASES.get(String(row?.axis || row?.eje || '').trim().toLocaleLowerCase()), title: String(row?.title || row?.titulo || row?.name || row?.nombre || '').trim(), manifestations: cleanEvidence(row.manifestations || row.manifestaciones || row.evidence || row.evidencia), indicators: cleanEvidence(row.indicators || row.indicadores) }))
+      .filter((row) => !['defense', 'development'].includes(row.axis) || prefs[row.axis])
+      .filter((row) => mergeCaseStudyAiElements(current, [row]).changed > 0);
+    if (!proposals.length) throw new Error('No hay sugerencias nuevas con evidencia suficiente.');
+    const content = 'Sugerencias de análisis del caso. Revisa la evidencia y decide cuáles incorporar.\n\n' + proposals.map((row) => {
+      const explanation = row.explanation || 'Propuesta basada en las frases registradas; requiere tu revisión.';
+      const evidence = cleanEvidence(row.manifestations || row.manifestaciones || row.evidence || row.evidencia).map((item) => item.text).join('; ');
+      return `${row.title}: ${explanation}\nEvidencia: ${evidence}\n\`\`\`telar-element\n${JSON.stringify({ ...row, explanation })}\n\`\`\``;
+    }).join('\n\n');
+    await addClinicalNote(treatmentId, { kind: 'ia_answer', content, sourceLabel: 'Analizar el caso con IA', authorInitials: 'IA' });
+    await onReviewed?.();
+    return { saved: current, sessions, changed: 0, proposed: proposals.length };
+  }
   // Complementa siempre con evidencia literal estable: la respuesta del modelo
   // puede ser breve, pero no puede borrar ni sustituir la formulación existente.
   let merged = mergeCaseStudyAiElements(current, rows);

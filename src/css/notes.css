@@ -343,7 +343,8 @@
 }
 
 .kindle-note__source--question {
-  font-style: italic;
+  font-style: normal;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -754,6 +755,25 @@
   box-shadow: var(--shadow-modal);
 }
 
+.textarea-highlight-layer {
+  position: fixed;
+  z-index: 10;
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: transparent;
+  overflow: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  opacity: 0.55;
+}
+
+.textarea-highlight-layer mark {
+  color: transparent;
+  padding: 0;
+}
+
 .highlight-toolbar[hidden] {
   display: none !important;
 }
@@ -776,6 +796,20 @@
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
   border-top: 8px solid var(--border);
+}
+
+.highlight-toolbar--below::after {
+  top: -7px;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 7px solid var(--bg-card);
+}
+
+.highlight-toolbar--below::before {
+  top: -9px;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 8px solid var(--border);
 }
 
 .highlight-toolbar__label {
@@ -1373,3 +1407,10 @@ html[data-theme='dark'] .kindle-note__palette-dot.active {
 .ai-grid--thinking .d2 { animation-delay: 0.07s; }
 .ai-grid--thinking .d6 { animation-delay: 0.17s; }
 .ai-grid--thinking .d8 { animation-delay: 0.17s; }
+
+/* Suggestions use the reading size of the surrounding answer. */
+.kindle-note .ai-dialog { font-size: 13px; line-height: 1.5; }
+.kindle-note .ai-dialog__ask { font-size: 13px; font-weight: 600; }
+.kindle-note .ai-dialog__summary { font-size: 13px; line-height: 1.5; }
+.kindle-note ol.ai-dialog__summary { padding-left: 20px; }
+.kindle-note .ai-dialog__foot .btn { font-size: 12px; }

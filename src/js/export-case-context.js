@@ -80,7 +80,7 @@ function formatElementDetails(el) {
 /** Snapshot de Estudio de caso para prompts de IA (ejes + detalles). */
 export function formatCaseStudyForPrompt(caseStudy, { vital = null } = {}) {
   const blocks = [];
-  if (vital && (vital.label || vital.score != null)) {
+  if (vital && (Number(vital.score) > 0 || vital.reasons?.length)) {
     const reasons = Array.isArray(vital.reasons) ? vital.reasons.filter(Boolean).join('; ') : '';
     blocks.push(
       `### Riesgo vital (experimental)\n- ${vital.label || 'Bajo'} (score ${Number(vital.score || 0).toFixed(2)})${reasons ? ` — ${reasons}` : ''}`,
@@ -94,7 +94,7 @@ export function formatCaseStudyForPrompt(caseStudy, { vital = null } = {}) {
     if (!els.length) continue;
     const lines = els.map((el) => {
       const status = statusLabelFor(axis.id, el.status);
-      const notes = String(el.notes || '').trim();
+      const notes = [String(el.notes || '').trim(), ...(el.resourceDetails || []).map((row) => row.text)].filter(Boolean).join('; ');
       if (el.kind === SUPPORT_NETWORK_KIND) {
         const people = (el.people || [])
           .map((p) => {

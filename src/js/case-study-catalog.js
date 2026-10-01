@@ -1,3 +1,4 @@
+import { SKILL_LIBRARY } from './case-study-skills.js';
 /**
  * Librería de elementos por eje (mismo rol que la librería de módulos).
  */
@@ -142,7 +143,11 @@ function titlesFromDescriptions(category) {
 
 export function libraryItemsForAxis(axis) {
   let base = [];
-  if (axis === 'problem') {
+  if (axis === 'skill') {
+    base = SKILL_LIBRARY;
+  } else if (axis === 'development') {
+    base = [];
+  } else if (axis === 'problem') {
     base = PROBLEM_LIBRARY.map((item) => ({
       title: item.title,
       description: (item.indicators || []).slice(0, 2).join(' · '),

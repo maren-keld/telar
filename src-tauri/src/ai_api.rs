@@ -45,9 +45,8 @@ fn api_error_message(body: &Value, fallback: &str) -> String {
 
 fn transport_error_message(base: &str, detail: &str) -> String {
     let local = is_local_base(base);
-    let timed_out = detail.contains("timed out")
-        || detail.contains("timeout")
-        || detail.contains("elapsed");
+    let timed_out =
+        detail.contains("timed out") || detail.contains("timeout") || detail.contains("elapsed");
 
     if local && timed_out {
         return "El modelo local tardó demasiado en responder. Prueba un modelo más ligero (Qwen 2.5 3B) o vuelve a consultar: la primera respuesta tras abrir Ollama es la más lenta.".into();
@@ -82,20 +81,64 @@ async fn wait_until_cancelled(request_id: u64) {
     }
 }
 
-fn chat_message_value(content: &str) -> Value {
+fn chat_message_value(content: &str, finish_reason: &str) -> Value {
     json!({
         "choices": [{
             "message": {
                 "role": "assistant",
                 "content": content,
             },
-            "finish_reason": "stop"
+            "finish_reason": finish_reason
         }]
     })
 }
 
+/// Retiene caracteres UTF-8 que quedan partidos entre paquetes de red.
+fn append_stream_chunk(
+    buffer: &mut String,
+    pending: &mut Vec<u8>,
+    bytes: &[u8],
+) -> Result<(), String> {
+    pending.extend_from_slice(bytes);
+    match std::str::from_utf8(pending) {
+        Ok(text) => {
+            buffer.push_str(text);
+            pending.clear();
+        }
+        Err(error) => {
+            let valid = error.valid_up_to();
+            buffer.push_str(std::str::from_utf8(&pending[..valid]).unwrap());
+            if error.error_len().is_some() {
+                return Err(
+                    "La respuesta de IA contiene texto inválido. Inténtalo de nuevo.".into(),
+                );
+            }
+            pending.drain(..valid);
+        }
+    }
+    Ok(())
+}
+
+fn complete_stream(
+    content: &str,
+    finish_reason: Option<&str>,
+    ended: bool,
+    pending: &[u8],
+) -> Result<Value, String> {
+    if !pending.is_empty() || (!ended && finish_reason.is_none()) {
+        return Err(
+            "La conexión de IA terminó antes de completar la respuesta. Inténtalo de nuevo.".into(),
+        );
+    }
+    Ok(chat_message_value(content, finish_reason.unwrap_or("stop")))
+}
+
 /// Consume eventos SSE completos. Devuelve `true` al ver `data: [DONE]`.
-fn consume_sse_events(buffer: &mut String, content: &mut String) -> Result<bool, String> {
+fn consume_sse_events(
+    buffer: &mut String,
+    content: &mut String,
+    finish_reason: &mut Option<String>,
+) -> Result<bool, String> {
     loop {
         let crlf = buffer.find("\r\n\r\n");
         let lf = buffer.find("\n\n");
@@ -124,6 +167,12 @@ fn consume_sse_events(buffer: &mut String, content: &mut String) -> Result<bool,
             };
             if v.get("error").is_some() {
                 return Err(api_error_message(&v, "La API de IA rechazó la solicitud"));
+            }
+            if let Some(reason) = v
+                .pointer("/choices/0/finish_reason")
+                .and_then(Value::as_str)
+            {
+                *finish_reason = Some(reason.to_string());
             }
             let delta = v
                 .pointer("/choices/0/delta/content")
@@ -228,6 +277,9 @@ async fn stream_chat_completion(
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
     let mut content = String::new();
+    let mut finish_reason = None;
+    let mut pending_bytes = Vec::new();
+    let mut ended = false;
 
     loop {
         if is_cancelled(request_id) {
@@ -255,8 +307,9 @@ async fn stream_chat_completion(
                         return Err(transport_error_message(&base, &e.to_string()));
                     }
                     Ok(Some(Ok(bytes))) => {
-                        buffer.push_str(&String::from_utf8_lossy(&bytes));
-                        if consume_sse_events(&mut buffer, &mut content)? {
+                        append_stream_chunk(&mut buffer, &mut pending_bytes, &bytes)?;
+                        if consume_sse_events(&mut buffer, &mut content, &mut finish_reason)? {
+                            ended = true;
                             break;
                         }
                     }
@@ -269,7 +322,7 @@ async fn stream_chat_completion(
         return Err("cancelado".into());
     }
 
-    Ok(chat_message_value(&content))
+    complete_stream(&content, finish_reason.as_deref(), ended, &pending_bytes)
 }
 
 /* --------------------------- Anthropic (Messages) -------------------------- */
@@ -308,7 +361,11 @@ fn anthropic_payload(messages: &Value, model: &str, max_tokens: u32) -> (Value, 
 }
 
 /// Igual que `consume_sse_events` pero para el formato de Anthropic.
-fn consume_anthropic_events(buffer: &mut String, content: &mut String) -> Result<bool, String> {
+fn consume_anthropic_events(
+    buffer: &mut String,
+    content: &mut String,
+    finish_reason: &mut Option<String>,
+) -> Result<bool, String> {
     loop {
         let crlf = buffer.find("\r\n\r\n");
         let lf = buffer.find("\n\n");
@@ -338,9 +395,24 @@ fn consume_anthropic_events(buffer: &mut String, content: &mut String) -> Result
                         content.push_str(s);
                     }
                 }
+                Some("message_delta") => {
+                    if let Some(reason) = v.pointer("/delta/stop_reason").and_then(Value::as_str) {
+                        *finish_reason = Some(
+                            if reason == "max_tokens" {
+                                "length"
+                            } else {
+                                reason
+                            }
+                            .to_string(),
+                        );
+                    }
+                }
                 Some("message_stop") => return Ok(true),
                 Some("error") => {
-                    return Err(api_error_message(&v, "La API de Anthropic rechazó la solicitud"))
+                    return Err(api_error_message(
+                        &v,
+                        "La API de Anthropic rechazó la solicitud",
+                    ))
                 }
                 _ => {}
             }
@@ -394,6 +466,9 @@ async fn stream_anthropic_completion(
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
     let mut content = String::new();
+    let mut finish_reason = None;
+    let mut pending_bytes = Vec::new();
+    let mut ended = false;
 
     loop {
         if is_cancelled(request_id) {
@@ -413,8 +488,9 @@ async fn stream_anthropic_completion(
                         return Err(transport_error_message(&base, &e.to_string()));
                     }
                     Ok(Some(Ok(bytes))) => {
-                        buffer.push_str(&String::from_utf8_lossy(&bytes));
-                        if consume_anthropic_events(&mut buffer, &mut content)? {
+                        append_stream_chunk(&mut buffer, &mut pending_bytes, &bytes)?;
+                        if consume_anthropic_events(&mut buffer, &mut content, &mut finish_reason)? {
+                            ended = true;
                             break;
                         }
                     }
@@ -426,7 +502,7 @@ async fn stream_anthropic_completion(
     if is_cancelled(request_id) {
         return Err("cancelado".into());
     }
-    Ok(chat_message_value(&content))
+    complete_stream(&content, finish_reason.as_deref(), ended, &pending_bytes)
 }
 
 /// Corta la generación en curso: el lector SSE cierra el socket (Ollama para).
@@ -477,6 +553,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn preserves_token_limit_reason() {
+        let mut buf = String::from("data: {\"choices\":[{\"delta\":{\"content\":\"Aplic\"},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n");
+        let mut content = String::new();
+        let mut reason = None;
+        assert!(consume_sse_events(&mut buf, &mut content, &mut reason).unwrap());
+        assert_eq!(
+            complete_stream(&content, reason.as_deref(), true, &[]).unwrap()["choices"][0]
+                ["finish_reason"],
+            "length"
+        );
+    }
+
+    #[test]
+    fn anthropic_preserves_max_tokens() {
+        let mut buf = String::from("data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"max_tokens\"}}\n\ndata: {\"type\":\"message_stop\"}\n\n");
+        let mut reason = None;
+        assert!(consume_anthropic_events(&mut buf, &mut String::new(), &mut reason).unwrap());
+        assert_eq!(reason.as_deref(), Some("length"));
+    }
+
+    #[test]
+    fn split_utf8_characters_survive_network_chunks() {
+        let text = "data: {\"choices\":[{\"delta\":{\"content\":\"anticipación 🟢\"}}]}\n\ndata: [DONE]\n\n";
+        let mut buffer = String::new();
+        let mut pending = Vec::new();
+        let mut content = String::new();
+        let mut ended = false;
+        for byte in text.as_bytes() {
+            append_stream_chunk(&mut buffer, &mut pending, &[*byte]).unwrap();
+            ended |= consume_sse_events(&mut buffer, &mut content, &mut None).unwrap();
+        }
+        assert!(ended);
+        assert_eq!(content, "anticipación 🟢");
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn incomplete_stream_is_not_a_complete_answer() {
+        assert!(complete_stream("Aplic", None, false, &[]).is_err());
+        assert!(complete_stream("texto", Some("stop"), true, &[0xc3]).is_err());
+        assert!(complete_stream("texto", Some("stop"), false, &[]).is_ok());
+    }
+
+    #[test]
     fn sse_accumulates_delta_content() {
         let mut buf = String::from(
             "data: {\"choices\":[{\"delta\":{\"content\":\"Hola\"}}]}\n\n\
@@ -484,7 +604,7 @@ mod tests {
              data: [DONE]\n\n",
         );
         let mut content = String::new();
-        assert!(consume_sse_events(&mut buf, &mut content).unwrap());
+        assert!(consume_sse_events(&mut buf, &mut content, &mut None).unwrap());
         assert_eq!(content, "Hola mundo");
         assert!(buf.is_empty());
     }
@@ -513,7 +633,7 @@ mod tests {
              data: {\"type\":\"message_stop\"}\n\n",
         );
         let mut content = String::new();
-        assert!(consume_anthropic_events(&mut buf, &mut content).unwrap());
+        assert!(consume_anthropic_events(&mut buf, &mut content, &mut None).unwrap());
         assert_eq!(content, "Hola mundo");
     }
 
@@ -523,7 +643,7 @@ mod tests {
             "data: {\"type\":\"error\",\"error\":{\"message\":\"clave inválida\"}}\n\n",
         );
         let mut content = String::new();
-        let err = consume_anthropic_events(&mut buf, &mut content).unwrap_err();
+        let err = consume_anthropic_events(&mut buf, &mut content, &mut None).unwrap_err();
         assert!(err.contains("clave inválida"));
     }
 
@@ -531,10 +651,10 @@ mod tests {
     fn sse_waits_for_complete_event() {
         let mut buf = String::from("data: {\"choices\":[{\"delta\":{\"content\":\"x\"}}]}\n");
         let mut content = String::new();
-        assert!(!consume_sse_events(&mut buf, &mut content).unwrap());
+        assert!(!consume_sse_events(&mut buf, &mut content, &mut None).unwrap());
         assert!(content.is_empty());
         buf.push_str("\n");
-        assert!(!consume_sse_events(&mut buf, &mut content).unwrap());
+        assert!(!consume_sse_events(&mut buf, &mut content, &mut None).unwrap());
         assert_eq!(content, "x");
     }
 }

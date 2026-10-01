@@ -32,8 +32,8 @@ export const AI_API_PRESETS = {
       'Servidores en Francia. Telar la activa la primera vez (la clave no viaja en el instalador). El caso no pasa por telarapp.cl.',
     serverCountry: 'Francia (Unión Europea)',
     baseUrl: 'https://api.mistral.ai/v1',
-    defaultModel: 'mistral-small-latest',
-    models: ['mistral-small-latest', 'open-mistral-nemo', 'mistral-large-latest'],
+    defaultModel: 'open-mistral-nemo',
+    models: ['open-mistral-nemo', 'mistral-small-latest', 'mistral-large-latest'],
     keyHint: 'Clave en console.mistral.ai',
     keyRequired: true,
     recommended: true,
@@ -143,7 +143,7 @@ export const AI_DEFAULTS = {
   aiLocalModel: 'qwen2.5-3b-instruct-q4',
   aiApiProvider: 'mistral',
   aiApiBase: 'https://api.mistral.ai/v1',
-  aiApiModel: 'mistral-small-latest',
+  aiApiModel: 'open-mistral-nemo',
   aiApiKey: '',
 };
 

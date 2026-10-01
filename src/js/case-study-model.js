@@ -1,3 +1,4 @@
+import { SKILL_LIBRARY } from './case-study-skills.js';
 /**
  * Modelo clínico compartido: Estudio de caso (full) ↔ Perfil rail (lite).
  * Un solo documento por tratamiento; Perfil proyecta ejes resource/defense/risk.
@@ -6,7 +7,9 @@
 export const CASE_STUDY_AXES = [
   { id: 'problem', label: 'Problemas', addLabel: 'Añadir problema', nav: true },
   { id: 'resource', label: 'Factores protectores', addLabel: 'Añadir factor protector', nav: true },
-  { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa', nav: true },
+  { id: 'skill', label: 'Habilidades', addLabel: 'Añadir habilidad', nav: true },
+  { id: 'development', label: 'Oportunidades de desarrollo', addLabel: 'Añadir oportunidad', nav: true, optional: true },
+  { id: 'defense', label: 'Defensas psíquicas', addLabel: 'Añadir defensa', nav: true, optional: true, orientation: 'Psicodinámica' },
   { id: 'risk', label: 'Riesgos', addLabel: 'Añadir riesgo', nav: true },
   { id: 'other', label: 'Bots/Agentes', addLabel: 'Añadir elemento', nav: true },
 ];
@@ -20,6 +23,8 @@ export const ESTUDIO_NAV = [
   { id: 'summary', label: 'Resumen', kind: 'page' },
   AXIS_NAV('problem'),
   AXIS_NAV('resource'),
+  AXIS_NAV('skill'),
+  AXIS_NAV('development'),
   AXIS_NAV('defense'),
   AXIS_NAV('risk'),
   { id: 'scores', label: 'Evolución', kind: 'page' },
@@ -59,6 +64,8 @@ export const AXIS_PROFILE_MAP = {
 const STATUS_OPTIONS = {
   problem: ['present', 'developing', 'unknown'],
   resource: ['present', 'developing', 'unknown'],
+  skill: ['present', 'developing', 'unknown'],
+  development: ['present', 'developing', 'unknown'],
   defense: ['present', 'developing', 'unknown'],
   risk: ['present', 'developing', 'unknown'],
   other: ['present', 'developing', 'unknown'],
@@ -149,6 +156,7 @@ export function normalizeCaseStudyElement(raw = {}, fallbackAxis = 'problem') {
     quantitativeEvidence: (Array.isArray(raw.quantitativeEvidence) ? raw.quantitativeEvidence : [])
       .map((row) => ({ moduleType: String(row.moduleType || '').trim(), sessionId: String(row.sessionId || ''), ...(row.moduleId ? { moduleId: String(row.moduleId) } : {}) }))
       .filter((row) => row.moduleType),
+    resourceDetails: normalizeItems(raw.resourceDetails, { checkable: false }),
     notes: String(raw.notes || '').trim(),
     people: (Array.isArray(raw.people) ? raw.people : []).map(normalizeSupportPerson),
     activities: (Array.isArray(raw.activities) ? raw.activities : [])
@@ -367,7 +375,12 @@ export const AXIS_MODULE_HINTS = {
 const ELEMENT_RECOMMENDATIONS = {
   'ansiedad alta': { evaluation: ['gad7', 'dass21'], intervention: ['tcc_preocupaciones', 'tcc_probabilidades', 'tcc_socratico', 'tcc_estres'] },
   'estado de ánimo bajo': { evaluation: ['dass21'], intervention: ['tcc_activacion', 'tcc_gratitud', 'tcc_monitoreo_actividades'] },
-  'tdah en adultos': { evaluation: ['asrs'], intervention: ['tcc_monitoreo_actividades'] },
+  'tdah en adultos': { evaluation: ['asrs'], intervention: ['tcc_tdah_organizacion'] },
+  'dificultad para iniciar tareas': { evaluation: [], intervention: ['tcc_tdah_organizacion'] },
+  'olvidos o desorganización': { evaluation: [], intervention: ['tcc_tdah_organizacion'] },
+  'olvidos y desorganización cotidiana': { evaluation: [], intervention: ['tcc_tdah_organizacion'] },
+  'distracción en tareas': { evaluation: [], intervention: ['tcc_tdah_organizacion'] },
+  'distracción en tareas prolongadas': { evaluation: [], intervention: ['tcc_tdah_organizacion'] },
   'estrés alto': { evaluation: ['dass21'], intervention: ['tcc_estres', 'dbt_diary_card', 'dbt_regulacion_emocional', 'tcc_flexibilidad'] },
   'estrés postraumático': { evaluation: ['pcl5', 'sprint_ecl'], intervention: [] },
   'pensamientos recurrentes': { evaluation: [], intervention: ['tcc_registro_pensamientos', 'tcc_socratico', 'tcc_flexibilidad', 'tcc_probabilidades', 'tcc_sesgos', 'tcc_abc'] },
@@ -467,6 +480,8 @@ export function suggestedModulesForElement(axis, title = '') {
 /** Sugerencias separadas para no mostrar escalas como intervenciones. */
 export function recommendedModulesForElement(axis, title = '') {
   const key = String(title).trim().toLocaleLowerCase();
+  const skill = axis === 'skill' && SKILL_LIBRARY.find((item) => item.title.toLocaleLowerCase() === key);
+  if (skill) return { evaluation: [], intervention: [...skill.modules] };
   const result = ELEMENT_RECOMMENDATIONS[key];
   return result ? { evaluation: [...result.evaluation], intervention: [...result.intervention] } : { evaluation: [], intervention: [] };
 }
@@ -488,13 +503,17 @@ export function recommendedModuleTypesForElements(elements = []) {
  */
 export function defaultElementIdsForModule(moduleType, elements = []) {
   const wanted = new Set();
+  // Las habilidades asociadas describen lo que se practica, sin afirmar adquisición.
   for (const [title, recommendation] of Object.entries(ELEMENT_RECOMMENDATIONS)) {
     if (recommendation.evaluation.includes(moduleType) || recommendation.intervention.includes(moduleType)) {
       wanted.add(title);
     }
   }
   return (elements || [])
-    .filter((element) => wanted.has(String(element?.title || '').trim().toLocaleLowerCase()))
+    .filter((element) => element.axis !== 'development')
+    .filter((element) => element.axis === 'skill'
+      ? recommendedModulesForElement('skill', element.title).intervention.includes(moduleType)
+      : wanted.has(String(element?.title || '').trim().toLocaleLowerCase()))
     .map((element) => String(element.id))
     .filter(Boolean);
 }
@@ -560,6 +579,8 @@ export function customPlaceholderForAxis(axis) {
     {
       problem: 'Problema personalizado',
       resource: 'Recurso o factor protector personalizado',
+      skill: 'Habilidad que se quiere practicar',
+      development: 'Meta o capacidad que se quiere potenciar',
       defense: 'Defensa personalizada',
       risk: 'Vulnerabilidad o riesgo personalizado',
       other: 'Elemento personalizado',

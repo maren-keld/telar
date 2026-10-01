@@ -6,7 +6,7 @@ import { isModuleTypeAvailable } from './modules/index.js';
 import { moduleLabelI18n } from './i18n.js';
 import { tccHandoutDef } from './tcc-handout-defs.js';
 
-const ONCE_PER_TREATMENT = new Set(['registro_inicial', 'motivo_consulta']);
+const ONCE_PER_TREATMENT = new Set(['registro_inicial', 'motivo_consulta', 'eed']);
 
 /** Tipos clínicos con renderer en src/js/modules/ (excl. selector_modulo). */
 export const LEGACY_CLINICAL_MODULE_TYPES = [
@@ -35,6 +35,7 @@ export const LEGACY_CLINICAL_MODULE_TYPES = [
   'tcc_exposicion',
   'tcc_experimento',
   'tcc_monitoreo_actividades',
+  'tcc_tdah_organizacion',
   'tcc_prevencion_recaida',
   'sig_externalizacion',
   'sig_resultados_unicos',

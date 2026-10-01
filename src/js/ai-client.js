@@ -41,9 +41,9 @@ export async function cancelChatCompletion(request) {
 
 /**
  * Chat completion OpenAI-compatible vía Rust (sin restricciones CSP).
- * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number }, purpose?: 'modules', reasoningEffort?: string }} opts
+ * @param {{ messages: Array<{role:string, content:string}>, maxTokens?: number, profile?: object, request?: { aborted?: boolean, id?: number }, purpose?: 'modules', reasoningEffort?: string, completeResponse?: boolean }} opts
  */
-export async function chatCompletion({ messages, maxTokens = 512, profile, request, purpose, reasoningEffort } = {}) {
+export async function chatCompletion({ messages, maxTokens = 512, profile, request, purpose, reasoningEffort, completeResponse = false } = {}) {
   const resolvedProfile = profile ?? loadProfile();
   const cfg = resolveAiConfig(resolvedProfile, { purpose });
   if (!cfg.enabled) {
@@ -88,11 +88,21 @@ export async function chatCompletion({ messages, maxTokens = 512, profile, reque
       provider: cfg.apiProtocol || '',
     };
     if (effort) payload.reasoningEffort = effort;
-    const response = await getInvoke()('ai_chat_completion', payload);
-    if (request?.aborted) throw new Error('cancelado');
-
-    const text = extractAssistantText(response);
-    return { response, text };
+    const limit = cfg.mode === 'local' ? 8192 : 16384;
+    for (let attempt = 0; ; attempt += 1) {
+      if (request?.aborted) throw new Error('cancelado');
+      const response = await getInvoke()('ai_chat_completion', payload);
+      if (request?.aborted) throw new Error('cancelado');
+      const truncated = response?.choices?.[0]?.finish_reason === 'length';
+      if (!completeResponse || !truncated) {
+        return { response, text: extractAssistantText(response) };
+      }
+      if (attempt >= 2 || payload.maxTokens >= limit) {
+        throw new Error('La respuesta de IA superó el límite de extensión. Divide la consulta en preguntas más breves para obtener una respuesta completa.');
+      }
+      // Regenerar con más espacio evita unir frases o acciones incompletas.
+      payload.maxTokens = Math.min(limit, payload.maxTokens * 2);
+    }
   } catch (err) {
     if (request?.aborted || isCancelError(err)) throw new Error('cancelado');
     throw err;

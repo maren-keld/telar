@@ -1,6 +1,6 @@
 import { optionsForItem, questionnaireItems } from '../lib/questionnaire-schema.js';
 import { getModuleDef, getModuleDefs } from './config.js';
-import { moduleLabelI18n } from './i18n.js';
+import { getLocale, moduleLabelI18n } from './i18n.js';
 import { loadProfile, saveProfile } from './profile.js';
 import { parseJsonSafe } from './utils.js';
 
@@ -163,9 +163,9 @@ export function resolveModuleDef(moduleType) {
   if (defs[moduleType]) return defs[moduleType];
   const custom = getCustomModuleByType(moduleType);
   if (custom) {
-    const def = custom.def || custom.defs?.es || custom.defs?.en || null;
+    const def = resolveQuestionnaireDef(custom);
     return {
-      label: custom.title || def?.title || custom.id,
+      label: (custom.packId && custom.defs?.[getLocale()]?.title) || custom.title || def?.title || custom.id,
       category: custom.category || 'custom',
       description:
         custom.description || custom.instructions || def?.subtitle || 'Módulo personalizado.',
@@ -220,7 +220,7 @@ function defHasItems(def) {
  * publican el idioma bajo una clave distinta de `es`/`en`. Hay que preferir
  * cualquier objeto con `items`, no el primer candidato truthy vacío.
  */
-export function resolveQuestionnaireDef(custom) {
+export function resolveQuestionnaireDef(custom, locale = getLocale()) {
   if (!custom) return null;
   const seen = new Set();
   const candidates = [];
@@ -233,6 +233,8 @@ export function resolveQuestionnaireDef(custom) {
     }
   };
 
+  // Preferir la versión declarada por el autor para el idioma de interfaz.
+  push(custom.defs?.[locale]);
   push(custom.def);
   if (custom.defs && typeof custom.defs === 'object') {
     push(custom.defs.es);

@@ -2,6 +2,54 @@ import { loadProfile, saveProfile } from './profile.js';
 
 const STRINGS = {
   es: {
+    "onboarding.profile": "Tu perfil",
+    "onboarding.welcome": "Bienvenido a Telar",
+    "onboarding.intro": "Antes de empezar, cuéntanos quién eres y en qué país atiendes. El email se usa para el plan Pro y Mercado Pago; el país adapta previsión, documento de identidad y ciudad.",
+    "onboarding.professionalName": "Tu nombre profesional",
+    "onboarding.emailPlaceholder": "tu@email.com",
+    "onboarding.country": "País donde atiendes",
+    "onboarding.select": "Seleccionar…",
+    "onboarding.continue": "Continuar",
+    "onboarding.nameRequired": "Ingresa tu nombre.",
+    "onboarding.emailRequired": "Ingresa un email válido (obligatorio).",
+    "onboarding.countryRequired": "Elige el país donde atiendes.",
+    "onboarding.saved": "Perfil guardado",
+    "unlock.hero.planTitle": "Programa sobre la ficha",
+    "unlock.hero.planCopy": "La IA puede proponer sesiones y módulos; tú decides qué aplicar.",
+    "unlock.hero.scoresTitle": "Puntajes y curva",
+    "unlock.hero.scoresCopy": "Escalas con scoring automático y seguimiento longitudinal.",
+    "unlock.hero.neuroCopy": "Entrenamiento de atención y calma con Muse, en la consulta.",
+    "unlock.hero.localTitle": "La ficha en tu computador",
+    "unlock.hero.localCopy": "Cifrado local y respaldo cifrado en tu nube. No es un chat en la nube.",
+    "unlock.previous": "Módulo anterior",
+    "unlock.next": "Módulo siguiente",
+    "unlock.selectModule": "Seleccionar módulo",
+    "unlock.treatmentPrograms": "Programas de psicoterapia",
+    "unlock.instantScores": "Puntajes instantáneos",
+    "unlock.encrypted": "Todo encriptado",
+    "unlock.help": "¿Necesitas orientación o ayuda?",
+    "unlock.createPinIntro": "Crea un PIN de 6 dígitos para cifrar tu base de datos.",
+    "unlock.chooseMethod": "Elige cómo desbloquear la aplicación",
+    "unlock.enterPinIntro": "Ingresa tu PIN de 6 dígitos para descifrar tu base de datos.",
+    "unlock.touch": "Desbloquear con Touch ID",
+    "unlock.pin": "Desbloquear con PIN",
+    "unlock.newPin": "Nuevo PIN",
+    "unlock.repeatPin": "Repetir PIN",
+    "unlock.create": "Crear y desbloquear",
+    "unlock.confirm": "Confirmar PIN",
+    "unlock.pinLength": "El PIN debe tener 6 dígitos",
+    "unlock.pinMismatch": "Los PIN no coinciden",
+    "unlock.encrypting": "Cifrando base de datos…",
+    "unlock.decrypting": "Descifrando base de datos…",
+    "unlock.preparingExample": "Preparando caso de ejemplo…",
+    "unlock.exampleReady": "Listo. Dejamos un caso de ejemplo para que veas cómo funciona.",
+    "unlock.noFingerprint": "Aún no hay huella guardada. Desbloquea una vez con PIN (Touch ID activado en Ajustes) o configúralo en Ajustes.",
+    "unlock.enableTouch": "Activa Touch ID en Ajustes e ingresa tu PIN una vez para vincular la huella.",
+    "unlock.waitingTouch": "Esperando Touch ID…",
+    "unlock.updateAvailable": "Actualización disponible",
+    "unlock.updateVersion": "Actualización {version} disponible",
+    "unlock.update": "Actualizar",
+
     'nav.agenda': 'Agenda',
     'nav.treatments': 'Tratamientos',
     'nav.reportes': 'Estadísticas',
@@ -39,7 +87,7 @@ const STRINGS = {
     'settings.fileVaultHint':
       'Cifra el disco del computador (FileVault en Mac, BitLocker en Windows). Si se pierde o se roba, nadie puede leer la ficha, Touch ID ni los respaldos en el disco.',
     'settings.privacyTitle': 'Privacidad y datos',
-    'settings.privacyHint': 'Tus datos están solo en este dispositivo. Puedes exportarlos o borrarlos por completo.',
+    'settings.privacyHint': 'La ficha se guarda en este dispositivo. La IA en la nube y los enlaces compartidos pueden enviar información fuera del equipo. Puedes exportar o borrar tus datos.',
     'settings.encrypted': 'Cifrado en este dispositivo',
     'settings.encryptedSub':
       'La ficha clínica se guarda cifrada en tu equipo. Se abre con tu PIN o Touch ID; sin esa clave nadie puede leerla. Siempre activo.',
@@ -87,7 +135,7 @@ const STRINGS = {
     'settings.cloudBackupInfoWhatTitle': 'Qué hace.',
     'settings.cloudBackupInfoWhat':
       'Cada día, Telar guarda una copia cifrada de tu consultorio en una carpeta de tu computador que tú eliges. En ella verás archivos telar-respaldo-YYYY-MM-DD.age — texto ilegible sin tu clave. Telar conserva las 7 copias más recientes. Si pierdes el computador, instalas Telar en uno nuevo y restauras todo.',
-    'settings.cloudBackupInfoWhereTitle': 'Telar no guarda nada en internet.',
+    'settings.cloudBackupInfoWhereTitle': 'Telar no aloja tus respaldos.',
     'settings.cloudBackupInfoWhere':
       'La copia se escribe en tu disco, no en servidores de Telar. Si eliges una carpeta de Google Drive, Dropbox, OneDrive o iCloud, tu propia nube la sincroniza y así el respaldo sobrevive a un computador perdido o robado. Si eliges cualquier otra carpeta, las copias no salen de este equipo.',
     'settings.cloudBackupInfoPrivacyTitle': 'Nadie más puede leerlo.',
@@ -248,7 +296,7 @@ const STRINGS = {
     'ai.quick.emailHint': 'Redacta el correo post-sesión: cuestionarios, tareas de la semana, horarios y firma.',
     'tools.pdf': 'Exportar programa PDF',
     'tools.pdfHint': 'Resumen del tratamiento para el paciente o supervisión',
-    'tools.word': 'Exportar programa Word (.docx)',
+    'tools.word': 'Exportar programa Word',
     'tools.wordHint': 'Documento editable del programa de tratamiento',
     'tools.case': 'Presentación de caso',
     'tools.caseHint': 'PDF anonimizado para supervisión — sin nombre ni RUT',
@@ -263,6 +311,54 @@ const STRINGS = {
     'tools.close': 'Cerrar',
   },
   en: {
+    "onboarding.profile": "Your profile",
+    "onboarding.welcome": "Welcome to Telar",
+    "onboarding.intro": "Before you start, tell us who you are and where you practice. Your email is used for the Pro plan and Mercado Pago; your country determines health coverage, identification and city fields.",
+    "onboarding.professionalName": "Your professional name",
+    "onboarding.emailPlaceholder": "you@example.com",
+    "onboarding.country": "Country where you practice",
+    "onboarding.select": "Select…",
+    "onboarding.continue": "Continue",
+    "onboarding.nameRequired": "Enter your name.",
+    "onboarding.emailRequired": "Enter a valid email address (required).",
+    "onboarding.countryRequired": "Select the country where you practice.",
+    "onboarding.saved": "Profile saved",
+    "unlock.hero.planTitle": "Treatment planning",
+    "unlock.hero.planCopy": "AI can suggest sessions and modules; you decide what to use.",
+    "unlock.hero.scoresTitle": "Scores and progress",
+    "unlock.hero.scoresCopy": "Automatic questionnaire scoring and progress tracking over time.",
+    "unlock.hero.neuroCopy": "Attention and relaxation training with Muse, in your practice.",
+    "unlock.hero.localTitle": "Records on your computer",
+    "unlock.hero.localCopy": "Encrypted local records and encrypted backups in your own cloud storage.",
+    "unlock.previous": "Previous module",
+    "unlock.next": "Next module",
+    "unlock.selectModule": "Select a module",
+    "unlock.treatmentPrograms": "Psychotherapy programs",
+    "unlock.instantScores": "Instant scores",
+    "unlock.encrypted": "Encrypted records",
+    "unlock.help": "Need guidance or help?",
+    "unlock.createPinIntro": "Create a six-digit PIN to encrypt your database.",
+    "unlock.chooseMethod": "Choose how to unlock the app.",
+    "unlock.enterPinIntro": "Enter your six-digit PIN to decrypt your database.",
+    "unlock.touch": "Unlock with Touch ID",
+    "unlock.pin": "Unlock with PIN",
+    "unlock.newPin": "New PIN",
+    "unlock.repeatPin": "Repeat PIN",
+    "unlock.create": "Create PIN and unlock",
+    "unlock.confirm": "Confirm PIN",
+    "unlock.pinLength": "The PIN must contain six digits",
+    "unlock.pinMismatch": "The PINs do not match",
+    "unlock.encrypting": "Encrypting database…",
+    "unlock.decrypting": "Decrypting database…",
+    "unlock.preparingExample": "Preparing example case…",
+    "unlock.exampleReady": "Ready. We added an example case so you can explore the app.",
+    "unlock.noFingerprint": "Touch ID is not linked yet. Enable it in Settings and unlock once with your PIN.",
+    "unlock.enableTouch": "Enable Touch ID in Settings and enter your PIN once to link it.",
+    "unlock.waitingTouch": "Waiting for Touch ID…",
+    "unlock.updateAvailable": "Update available",
+    "unlock.updateVersion": "Update {version} available",
+    "unlock.update": "Update",
+
     'nav.agenda': 'Schedule',
     'nav.treatments': 'Treatments',
     'nav.reportes': 'Statistics',
@@ -300,7 +396,7 @@ const STRINGS = {
     'settings.fileVaultHint':
       'Encrypt the computer disk (FileVault on Mac, BitLocker on Windows). If it is lost or stolen, nobody can read the clinical file, Touch ID key, or on-disk backups.',
     'settings.privacyTitle': 'Privacy & data',
-    'settings.privacyHint': 'Your data stays on this device only. You can export or delete it entirely.',
+    'settings.privacyHint': 'Records are stored on this device. Cloud AI and shared links can send information outside your computer. You can export or delete your data.',
     'settings.encrypted': 'Encrypted on this device',
     'settings.encryptedSub':
       'The clinical file is stored encrypted on your computer. It unlocks with your PIN or Touch ID; without that key nobody can read it. Always on.',
@@ -348,7 +444,7 @@ const STRINGS = {
     'settings.cloudBackupInfoWhatTitle': 'What it does.',
     'settings.cloudBackupInfoWhat':
       'Each day, Telar saves an encrypted copy of your practice to a folder on your computer that you choose. You will see telar-respaldo-YYYY-MM-DD.age files — unreadable without your key. Telar keeps the 7 most recent copies. If you lose your computer, install Telar on a new one and restore everything.',
-    'settings.cloudBackupInfoWhereTitle': 'Telar stores nothing on the internet.',
+    'settings.cloudBackupInfoWhereTitle': 'Telar does not host your backups.',
     'settings.cloudBackupInfoWhere':
       'The copy is written to your disk, not to Telar servers. If you pick a folder inside Google Drive, Dropbox, OneDrive, or iCloud, your own cloud syncs it, so the backup survives a lost or stolen computer. Pick any other folder and the copies never leave this machine.',
     'settings.cloudBackupInfoPrivacyTitle': 'Nobody else can read it.',
@@ -489,7 +585,7 @@ const STRINGS = {
     'toast.saved': 'Saved',
     'toast.langChanged': 'Language updated',
     'notes.filter.all': 'All',
-    'notes.filter.answers': 'Answers',
+    'notes.filter.answers': 'Responses',
     'notes.filter.notes': 'Notes',
     'notes.filter.highlights': 'Highlights',
     'notes.filter.pinned': 'Pinned',
@@ -521,7 +617,7 @@ const STRINGS = {
     'ai.quick.emailHint': 'Draft the post-session email: questionnaires, weekly tasks, schedule and sign-off.',
     'tools.pdf': 'Export treatment plan PDF',
     'tools.pdfHint': 'Treatment summary for the patient or supervision',
-    'tools.word': 'Export treatment plan Word (.docx)',
+    'tools.word': 'Export treatment plan Word',
     'tools.wordHint': 'Editable treatment plan document',
     'tools.case': 'Case presentation',
     'tools.caseHint': 'Anonymized PDF for supervision — no name or ID number',
@@ -569,9 +665,13 @@ export function applyLocale(locale) {
 
 export function detectSystemLocale() {
   try {
-    const lang =
-      (typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || '';
-    return String(lang).toLowerCase().startsWith('en') ? 'en' : 'es';
+    if (typeof navigator === 'undefined') return 'es';
+    const languages = [...(navigator.languages || []), navigator.language || navigator.userLanguage || ''];
+    for (const language of languages) {
+      const code = String(language).toLowerCase().split(/[-_]/)[0];
+      if (code === 'en' || code === 'es') return code;
+    }
+    return 'es';
   } catch {
     return 'es';
   }
@@ -584,7 +684,9 @@ export function initLocaleFromProfile() {
     applyLocale(stored);
     return;
   }
-  applyLocale(detectSystemLocale());
+  const detected = detectSystemLocale();
+  saveProfile({ locale: detected });
+  applyLocale(detected);
 }
 
 export function setLocale(locale) {

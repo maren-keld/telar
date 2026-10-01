@@ -3,6 +3,7 @@ import { bindOccupationPicker } from '../components/occupation-picker.js';
 import {
   bindNationalIdInput,
   clinicCountryCode,
+  cityFieldSpec,
   coverageOptions,
   formatNationalId,
   idSpecFor,
@@ -165,6 +166,7 @@ function dayOptions(selected) {
 export async function renderRegistroInicial(host, moduleRow, { treatment }) {
   const data = parseJsonSafe(moduleRow.data);
   const country = clinicCountryCode();
+  const citySpec = cityFieldSpec(country);
   const seeded = seedRegistroFields(data, treatment, country);
   const age = calcAge(seeded.birth_date);
   const generoInit = normalizeGenero(seeded.genero || data.genero);
@@ -255,8 +257,8 @@ export async function renderRegistroInicial(host, moduleRow, { treatment }) {
           </select>
         </div>
         <div class="form-group">
-          <label>Ciudad</label>
-          <input name="address" id="registro-address" placeholder="Ciudad o comuna" value="${escapeHtml(seeded.address)}" autocomplete="off" />
+          <label for="registro-address">${escapeHtml(citySpec.label)}</label>
+          <input name="address" id="registro-address" placeholder="${escapeHtml(citySpec.placeholder)}" value="${escapeHtml(seeded.address)}" autocomplete="off" />
         </div>
         <div class="form-group" data-no-autobind>
           <label>Ocupaciones</label>

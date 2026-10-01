@@ -984,6 +984,7 @@ export async function addClinicalNote(treatmentId, colorOrOpts = 'teal', legacyC
       authorInitials,
     ],
   );
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('telar:clinical-notes-changed'));
   return result.lastInsertId;
 }
 
@@ -998,10 +999,12 @@ export async function updateClinicalNote(noteId, fields) {
      quote_text = ?, source_label = ? WHERE id = ?`,
     [content, color, color, starred, quoteText, sourceLabel, noteId],
   );
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('telar:clinical-notes-changed'));
 }
 
 export async function deleteClinicalNote(noteId) {
   await execute(`DELETE FROM clinical_notes WHERE id = ?`, [noteId]);
+  if (typeof document !== 'undefined') document.dispatchEvent(new CustomEvent('telar:clinical-notes-changed'));
 }
 
 export async function saveNeurofeedbackRecording(moduleId, payload) {

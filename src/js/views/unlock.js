@@ -8,7 +8,7 @@ import { checkForAppUpdate, getPendingUpdate, installAppUpdate, promptAppUpdate 
 import { seedDemoCaseIfNeeded } from '../demo-case-seed.js';
 import { scheduleAutoCloudBackup, restoreCloudBackupFlow } from '../cloud-backup.js';
 import { toast, escapeHtml } from '../utils.js';
-import { t } from '../i18n.js';
+import { t, tf } from '../i18n.js';
 import { shakeEl } from '../transitions.js';
 import { mountHeroCameras } from '../hero-camera.js';
 
@@ -25,8 +25,8 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="lego" data-post="ascii" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>Programa sobre la ficha</h3>
-              <p>La IA viene apagada. Si la activas, propone sesiones y módulos; tú aplicas.</p>
+              <h3>${escapeHtml(t('unlock.hero.planTitle'))}</h3>
+              <p>${escapeHtml(t('unlock.hero.planCopy'))}</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="score">
@@ -34,8 +34,8 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="score" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>Puntajes y curva</h3>
-              <p>Escalas con scoring automático y seguimiento longitudinal.</p>
+              <h3>${escapeHtml(t('unlock.hero.scoresTitle'))}</h3>
+              <p>${escapeHtml(t('unlock.hero.scoresCopy'))}</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="neuro">
@@ -44,7 +44,7 @@ function unlockHeroCameraHtml() {
             </div>
             <div class="hero-cam-card__body">
               <h3>Neurofeedback</h3>
-              <p>Entrenamiento de atención y calma con Muse, en la consulta.</p>
+              <p>${escapeHtml(t('unlock.hero.neuroCopy'))}</p>
             </div>
           </article>
           <article class="hero-cam-card" data-frame="lock">
@@ -52,21 +52,21 @@ function unlockHeroCameraHtml() {
               <canvas data-visual="lock" data-post="cad" width="320" height="220" aria-hidden="true"></canvas>
             </div>
             <div class="hero-cam-card__body">
-              <h3>La ficha en tu computador</h3>
-              <p>Cifrado local y respaldo cifrado en tu nube. No es un chat en la nube.</p>
+              <h3>${escapeHtml(t('unlock.hero.localTitle'))}</h3>
+              <p>${escapeHtml(t('unlock.hero.localCopy'))}</p>
             </div>
           </article>
         </div>
       </div>
       <div class="hero-camera__controls">
-        <button type="button" class="hero-camera__nav" data-cam-dir="-1" aria-label="Módulo anterior">‹</button>
-        <div class="hero-camera__dots" role="tablist" aria-label="Seleccionar módulo">
-          <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="Programas de psicoterapia" aria-selected="true"></button>
-          <button type="button" class="hero-camera__dot" role="tab" aria-label="Puntajes instantáneos" aria-selected="false"></button>
+        <button type="button" class="hero-camera__nav" data-cam-dir="-1" aria-label="${escapeHtml(t('unlock.previous'))}">‹</button>
+        <div class="hero-camera__dots" role="tablist" aria-label="${escapeHtml(t('unlock.selectModule'))}">
+          <button type="button" class="hero-camera__dot is-active" role="tab" aria-label="${escapeHtml(t('unlock.treatmentPrograms'))}" aria-selected="true"></button>
+          <button type="button" class="hero-camera__dot" role="tab" aria-label="${escapeHtml(t('unlock.instantScores'))}" aria-selected="false"></button>
           <button type="button" class="hero-camera__dot" role="tab" aria-label="Neurofeedback" aria-selected="false"></button>
-          <button type="button" class="hero-camera__dot" role="tab" aria-label="Todo encriptado" aria-selected="false"></button>
+          <button type="button" class="hero-camera__dot" role="tab" aria-label="${escapeHtml(t('unlock.encrypted'))}" aria-selected="false"></button>
         </div>
-        <button type="button" class="hero-camera__nav" data-cam-dir="1" aria-label="Módulo siguiente">›</button>
+        <button type="button" class="hero-camera__nav" data-cam-dir="1" aria-label="${escapeHtml(t('unlock.next'))}">›</button>
       </div>
     </div>`;
 }
@@ -79,7 +79,7 @@ function unlockShellHtml(innerHtml) {
         <div class="initial-screen__camera">${unlockHeroCameraHtml()}</div>
       </div>
       <p class="initial-screen__help">
-        ¿Necesitas orientación o ayuda?
+        ${escapeHtml(t('unlock.help'))}
         <a class="initial-screen__help-link" id="unlockHelpContact" href="${HELP_CONTACT_URL}">${HELP_CONTACT_LABEL}</a>
       </p>
     </div>`;
@@ -113,10 +113,10 @@ export async function renderUnlock(host, { onNavigate }) {
   const showTouchChoice = touchAvailable && !status.needs_setup;
 
   const subtitle = status.needs_setup
-    ? 'Crea un PIN de 6 dígitos para cifrar tu base de datos.'
+    ? t('unlock.createPinIntro')
     : showTouchChoice
-      ? 'Elige cómo desbloquear la aplicación.'
-      : 'Ingresa tu PIN de 6 dígitos para descifrar tu base de datos.';
+      ? t('unlock.chooseMethod')
+      : t('unlock.enterPinIntro');
 
   const inner = host.querySelector('#unlockInner');
   if (inner) {
@@ -130,11 +130,11 @@ export async function renderUnlock(host, { onNavigate }) {
         ${
           showTouchChoice
             ? `<div class="unlock-method-row">
-                 <button type="button" id="touchIdBtn" class="btn btn-primary unlock-method-btn" title="Desbloquear con Touch ID">
+                 <button type="button" id="touchIdBtn" class="btn btn-primary unlock-method-btn" title="${escapeHtml(t('unlock.touch'))}">
                    <span class="unlock-method-btn__icon">${ICON_FINGERPRINT}</span>
                    <span>Touch ID</span>
                  </button>
-                 <button type="button" id="usePinBtn" class="btn btn-secondary unlock-method-btn" title="Desbloquear con PIN">
+                 <button type="button" id="usePinBtn" class="btn btn-secondary unlock-method-btn" title="${escapeHtml(t('unlock.pin'))}">
                    <span class="unlock-method-btn__icon">${ICON_LOCK}</span>
                    <span>PIN</span>
                  </button>
@@ -142,10 +142,10 @@ export async function renderUnlock(host, { onNavigate }) {
             : ''
         }
         <div id="unlockPinBlock" class="unlock-pin-block${showTouchChoice ? ' unlock-pin-block--hidden' : ''}">
-          ${pinBoxesHtml('pin1', status.needs_setup ? 'Nuevo PIN' : '')}
-          ${status.needs_setup ? pinBoxesHtml('pin2', 'Repetir PIN') : ''}
+          ${pinBoxesHtml('pin1', status.needs_setup ? t('unlock.newPin') : '')}
+          ${status.needs_setup ? pinBoxesHtml('pin2', t('unlock.repeatPin')) : ''}
           <button id="unlockBtn" class="btn btn-primary unlock-actions__primary unlock-pin-block__submit">
-            ${status.needs_setup ? 'Crear y desbloquear' : 'Confirmar PIN'}
+            ${status.needs_setup ? t('unlock.create') : t('unlock.confirm')}
           </button>
         </div>
         <div id="hint" class="unlock-hint"></div>
@@ -155,8 +155,8 @@ export async function renderUnlock(host, { onNavigate }) {
       </button>
       <p class="unlock-page__build">${escapeHtml(appVersionLabel())} · ${BUILD_STAMP_LABEL}</p>
       <div id="unlockUpdateBar" class="unlock-update-bar unlock-update-bar--hidden" role="status" aria-live="polite">
-        <span class="unlock-update-bar__text">Actualización disponible</span>
-        <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">Actualizar</button>
+        <span class="unlock-update-bar__text">${escapeHtml(t('unlock.updateAvailable'))}</span>
+        <button type="button" id="unlockUpdateBtn" class="btn btn-primary btn-sm">${escapeHtml(t('unlock.update'))}</button>
       </div>
     `;
   }
@@ -204,13 +204,13 @@ export async function renderUnlock(host, { onNavigate }) {
     const p2 = status.needs_setup ? readPin(host, 'pin2') : p1;
 
     if (!isValidPin(p1)) {
-      toast('El PIN debe tener 6 dígitos');
+      toast(t('unlock.pinLength'));
       shakeEl(host.querySelector('[data-pin-row="pin1"]'));
       focusFirstEmpty(host, 'pin1');
       return;
     }
     if (status.needs_setup && p1 !== p2) {
-      toast('Los PIN no coinciden');
+      toast(t('unlock.pinMismatch'));
       shakeEl(host.querySelector('[data-pin-row="pin2"]'));
       focusFirstEmpty(host, 'pin2');
       return;
@@ -219,18 +219,18 @@ export async function renderUnlock(host, { onNavigate }) {
     if (unlockBtn) unlockBtn.disabled = true;
     if (touchIdBtn) touchIdBtn.disabled = true;
     hint.textContent = status.needs_setup
-      ? 'Cifrando base de datos…'
-      : 'Descifrando base de datos…';
+      ? t('unlock.encrypting')
+      : t('unlock.decrypting');
     try {
       const rememberTouchId = Boolean(touchAvailable && profile.useTouchId);
       await invoke('db_unlock', { pin: p1, remember_touch_id: rememberTouchId });
       if (status.needs_setup) {
-        hint.textContent = 'Preparando caso de ejemplo…';
+        hint.textContent = t('unlock.preparingExample');
         if (window.__telarPacksReady) await window.__telarPacksReady;
         const demoTreatmentId = await seedDemoCaseIfNeeded({ firstSetup: true });
         hint.textContent = '';
         if (demoTreatmentId) {
-          toast('Listo. Dejamos un caso de ejemplo para que veas cómo funciona.');
+          toast(t('unlock.exampleReady'));
         }
       } else {
         hint.textContent = '';
@@ -252,16 +252,16 @@ export async function renderUnlock(host, { onNavigate }) {
     if (!touchStored) {
       if (profile.useTouchId) {
         toast(
-          'Aún no hay huella guardada. Desbloquea una vez con PIN (Touch ID activado en Ajustes) o configúralo en Ajustes.',
+          t('unlock.noFingerprint'),
         );
       } else {
-        toast('Activa Touch ID en Ajustes e ingresa tu PIN una vez para vincular la huella.');
+        toast(t('unlock.enableTouch'));
       }
       return;
     }
     if (touchIdBtn) touchIdBtn.disabled = true;
     if (unlockBtn) unlockBtn.disabled = true;
-    hint.textContent = 'Esperando Touch ID…';
+    hint.textContent = t('unlock.waitingTouch');
     try {
       await invoke('db_unlock_touch_id');
       hint.textContent = '';
@@ -304,7 +304,7 @@ export async function renderUnlock(host, { onNavigate }) {
     promptAppUpdate(info);
     if (!updateBar) return;
     const label = updateBar.querySelector('.unlock-update-bar__text');
-    if (label) label.textContent = `Actualización ${info.version} disponible`;
+    if (label) label.textContent = tf('unlock.updateVersion', { version: info.version });
     updateBar.classList.remove('unlock-update-bar--hidden');
   };
 

@@ -13,6 +13,7 @@ const NEW_IDS = [
   'tcc_exposicion',
   'tcc_experimento',
   'tcc_monitoreo_actividades',
+  'tcc_tdah_organizacion',
   'tcc_prevencion_recaida',
   'sig_externalizacion',
   'sig_resultados_unicos',
@@ -23,8 +24,8 @@ const NEW_IDS = [
   'sig_pregunta_milagro',
 ];
 
-test('los 15 módulos adicionales tienen definición, renderer y PDF', () => {
-  assert.equal(Object.keys(EXTRA_HANDOUT_DEFS).length, 15);
+test('los módulos adicionales tienen definición, renderer y PDF', () => {
+  assert.equal(Object.keys(EXTRA_HANDOUT_DEFS).length, 16);
   for (const id of NEW_IDS) {
     const def = tccHandoutDef(id);
     assert.ok(def?.title, id);

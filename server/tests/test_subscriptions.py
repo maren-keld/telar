@@ -226,6 +226,19 @@ def test_status_stays_inactive_when_mercado_pago_is_unreachable(api, mp):
     assert body["status"] == "none"
 
 
+def test_status_does_not_attach_someone_elses_preapproval(api, mp):
+    mp.setattr(api_module, "fetch_mp_preapproval", lambda _id: {
+        "status": "authorized", "external_reference": "otra@example.com",
+    })
+
+    body = api.get(
+        "/api/subscriptions/status?email=persona@example.com&preapproval_id=preapproval-123"
+    ).json
+
+    assert body["active"] is False
+    assert not subscription_rows("persona@example.com")
+
+
 # --- webhook ----------------------------------------------------------------
 
 def test_webhook_rejects_a_wrong_secret(api, mp):
@@ -252,6 +265,27 @@ def test_webhook_updates_the_subscription_status(api, mp):
 
     assert response.status_code == 200
     assert subscription_rows("persona@example.com")[0]["status"] == "authorized"
+
+
+def test_webhook_links_app_email_when_mp_account_uses_another_email(api, mp):
+    mp.setattr(
+        api_module,
+        "fetch_mp_preapproval",
+        lambda _id: {
+            "status": "authorized",
+            "external_reference": "app@example.com",
+            "payer_email": "pago@example.com",
+        },
+    )
+
+    response = api.post(
+        "/api/webhooks/mercadopago?secret=secreto-de-prueba",
+        json={"type": "subscription_preapproval", "data": {"id": "preapproval-123"}},
+    )
+
+    assert response.status_code == 200
+    assert subscription_rows("app@example.com")[0]["status"] == "authorized"
+    assert not subscription_rows("pago@example.com")
 
 
 # --- soporte manual ---------------------------------------------------------

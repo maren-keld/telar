@@ -27,7 +27,7 @@ import { checkForAppUpdate, getPendingUpdate, installAppUpdate } from '../app-up
 import { getInvoke, isTauriApp } from '../tauri-bridge.js';
 import { getLocale, localeLabel, setLocale, t } from '../i18n.js';
 import { SETTINGS_ICONS } from '../icons.js';
-import { CLINIC_COUNTRIES, clinicCountryLabel, isValidClinicCountry } from '../clinic-country.js';
+import { CLINIC_COUNTRIES, localizedClinicCountryLabel, isValidClinicCountry } from '../clinic-country.js';
 
 let settingsRenderGen = 0;
 
@@ -54,7 +54,6 @@ const SETTINGS_ROW_SKIP_GENERIC = new Set([
   'grammaticalGender',
   'encrypted',
   'notifyShareDesktop',
-  'notifyShareEmail',
 ]);
 
 function openLanguagePicker(onPick) {
@@ -97,7 +96,7 @@ function openCountryPicker(onPick) {
         <div class="settings-lang-options">
           ${CLINIC_COUNTRIES.map(
             (c) =>
-              `<button type="button" class="btn btn-secondary btn-block" data-country="${escapeHtml(c.id)}">${escapeHtml(c.label)}</button>`,
+              `<button type="button" class="btn btn-secondary btn-block" data-country="${escapeHtml(c.id)}">${escapeHtml(localizedClinicCountryLabel(c.id, getLocale()))}</button>`,
           ).join('')}
         </div>
         <div class="modal-card__actions">
@@ -314,7 +313,7 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
             icon: SETTINGS_ICONS.address,
             title: t('settings.country'),
             subtitle: isValidClinicCountry(profile.clinicCountry)
-              ? clinicCountryLabel(profile.clinicCountry)
+              ? localizedClinicCountryLabel(profile.clinicCountry, getLocale())
               : t('settings.chooseCountry'),
             dataField: 'clinicCountry',
           })}
@@ -366,7 +365,6 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
         </div>
         <div class="settings-section">
           <h2 class="settings-section__title">Notificaciones</h2>
-          <p class="settings-section__hint">Cuando un paciente responde un test o un handout por enlace. El aviso en la app siempre aparece.</p>
         </div>
         <div class="settings-card">
           ${row({
@@ -379,16 +377,6 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
             action: 'toggle',
             toggleOn: profile.notifyShareDesktop !== false,
           })}
-          ${row({
-            icon: SETTINGS_ICONS.email,
-            title: 'Enviar un correo',
-            subtitle: profile.notifyShareEmail
-              ? `Se manda a ${profile.email?.trim() || 'el correo de Ajustes'} cuando respondan`
-              : 'Desactivado — no se envía correo',
-            dataField: 'notifyShareEmail',
-            action: 'toggle',
-            toggleOn: Boolean(profile.notifyShareEmail),
-          })}
         </div>
         <div class="settings-card">
           ${row({ icon: SETTINGS_ICONS.lock, title: t('settings.lock'), subtitle: t('settings.lockSub'), dataField: 'lock' })}
@@ -397,9 +385,6 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
         <p class="settings-section__hint">${escapeHtml(t('settings.fileVaultHint'))}</p>
         <div class="settings-section">
           <h2 class="settings-section__title">Asistente IA</h2>
-          <p class="settings-section__hint">
-            Por defecto es Mistral (Francia). La primera vez pedimos consentimiento y Telar pide la clave al servidor: no viaja en el instalador. El caso sale de tu equipo; Telar no lo guarda. Lo de este computador es más privado y suele ser peor.
-          </p>
         </div>
         <div class="settings-card">
           ${row({
@@ -411,7 +396,6 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
         </div>
         <div class="settings-section">
           <h2 class="settings-section__title">${escapeHtml(t('settings.privacyTitle'))}</h2>
-          <p class="settings-section__hint">${escapeHtml(t('settings.privacyHint'))}</p>
         </div>
         <div class="settings-card">
           ${row({
@@ -647,24 +631,6 @@ export async function renderSettings(container, { onNavigate, extras } = {}) {
       sub.textContent = on
         ? 'Avisarte en el sistema cuando llegue una respuesta'
         : 'Desactivado — solo verás el aviso dentro de Telar';
-    }
-  });
-
-  container.querySelector('[data-toggle="notifyShareEmail"]')?.addEventListener('change', (e) => {
-    const on = e.target.checked;
-    if (on && !String(loadProfile().email || '').trim()) {
-      e.target.checked = false;
-      toast('Agrega tu correo en Ajustes para recibir el aviso por email');
-      return;
-    }
-    saveProfile({ notifyShareEmail: on });
-    toast(on ? 'Aviso por correo activado' : 'Aviso por correo desactivado');
-    const sub = e.target.closest('.settings-row')?.querySelector('.settings-row__sub');
-    if (sub) {
-      const email = String(loadProfile().email || '').trim();
-      sub.textContent = on
-        ? `Se manda a ${email || 'el correo de Ajustes'} cuando respondan`
-        : 'Desactivado — no se envía correo';
     }
   });
 

@@ -14,6 +14,10 @@ import {
 } from './db.js';
 import { loadProfile, saveProfile } from './profile.js';
 import { getTreatmentTemplate } from './treatment-templates.js';
+import { loadCaseStudy, saveCaseStudy } from './case-study-store.js';
+import { emptyCaseStudyElement } from './case-study-model.js';
+import { updateTreatmentTags } from './db.js';
+import { parseJsonSafe } from './utils.js';
 
 export const DEMO_PATIENT_SOURCE = '__telar_demo__';
 export const DEMO_FOCUS_SCORES_KEY = 'telar.demo.focusScores';
@@ -48,6 +52,42 @@ const QOLS_SESSION_8 = [4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 5, 4, 4, 5, 4, 5];
 async function demoPatientExists() {
   const rows = await query(`SELECT id FROM patients WHERE source = ? LIMIT 1`, [DEMO_PATIENT_SOURCE]);
   return rows.length > 0;
+}
+
+/** Alinea el caso ficticio antiguo con los ejes y etiquetas actuales. */
+async function updateDemoCase(treatmentId) {
+  const sessions = await getSessionsWithModules(treatmentId);
+  for (const session of sessions) {
+    for (const mod of session.modules) {
+      if (mod.module_type === 'redes_apoyo') {
+        await execute('DELETE FROM session_modules WHERE id = ?', [mod.id]);
+      }
+    }
+  }
+  const caseStudy = await loadCaseStudy(treatmentId);
+  const specs = [
+    ['problem', 'Dificultades de organización y atención', ['asrs', 'tcc_flexibilidad', 'tcc_abc']],
+    ['problem', 'Ansiedad anticipatoria', ['gad7', 'dass21', 'escala_ansiedad']],
+    ['resource', 'Motivación de cambio', ['motivo_consulta', 'tcc_activacion']],
+    ['risk', 'Estrés laboral', ['motivo_consulta', 'escala_fer']],
+  ];
+  for (const [axis, title, moduleTypes] of specs) {
+    let element = caseStudy.elements.find((item) => item.axis === axis && item.title === title);
+    if (!element) {
+      element = emptyCaseStudyElement(axis, title);
+      caseStudy.elements.push(element);
+    }
+    const activities = sessions.flatMap((session) => session.modules
+      .filter((mod) => moduleTypes.includes(mod.module_type))
+      .map((mod) => ({ moduleType: mod.module_type, sessionId: String(session.id) })));
+    element.activities = [...new Map([...(element.activities || []), ...activities]
+      .map((item) => [`${item.moduleType}:${item.sessionId}`, item])).values()];
+  }
+  await saveCaseStudy(treatmentId, caseStudy);
+  const [treatment] = await query('SELECT tags FROM treatments WHERE id = ?', [treatmentId]);
+  await updateTreatmentTags(treatmentId, [
+    ...parseJsonSafe(treatment?.tags, []), 'alerta', 'estudiar_caso',
+  ]);
 }
 
 async function fillModule(moduleRow, payload) {
@@ -160,6 +200,14 @@ async function markSessionStatuses(sessions) {
  */
 export async function seedDemoCaseIfNeeded({ firstSetup = false } = {}) {
   if (await demoPatientExists()) {
+    const [demoPatient] = await query('SELECT id FROM patients WHERE source = ? LIMIT 1', [DEMO_PATIENT_SOURCE]);
+    if (!loadProfile().demoCaseCurrentVersion) {
+      const [treatment] = await query('SELECT id FROM treatments WHERE patient_id = ? ORDER BY id LIMIT 1', [demoPatient.id]);
+      if (treatment?.id) {
+        await updateDemoCase(treatment.id);
+        saveProfile({ demoCaseCurrentVersion: 1 });
+      }
+    }
     if (!loadProfile().demoCaseSeeded) saveProfile({ demoCaseSeeded: true });
     return null;
   }
@@ -195,8 +243,9 @@ export async function seedDemoCaseIfNeeded({ firstSetup = false } = {}) {
   await fillConceptualizationModules(sessions);
   await fillPsychometricModules(sessions);
   await markSessionStatuses(sessions);
+  await updateDemoCase(treatmentId);
 
-  saveProfile({ demoCaseSeeded: true });
+  saveProfile({ demoCaseSeeded: true, demoCaseCurrentVersion: 1 });
   try {
     localStorage.setItem(DEMO_FOCUS_SCORES_KEY, String(treatmentId));
   } catch {

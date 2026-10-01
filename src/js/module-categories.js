@@ -76,6 +76,7 @@ export const CATEGORIES = [
       'dbt_regulacion_emocional',
       'tcc_registro_pensamientos',
       'tcc_monitoreo_actividades',
+      'tcc_tdah_organizacion',
       'tcc_exposicion',
       'tcc_experimento',
       'tcc_prevencion_recaida',

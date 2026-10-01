@@ -379,6 +379,25 @@ export const EXTRA_HANDOUT_DEFS = {
     searchTags: ['tcc', 'experimento', 'conductual', 'creencia', 'predicción'],
   },
 
+  tcc_tdah_organizacion: {
+    title: 'Organización y tareas (TDAH)',
+    subtitle: 'Material clínico Telar — adaptar a cada persona',
+    category: 'tcc',
+    oncePerTreatment: false,
+    intro:
+      'Guía colaborativa para elegir una dificultad cotidiana y probar apoyos externos o cambios del entorno. No presupone que todas las personas con TDAH tengan las mismas necesidades; acuerde cada estrategia con la persona y revise si le resulta útil.',
+    sections: [
+      { key: 'situacion', title: 'Situación concreta que quiere abordar', hint: '¿Qué tarea o momento cotidiano le gustaría hacer más manejable?', rows: 3 },
+      { key: 'paso_siguiente', title: 'Primer paso pequeño y visible', hint: 'Una acción que pueda comenzar en pocos minutos.', rows: 2 },
+      { key: 'cuando_donde', title: 'Cuándo y dónde probarlo', hint: 'Elija un momento y lugar realistas; puede usar una señal o recordatorio externo.', rows: 2 },
+      { key: 'apoyo_entorno', title: 'Apoyos o ajustes del entorno', hint: 'Por ejemplo: dividir materiales, reducir distractores, temporizador, pausa o apoyo de otra persona; elija lo que le acomode.', rows: 3 },
+      { key: 'obstaculo', title: 'Obstáculo probable y alternativa', hint: 'Si se interrumpe o cuesta empezar, ¿qué opción flexible podría ayudar?', rows: 3 },
+      { key: 'revision', title: 'Qué observó y qué quiere ajustar', hint: 'Revise el efecto en su vida cotidiana sin calificar cumplimiento o rendimiento.', rows: 3 },
+    ],
+    variables: ['Organización cotidiana', 'Inicio de tareas', 'Apoyos externos', 'Ajustes del entorno'],
+    searchTags: ['tdah', 'adhd', 'organización', 'planificación', 'olvidos', 'tareas', 'funciones ejecutivas'],
+  },
+
   tcc_monitoreo_actividades: {
     title: 'Monitoreo semanal de actividades',
     subtitle: 'Material TCC Telar — elaboración propia',

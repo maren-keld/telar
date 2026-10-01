@@ -1105,10 +1105,23 @@
   width: 100%;
 }
 
+.qols-opt {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+
 .qols-opt input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .qols-dot {
@@ -3901,6 +3914,17 @@ html[data-theme='dark'] .ades-score-pill.ades-band--pos {
 }
 
 /* Redes de apoyo */
+.medication-picker { position: relative; }
+.medication-picker__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.medication-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft); }
+.medication-tag strong, .medication-tag small { display: block; line-height: 1.35; }
+.medication-tag small, .medication-picker__options small { color: var(--text-muted); font-size: .73rem; }
+.medication-tag button { border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; }
+.medication-picker__options { position: absolute; z-index: 20; left: 0; right: 0; max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); box-shadow: var(--shadow-card); }
+.medication-picker__options[hidden] { display: none; }
+.medication-picker__options button { display: block; width: 100%; padding: 9px 12px; border: 0; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; }
+.medication-picker__options button:hover, .medication-picker__options button:focus-visible { background: var(--accent-soft); }
+.medication-picker__options strong, .medication-picker__options small { display: block; }
 .support-empty {
   margin: 12px 0;
   color: var(--text-muted);

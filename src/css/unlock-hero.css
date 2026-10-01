@@ -76,7 +76,9 @@
 }
 
 .initial-screen--hero .initial-screen__brand {
+  width: 100%;
   margin: 4px 0 8px;
+  text-align: center;
 }
 
 .initial-screen--hero .initial-screen__title {
@@ -86,6 +88,7 @@
 
 .initial-screen--hero .initial-screen__sub {
   color: rgba(244, 244, 242, 0.68);
+  text-align: center;
 }
 
 .initial-screen--hero .unlock-page__build {

@@ -1,3 +1,4 @@
+import { studyPreferences } from '../components/workspace-customize.js';
 import { customModuleHandoutPayload, getCustomModuleByType, moduleDisplayLabel, moduleLabelFor } from '../custom-modules.js';
 import { openConfirmModal } from '../components/confirm-modal.js';
 import { mountNotesPanel } from '../components/notes-panel.js';
@@ -55,6 +56,7 @@ import {
   sessionRuleHtml,
   sessionsForCenter,
   setWorkspaceIndexType,
+  setWorkspaceIndexMode,
   sidebarAddRowHtml,
   sidebarCategoryHtml,
   snapshotCategoryCollapse,
@@ -302,6 +304,8 @@ export async function renderWorkspace(
 
   container._unmountHighlight?.();
   container._unmountHighlight = null;
+  container._unmountStudyRight?.();
+  container._unmountStudyRight = null;
   container._unmountEstudio?.();
   container._unmountEstudio = null;
 
@@ -579,9 +583,32 @@ export async function renderWorkspace(
   }
   bindWorkspaceDelegatedClicks(container);
 
+  const showStudyNotes = async (filter = true) => {
+    const panel = rightSidebarEl?.querySelector('.space-tools');
+    if (panel) panel.hidden = false;
+    const index = rightSidebarEl?.querySelector('[data-study-session-index]');
+    if (index) index.hidden = true;
+    if (filter) await container._notesApi?.setTab?.('answers');
+  };
   const toolsOpts = {
+    onShowStudyNotes: showStudyNotes,
+    onRefreshStudyNotes: async () => container._notesApi?.refresh?.({ scrollBottom: true }),
+    onStudyAiStarted: () => { void showStudyNotes(false); },
+    onAskStudyAi: async (question, options) => {
+      await container._flushEstudio?.();
+      await showStudyNotes();
+      await container._notesApi?.ask?.(question, options);
+    },
     treatmentId,
     onNavigate,
+    onJumpToModule: async ({ moduleId, sessionId }) => {
+      if (!(await flushWorkspaceSaves())) return;
+      setWorkspaceIndexMode('chrono');
+      pendingCenterScrollRestore = null;
+      await renderWorkspace(container, { treatmentId, sessionId, moduleId, onNavigate, forceFullRender: true, expandSessionId: sessionId });
+      scrollToModule(container, moduleId, { force: true });
+      requestAnimationFrame(() => scrollToModule(container, moduleId, { force: true }));
+    },
     onJumpToModuleType: async (moduleType) => {
       const found = await findModuleInTreatment(treatmentId, moduleType);
       if (!found) {
@@ -677,11 +704,38 @@ export async function renderWorkspace(
     restoreNotesScroll(container, savedNotesScroll);
   }
 
+  rightSidebarEl?.querySelector('[data-study-session-index]')?.remove();
+  const notesPanel = rightSidebarEl?.querySelector('.space-tools');
+  if (notesPanel) notesPanel.hidden = false;
+  if (estudioMode && rightSidebarEl) {
+    rightSidebarEl.insertAdjacentHTML('beforeend', `<div class="workspace-sidebar workspace-sidebar__scroll estudio-session-index" data-study-session-index><h3 class="estudio-session-index__title">Índice de sesiones</h3><button type="button" class="btn btn-secondary" data-study-show-notes>Bitácora / Consultar IA</button>${sessions.map((session) => sidebarSessionHtml(session, activeModule, { treatmentId, expandSessionId: session.id })).join('') || '<p>Sin sesiones aún.</p>'}</div>`);
+    const index = rightSidebarEl.querySelector('[data-study-session-index]');
+    index.querySelectorAll('.module-link').forEach((link) => link.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void toolsOpts.onJumpToModule({ moduleId: link.dataset.moduleId, sessionId: link.dataset.sessionId });
+    }));
+    index.querySelectorAll('[data-session-toggle]').forEach((button) => button.addEventListener('click', () => {
+      const section = button.closest('.session-block');
+      const collapsed = section.classList.toggle('session-block--collapsed');
+      button.setAttribute('aria-expanded', String(!collapsed));
+    }));
+    const syncRight = () => {
+      const showIndex = studyPreferences().rightPanel === 'sessions';
+      if (notesPanel) notesPanel.hidden = showIndex;
+      index.hidden = !showIndex;
+    };
+    index.querySelector('[data-study-show-notes]')?.addEventListener('click', showStudyNotes);
+    document.addEventListener('telar:study-preferences', syncRight);
+    syncRight();
+    container._unmountStudyRight = () => document.removeEventListener('telar:study-preferences', syncRight);
+  }
+
   if (!estudioMode) {
     container._unmountHighlight = mountTextHighlight(centerHost, {
       treatmentId,
       onNoteCreated: async () => {
-        await notesApi?.focusNotasTab();
+        await notesApi?.setTab('highlights');
       },
     });
   } else {

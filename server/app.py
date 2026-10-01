@@ -681,11 +681,10 @@ def fetch_mp_preapproval(preapproval_id: str):
 
 def preapproval_matches_email(item: dict, email: str) -> bool:
     """MP dejó de exponer payer_email en preapprovals; usamos external_reference."""
-    candidates = (
-        (item.get("payer_email") or "").lower(),
-        (item.get("external_reference") or "").lower(),
-    )
-    return email in candidates
+    reference = (item.get("external_reference") or "").lower()
+    if reference:
+        return email == reference
+    return email == (item.get("payer_email") or "").lower()
 
 
 def find_mp_preapproval_by_email(email: str):
@@ -1200,6 +1199,19 @@ code { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:#a5d6ff; }
 .blabels span { flex:1; text-align:center; font-size:10px; color:#6e7681; }
 .empty { padding:36px 18px; text-align:center; color:#6e7681; font-size:13px; }
 .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:0 24px; }
+.provider-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+.provider { background:#161b22; border:1px solid #262c36; border-radius:10px; padding:18px; }
+.provider h3 { margin:0 0 14px; font-size:15px; font-weight:600; }
+.provider-metrics { display:grid; grid-template-columns:1fr 1fr; gap:14px 10px; }
+.provider-metrics div { min-width:0; }
+.provider-metrics strong { display:block; font-size:19px; font-variant-numeric:tabular-nums; }
+.provider-metrics span { color:#8b949e; font-size:11px; }
+.provider .note { margin-top:14px; }
+.provider-status { font-size:12px; color:#8b949e; margin:0; }
+.provider-status.err { color:#f85149; }
+.refresh { width:auto; padding:7px 11px; border-radius:7px; border:1px solid #30363d;
+  background:#161b22; color:#e6edf3; cursor:pointer; font-size:12px; }
+.refresh:hover { background:#1c2230; }
 /* Barras horizontales: la etiqueta se lee sin hover, a diferencia del gráfico
    vertical de arriba, donde solo hay 14 días numerados. */
 .rows { padding:14px 18px 16px; display:grid; gap:9px; }
@@ -1249,6 +1261,7 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
       <nav class="tabs" id="tabs">
         <button type="button" data-tab="crm" aria-pressed="true">CRM</button>
         <button type="button" data-tab="uso">Uso</button>
+        <button type="button" data-tab="ai">IA y créditos</button>
       </nav>
       <p class="sub" id="live-hint" hidden>Se actualiza solo cada 6 min</p>
     </div>
@@ -1284,6 +1297,17 @@ PANEL_HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
     </div>
   </div>
   <p class="note" id="landing-note"></p>
+  </div>
+  <div id="tab-ai" hidden>
+    <div class="section-head">
+      <h2>Uso y saldo de proveedores de IA</h2>
+      <button class="refresh" id="ai-refresh" type="button">Actualizar</button>
+    </div>
+    <p class="sub" id="ai-stamp">Los datos se consultan directamente a cada proveedor.</p>
+    <div class="provider-grid" id="ai-providers">
+      <p class="empty">Abre esta pestaña para consultar los proveedores.</p>
+    </div>
+    <p class="note">Configura las claves administrativas como variables privadas del servicio Render. Las claves de inferencia no bastan para consultar facturación.</p>
   </div>
 </div>
 <script>
@@ -1426,6 +1450,58 @@ function load() { loadLive(); loadLanding(); }
 renderRange();
 load();
 setInterval(load, 6 * 60 * 1000);
+
+const aiNumber = (n) => Number(n || 0).toLocaleString('es-CL');
+const aiMoney = (n, currency) => n == null ? 'No disponible' : new Intl.NumberFormat('es-CL', {
+  style: 'currency', currency: currency || 'USD', maximumFractionDigits: 2
+}).format(n);
+function providerCard(name, data) {
+  if (!data.configured) {
+    const vars = {
+      OpenAI: 'OPENAI_ADMIN_API_KEY',
+      xAI: 'XAI_MANAGEMENT_API_KEY y XAI_TEAM_ID',
+      Mistral: 'MISTRAL_ADMIN_API_KEY'
+    }[name];
+    return `<section class="provider"><h3>${name}</h3>
+      <p class="provider-status">Falta configurar en Render: <code>${vars}</code>.</p></section>`;
+  }
+  if (!data.ok) return `<section class="provider"><h3>${name}</h3>
+    <p class="provider-status err">${esc(data.error || 'No se pudo consultar.')}</p></section>`;
+  let metrics = `<div><strong>${aiMoney(data.month_cost, data.currency)}</strong><span>Uso/costo del mes</span></div>`;
+  if (name === 'OpenAI') {
+    metrics += `<div><strong>${aiNumber(data.total_tokens)}</strong><span>Tokens de completions · ${aiNumber(data.requests)} solicitudes</span></div>`;
+    metrics += `<div><strong>No disponible</strong><span>Saldo de créditos por API</span></div>`;
+  } else if (name === 'xAI') {
+    metrics += `<div><strong>${aiMoney(data.credit_balance, data.currency)}</strong><span>Saldo prepago</span></div>`;
+  } else if (name === 'Mistral') {
+    metrics += `<div><strong>${data.monthly_limit_reached == null ? '—' : data.monthly_limit_reached ? 'Alcanzado' : 'Disponible'}</strong><span>Límite mensual</span></div>`;
+    metrics += `<div><strong>No disponible</strong><span>Saldo de créditos por API</span></div>`;
+  }
+  return `<section class="provider"><h3>${name}</h3><div class="provider-metrics">${metrics}</div>
+    <p class="note">${esc(data.note || '')}</p></section>`;
+}
+async function loadAiUsage() {
+  $('ai-stamp').textContent = 'Consultando…';
+  $('ai-providers').innerHTML = '<p class="empty">Consultando OpenAI, xAI y Mistral…</p>';
+  try {
+    const response = await fetch('/api/admin/ai-usage', { credentials: 'same-origin' });
+    if (response.status === 401) { location.reload(); return; }
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'No se pudo cargar el uso de IA.');
+    const p = data.providers;
+    $('ai-providers').innerHTML = providerCard('OpenAI', p.openai)
+      + providerCard('xAI', p.xai) + providerCard('Mistral', p.mistral);
+    $('ai-stamp').textContent = `Mes ${data.month} · actualizado ${new Date(data.generated_at)
+      .toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+  } catch (error) {
+    $('ai-stamp').innerHTML = `<span class="err">${esc(error.message)}</span>`;
+  }
+}
+$('ai-refresh').addEventListener('click', loadAiUsage);
+$('tabs').addEventListener('click', (event) => {
+  if (event.target.closest('button[data-tab="ai"]')) loadAiUsage();
+});
+setInterval(() => { if (!$('tab-ai').hidden) loadAiUsage(); }, 6 * 60 * 1000);
 __CRM_JS__
 </script></body></html>""".replace("__CSS__", PANEL_CSS).replace("__CRM__", CRM_MARKUP).replace("__CRM_JS__", CRM_SCRIPT)
 
@@ -1614,7 +1690,7 @@ def status():
         if hint_id:
             try:
                 remote = fetch_mp_preapproval(hint_id)
-                if remote:
+                if remote and preapproval_matches_email(remote, email):
                     preapproval_id = hint_id
                     mp_status = remote.get("status", "unknown")
                     upsert_subscription(email, preapproval_id, mp_status)
@@ -1652,7 +1728,9 @@ def process_preapproval_webhook(resource_id: str):
             return
         mp_status = body.get("status", "unknown")
         # MP ya no expone payer_email; external_reference lleva el email desde el checkout.
-        email = (body.get("payer_email") or body.get("external_reference") or "").lower()
+        # El correo de la app viaja en external_reference; payer_email puede ser
+        # otra cuenta de Mercado Pago usada para pagar.
+        email = (body.get("external_reference") or body.get("payer_email") or "").lower()
         if email and "@" in email:
             upsert_subscription(email, resource_id, mp_status)
         else:
@@ -1809,6 +1887,10 @@ from ai_keys import register_routes as register_ai_key_routes
 
 register_share_routes(APP)
 register_ai_key_routes(APP)
+
+from ai_usage import register_routes as register_ai_usage_routes
+
+register_ai_usage_routes(APP, panel_authorized)
 
 init_db()
 

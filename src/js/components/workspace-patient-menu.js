@@ -1,3 +1,4 @@
+import { openWorkspaceCustomize } from './workspace-customize.js';
 import { TREATMENT_STATUS } from '../config.js';
 import {
   copyModuleDataBetweenTreatments,
@@ -91,7 +92,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         }
 
         <button type="button" class="btn btn-ghost btn-block patient-menu-new-treatment" id="workspace-menu-new-treatment">
-          + Añadir tratamiento
+          <span class="patient-menu-status-add-icon" aria-hidden="true">+</span><span>Añadir tratamiento</span>
         </button>
 
         <div class="patient-menu-divider"></div>
@@ -125,6 +126,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
         }
 
         <div class="patient-menu-divider"></div>
+        <button type="button" class="workspace-tools-tab__item patient-menu-customize" data-customize>Personalizar</button>
         <div class="patient-menu-toggle-row" id="patient-menu-dark-toggle">
           <span class="patient-menu-toggle-label">Modo oscuro</span>
           <button type="button" class="t-toggle" role="switch" data-on="${isDark ? 'true' : 'false'}" aria-checked="${isDark ? 'true' : 'false'}" aria-label="Modo oscuro">
@@ -220,6 +222,7 @@ export async function openWorkspacePatientMenu(anchorEl, treatment, { onNavigate
     });
   });
 
+  root.querySelector('[data-customize]')?.addEventListener('click', openWorkspaceCustomize);
   const darkToggle = root.querySelector('#patient-menu-dark-toggle');
   if (darkToggle) {
     let dark = isDark;

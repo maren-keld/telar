@@ -34,13 +34,13 @@ test('el empty de la bitácora capitaliza, pone atajos y deja la anotación al f
     join(dirname(fileURLToPath(import.meta.url)), '../../src/js/components/notes-panel.js'),
     'utf8',
   );
-  assert.match(src, /title: 'Pregunta a la IA sobre el caso'/);
+  assert.match(src, /title: t\('notes\.ask', 'Pregunta a la IA sobre el caso'\)/);
   assert.match(src, /notesKbd\('N'/);
   assert.match(src, /notesKbd\('I'/);
   assert.match(src, /Consulta a la IA sobre el caso/);
   assert.match(src, /También puedes seleccionar texto en un módulo para crear una anotación/);
   assert.match(src, /key !== 'n' && key !== 'i'/);
-  const emptyIdx = src.indexOf('NOTES_EMPTY_HTML');
+  const emptyIdx = src.indexOf('function notesAllEmptyHtml()');
   const selectIdx = src.indexOf('También puedes seleccionar texto');
   const pulsaIdx = src.indexOf('Pulsa + Nota');
   assert.ok(emptyIdx > 0 && pulsaIdx > emptyIdx && selectIdx > pulsaIdx);

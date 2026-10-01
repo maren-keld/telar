@@ -1,3 +1,4 @@
+import { renderAiMarkdown } from './ai-markdown.js';
 /**
  * Acciones aplicables propuestas por la IA.
  *
@@ -19,7 +20,7 @@ import {
   saveCustomModule,
 } from './custom-modules.js';
 import { addModuleToSession, execute, getSessions, getTreatmentModules } from './db.js';
-import { moduleLabelI18n } from './i18n.js';
+import { getLocale, moduleLabelI18n } from './i18n.js';
 import { escapeHtml } from './utils.js';
 
 /**
@@ -44,9 +45,44 @@ export function normalizeAiDisplayText(text) {
 
 /** Cierre opcional: los modelos cortan el JSON al llegar al tope de tokens. */
 const ACTION_BLOCK_RE =
-  /```[ \t]*(?:json[ \t]+)?telar-(plan|module)[ \t]*\r?\n?([\s\S]*?)(?:```|$)/gi;
+  /```[ \t]*(?:json[ \t]+)?telar-(plan|module|element|priority)[ \t]*\r?\n?([\s\S]*?)(?:```|$)/gi;
 const APPLIED_MARKER_RE = /<!--\s*telar-action-applied:(\d+)\s*-->/gi;
 const DISMISSED_MARKER_RE = /<!--\s*telar-action-dismissed:(\d+)\s*-->/gi;
+
+/** Models sometimes print a Telar label followed by JSON instead of a typed fence. */
+function normalizeLabeledActionBlocks(source) {
+  const labels = /^[ \t]*(?:[-•]\s+)?(?:\*\*|__)?telar-(plan|module|element|priority)(?:\*\*|__)?[ \t]*:[ \t]*(?:\*\*|__)?[ \t]*\\?\s*(?:(?:```[ \t]*)?json[ \t]*\r?\n\s*)?(?=[{\[])/gim;
+  let result = '';
+  let cursor = 0;
+  let match;
+  while ((match = labels.exec(source))) {
+    const start = labels.lastIndex;
+    const stack = [];
+    let quoted = false;
+    let escaped = false;
+    let end = -1;
+    for (let i = start; i < source.length; i++) {
+      const char = source[i];
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') quoted = false;
+        continue;
+      }
+      if (char === '"') quoted = true;
+      else if (char === '{' || char === '[') stack.push(char);
+      else if (char === '}' || char === ']') {
+        if (stack.pop() !== (char === '}' ? '{' : '[')) break;
+        if (!stack.length) { end = i + 1; break; }
+      }
+    }
+    if (end < 0) continue;
+    result += source.slice(cursor, match.index) + `\`\`\`telar-${match[1].toLowerCase()}\n${source.slice(start, end)}\n\`\`\``;
+    cursor = end;
+    labels.lastIndex = end;
+  }
+  return result + source.slice(cursor);
+}
 
 /** Módulos que la IA no debe proponer (placeholders, uso interno o licencia pendiente). */
 const NON_PROPOSABLE = new Set(['selector_modulo', 'oasis', 'odsis']);
@@ -134,6 +170,8 @@ export function userAskedForPatientEmail(question) {
   if (/\bno\s+(me\s+)?(des|quiero|pidas?|redactes?)\b.{0,24}\b(e-?mails?|correos?)\b/i.test(q)) {
     return false;
   }
+  if (/\b(?:do not|don't|don’t|stop)\b.{0,40}\b(e-?mails?)\b/i.test(q)) return false;
+  if (/\b(?:draft|write|compose|generate|prepare)\b.{0,48}\b(e-?mails?)\b/i.test(q)) return true;
   if (/[¿?]/.test(q) && !/\b(redacta|genera|escribe|arma|prepara)\b/i.test(q)) return false;
   return (
     /\b(redacta|genera|escribe|arma|prepara|haz(?:me)?|dame|quiero|necesito|m[aá]nd(?:a|ame))\b.{0,48}\b(e-?mails?|correos?)\b/i.test(
@@ -144,6 +182,10 @@ export function userAskedForPatientEmail(question) {
 }
 
 export function buildAiSystemPrompt(context, { practitioner, referenceDocs, email } = {}) {
+  const english = (practitioner?.locale || getLocale()) === 'en';
+  const languageRule = english
+    ? 'OUTPUT LANGUAGE: Respond in English unless the user explicitly requests another language. This also applies to patient emails, greetings, sign-offs and generated module text. The Spanish instructions and examples describe structure, not the output language. Use "In Telar:", "Outside Telar:" and "References" for the corresponding headings. Preserve module IDs, source titles and verbatim clinical quotes.'
+    : 'IDIOMA DE SALIDA: Responde en español salvo que el usuario pida explícitamente otro idioma.';
   const name = String(practitioner?.name || '').trim();
   const gender = practitioner?.grammaticalGender;
   const genderLine =
@@ -167,7 +209,7 @@ Escribe SOLO el email al paciente, con la estructura de EMAIL AL PACIENTE. Sin b
     : `REGLA FINAL
 Responde solo lo preguntado. Sin email de muestra, sin bibliografía de relleno, sin tutear al profesional por su nombre, sin protocolos de varias fases salvo que los pidan.`;
 
-  return `Eres un asistente clínico de apoyo al psicoterapeuta. Español de Chile. Corto y concreto.
+  return `Eres un asistente clínico de apoyo al psicoterapeuta. ${english ? 'English.' : 'Español de Chile.'} Corto y concreto.
 
 POSICIÓN
 - Apoyas al psicoterapeuta. No diagnosticas, no prescribes, no sustituyes el juicio clínico.
@@ -175,6 +217,7 @@ POSICIÓN
 - No adules ni confirmes por cortesía. Si la hipótesis es débil, dilo.
 - No simules alianza, empatía terapéutica ni “estar con” el profesional o el paciente.
 - Distingue hecho de la ficha, inferencia y especulación. Lo que no esté en el contexto, no lo inventes (nombres extra, violencia, sustancias, diagnósticos, horarios).
+- Antes de decir que faltan anamnesis, escalas o notas, revisa todo el bloque CONTEXTO DEL CASO; si hay contenido, cita lo que sí consta. No interpretes un puntaje experimental de riesgo vital como si fuera el mínimo válido de C-SSRS.
 - Prefiere una pregunta precisa a un plan largo cuando falte información.
 
 LARGO
@@ -231,6 +274,7 @@ En "text"/"radio"/"checkbox"/"scale" el campo "text" es un enunciado corto (una 
 No inventes ids que no estén en el catálogo. Máximo 12 sesiones en el JSON. No incluyas ningún bloque si el usuario no pidió un programa ni un módulo.
 ${docsBlock ? `\n${docsBlock}\n` : ''}
 ${finalRule}
+${languageRule}
 
 Contexto del caso:
 
@@ -451,6 +495,14 @@ function recoverPlanFromPartial(body) {
 
 function ingestParsed(kind, parsed, actions) {
   if (!parsed || typeof parsed !== 'object') return;
+  if (kind === 'element') {
+    if (['problem', 'resource', 'skill', 'development', 'defense', 'risk'].includes(parsed.axis) && String(parsed.title || '').trim()) actions.push({ type: 'element', element: parsed });
+    return;
+  }
+  if (kind === 'priority') {
+    if (Array.isArray(parsed.titles) && parsed.titles.length >= 2) actions.push({ type: 'priority', titles: parsed.titles.map(String) });
+    return;
+  }
   if (kind === 'plan' || Array.isArray(parsed.sessions)) {
     const plan = sanitizePlan(parsed);
     if (plan) {
@@ -547,7 +599,7 @@ export function parseAiActions(rawContent = '') {
       dismissed.add(Number(index));
       return '';
     });
-  let text = source.replace(ACTION_BLOCK_RE, (_match, kind, body) => {
+  let text = normalizeLabeledActionBlocks(source).replace(ACTION_BLOCK_RE, (_match, kind, body) => {
     ingestParsed(String(kind).toLowerCase(), tryParseJson(body), actions);
     return '';
   });
@@ -563,7 +615,7 @@ export function parseAiActions(rawContent = '') {
   }
 
   text = text
-    .replace(/```[ \t]*(?:json[ \t]+)?telar-(?:plan|module)[\s\S]*?(?:```|$)/gi, '')
+    .replace(/```[ \t]*(?:json[ \t]+)?telar-(?:plan|module|element|priority)[\s\S]*?(?:```|$)/gi, '')
     // Preserve ordinary fenced text (e.g. an email wrapped in ```text); only
     // Telar action blocks above are hidden from the readable answer.
     .replace(/^```[^\n]*\n?|```$/gm, '')
@@ -593,6 +645,13 @@ export function aiActionsHtml(actions, noteId) {
   if (!actions?.length) return '';
   return actions
     .map((action, idx) => {
+      if (['element', 'priority'].includes(action.type)) {
+        const title = action.type === 'element' ? action.element.title : 'Prioridad de problemas';
+        const detail = action.type === 'element'
+          ? `<div class="ai-dialog__summary">${renderAiMarkdown(action.element.explanation || '')}</div>`
+          : `<ol class="ai-dialog__summary">${action.titles.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ol>`;
+        return `<div class="ai-dialog" data-action-index="${idx}"><p class="ai-dialog__ask">${escapeHtml(title)}</p>${detail}<div class="ai-dialog__foot">${action.applied ? '<span>Incorporado</span>' : action.dismissed ? '<span>Descartado</span>' : '<button type="button" class="btn btn-primary" data-ai-apply>Incorporar</button><button type="button" class="btn btn-ghost" data-ai-dismiss>Descartar</button>'}</div></div>`;
+      }
       if (action.type === 'plan') {
         const { plan } = action;
         const rows = plan.sessions

@@ -65,17 +65,29 @@ export function playOverlayClose(scope) {
   const menu = findMenu(scope) || scope.querySelector('.t-dropdown');
   const modal = findModal(scope) || scope.querySelector('.t-modal');
   if (reducedMotion()) return Promise.resolve();
+  const focusedItem = menu?.contains(document.activeElement) ? document.activeElement : null;
+  const blinkMs = focusedItem ? 180 : 0;
+  if (focusedItem) {
+    focusedItem.classList.remove('t-menu-item-blink');
+    void focusedItem.offsetWidth;
+    focusedItem.classList.add('t-menu-item-blink');
+    setTimeout(() => focusedItem.classList.remove('t-menu-item-blink'), blinkMs);
+  }
   const closeMs = Math.max(
     menu ? tokenMs('--dropdown-close-dur', 150) : 0,
     modal ? tokenMs('--modal-close-dur', 150) : tokenMs('--modal-close-dur', 150),
   );
-  menu?.classList.remove('is-open');
-  menu?.classList.add('is-closing');
-  modal?.classList.remove('is-open');
-  modal?.classList.add('is-closing');
-  backdrop?.classList.remove('is-open');
-  backdrop?.classList.add('is-closing');
-  return new Promise((resolve) => setTimeout(resolve, closeMs));
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      menu?.classList.remove('is-open');
+      menu?.classList.add('is-closing');
+      modal?.classList.remove('is-open');
+      modal?.classList.add('is-closing');
+      backdrop?.classList.remove('is-open');
+      backdrop?.classList.add('is-closing');
+      setTimeout(resolve, closeMs);
+    }, blinkMs);
+  });
 }
 
 export function animateAndRemove(el) {

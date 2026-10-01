@@ -42,7 +42,9 @@ function axisCategories(element, sessions) {
       .map((person) => [person.name, person.relation && person.relation !== 'Otro' ? person.relation : ''].filter(Boolean).join(' · '));
     return people.length ? [{ label: 'Red de apoyo', values: people }] : [];
   }
-  return analysisCategoriesForElement(element, sessions).map((category) => ({
+  const details = element.axis === 'resource' && element.resourceDetails?.length
+    ? [{ label: /participaci[oó]n en comunidad/i.test(element.title) ? 'Comunidades' : 'Actividades concretas', values: element.resourceDetails.map((row) => row.text), kind: 'text' }] : [];
+  return [...details, ...analysisCategoriesForElement(element, sessions)].map((category) => ({
     ...category,
     values: category.values.map((value) => category.kind === 'text' ? value : moduleLabelForElement(value, element, sessions)),
   }));

@@ -39,12 +39,28 @@ test('activación conductual queda asociada a ánimo, actividad física y estruc
   assert.deepEqual(ids, ['mood', 'activity', 'structure']);
 });
 
-test('al añadir un módulo se crean los elementos clínicos asociados que falten', () => {
-  const missing = missingCaseStudyElementsForModule('tcc_estres', [
-    { id: 'anxiety', axis: 'problem', title: 'Ansiedad alta' },
-  ]);
+test('añadir una práctica incorpora habilidades sin inferir problemas ni factores protectores', () => {
+  const missing = missingCaseStudyElementsForModule('tcc_flexibilidad', []);
+  assert.deepEqual(missing, [{ axis: 'skill', title: 'Flexibilidad cognitiva en situaciones cotidianas' }]);
+  assert.deepEqual(missingCaseStudyElementsForModule('tcc_flexibilidad', [{ axis: 'skill', title: missing[0].title }]), []);
+  const skills = missingCaseStudyElementsForModule('tcc_estres', [{ id: 'anxiety', axis: 'problem', title: 'Ansiedad alta' }]);
+  assert.ok(skills.length > 0);
+  assert.ok(skills.every((element) => element.axis === 'skill'));
+});
 
-  assert.ok(missing.some((element) => element.axis === 'problem' && element.title === 'Estrés alto'));
-  assert.ok(missing.some((element) => element.axis === 'resource' && element.title === 'Regulación afectiva'));
-  assert.ok(!missing.some((element) => element.title === 'Ansiedad alta'));
+test('ASRS no infiere TDAH como problema al añadir la evaluación', () => {
+  assert.deepEqual(missingCaseStudyElementsForModule('asrs', []), []);
+});
+
+test('problemas cotidianos relacionados con TDAH recomiendan una intervención específica', async () => {
+  const { recommendedModulesForElement } = await import('../../src/js/case-study-model.js');
+  for (const title of [
+    'TDAH en adultos',
+    'Dificultad para iniciar tareas',
+    'Olvidos o desorganización',
+    'Distracción en tareas',
+  ]) {
+    assert.ok(recommendedModulesForElement('problem', title).intervention.includes('tcc_tdah_organizacion'), title);
+  }
+  assert.ok(recommendedModulesForElement('problem', 'TDAH en adultos').evaluation.includes('asrs'));
 });
